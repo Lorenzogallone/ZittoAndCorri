@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# personal activity exports (contengono GPS/HR reali) — fixture per Fase 2, non in repo
+*.fit
+*.gpx
