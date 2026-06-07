@@ -26,17 +26,32 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex flex-1 min-h-svh flex-col items-center justify-center gap-6 p-8">
-      <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">ZittoAndCorri</h1>
-        <p className="text-muted-foreground text-sm">
-          Accedi per tracciare le tue corse.
+    <main className="flex flex-1 min-h-svh flex-col items-center justify-center gap-8 p-8">
+      {/* Decorative glow */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-primary/10 blur-[100px] pointer-events-none" />
+
+      <div className="relative flex flex-col items-center gap-3 text-center">
+        <h1 className="text-4xl font-bold tracking-tight">
+          Zitto e Corri
+        </h1>
+        <p className="text-muted-foreground text-sm max-w-[240px]">
+          Il tuo coach personale. Traccia, migliora, corri.
         </p>
       </div>
-      <Button onClick={signInWithGoogle} disabled={loading} size="lg">
-        {loading ? "Reindirizzo…" : "Accedi con Google"}
-      </Button>
-      {error && <p className="text-destructive text-sm">{error}</p>}
+
+      <div className="relative flex flex-col items-center gap-3 w-full max-w-xs">
+        <Button
+          onClick={signInWithGoogle}
+          disabled={loading}
+          size="lg"
+          className="w-full"
+        >
+          {loading ? "Reindirizzo…" : "Accedi con Google"}
+        </Button>
+        {error && (
+          <p className="text-destructive text-sm text-center">{error}</p>
+        )}
+      </div>
     </main>
   );
 }
