@@ -61,39 +61,36 @@ export default async function SettingsPage() {
       </div>
 
       {/* Obiettivo */}
-      <div className="rounded-2xl bg-card border border-white/[0.06] p-5 mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold">Obiettivo attivo</h2>
-          <Link
-            href={activeGoal ? "/goals" : "/goals/new"}
-            className="text-xs text-primary hover:underline"
-          >
-            {activeGoal ? "Gestisci obiettivi" : "Imposta obiettivo"}
-          </Link>
-        </div>
-        {activeGoal ? (
-          <div>
-            <p className="font-medium">{activeGoal.race_name}</p>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {formatDistance(activeGoal.distance_m)}
-              {activeGoal.target_time_s && ` · Target ${formatDuration(activeGoal.target_time_s)}`}
-            </p>
-            {activeGoal.race_date && (() => {
-              const d = daysUntil(activeGoal.race_date);
-              return (
-                <p className="text-sm text-primary font-medium mt-1">
-                  {d === 0 ? "Oggi!" : d === 1 ? "1 giorno al via" : `${d} giorni al via`}
-                  {" · "}{new Date(activeGoal.race_date).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
-                </p>
-              );
-            })()}
+      <Link href="/goals" className="block mb-6">
+        <div className="rounded-2xl bg-card border border-white/[0.06] p-5 transition-colors active:scale-[0.98] hover:border-white/[0.12]" style={{ transition: 'transform 0.15s, border-color 0.15s' }}>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold">Obiettivo attivo</h2>
+            <span className="text-muted-foreground/50 text-xl leading-none">›</span>
           </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Nessun obiettivo impostato. Aggiungine uno per pianificare gli allenamenti.
-          </p>
-        )}
-      </div>
+          {activeGoal ? (
+            <div>
+              <p className="font-medium">{activeGoal.race_name}</p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {formatDistance(activeGoal.distance_m)}
+                {activeGoal.target_time_s && ` · Target ${formatDuration(activeGoal.target_time_s)}`}
+              </p>
+              {activeGoal.race_date && (() => {
+                const d = daysUntil(activeGoal.race_date);
+                return (
+                  <p className="text-sm text-primary font-medium mt-1">
+                    {d === 0 ? "Oggi!" : d === 1 ? "1 giorno al via" : `${d} giorni al via`}
+                    {" · "}{new Date(activeGoal.race_date).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
+                  </p>
+                );
+              })()}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Nessun obiettivo impostato — tocca per aggiungerne uno.
+            </p>
+          )}
+        </div>
+      </Link>
 
       {/* Logout */}
       <div className="separator my-4" />
