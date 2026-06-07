@@ -47,9 +47,12 @@ export function AppShell({
 
       {/* Content */}
       <main
-        className={`flex-1 scroll-touch ${
-          !hideTabBar ? "pb-20" : "pb-6"
-        }`}
+        className="flex-1 scroll-touch"
+        style={
+          !hideTabBar
+            ? { paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))', paddingTop: !(title || headerAction || backHref) ? 'env(safe-area-inset-top, 0px)' : undefined }
+            : { paddingBottom: '1.5rem', paddingTop: !(title || headerAction || backHref) ? 'env(safe-area-inset-top, 0px)' : undefined }
+        }
       >
         <div className="mx-auto w-full max-w-lg px-5 py-6">
           {children}

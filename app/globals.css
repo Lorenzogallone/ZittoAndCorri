@@ -181,4 +181,43 @@
   .scroll-touch {
     -webkit-overflow-scrolling: touch;
   }
+
+  /* Navigation progress bar */
+  .nav-progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    height: 2px;
+    background: oklch(0.68 0.16 30);
+    box-shadow: 0 0 8px oklch(0.68 0.16 30 / 0.6);
+    transition: width 0.3s ease, opacity 0.3s ease;
+    pointer-events: none;
+  }
+}
+
+/* ============================================================
+   iOS date/datetime input fix
+   iOS Safari renders native date pickers that ignore width constraints.
+   Force them to behave like regular inputs.
+   ============================================================ */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  color-scheme: dark;
+  font-size: 16px; /* prevents iOS zoom */
+}
+
+/* Ensure the inner calendar icon area doesn't overflow */
+input[type="date"]::-webkit-date-and-time-value,
+input[type="datetime-local"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-width: 0;
 }
