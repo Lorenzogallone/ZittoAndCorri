@@ -24,7 +24,7 @@ export function TabBar() {
       className="fixed bottom-0 left-0 right-0 z-50 glass-strong border-t border-white/[0.06]"
       role="tablist"
     >
-      <div className="mx-auto flex max-w-md items-center justify-around px-2" style={{ paddingTop: '6px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2px)' }}>
+      <div className="mx-auto flex max-w-md items-center justify-around px-2" style={{ paddingTop: '4px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) / 2)' }}>
         {tabs.map(({ href, label, icon: Icon }) => {
           const active = isActive(href);
           return (
