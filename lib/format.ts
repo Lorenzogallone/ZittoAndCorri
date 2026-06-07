@@ -26,6 +26,22 @@ export function formatDistance(distance_m: number | null | undefined): string {
   return `${(distance_m / 1000).toFixed(2)} km`;
 }
 
+/** Giorni interi rimanenti a raceDate (min 0). Null se raceDate è null. */
+export function daysUntil(raceDate: string | null | undefined): number | null {
+  if (!raceDate) return null;
+  const diff = new Date(raceDate).getTime() - Date.now();
+  return Math.max(0, Math.ceil(diff / (24 * 3600 * 1000)));
+}
+
+/** "142 giorni" / "1 giorno" / "Oggi!" */
+export function countdownLabel(raceDate: string | null | undefined): string | null {
+  const d = daysUntil(raceDate);
+  if (d === null) return null;
+  if (d === 0) return "Oggi!";
+  if (d === 1) return "1 giorno";
+  return `${d} giorni`;
+}
+
 /**
  * "h:mm:ss" | "mm:ss" | "ss" → secondi. Ritorna null se non parsabile.
  */
