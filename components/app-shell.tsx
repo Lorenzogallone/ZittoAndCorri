@@ -22,11 +22,19 @@ export function AppShell({
   backHref,
   backLabel,
 }: AppShellProps) {
+  const hasHeader = !!(title || headerAction || backHref);
+
   return (
-    <div className="flex min-h-svh flex-col">
+    // Full-height flex column locked to the dynamic viewport. Header and tab
+    // bar stay in normal flow (top / bottom), only the content scrolls. This
+    // keeps the tab bar glued to the very bottom of the screen on every page,
+    // regardless of how much content there is — fixing the "floats up on short
+    // pages" issue on iOS Safari (where `position: fixed` anchors to the large
+    // layout viewport). `h-screen` is the fallback for browsers without dvh.
+    <div className="flex h-screen flex-col overflow-hidden" style={{ height: "100dvh" }}>
       {/* Header */}
-      {(title || headerAction || backHref) && (
-        <header className="sticky top-0 z-40 glass-strong border-b border-white/[0.06] pt-safe">
+      {hasHeader && (
+        <header className="z-40 shrink-0 glass-strong border-b border-white/[0.06] pt-safe">
           <div className="mx-auto flex h-12 max-w-lg items-center justify-between px-5">
             {backHref ? (
               <a
@@ -45,13 +53,13 @@ export function AppShell({
         </header>
       )}
 
-      {/* Content */}
+      {/* Content (the only scrollable region) */}
       <main
-        className="flex-1 scroll-touch"
+        className="min-h-0 flex-1 overflow-y-auto scroll-touch"
         style={
-          !hideTabBar
-            ? { paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px) / 2)', paddingTop: !(title || headerAction || backHref) ? 'env(safe-area-inset-top, 0px)' : undefined }
-            : { paddingBottom: '1.5rem', paddingTop: !(title || headerAction || backHref) ? 'env(safe-area-inset-top, 0px)' : undefined }
+          !hasHeader
+            ? { paddingTop: "env(safe-area-inset-top, 0px)" }
+            : undefined
         }
       >
         <div className="mx-auto w-full max-w-lg px-5 py-6">
@@ -59,7 +67,7 @@ export function AppShell({
         </div>
       </main>
 
-      {/* Tab Bar */}
+      {/* Tab Bar — in normal flow, always pinned to the bottom */}
       {!hideTabBar && <TabBar />}
     </div>
   );
