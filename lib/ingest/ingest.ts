@@ -3,20 +3,22 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { avgPace } from "@/lib/metrics/pace";
-import { timeInZoneFromAverage } from "@/lib/metrics/zones";
+import { timeInZoneFromAverage, timeInZoneFromSeries } from "@/lib/metrics/zones";
+import { computeSplits } from "@/lib/metrics/splits";
 import type { Activity, Profile } from "@/lib/types";
 import { ActivityInput } from "./schema";
 
 interface IngestContext {
   supabase: SupabaseClient;
   userId: string;
-  /** Config atleta per il calcolo zone-da-media (max_hr/resting_hr). */
+  /** Config atleta per il calcolo zone (max_hr/resting_hr). */
   profile: Pick<Profile, "max_hr" | "resting_hr">;
 }
 
 /**
- * Normalizza un input qualsiasi in una riga `activities`, calcolando i campi
- * derivati con le funzioni pure di `lib/metrics`, e lo persiste.
+ * Normalizza un input qualsiasi in una riga `activities`, calcola i campi
+ * derivati con le funzioni pure di `lib/metrics`, e lo persiste insieme agli
+ * eventuali stream in `activity_streams`.
  * Ritorna l'id della corsa creata.
  */
 export async function ingestActivity(
@@ -28,13 +30,20 @@ export async function ingestActivity(
 
   // 2. campi derivati (deterministici, mai dall'LLM)
   const avg_pace_s_km = avgPace(data.distance_m, data.duration_s);
-  const time_in_zone = timeInZoneFromAverage(
-    data.avg_hr,
-    data.duration_s,
-    ctx.profile,
-  );
 
-  // 3. insert (RLS + user_id esplicito). Stream/split: Fase 2.
+  // Zone HR: preferisce la serie reale; fallback alla zona-da-media
+  const time_in_zone =
+    data.hr_series && data.hr_series.length >= 2
+      ? timeInZoneFromSeries(data.hr_series, ctx.profile)
+      : timeInZoneFromAverage(data.avg_hr, data.duration_s, ctx.profile);
+
+  // Split GPS: solo se c'è la serie
+  const splits =
+    data.gps_series && data.gps_series.length >= 2
+      ? computeSplits(data.gps_series, data.hr_series)
+      : null;
+
+  // 3. insert activities (RLS + user_id esplicito)
   const { data: row, error } = await ctx.supabase
     .from("activities")
     .insert({
@@ -51,6 +60,7 @@ export async function ingestActivity(
       elevation_gain_m: data.elevation_gain_m ?? null,
       rpe: data.rpe ?? null,
       time_in_zone,
+      splits,
       notes: data.notes ?? null,
       raw_payload: data,
     })
@@ -58,6 +68,19 @@ export async function ingestActivity(
     .single<Pick<Activity, "id">>();
 
   if (error) throw error;
+
+  // 3b. insert activity_streams se presenti (pesanti, separati dal prompt)
+  if (data.hr_series || data.gps_series) {
+    const { error: streamError } = await ctx.supabase
+      .from("activity_streams")
+      .insert({
+        activity_id: row.id,
+        hr_series: data.hr_series ?? null,
+        gps_series: data.gps_series ?? null,
+        cadence: null,
+      });
+    if (streamError) throw streamError;
+  }
 
   // 4. Fase 4: await recomputeSnapshot(ctx.userId) + valutazione AI
   return row.id;

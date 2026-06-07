@@ -36,9 +36,13 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Utente non autenticato → manda al login (escludendo login e callback OAuth).
+  // Utente non autenticato → manda al login (escludendo login, callback OAuth e
+  // le route API, che gestiscono la propria auth — es. Bearer token su /api/import).
   const { pathname } = request.nextUrl;
-  const isPublic = pathname.startsWith("/login") || pathname.startsWith("/auth");
+  const isPublic =
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/api");
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

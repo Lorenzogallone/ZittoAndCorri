@@ -41,6 +41,27 @@ export interface Profile {
   created_at: string;
 }
 
+/** Un split per km calcolato da gps_series. PLAN.md §7. */
+export interface Split {
+  km: number;
+  time_s: number;
+  avg_hr?: number;
+}
+
+/** Punto GPS normalizzato (dal parser GPX / stream). */
+export interface GpsPoint {
+  t: number;
+  lat: number;
+  lon: number;
+  ele?: number;
+}
+
+/** Punto HR normalizzato. */
+export interface HrPoint {
+  t: number;
+  bpm: number;
+}
+
 export interface Activity {
   id: string;
   user_id: string;
@@ -57,8 +78,38 @@ export interface Activity {
   rpe: number | null;
   calories: number | null;
   time_in_zone: TimeInZone | null;
-  splits: unknown | null;
+  splits: Split[] | null;
   notes: string | null;
   raw_payload: unknown | null;
   created_at: string;
+}
+
+/** Riga activity_streams — stream pesanti, mai nel prompt LLM. PLAN.md §3. */
+export interface ActivityStream {
+  activity_id: string;
+  hr_series: HrPoint[] | null;
+  gps_series: GpsPoint[] | null;
+  cadence: unknown | null;
+}
+
+/** Un punto per il carico giornaliero — usato da computeATLCTL. */
+export interface LoadPoint {
+  date: string; // YYYY-MM-DD
+  load: number;
+}
+
+/** Output di computeATLCTL. PLAN.md §7. */
+export interface ATLCTLResult {
+  atl: number;
+  ctl: number;
+  tsb: number;
+  series: Array<{ date: string; atl: number; ctl: number; tsb: number }>;
+}
+
+/** Predizioni Riegel per le distanze canoniche. PLAN.md §7. */
+export interface RacePredict {
+  "5k": number;
+  "10k": number;
+  half: number;
+  target?: number;
 }

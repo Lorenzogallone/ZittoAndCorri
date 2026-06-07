@@ -1,7 +1,7 @@
 // Funzioni pure: zone HR con metodo HRR (Karvonen). PLAN.md §7.
 // soglia_i = resting + pct_i * (max_hr - resting)
 
-import type { Profile, TimeInZone, ZoneKey } from "@/lib/types";
+import type { HrPoint, Profile, TimeInZone, ZoneKey } from "@/lib/types";
 
 /** Estremo inferiore (in % di HRR) di ogni zona. Default PLAN §7. */
 const ZONE_LOWER_PCT: Record<ZoneKey, number> = {
@@ -69,4 +69,31 @@ export function timeInZoneFromAverage(
   const zone = zoneForHr(avg_hr, profile);
   if (!zone) return null;
   return { [zone]: duration_s };
+}
+
+/**
+ * Calcola il tempo (secondi) in ogni zona da una serie HR reale.
+ * Per ogni campione somma Δt (distanza al campione successivo) nella zona di quel bpm.
+ * Prevale su timeInZoneFromAverage quando la serie è disponibile.
+ * Ritorna null se la serie è vuota o le zone non sono calcolabili.
+ */
+export function timeInZoneFromSeries(
+  hr_series: HrPoint[],
+  profile: HrConfig,
+): TimeInZone | null {
+  if (!hr_series || hr_series.length < 2) return null;
+  const zones = hrZones(profile);
+  if (!zones) return null;
+
+  const acc: Partial<Record<ZoneKey, number>> = {};
+
+  for (let i = 0; i < hr_series.length - 1; i++) {
+    const dt = hr_series[i + 1].t - hr_series[i].t;
+    if (dt <= 0) continue;
+    const zone = zoneForHr(hr_series[i].bpm, profile);
+    if (!zone) continue;
+    acc[zone] = (acc[zone] ?? 0) + dt;
+  }
+
+  return Object.keys(acc).length > 0 ? acc : null;
 }

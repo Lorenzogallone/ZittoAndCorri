@@ -4,8 +4,11 @@ import { deleteActivity } from "../actions";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
-import type { Activity } from "@/lib/types";
+import { timeInZoneFromSeries } from "@/lib/metrics/zones";
+import { computeSplits } from "@/lib/metrics/splits";
+import type { Activity, ActivityStream, Profile, TimeInZone } from "@/lib/types";
 import { Clock, Gauge, Heart, HeartPulse, Mountain, Flame, Sparkles } from "lucide-react";
+import { HrChart, PaceChart, ElevationChart } from "./activity-charts";
 
 const TYPE_LABELS: Record<string, string> = {
   easy: "Easy",
@@ -43,6 +46,13 @@ const ZONE_COLORS: Record<string, string> = {
   z5: "bg-red-400",
 };
 
+/** Downsample a series to at most maxPoints by skipping evenly. */
+function downsample<T>(arr: T[], maxPoints = 300): T[] {
+  if (arr.length <= maxPoints) return arr;
+  const step = Math.ceil(arr.length / maxPoints);
+  return arr.filter((_, i) => i % step === 0);
+}
+
 function StatCard({
   icon: Icon,
   label,
@@ -63,6 +73,44 @@ function StatCard({
   );
 }
 
+function ZoneBar({ zoneEntries }: { zoneEntries: [string, number][] }) {
+  const maxZoneTime =
+    zoneEntries.length > 0
+      ? Math.max(...zoneEntries.map(([, s]) => s))
+      : 0;
+
+  return (
+    <div className="rounded-2xl bg-card border border-white/[0.06] p-5 mb-4">
+      <h2 className="text-sm font-semibold mb-4">Zone HR</h2>
+      <div className="flex flex-col gap-3">
+        {zoneEntries.map(([zone, seconds]) => {
+          const pct = maxZoneTime > 0 ? (seconds / maxZoneTime) * 100 : 0;
+          return (
+            <div key={zone} className="flex flex-col gap-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">
+                  {ZONE_LABELS[zone] ?? zone}
+                </span>
+                <span className="tabular-nums text-foreground">
+                  {formatDuration(seconds)}
+                </span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    ZONE_COLORS[zone] ?? "bg-primary"
+                  }`}
+                  style={{ width: `${Math.max(pct, 2)}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default async function ActivityDetailPage({
   params,
 }: {
@@ -75,11 +123,24 @@ export default async function ActivityDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: activity } = await supabase
-    .from("activities")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle<Activity>();
+  const [{ data: activity }, { data: streams }, { data: profile }] =
+    await Promise.all([
+      supabase
+        .from("activities")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle<Activity>(),
+      supabase
+        .from("activity_streams")
+        .select("hr_series, gps_series")
+        .eq("activity_id", id)
+        .maybeSingle<Pick<ActivityStream, "hr_series" | "gps_series">>(),
+      supabase
+        .from("profiles")
+        .select("max_hr, resting_hr")
+        .eq("id", user.id)
+        .maybeSingle<Pick<Profile, "max_hr" | "resting_hr">>(),
+    ]);
 
   if (!activity) notFound();
 
@@ -88,14 +149,33 @@ export default async function ActivityDetailPage({
     timeStyle: "short",
   });
 
-  const zoneEntries = activity.time_in_zone
-    ? Object.entries(activity.time_in_zone)
+  const profileCtx = profile ?? { max_hr: null, resting_hr: 50 };
+
+  // Zone HR: se abbiamo la serie reale la usiamo (più precisa), altrimenti quella salvata
+  const computedZones: TimeInZone | null =
+    streams?.hr_series && streams.hr_series.length >= 2
+      ? timeInZoneFromSeries(streams.hr_series, profileCtx)
+      : activity.time_in_zone;
+
+  // Splits: se la corsa non li ha (es. importata prima di Fase 2) li calcoliamo dagli stream
+  const computedSplits =
+    activity.splits ??
+    (streams?.gps_series && streams.gps_series.length >= 2
+      ? computeSplits(streams.gps_series, streams.hr_series ?? undefined)
+      : null);
+
+  const zoneEntries = computedZones
+    ? (Object.entries(computedZones) as [string, number][])
     : [];
 
-  // Calculate max zone time for bar widths
-  const maxZoneTime = zoneEntries.length > 0
-    ? Math.max(...zoneEntries.map(([, s]) => s as number))
-    : 0;
+  // Downsample per il client
+  const hrChartData = streams?.hr_series
+    ? downsample(streams.hr_series, 300)
+    : null;
+  const eleChartData =
+    streams?.gps_series && streams.gps_series.some((p) => p.ele != null)
+      ? downsample(streams.gps_series, 300)
+      : null;
 
   return (
     <AppShell backHref="/activities" backLabel="Corse" hideTabBar>
@@ -134,31 +214,32 @@ export default async function ActivityDetailPage({
         )}
       </div>
 
-      {/* HR Zones */}
-      {zoneEntries.length > 0 && (
+      {/* HR nel tempo */}
+      {hrChartData && hrChartData.length >= 2 && (
         <div className="rounded-2xl bg-card border border-white/[0.06] p-5 mb-4">
-          <h2 className="text-sm font-semibold mb-4">Zone HR</h2>
-          <div className="flex flex-col gap-3">
-            {zoneEntries.map(([zone, seconds]) => {
-              const pct = maxZoneTime > 0 ? ((seconds as number) / maxZoneTime) * 100 : 0;
-              return (
-                <div key={zone} className="flex flex-col gap-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">{ZONE_LABELS[zone] ?? zone}</span>
-                    <span className="tabular-nums text-foreground">{formatDuration(seconds as number)}</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${ZONE_COLORS[zone] ?? "bg-primary"}`}
-                      style={{ width: `${Math.max(pct, 2)}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <h2 className="text-sm font-semibold mb-4">Frequenza cardiaca</h2>
+          <HrChart data={hrChartData} />
         </div>
       )}
+
+      {/* Passo per km */}
+      {computedSplits && computedSplits.length > 0 && (
+        <div className="rounded-2xl bg-card border border-white/[0.06] p-5 mb-4">
+          <h2 className="text-sm font-semibold mb-4">Passo per km</h2>
+          <PaceChart splits={computedSplits} />
+        </div>
+      )}
+
+      {/* Profilo altimetrico */}
+      {eleChartData && eleChartData.length >= 2 && (
+        <div className="rounded-2xl bg-card border border-white/[0.06] p-5 mb-4">
+          <h2 className="text-sm font-semibold mb-4">Profilo altimetrico</h2>
+          <ElevationChart data={eleChartData} />
+        </div>
+      )}
+
+      {/* HR Zones */}
+      {zoneEntries.length > 0 && <ZoneBar zoneEntries={zoneEntries} />}
 
       {/* Notes */}
       {activity.notes && (
