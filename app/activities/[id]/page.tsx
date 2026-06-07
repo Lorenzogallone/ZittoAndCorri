@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { deleteActivity } from "../actions";
@@ -178,7 +179,18 @@ export default async function ActivityDetailPage({
       : null;
 
   return (
-    <AppShell backHref="/activities" backLabel="Corse" hideTabBar>
+    <AppShell
+      backHref="/activities"
+      backLabel="Corse"
+      hideTabBar
+      headerAction={
+        <Button asChild variant="outline" size="sm">
+          <Link href={`/activities/${activity.id}/edit`}>
+            Modifica
+          </Link>
+        </Button>
+      }
+    >
       {/* Hero */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-2">
@@ -262,14 +274,6 @@ export default async function ActivityDetailPage({
         </p>
       </div>
 
-      {/* Delete */}
-      <div className="separator my-4" />
-      <form action={deleteActivity} className="flex justify-center">
-        <input type="hidden" name="id" value={activity.id} />
-        <Button type="submit" variant="destructive" size="sm">
-          Elimina corsa
-        </Button>
-      </form>
     </AppShell>
   );
 }

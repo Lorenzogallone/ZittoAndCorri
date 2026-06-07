@@ -113,3 +113,41 @@ export interface RacePredict {
   half: number;
   target?: number;
 }
+
+// ── Fase 3 ──────────────────────────────────────────────────────────────────
+
+export type PlannedStatus = "planned" | "completed" | "missed" | "skipped";
+
+export interface Goal {
+  id: string;
+  user_id: string;
+  race_name: string;
+  race_date: string | null;
+  distance_m: number;
+  target_time_s: number | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface PlannedWorkout {
+  id: string;
+  user_id: string;
+  goal_id: string | null;
+  date: string;
+  type: WorkoutType;
+  target_distance_m: number | null;
+  target_pace_s_km: number | null;
+  target_duration_s: number | null;
+  description: string | null;
+  status: PlannedStatus;
+  activity_id: string | null;
+  created_at: string;
+}
+
+export interface AdherenceResult {
+  total: number;
+  completed: number;
+  missed: number;
+  skipped: number;
+  pct: number;
+}
