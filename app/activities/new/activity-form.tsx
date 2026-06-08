@@ -130,12 +130,12 @@ function ManualForm({ nearbyWorkouts, today }: Props) {
       {nearbyWorkouts.length > 0 && (
         <div className="grid gap-2.5">
           <Label htmlFor="planned_workout_id">Collega ad allenamento pianificato</Label>
-          <Select name="planned_workout_id" defaultValue="">
+          <Select name="planned_workout_id" defaultValue="none">
             <SelectTrigger id="planned_workout_id">
               <SelectValue placeholder="Nessun collegamento" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Nessun collegamento</SelectItem>
+              <SelectItem value="none">Nessun collegamento</SelectItem>
               {nearbyWorkouts.map((w) => {
                 const label = `${w.date === today ? "Oggi" : w.date} · ${TYPE_LABELS[w.type] ?? w.type}${
                   w.target_distance_m ? ` · ${(w.target_distance_m / 1000).toFixed(1)} km` : ""
@@ -209,7 +209,8 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
     const maxHr = optIntClient(formData, "max_hr");
     const elevationGain = optIntClient(formData, "elevation_gain_m");
     const rpe = optIntClient(formData, "rpe");
-    const plannedWorkoutId = formData.get("planned_workout_id") as string;
+    const rawPlannedId = formData.get("planned_workout_id") as string;
+    const plannedWorkoutId = rawPlannedId === "none" ? "" : rawPlannedId;
 
     const duration_s = parseDuration(durationStr);
     if (duration_s == null || duration_s <= 0) {
@@ -391,12 +392,12 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
       {nearbyWorkouts.length > 0 && (
         <div className="grid gap-2.5">
           <Label htmlFor="planned_workout_id">Collega ad allenamento pianificato</Label>
-          <Select name="planned_workout_id" defaultValue="">
+          <Select name="planned_workout_id" defaultValue="none">
             <SelectTrigger id="planned_workout_id">
               <SelectValue placeholder="Nessun collegamento" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Nessun collegamento</SelectItem>
+              <SelectItem value="none">Nessun collegamento</SelectItem>
               {nearbyWorkouts.map((w) => {
                 const label = `${w.date === today ? "Oggi" : w.date} · ${TYPE_LABELS[w.type] ?? w.type}${
                   w.target_distance_m ? ` · ${(w.target_distance_m / 1000).toFixed(1)} km` : ""

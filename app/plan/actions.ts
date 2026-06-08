@@ -53,7 +53,7 @@ export async function createPlannedWorkout(
   const type = String(formData.get("type") ?? "").trim();
   if (!type) return { error: "Seleziona il tipo." };
 
-  const goal_id = String(formData.get("goal_id") ?? "").trim() || null;
+  const goal_id = String(formData.get("goal_id") ?? "").trim().replace(/^none$/, "") || null;
 
   const distKm = optFloat(formData, "target_distance_km");
   const target_distance_m = distKm != null ? Math.round(distKm * 1000) : null;
