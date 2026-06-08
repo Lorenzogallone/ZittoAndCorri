@@ -6,13 +6,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { predictRaces } from "@/lib/metrics/predict";
 import { computeATLCTL } from "@/lib/metrics/load";
 import { computeAdherence } from "@/lib/metrics/adherence";
+import { buildPlanVsActual } from "@/lib/metrics/plan-vs-actual";
 import { formatPace, formatDuration, formatDistance } from "@/lib/format";
 import type {
   Activity,
   Goal,
   PlannedWorkout,
   Profile,
-  PlannedStatus,
   WorkoutType,
 } from "@/lib/types";
 
@@ -59,6 +59,19 @@ function shortDate(iso: string): string {
   });
 }
 
+/** Giorni interi trascorsi da `iso` (data o timestamp) a ora. */
+function daysAgo(iso: string): number {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+}
+
+/** "N giorni fa" / "ieri" / "oggi". */
+function daysAgoLabel(iso: string): string {
+  const d = daysAgo(iso);
+  if (d <= 0) return "oggi";
+  if (d === 1) return "ieri";
+  return `${d} giorni fa`;
+}
+
 /** Migliore prestazione di riferimento: la corsa col 10k-equivalente più veloce. */
 function bestReference(acts: CtxActivity[]): { distance_m: number; duration_s: number } | null {
   let best: { distance_m: number; duration_s: number } | null = null;
@@ -103,8 +116,10 @@ export async function buildAthleteContext(
     { data: profile },
     { data: goal },
     { data: acts },
+    { data: latestRuns },
     { data: recentPlanned },
     { data: upcomingPlanned },
+    { data: lastPlanReview },
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -126,25 +141,55 @@ export async function buildAthleteContext(
       .gte("started_at", `${since42}T00:00:00`)
       .order("started_at", { ascending: true })
       .returns<CtxActivity[]>(),
+    // Ultime corse SENZA filtro temporale: garantiscono che il modello veda
+    // sempre le corse più recenti, anche dopo lunghi stop (> 6 settimane).
+    supabase
+      .from("activities")
+      .select("started_at, type, distance_m, duration_s, avg_pace_s_km, avg_hr, rpe, notes")
+      .eq("user_id", userId)
+      .order("started_at", { ascending: false })
+      .limit(5)
+      .returns<CtxActivity[]>(),
     supabase
       .from("planned_workouts")
-      .select("status, date")
+      .select("status, date, type, target_distance_m, description")
       .eq("user_id", userId)
       .gte("date", fourteenAgo)
       .lte("date", today)
-      .returns<Array<{ status: PlannedStatus; date: string }>>(),
+      .order("date")
+      .returns<
+        Array<
+          Pick<
+            PlannedWorkout,
+            "status" | "date" | "type" | "target_distance_m" | "description"
+          >
+        >
+      >(),
     supabase
       .from("planned_workouts")
-      .select("date, type, target_distance_m, target_duration_s, description")
+      .select("date, type, target_distance_m, target_pace_s_km, target_duration_s, description")
       .eq("user_id", userId)
       .gt("date", today)
       .order("date")
       .returns<
         Pick<
           PlannedWorkout,
-          "date" | "type" | "target_distance_m" | "target_duration_s" | "description"
+          | "date"
+          | "type"
+          | "target_distance_m"
+          | "target_pace_s_km"
+          | "target_duration_s"
+          | "description"
         >[]
       >(),
+    // Piano precedente: l'ultima review generata, per capire se è un replan.
+    supabase
+      .from("plan_reviews")
+      .select("range_start, range_end, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ range_start: string; range_end: string; created_at: string }>(),
   ]);
 
   const activities = acts ?? [];
@@ -220,7 +265,7 @@ export async function buildAthleteContext(
   if (recentPlanned && recentPlanned.length > 0) {
     const a = computeAdherence(recentPlanned, today);
     lines.push(
-      `Aderenza (14gg): ${a.completed}/${a.total} completati, ${a.missed} saltati, ${a.skipped} skippati (${a.pct}%).`,
+      `Aderenza (14gg): ${a.completed}/${a.total} completati, ${a.missed} saltati (${a.pct}%).`,
     );
   }
 
@@ -231,23 +276,83 @@ export async function buildAthleteContext(
     );
   }
 
-  // Piano già a calendario (prossimi giorni)
+  // Segnali temporali: distinguono un replan ravvicinato da uno tardivo / dopo
+  // un lungo stop. Le ultime corse sono prese senza filtro di finestra.
+  const runs = latestRuns ?? [];
+  const lastRun = runs[0] ?? null;
+  const gap = lastRun ? daysAgo(lastRun.started_at) : null;
+  if (lastRun) {
+    lines.push(`Ultima corsa: ${daysAgoLabel(lastRun.started_at)}.`);
+  } else {
+    lines.push(`Nessuna corsa registrata: atleta senza storico.`);
+  }
+  if (lastPlanReview) {
+    lines.push(
+      `Ultimo piano generato: ${daysAgoLabel(lastPlanReview.created_at)} (copriva ${shortDate(
+        lastPlanReview.range_start,
+      )}–${shortDate(lastPlanReview.range_end)}). Questo è un REPLAN.`,
+    );
+  } else {
+    lines.push(`Primo piano: nessun piano precedente registrato.`);
+  }
+  if (gap != null && gap > 14) {
+    lines.push(
+      `⚠ Stop prolungato: ~${gap} giorni senza corse — ripartire con prudenza, ridurre volume/intensità.`,
+    );
+  }
+
+  // Piano attuale a calendario (futuro): le descrizioni dei singoli giorni
+  // possono contenere vincoli dell'atleta (es. "questo giorno non posso").
   if (upcomingPlanned && upcomingPlanned.length > 0) {
-    lines.push(`Piano già a calendario:`);
-    for (const w of upcomingPlanned.slice(0, 14)) {
+    lines.push(
+      `Piano attuale a calendario (rispetta le note di ogni giorno come vincoli):`,
+    );
+    for (const w of upcomingPlanned.slice(0, 30)) {
+      const detail = [
+        w.target_distance_m ? formatDistance(w.target_distance_m) : null,
+        w.target_pace_s_km ? formatPace(w.target_pace_s_km) : null,
+        w.target_duration_s ? formatDuration(w.target_duration_s) : null,
+      ]
+        .filter(Boolean)
+        .join(" ");
       lines.push(
-        `- ${shortDate(w.date)} ${TYPE_LABELS[w.type]}${
-          w.target_distance_m ? ` ${formatDistance(w.target_distance_m)}` : ""
-        }${w.description ? ` "${w.description}"` : ""}`,
+        `- ${shortDate(w.date)} ${TYPE_LABELS[w.type]}${detail ? ` ${detail}` : ""}${
+          w.description ? ` "${w.description}"` : ""
+        }`,
       );
     }
   }
 
-  // Ultime corse (max 8, più recenti prima)
-  const recent = [...activities].reverse().slice(0, 8);
-  if (recent.length > 0) {
+  // Ultime 2 settimane — piano vs reale (giorno per giorno). Le corse possono
+  // cadere anche in un giorno diverso da quello pianificato.
+  const acts14 = activities.filter((a) => a.started_at.slice(0, 10) >= fourteenAgo);
+  const pva = buildPlanVsActual(recentPlanned ?? [], acts14);
+  if (pva.length > 0) {
+    lines.push(`Ultime 2 settimane — piano vs reale:`);
+    for (const d of pva) {
+      const plan =
+        d.planned.length > 0
+          ? d.planned
+              .map(
+                (p) =>
+                  `${TYPE_LABELS[p.type]}${p.status === "completed" ? "✓" : ""}`,
+              )
+              .join(", ")
+          : "—";
+      const done =
+        d.actual.length > 0
+          ? d.actual
+              .map((a) => `${TYPE_LABELS[a.type]} ${formatDistance(a.distance_m)}`)
+              .join(", ")
+          : "—";
+      lines.push(`- ${shortDate(d.date)}: piano ${plan} | fatto ${done}`);
+    }
+  }
+
+  // Ultime corse — SEMPRE presenti (anche se più vecchie di 6 settimane).
+  if (runs.length > 0) {
     lines.push(`Ultime corse:`);
-    for (const a of recent) {
+    for (const a of runs) {
       lines.push(
         `- ${shortDate(a.started_at)} ${TYPE_LABELS[a.type]} ${formatDistance(
           a.distance_m,
@@ -256,8 +361,6 @@ export async function buildAthleteContext(
         }${a.notes ? ` "${a.notes.slice(0, 80)}"` : ""}`,
       );
     }
-  } else {
-    lines.push(`Nessuna corsa registrata nelle ultime 6 settimane.`);
   }
 
   return { markdown: lines.join("\n"), activeGoal: goal ?? null };

@@ -76,10 +76,10 @@ export function PlanCalendar({ workouts, activities, goal, month, today, adheren
 
   const startWeekday = (firstDay.getDay() + 6) % 7;
 
-  // Planned workouts by date (only non-completed)
+  // Planned workouts by date (inclusi i completati: vanno mostrati accanto
+  // alla corsa reale, non nascosti).
   const byDate = new Map<string, PlannedWorkout[]>();
   for (const w of workouts) {
-    if (w.status === "completed") continue;
     const arr = byDate.get(w.date) ?? [];
     arr.push(w);
     byDate.set(w.date, arr);
@@ -145,15 +145,18 @@ export function PlanCalendar({ workouts, activities, goal, month, today, adheren
           const dayWorkouts = byDate.get(dateStr) ?? [];
           const dayActivities = activitiesByDate.get(dateStr) ?? [];
 
+          // L'intera cella è il target di tap: porta alla vista giorno, dove
+          // pianificato e corse reali sono mostrati in parallelo.
           return (
-            <div
+            <Link
               key={dateStr}
-              className={`min-h-[52px] rounded-lg p-1 flex flex-col gap-0.5 ${
+              href={`/plan/day/${dateStr}`}
+              className={`min-h-[52px] rounded-lg p-1 flex flex-col gap-0.5 transition-colors active:scale-[0.97] ${
                 isRaceDay
                   ? "bg-primary/15 ring-1 ring-primary/40"
                   : isToday
                   ? "bg-primary/10 ring-1 ring-primary/30"
-                  : ""
+                  : "hover:bg-muted/40"
               }`}
             >
               <span
@@ -174,36 +177,30 @@ export function PlanCalendar({ workouts, activities, goal, month, today, adheren
                 </span>
               )}
 
-              {/* Corse fatte */}
+              {/* Corse fatte (indicatori visivi) */}
               {dayActivities.map((a) => (
-                <Link
+                <span
                   key={a.id}
-                  href={`/activities/${a.id}`}
-                  className={`block rounded px-1 py-0.5 text-[9px] font-medium leading-tight truncate transition-opacity ${
+                  className={`block rounded px-1 py-0.5 text-[9px] font-medium leading-tight truncate ${
                     TYPE_COLORS[a.type] ?? "bg-zinc-500/20 text-zinc-400"
                   }`}
-                  title={`${TYPE_SHORT[a.type] ?? a.type} — completata`}
                 >
                   ✓ {TYPE_SHORT[a.type] ?? a.type}
-                </Link>
+                </span>
               ))}
 
-              {/* Allenamenti pianificati (non completati) */}
+              {/* Allenamenti pianificati (indicatori visivi) */}
               {dayWorkouts.map((w) => (
-                <Link
+                <span
                   key={w.id}
-                  href={`/plan/${w.id}`}
-                  className={`block rounded px-1 py-0.5 text-[9px] font-medium leading-tight truncate transition-opacity ${
+                  className={`block rounded px-1 py-0.5 text-[9px] font-medium leading-tight truncate ${
                     TYPE_COLORS[w.type] ?? "bg-zinc-500/20 text-zinc-400"
-                  } ${w.status === "missed" ? "opacity-40" : ""} ${
-                    w.status === "skipped" ? "opacity-30 line-through" : ""
                   }`}
-                  title={`${TYPE_SHORT[w.type] ?? w.type} — ${w.status}`}
                 >
                   {TYPE_SHORT[w.type] ?? w.type}
-                </Link>
+                </span>
               ))}
-            </div>
+            </Link>
           );
         })}
       </div>
@@ -224,7 +221,7 @@ export function PlanCalendar({ workouts, activities, goal, month, today, adheren
             </p>
             <p className="text-sm font-medium">
               {adherence.completed}/{adherence.total} completati
-              {adherence.skipped > 0 && ` · ${adherence.skipped} scartati`}
+              {adherence.missed > 0 && ` · ${adherence.missed} saltati`}
             </p>
           </div>
           <span

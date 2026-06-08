@@ -116,7 +116,10 @@ export interface RacePredict {
 
 // ── Fase 3 ──────────────────────────────────────────────────────────────────
 
-export type PlannedStatus = "planned" | "completed" | "missed" | "skipped";
+// Modello semplificato: un workout è solo "planned" finché non viene collegata
+// una corsa reale, che lo porta a "completed". "missed" non è uno stato salvato
+// ma un concetto calcolato in fase di aderenza (planned con data passata).
+export type PlannedStatus = "planned" | "completed";
 
 export interface Goal {
   id: string;
@@ -148,7 +151,6 @@ export interface AdherenceResult {
   total: number;
   completed: number;
   missed: number;
-  skipped: number;
   pct: number;
 }
 
