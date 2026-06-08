@@ -5,6 +5,7 @@ import { Sparkles } from "lucide-react";
 import { generatePlan, type GeneratePlanState } from "@/app/plan/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { AiThinkingOverlay } from "@/components/ai-thinking-overlay";
 
 const initialState: GeneratePlanState = {};
 
@@ -43,6 +44,7 @@ export function PlanGenerator() {
             name="comments"
             rows={3}
             placeholder="Vincoli o preferenze, es. nel weekend non posso correre; max 4 uscite a settimana…"
+            disabled={pending}
           />
 
           {state.error && (
@@ -60,7 +62,11 @@ export function PlanGenerator() {
             {pending ? "Genero il piano…" : "Genera piano 2 settimane"}
           </Button>
         </form>
+
+        {/* AI Thinking Overlay */}
+        <AiThinkingOverlay pending={pending} variant="plan" />
       </div>
     </div>
   );
 }
+

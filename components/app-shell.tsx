@@ -1,4 +1,5 @@
 import { TabBar } from "@/components/tab-bar";
+import { BackButton } from "@/components/back-button";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -37,12 +38,7 @@ export function AppShell({
         <header className="z-40 shrink-0 glass-strong border-b border-border pt-safe">
           <div className="mx-auto flex h-12 max-w-lg items-center justify-between px-5">
             {backHref ? (
-              <a
-                href={backHref}
-                className="text-muted-foreground text-sm hover:text-foreground transition-colors"
-              >
-                ← {backLabel ?? "Indietro"}
-              </a>
+              <BackButton fallbackHref={backHref} label={backLabel} />
             ) : (
               <h1 className="text-lg font-semibold tracking-tight">
                 {title}
@@ -72,3 +68,4 @@ export function AppShell({
     </div>
   );
 }
+

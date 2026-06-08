@@ -24,7 +24,7 @@ export function TabBar() {
       className="z-50 shrink-0 glass-strong border-t border-border"
       role="tablist"
     >
-      <div className="mx-auto flex max-w-md items-center justify-around px-2" style={{ paddingTop: '4px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 4px)' }}>
+      <div className="mx-auto flex max-w-md items-center justify-around px-2" style={{ paddingTop: '2px', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         {tabs.map(({ href, label, icon: Icon }) => {
           const active = isActive(href);
           return (
@@ -33,7 +33,7 @@ export function TabBar() {
               href={href}
               role="tab"
               aria-selected={active}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 transition-all duration-200 ${
+              className={`flex flex-col items-center gap-0 px-3 py-1 transition-all duration-200 ${
                 active
                   ? "text-primary scale-105"
                   : "text-muted-foreground hover:text-foreground"
