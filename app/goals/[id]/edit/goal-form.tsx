@@ -87,7 +87,7 @@ export function EditGoalForm({ goal }: Props) {
           id="target_time"
           name="target_time"
           type="text"
-          inputMode="numeric"
+          inputMode="text"
           placeholder="1:45:00"
           defaultValue={defaultTargetTime}
         />

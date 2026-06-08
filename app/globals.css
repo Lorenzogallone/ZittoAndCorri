@@ -128,7 +128,7 @@
     @apply bg-background text-foreground;
   }
   html {
-    @apply font-sans;
+    @apply font-sans bg-background;
   }
 }
 
@@ -180,6 +180,22 @@
   /* Smooth scroll with momentum on iOS */
   .scroll-touch {
     -webkit-overflow-scrolling: touch;
+  }
+
+  /* Full-screen app viewport.
+     In Safari `100dvh` is correct (it shrinks/grows with the toolbar).
+     In a standalone PWA, iOS measures `100dvh` SHORTER than the physical
+     screen — it leaves out the bottom safe-area — which lets the page float
+     up and exposes a black strip under the tab bar. There `100vh` is the
+     reliable full-screen height (the home indicator just overlays it, and
+     the tab bar pads itself out of the way with safe-area-inset-bottom). */
+  .app-viewport {
+    height: 100dvh;
+  }
+  @media all and (display-mode: standalone) {
+    .app-viewport {
+      height: 100vh;
+    }
   }
 
   /* Navigation progress bar */
