@@ -129,6 +129,26 @@ export async function linkActivityToWorkout(formData: FormData): Promise<void> {
   revalidatePath("/activities");
 }
 
+export async function unlinkActivityFromWorkout(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const workoutId = String(formData.get("workout_id") ?? "");
+  if (!workoutId) return;
+
+  await supabase
+    .from("planned_workouts")
+    .update({ activity_id: null, status: "planned" })
+    .eq("id", workoutId)
+    .eq("user_id", user.id);
+
+  revalidatePath("/plan");
+  revalidatePath("/activities");
+}
+
 export async function deletePlannedWorkout(formData: FormData): Promise<void> {
   const supabase = await createClient();
   const {
