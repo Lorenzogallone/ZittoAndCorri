@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
 import { timeInZoneFromSeries } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
-import type { Activity, ActivityStream, Profile, TimeInZone } from "@/lib/types";
-import { Clock, Gauge, Heart, HeartPulse, Mountain, Flame, Sparkles } from "lucide-react";
+import type { Activity, ActivityStream, Evaluation, Profile, TimeInZone } from "@/lib/types";
+import { Clock, Gauge, Heart, HeartPulse, Mountain, Flame } from "lucide-react";
 import { HrChart, PaceChart, ElevationChart } from "./activity-charts";
+import { ActivityEvaluation } from "@/components/activity-evaluation";
 
 const TYPE_LABELS: Record<string, string> = {
   easy: "Easy",
@@ -124,7 +125,7 @@ export default async function ActivityDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: activity }, { data: streams }, { data: profile }] =
+  const [{ data: activity }, { data: streams }, { data: profile }, { data: evaluation }] =
     await Promise.all([
       supabase
         .from("activities")
@@ -141,6 +142,14 @@ export default async function ActivityDetailPage({
         .select("max_hr, resting_hr")
         .eq("id", user.id)
         .maybeSingle<Pick<Profile, "max_hr" | "resting_hr">>(),
+      supabase
+        .from("evaluations")
+        .select("summary, flags, created_at")
+        .eq("activity_id", id)
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<Pick<Evaluation, "summary" | "flags" | "created_at">>(),
     ]);
 
   if (!activity) notFound();
@@ -253,26 +262,12 @@ export default async function ActivityDetailPage({
       {/* HR Zones */}
       {zoneEntries.length > 0 && <ZoneBar zoneEntries={zoneEntries} />}
 
-      {/* Notes */}
-      {activity.notes && (
-        <div className="rounded-2xl bg-card border border-border p-5 mb-4">
-          <h2 className="text-sm font-semibold mb-2">Note</h2>
-          <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-            {activity.notes}
-          </p>
-        </div>
-      )}
-
-      {/* AI Evaluation placeholder */}
-      <div className="rounded-2xl border border-primary/10 bg-primary/[0.04] p-5 mb-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles size={16} className="text-primary" />
-          <h2 className="text-sm font-semibold text-primary">Coach AI</h2>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          La valutazione AI di questa corsa arriverà nella Fase 4.
-        </p>
-      </div>
+      {/* Coach AI: note + valutazione */}
+      <ActivityEvaluation
+        activityId={activity.id}
+        initialNotes={activity.notes}
+        evaluation={evaluation ?? null}
+      />
 
     </AppShell>
   );

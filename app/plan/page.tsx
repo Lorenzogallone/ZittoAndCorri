@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { PlanCalendar } from "@/components/plan-calendar";
 import { computeAdherence } from "@/lib/metrics/adherence";
-import type { PlannedWorkout, Goal, Activity } from "@/lib/types";
+import { PlanGenerator } from "@/components/plan-generator";
+import type { PlannedWorkout, Goal, Activity, PlanReview } from "@/lib/types";
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -44,8 +45,13 @@ export default async function PlanPage({ searchParams }: Props) {
     .toISOString()
     .slice(0, 10);
 
-  const [{ data: monthWorkouts }, { data: activeGoal }, { data: recentWorkouts }, { data: monthActivities }] =
-    await Promise.all([
+  const [
+    { data: monthWorkouts },
+    { data: activeGoal },
+    { data: recentWorkouts },
+    { data: monthActivities },
+    { data: latestReview },
+  ] = await Promise.all([
       supabase
         .from("planned_workouts")
         .select("*")
@@ -74,6 +80,13 @@ export default async function PlanPage({ searchParams }: Props) {
         .gte("started_at", `${start}T00:00:00`)
         .lte("started_at", `${end}T23:59:59`)
         .returns<Pick<Activity, "id" | "started_at" | "type">[]>(),
+      supabase
+        .from("plan_reviews")
+        .select("summary, comments, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<Pick<PlanReview, "summary" | "comments" | "created_at">>(),
     ]);
 
   const adherence =
@@ -120,6 +133,32 @@ export default async function PlanPage({ searchParams }: Props) {
             )}
           </div>
         </Link>
+      )}
+
+      {/* Pianifica con AI */}
+      <PlanGenerator />
+
+      {/* Ultima review del coach */}
+      {latestReview?.summary && (
+        <div className="mb-4 rounded-2xl bg-card border border-border p-5">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold">Review del coach</h2>
+            <span className="text-xs text-muted-foreground">
+              {new Date(latestReview.created_at).toLocaleDateString("it-IT", {
+                day: "numeric",
+                month: "short",
+              })}
+            </span>
+          </div>
+          <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+            {latestReview.summary}
+          </p>
+          {latestReview.comments && (
+            <p className="text-xs text-muted-foreground mt-3 border-t border-border/40 pt-2">
+              I tuoi vincoli: {latestReview.comments}
+            </p>
+          )}
+        </div>
       )}
 
       {/* Calendario */}
