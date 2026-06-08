@@ -96,7 +96,7 @@ export async function updateWorkoutStatus(formData: FormData): Promise<void> {
 
   const id = String(formData.get("id") ?? "");
   const status = String(formData.get("status") ?? "") as PlannedStatus;
-  const validStatuses: PlannedStatus[] = ["planned", "completed", "missed", "skipped"];
+  const validStatuses: PlannedStatus[] = ["planned", "completed"];
   if (!id || !validStatuses.includes(status)) return;
 
   await supabase

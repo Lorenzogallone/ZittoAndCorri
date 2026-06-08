@@ -93,7 +93,7 @@ export default async function Home() {
       .eq("status", "planned")
       .gte("date", today)
       .order("date")
-      .limit(3)
+      .limit(2)
       .returns<Pick<PlannedWorkout, "id" | "date" | "type" | "target_distance_m" | "target_duration_s" | "description">[]>(),
     supabase
       .from("planned_workouts")

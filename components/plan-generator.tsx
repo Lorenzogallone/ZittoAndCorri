@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { Sparkles, ChevronDown } from "lucide-react";
+import { useActionState } from "react";
+import { Sparkles } from "lucide-react";
 import { generatePlan, type GeneratePlanState } from "@/app/plan/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,37 +9,36 @@ import { Textarea } from "@/components/ui/textarea";
 const initialState: GeneratePlanState = {};
 
 export function PlanGenerator() {
-  const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(
     generatePlan,
     initialState,
   );
 
   return (
-    <div className="mb-4 rounded-2xl border border-primary/15 bg-primary/[0.04] overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left"
-      >
-        <span className="flex items-center gap-2">
-          <Sparkles size={16} className="text-primary" />
-          <span className="text-sm font-semibold text-primary">
-            Pianifica con il coach AI
+    <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-card p-5">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/[0.07] to-transparent" />
+      <div className="relative flex flex-col gap-3">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15">
+            <Sparkles size={18} className="text-primary" />
           </span>
-        </span>
-        <ChevronDown
-          size={16}
-          className={`text-primary transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">
+              Coach AI
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Genera il piano delle prossime 2 settimane
+            </p>
+          </div>
+        </div>
 
-      {open && (
-        <form action={formAction} className="flex flex-col gap-2.5 px-4 pb-4">
-          <p className="text-xs text-muted-foreground">
-            Genera gli allenamenti delle prossime 2 settimane in base a obiettivo,
-            corse fatte e aderenza. Sovrascrive solo i workout ancora pianificati.
-          </p>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          Crea gli allenamenti in base a obiettivo, corse fatte e aderenza.
+          Sovrascrive solo i workout ancora pianificati. Aggiungi qui i tuoi
+          vincoli: verranno rispettati.
+        </p>
+
+        <form action={formAction} className="flex flex-col gap-2.5">
           <Textarea
             name="comments"
             rows={3}
@@ -61,7 +60,7 @@ export function PlanGenerator() {
             {pending ? "Genero il piano…" : "Genera piano 2 settimane"}
           </Button>
         </form>
-      )}
+      </div>
     </div>
   );
 }

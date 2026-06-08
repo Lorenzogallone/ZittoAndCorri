@@ -31,8 +31,6 @@ const TYPE_LABELS: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   planned: "Pianificato",
   completed: "Completato",
-  missed: "Saltato",
-  skipped: "Scartato",
 };
 
 function formatDate(iso: string): string {
@@ -88,10 +86,6 @@ export default async function PlannedWorkoutPage({ params }: Props) {
             className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
               workout.status === "completed"
                 ? "bg-green-500/15 text-green-400"
-                : workout.status === "missed"
-                ? "bg-red-500/15 text-red-400"
-                : workout.status === "skipped"
-                ? "bg-yellow-500/15 text-yellow-400"
                 : "bg-primary/10 text-primary"
             }`}
           >
@@ -166,7 +160,7 @@ export default async function PlannedWorkoutPage({ params }: Props) {
           Aggiorna stato
         </p>
         <div className="flex flex-wrap gap-2">
-          {(["planned", "completed", "missed", "skipped"] as const).map((s) => (
+          {(["planned", "completed"] as const).map((s) => (
             <form key={s} action={updateWorkoutStatus}>
               <input type="hidden" name="id" value={workout.id} />
               <input type="hidden" name="status" value={s} />

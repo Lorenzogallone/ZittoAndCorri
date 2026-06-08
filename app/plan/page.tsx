@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { PlanCalendar } from "@/components/plan-calendar";
 import { computeAdherence } from "@/lib/metrics/adherence";
+import { formatDistance } from "@/lib/format";
 import { PlanGenerator } from "@/components/plan-generator";
 import type { PlannedWorkout, Goal, Activity, PlanReview } from "@/lib/types";
 
@@ -109,38 +110,60 @@ export default async function PlanPage({ searchParams }: Props) {
 
   return (
     <AppShell title="Piano">
-      {/* Banner goal attivo */}
+      {/* 1. Countdown all'obiettivo */}
       {activeGoal && (
         <Link href="/goals" className="block mb-4">
-          <div className="rounded-xl bg-primary/10 border border-primary/20 px-4 py-3 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-primary font-medium">{activeGoal.race_name}</p>
-              {activeGoal.race_date && (
-                <p className="text-xs text-muted-foreground">
-                  {new Date(activeGoal.race_date).toLocaleDateString("it-IT", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
+          <div className="relative overflow-hidden rounded-2xl bg-card border border-primary/20 glow-coral-sm p-5">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.06] to-transparent pointer-events-none" />
+            <div className="relative flex items-center justify-between">
+              <div>
+                <p className="text-xs text-primary font-medium uppercase tracking-wider mb-1">
+                  Obiettivo
                 </p>
+                <p className="font-semibold">{activeGoal.race_name}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {activeGoal.distance_m ? formatDistance(activeGoal.distance_m) : ""}
+                  {activeGoal.race_date &&
+                    ` · ${new Date(activeGoal.race_date).toLocaleDateString("it-IT", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}`}
+                </p>
+              </div>
+              {weeksLeft !== null && (
+                <div className="text-right shrink-0 ml-4">
+                  <p className="text-3xl font-bold tabular-nums text-primary">
+                    {weeksLeft}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {weeksLeft === 1 ? "settimana" : "settimane"}
+                  </p>
+                </div>
               )}
             </div>
-            {weeksLeft !== null && (
-              <span className="text-2xl font-bold tabular-nums text-primary">
-                {weeksLeft}
-                <span className="text-xs font-normal text-muted-foreground ml-1">sett.</span>
-              </span>
-            )}
           </div>
         </Link>
       )}
 
-      {/* Pianifica con AI */}
-      <PlanGenerator />
+      {/* 2. Calendario */}
+      <PlanCalendar
+        workouts={monthWorkouts ?? []}
+        activities={monthActivities ?? []}
+        goal={activeGoal ?? null}
+        month={month}
+        today={today}
+        adherence={adherence}
+      />
 
-      {/* Ultima review del coach */}
+      {/* 3. Card coach AI (transizione tra calendario e review) */}
+      <div className="mt-4">
+        <PlanGenerator />
+      </div>
+
+      {/* 4. Ultima review del coach */}
       {latestReview?.summary && (
-        <div className="mb-4 rounded-2xl bg-card border border-border p-5">
+        <div className="mt-4 rounded-2xl bg-card border border-border p-5">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold">Review del coach</h2>
             <span className="text-xs text-muted-foreground">
@@ -160,16 +183,6 @@ export default async function PlanPage({ searchParams }: Props) {
           )}
         </div>
       )}
-
-      {/* Calendario */}
-      <PlanCalendar
-        workouts={monthWorkouts ?? []}
-        activities={monthActivities ?? []}
-        goal={activeGoal ?? null}
-        month={month}
-        today={today}
-        adherence={adherence}
-      />
     </AppShell>
   );
 }

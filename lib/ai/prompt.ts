@@ -33,7 +33,7 @@ export function buildEvaluationPrompt(
   return [
     "Sei un coach di corsa esperto. Valuti una singola corsa dell'atleta.",
     "Regole: i numeri (passi, volumi, carico, predizioni) sono già calcolati e te li fornisco — NON inventarne di nuovi, puoi solo commentarli. Produci solo testo qualitativo in italiano.",
-    "Tieni conto delle note dell'atleta sulla corsa, se presenti.",
+    "Tieni conto delle note dell'atleta sulla corsa, se presenti, e del contesto temporale (es. se segue un lungo stop, valuta la corsa come ripresa).",
     "",
     "# Contesto atleta",
     contextMarkdown,
@@ -101,8 +101,11 @@ export function buildPlanPrompt(
     "- Non programmare ogni singolo giorno: includi riposo e alterna intensità e volume in modo sensato verso l'obiettivo.",
     "- I passi target devono essere coerenti coi passi medi reali dell'atleta per ciascun tipo.",
     "- Scrivi descrizioni brevi e operative in italiano.",
+    "- Se il contesto indica un REPLAN, parti dal piano attuale a calendario e dall'aderenza reale (piano vs reale): mantieni ciò che ha senso, correggi dove l'atleta è rimasto indietro o ha cambiato passo. Onora le note dei singoli giorni del piano attuale come vincoli (es. giorni in cui non può correre).",
+    "- Se il contesto segnala uno stop prolungato (molti giorni/mesi senza corse), riparti con prudenza: meno volume e intensità, riprogressione graduale; non riprendere dai carichi precedenti allo stop.",
+    "- Nella review (review_summary) confronta esplicitamente programmato vs fatto e motiva le scelte del nuovo piano.",
     comments && comments.trim()
-      ? `- Vincoli/preferenze dell'atleta da rispettare: ${comments.trim()}`
+      ? `- Vincoli/preferenze aggiuntivi dell'atleta da rispettare: ${comments.trim()}`
       : "",
     "",
     "# Contesto atleta",
