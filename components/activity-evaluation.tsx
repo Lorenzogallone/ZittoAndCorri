@@ -8,6 +8,7 @@ import {
 } from "@/app/activities/ai-actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { AiThinkingOverlay } from "@/components/ai-thinking-overlay";
 import type { Evaluation } from "@/lib/types";
 
 interface FlagMeta {
@@ -118,6 +119,9 @@ export function ActivityEvaluation({
           </p>
         )}
       </form>
+
+      {/* AI Thinking Overlay */}
+      <AiThinkingOverlay pending={pending} variant="evaluation" />
     </div>
   );
 }
