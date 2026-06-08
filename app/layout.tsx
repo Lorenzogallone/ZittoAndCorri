@@ -3,7 +3,9 @@ import { Inter } from "next/font/google";
 import { Suspense } from "react";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { PwaRegister } from "@/components/pwa-register";
+import { PwaSplashLoader } from "@/components/pwa-splash-loader";
 import "./globals.css";
+
 
 const inter = Inter({
   variable: "--font-inter",
@@ -51,6 +53,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <PwaRegister />
+        <PwaSplashLoader />
         <Suspense fallback={null}>
           <NavigationProgress />
         </Suspense>
