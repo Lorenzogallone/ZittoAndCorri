@@ -151,3 +151,52 @@ export interface AdherenceResult {
   skipped: number;
   pct: number;
 }
+
+// ── Fase 4: Coach AI ──────────────────────────────────────────────────────────
+
+/** Riga evaluations — valutazione discorsiva AI di una corsa. PLAN.md §5/§8. */
+export interface Evaluation {
+  id: string;
+  user_id: string;
+  activity_id: string;
+  model: string | null;
+  summary: string | null;
+  /** Flag qualitativi, es. {"overreaching":true,"good_progress":true}. */
+  flags: Record<string, boolean> | null;
+  created_at: string;
+}
+
+/** Riga plan_reviews — review bisettimanale prodotta dal bottone "Pianifica". */
+export interface PlanReview {
+  id: string;
+  user_id: string;
+  goal_id: string | null;
+  range_start: string;
+  range_end: string;
+  summary: string;
+  comments: string | null;
+  model: string | null;
+  created_at: string;
+}
+
+/** Output strutturato della valutazione di una corsa (responseSchema Gemini). */
+export interface EvaluationResult {
+  summary: string;
+  flags: Record<string, boolean>;
+}
+
+/** Un workout proposto dall'LLM, prima della validazione/clamp deterministico. */
+export interface ProposedWorkout {
+  date: string;
+  type: WorkoutType;
+  target_distance_m: number | null;
+  target_pace_s_km: number | null;
+  target_duration_s: number | null;
+  description: string | null;
+}
+
+/** Output strutturato della generazione piano (responseSchema Gemini). */
+export interface PlanGenerationResult {
+  review_summary: string;
+  workouts: ProposedWorkout[];
+}

@@ -4,10 +4,24 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { parseDuration } from "@/lib/format";
-import type { PlannedStatus } from "@/lib/types";
+import { buildAthleteContext } from "@/lib/ai/context";
+import { buildPlanPrompt, planSchema } from "@/lib/ai/prompt";
+import { generateStructured, PRIMARY_MODEL } from "@/lib/ai/gemini";
+import {
+  WORKOUT_TYPES,
+  type PlannedStatus,
+  type PlanGenerationResult,
+  type ProposedWorkout,
+  type WorkoutType,
+} from "@/lib/types";
 
 export interface WorkoutFormState {
   error?: string;
+}
+
+export interface GeneratePlanState {
+  error?: string;
+  ok?: boolean;
 }
 
 function optDuration(formData: FormData, key: string): number | null {
@@ -133,4 +147,121 @@ export async function deletePlannedWorkout(formData: FormData): Promise<void> {
 
   revalidatePath("/plan");
   redirect("/plan");
+}
+
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/** Intero positivo o null (clamp deterministico dell'output LLM). */
+function posIntOrNull(v: unknown): number | null {
+  const n = typeof v === "number" ? Math.round(v) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/**
+ * Valida e sanifica un workout proposto dall'LLM. Scarta quelli con data fuori
+ * finestra o tipo non valido; forza i target a interi positivi/null.
+ * PLAN.md §2.1: la struttura la propone l'LLM, i numeri li sanifica il codice.
+ */
+function sanitizeWorkout(
+  w: ProposedWorkout,
+  start: string,
+  end: string,
+  userId: string,
+  goalId: string | null,
+): Record<string, unknown> | null {
+  const date = typeof w.date === "string" ? w.date.slice(0, 10) : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < start || date > end) return null;
+  if (!WORKOUT_TYPES.includes(w.type as WorkoutType)) return null;
+
+  return {
+    user_id: userId,
+    goal_id: goalId,
+    date,
+    type: w.type,
+    target_distance_m: posIntOrNull(w.target_distance_m),
+    target_pace_s_km: posIntOrNull(w.target_pace_s_km),
+    target_duration_s: posIntOrNull(w.target_duration_s),
+    description:
+      typeof w.description === "string" && w.description.trim() !== ""
+        ? w.description.trim()
+        : null,
+    status: "planned" as PlannedStatus,
+  };
+}
+
+/**
+ * Bottone "Pianifica": review delle ultime 2 settimane + nuovo piano per i
+ * prossimi 14 giorni. Sovrascrive solo i workout ancora `planned` e non
+ * collegati a una corsa; preserva completati/collegati. PLAN.md §8.
+ */
+export async function generatePlan(
+  _prevState: GeneratePlanState,
+  formData: FormData,
+): Promise<GeneratePlanState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const comments = String(formData.get("comments") ?? "").trim() || null;
+
+  const start = isoDate(new Date());
+  const end = isoDate(new Date(Date.now() + 13 * 86_400_000));
+
+  let result: PlanGenerationResult;
+  let goalId: string | null = null;
+  try {
+    const context = await buildAthleteContext(supabase, user.id);
+    goalId = context.activeGoal?.id ?? null;
+    const prompt = buildPlanPrompt(context.markdown, start, end, comments);
+    result = await generateStructured<PlanGenerationResult>(prompt, planSchema);
+  } catch (err) {
+    console.error("generatePlan:", err);
+    return {
+      error:
+        "Generazione del piano non riuscita (riprova più tardi o controlla la quota Gemini).",
+    };
+  }
+
+  const rows = (result.workouts ?? [])
+    .map((w) => sanitizeWorkout(w, start, end, user.id, goalId))
+    .filter((r): r is Record<string, unknown> => r !== null);
+
+  if (rows.length === 0) {
+    return {
+      error:
+        "L'AI non ha prodotto allenamenti validi per le prossime 2 settimane. Riprova.",
+    };
+  }
+
+  // Sovrascrive solo i 'planned' futuri non collegati a una corsa.
+  const { error: delError } = await supabase
+    .from("planned_workouts")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("status", "planned")
+    .is("activity_id", null)
+    .gte("date", start)
+    .lte("date", end);
+  if (delError) return { error: delError.message };
+
+  const { error: insError } = await supabase.from("planned_workouts").insert(rows);
+  if (insError) return { error: insError.message };
+
+  const { error: revError } = await supabase.from("plan_reviews").insert({
+    user_id: user.id,
+    goal_id: goalId,
+    range_start: start,
+    range_end: end,
+    summary: result.review_summary,
+    comments,
+    model: PRIMARY_MODEL,
+  });
+  if (revError) return { error: revError.message };
+
+  revalidatePath("/plan");
+  return { ok: true };
 }
