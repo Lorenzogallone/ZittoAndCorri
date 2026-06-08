@@ -120,13 +120,11 @@ export default async function Home() {
             Ciao {greeting} 👋
           </h1>
         </div>
-        <div className="w-12 h-12 rounded-full overflow-hidden border border-white/[0.08] bg-card flex items-center justify-center shrink-0">
-          <img
-            src="/logo.png"
-            alt="Logo Zitto e Corri"
-            className="w-10 h-10 object-contain"
-          />
-        </div>
+        <img
+          src="/logo.png"
+          alt="Logo Zitto e Corri"
+          className="w-12 h-12 rounded-xl object-cover border border-white/[0.08] shrink-0 dark:invert dark:hue-rotate-180"
+        />
       </div>
 
       {/* Goal attivo */}
