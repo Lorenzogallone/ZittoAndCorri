@@ -31,7 +31,7 @@ export function AppShell({
     // regardless of how much content there is — fixing the "floats up on short
     // pages" issue on iOS Safari (where `position: fixed` anchors to the large
     // layout viewport). `h-screen` is the fallback for browsers without dvh.
-    <div className="flex h-screen flex-col overflow-hidden" style={{ height: "100dvh" }}>
+    <div className="app-viewport flex h-screen flex-col overflow-hidden">
       {/* Header */}
       {hasHeader && (
         <header className="z-40 shrink-0 glass-strong border-b border-white/[0.06] pt-safe">

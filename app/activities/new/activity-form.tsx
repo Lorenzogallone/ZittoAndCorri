@@ -90,7 +90,7 @@ function ManualForm({ nearbyWorkouts, today }: Props) {
             id="duration"
             name="duration"
             type="text"
-            inputMode="numeric"
+            inputMode="text"
             placeholder="50:00"
             required
           />
