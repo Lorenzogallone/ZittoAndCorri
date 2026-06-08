@@ -113,11 +113,20 @@ export default async function Home() {
   return (
     <AppShell>
       {/* Greeting */}
-      <div className="mb-8">
-        <p className="text-sm text-muted-foreground mb-1">Bentornato</p>
-        <h1 className="text-3xl font-bold tracking-tight">
-          Ciao {greeting} 👋
-        </h1>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <p className="text-sm text-muted-foreground mb-1">Bentornato</p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Ciao {greeting} 👋
+          </h1>
+        </div>
+        <div className="w-12 h-12 rounded-full overflow-hidden border border-white/[0.08] bg-card flex items-center justify-center shrink-0">
+          <img
+            src="/logo.png"
+            alt="Logo Zitto e Corri"
+            className="w-10 h-10 object-contain"
+          />
+        </div>
       </div>
 
       {/* Goal attivo */}
