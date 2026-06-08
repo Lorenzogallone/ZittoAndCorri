@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is(.dark *), @media (prefers-color-scheme: dark));
 
 /* ============================================================
    ZittoAndCorri — Design System: Warm Minimal Dark
@@ -62,41 +62,41 @@
 }
 
 /* ============================================================
-   Single palette: Dark Warm — no light mode
+   Adaptive palette: Warm Light / Navy Dark Mode
    ============================================================ */
 :root {
-  /* Backgrounds */
-  --background: oklch(0.13 0.012 260);
-  --foreground: oklch(0.93 0.01 80);
+  /* Light Mode (Warm Minimal Cream) */
+  --background: oklch(0.97 0.01 80);
+  --foreground: oklch(0.25 0.01 80);
 
   /* Cards & popovers */
-  --card: oklch(0.17 0.012 260);
-  --card-foreground: oklch(0.93 0.01 80);
-  --popover: oklch(0.17 0.012 260);
-  --popover-foreground: oklch(0.93 0.01 80);
+  --card: oklch(0.95 0.015 80);
+  --card-foreground: oklch(0.25 0.01 80);
+  --popover: oklch(0.95 0.015 80);
+  --popover-foreground: oklch(0.25 0.01 80);
 
   /* Primary — Coral */
   --primary: oklch(0.68 0.16 30);
   --primary-foreground: oklch(0.98 0 0);
 
   /* Secondary */
-  --secondary: oklch(0.22 0.012 260);
-  --secondary-foreground: oklch(0.88 0.01 80);
+  --secondary: oklch(0.92 0.015 80);
+  --secondary-foreground: oklch(0.35 0.01 80);
 
   /* Muted */
-  --muted: oklch(0.20 0.012 260);
-  --muted-foreground: oklch(0.55 0.02 80);
+  --muted: oklch(0.90 0.01 80);
+  --muted-foreground: oklch(0.45 0.02 80);
 
   /* Accent — very subtle coral tint */
-  --accent: oklch(0.22 0.025 30);
-  --accent-foreground: oklch(0.93 0.01 80);
+  --accent: oklch(0.94 0.02 30);
+  --accent-foreground: oklch(0.25 0.01 80);
 
   /* Destructive */
   --destructive: oklch(0.60 0.20 25);
 
   /* Borders & inputs */
-  --border: oklch(0.25 0.012 260);
-  --input: oklch(0.22 0.012 260);
+  --border: oklch(0.85 0.01 80);
+  --input: oklch(0.90 0.01 80);
   --ring: oklch(0.68 0.16 30);
 
   /* Radius — rounder for iOS feel */
@@ -110,13 +110,107 @@
   --chart-5: oklch(0.75 0.10 90);
 
   /* Sidebar (keeping for shadcn compat) */
-  --sidebar: oklch(0.15 0.012 260);
+  --sidebar: oklch(0.95 0.015 80);
+  --sidebar-foreground: oklch(0.25 0.01 80);
+  --sidebar-primary: oklch(0.68 0.16 30);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.92 0.015 80);
+  --sidebar-accent-foreground: oklch(0.25 0.01 80);
+  --sidebar-border: oklch(0.85 0.01 80);
+  --sidebar-ring: oklch(0.68 0.16 30);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark Mode (Navy Dark Blue, matching #1a1a2e background) */
+    --background: oklch(0.15 0.022 263);
+    --foreground: oklch(0.93 0.01 80);
+
+    /* Cards & popovers */
+    --card: oklch(0.18 0.022 263);
+    --card-foreground: oklch(0.93 0.01 80);
+    --popover: oklch(0.18 0.022 263);
+    --popover-foreground: oklch(0.93 0.01 80);
+
+    /* Primary — Coral */
+    --primary: oklch(0.68 0.16 30);
+    --primary-foreground: oklch(0.98 0 0);
+
+    /* Secondary */
+    --secondary: oklch(0.22 0.022 263);
+    --secondary-foreground: oklch(0.88 0.01 80);
+
+    /* Muted */
+    --muted: oklch(0.20 0.022 263);
+    --muted-foreground: oklch(0.55 0.02 80);
+
+    /* Accent — very subtle coral tint */
+    --accent: oklch(0.22 0.025 30);
+    --accent-foreground: oklch(0.93 0.01 80);
+
+    /* Destructive */
+    --destructive: oklch(0.60 0.20 25);
+
+    /* Borders & inputs */
+    --border: oklch(0.25 0.022 263);
+    --input: oklch(0.22 0.022 263);
+    --ring: oklch(0.68 0.16 30);
+
+    /* Sidebar (keeping for shadcn compat) */
+    --sidebar: oklch(0.16 0.022 263);
+    --sidebar-foreground: oklch(0.93 0.01 80);
+    --sidebar-primary: oklch(0.68 0.16 30);
+    --sidebar-primary-foreground: oklch(0.98 0 0);
+    --sidebar-accent: oklch(0.22 0.022 263);
+    --sidebar-accent-foreground: oklch(0.93 0.01 80);
+    --sidebar-border: oklch(0.25 0.022 263);
+    --sidebar-ring: oklch(0.68 0.16 30);
+  }
+}
+
+.dark {
+  /* Class fallback for dark mode */
+  --background: oklch(0.15 0.022 263);
+  --foreground: oklch(0.93 0.01 80);
+
+  /* Cards & popovers */
+  --card: oklch(0.18 0.022 263);
+  --card-foreground: oklch(0.93 0.01 80);
+  --popover: oklch(0.18 0.022 263);
+  --popover-foreground: oklch(0.93 0.01 80);
+
+  /* Primary — Coral */
+  --primary: oklch(0.68 0.16 30);
+  --primary-foreground: oklch(0.98 0 0);
+
+  /* Secondary */
+  --secondary: oklch(0.22 0.022 263);
+  --secondary-foreground: oklch(0.88 0.01 80);
+
+  /* Muted */
+  --muted: oklch(0.20 0.022 263);
+  --muted-foreground: oklch(0.55 0.02 80);
+
+  /* Accent — very subtle coral tint */
+  --accent: oklch(0.22 0.025 30);
+  --accent-foreground: oklch(0.93 0.01 80);
+
+  /* Destructive */
+  --destructive: oklch(0.60 0.20 25);
+
+  /* Borders & inputs */
+  --border: oklch(0.25 0.022 263);
+  --input: oklch(0.22 0.022 263);
+  --ring: oklch(0.68 0.16 30);
+
+  /* Sidebar (keeping for shadcn compat) */
+  --sidebar: oklch(0.16 0.022 263);
   --sidebar-foreground: oklch(0.93 0.01 80);
   --sidebar-primary: oklch(0.68 0.16 30);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.22 0.012 260);
+  --sidebar-accent: oklch(0.22 0.022 263);
   --sidebar-accent-foreground: oklch(0.93 0.01 80);
-  --sidebar-border: oklch(0.25 0.012 260);
+  --sidebar-border: oklch(0.25 0.022 263);
   --sidebar-ring: oklch(0.68 0.16 30);
 }
 
