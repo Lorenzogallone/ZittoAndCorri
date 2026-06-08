@@ -251,6 +251,8 @@ export async function generatePlan(
   const { error: insError } = await supabase.from("planned_workouts").insert(rows);
   if (insError) return { error: insError.message };
 
+  // La review è secondaria: i workout sono già salvati. Se la tabella
+  // plan_reviews non esiste ancora (migration da applicare) logga ma non blocca.
   const { error: revError } = await supabase.from("plan_reviews").insert({
     user_id: user.id,
     goal_id: goalId,
@@ -260,7 +262,7 @@ export async function generatePlan(
     comments,
     model: PRIMARY_MODEL,
   });
-  if (revError) return { error: revError.message };
+  if (revError) console.error("generatePlan/plan_reviews:", revError.message);
 
   revalidatePath("/plan");
   return { ok: true };
