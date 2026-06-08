@@ -19,13 +19,13 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  easy: "bg-green-500/20 text-green-400",
-  tempo: "bg-orange-500/20 text-orange-400",
-  interval: "bg-red-500/20 text-red-400",
-  long: "bg-violet-500/20 text-violet-400",
-  race: "bg-yellow-500/20 text-yellow-400",
-  recovery: "bg-blue-500/20 text-blue-400",
-  cross: "bg-zinc-500/20 text-zinc-400",
+  easy: "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
+  tempo: "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400",
+  interval: "bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400",
+  long: "bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400",
+  race: "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary",
+  recovery: "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400",
+  cross: "bg-zinc-500/10 text-zinc-600 dark:bg-zinc-500/20 dark:text-zinc-400",
 };
 
 function formatShortDate(iso: string): string {
@@ -50,6 +50,13 @@ export default async function Home() {
   const fourteenAgo = new Date(Date.now() - 14 * 24 * 3600 * 1000)
     .toISOString()
     .slice(0, 10);
+  const now = new Date();
+  const day = now.getDay();
+  // Get Monday of the current week (adjust when Sunday = 0)
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  const startOfWeek = new Date(now.setDate(diff));
+  startOfWeek.setHours(0, 0, 0, 0);
+  const startOfWeekISO = startOfWeek.toISOString();
 
   const [
     { data: profile },
@@ -57,6 +64,7 @@ export default async function Home() {
     { data: activeGoal },
     { data: nextWorkouts },
     { data: recentPlanned },
+    { data: thisWeekActivities },
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -94,6 +102,13 @@ export default async function Home() {
       .gte("date", fourteenAgo)
       .lte("date", today)
       .returns<Array<{ status: string; date: string }>>(),
+    supabase
+      .from("activities")
+      .select("id, started_at, type, distance_m, duration_s, avg_pace_s_km, avg_hr")
+      .eq("user_id", user.id)
+      .gte("started_at", startOfWeekISO)
+      .order("started_at", { ascending: true })
+      .returns<Pick<Activity, "id" | "started_at" | "type" | "distance_m" | "duration_s" | "avg_pace_s_km" | "avg_hr">[]>(),
   ]);
 
   const greeting = profile?.display_name
@@ -110,6 +125,28 @@ export default async function Home() {
         )
       : null;
 
+  const weekActivities = thisWeekActivities ?? [];
+  const totalDistance = weekActivities.reduce((acc, curr) => acc + curr.distance_m, 0);
+  const totalDuration = weekActivities.reduce((acc, curr) => acc + curr.duration_s, 0);
+  const runCount = weekActivities.length;
+
+  const weekdaysLabels = ["L", "M", "M", "G", "V", "S", "D"];
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(startOfWeek);
+    d.setDate(startOfWeek.getDate() + i);
+    return {
+      dateStr: d.toISOString().slice(0, 10),
+      label: weekdaysLabels[i],
+      activities: [] as typeof weekActivities,
+    };
+  });
+
+  for (const act of weekActivities) {
+    const actDate = new Date(act.started_at);
+    const dayOfWeek = (actDate.getDay() + 6) % 7;
+    weekDays[dayOfWeek].activities.push(act);
+  }
+
   return (
     <AppShell>
       {/* Greeting */}
@@ -123,14 +160,14 @@ export default async function Home() {
         <img
           src="/logo.png"
           alt="Logo Zitto e Corri"
-          className="w-12 h-12 rounded-xl object-cover border border-white/[0.08] shrink-0 dark:invert dark:hue-rotate-180"
+          className="w-12 h-12 rounded-xl object-cover border border-border shrink-0 dark:invert dark:hue-rotate-180"
         />
       </div>
 
       {/* Goal attivo */}
       {activeGoal ? (
         <Link href="/goals" className="block mb-4">
-          <div className="relative overflow-hidden rounded-2xl bg-card border border-primary/25 glow-coral-sm p-5">
+          <div className="relative overflow-hidden rounded-2xl bg-card border border-primary/20 glow-coral-sm p-5">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.06] to-transparent pointer-events-none" />
             <div className="relative flex items-center justify-between">
               <div>
@@ -157,7 +194,7 @@ export default async function Home() {
         </Link>
       ) : (
         <Link href="/goals/new" className="block mb-4">
-          <div className="rounded-2xl bg-card border border-dashed border-white/[0.10] p-5 flex items-center justify-between">
+          <div className="rounded-2xl bg-card border border-dashed border-border p-5 flex items-center justify-between">
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
                 Nessun obiettivo impostato
@@ -174,7 +211,7 @@ export default async function Home() {
 
       {/* Aderenza 14gg */}
       {adherence && adherence.total > 0 && (
-        <div className="rounded-2xl bg-card border border-white/[0.06] px-5 py-3 mb-4 flex items-center justify-between">
+        <div className="rounded-2xl bg-card border border-border px-5 py-3 mb-4 flex items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">
               Aderenza 14 gg
@@ -186,10 +223,10 @@ export default async function Home() {
           <span
             className={`text-2xl font-bold tabular-nums ${
               adherence.pct >= 75
-                ? "text-green-400"
+                ? "text-emerald-500"
                 : adherence.pct >= 50
-                ? "text-yellow-400"
-                : "text-red-400"
+                ? "text-amber-500"
+                : "text-red-500"
             }`}
           >
             {adherence.pct}%
@@ -206,7 +243,7 @@ export default async function Home() {
           <div className="flex flex-col gap-2">
             {nextWorkouts.map((w) => (
               <Link key={w.id} href={`/plan/${w.id}`} className="block">
-                <div className="flex items-center gap-3 rounded-xl bg-card border border-white/[0.06] px-4 py-3 transition-transform duration-200 active:scale-[0.98]">
+                <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-4 py-3 transition-transform duration-200 active:scale-[0.98]">
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
                       TYPE_COLORS[w.type] ?? "bg-zinc-500/20 text-zinc-400"
@@ -236,48 +273,135 @@ export default async function Home() {
         </div>
       )}
 
-      {/* Last Run Card */}
-      {lastActivity ? (
-        <Link href={`/activities/${lastActivity.id}`} className="block mb-6">
-          <div className="relative overflow-hidden rounded-2xl bg-card border border-white/[0.06] p-6 glow-coral-sm transition-transform duration-200 active:scale-[0.98]">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.08] to-transparent pointer-events-none" />
-            <div className="relative">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">
-                Ultima corsa
+      {/* Riepilogo Settimanale & Focus Ultima Corsa */}
+      <div className="mb-6 rounded-2xl bg-card border border-border p-5 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent pointer-events-none" />
+        
+        <div className="relative">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+              Questa Settimana
+            </h2>
+            {runCount > 0 && (
+              <span className="text-xs text-muted-foreground font-medium">
+                {runCount} {runCount === 1 ? "corsa" : "corse"}
+              </span>
+            )}
+          </div>
+
+          {/* Stats Row */}
+          <div className="grid grid-cols-3 gap-2 text-center py-2 bg-muted/30 rounded-xl mb-4 border border-border/30">
+            <div>
+              <p className="text-[10px] text-muted-foreground">Distanza</p>
+              <p className="text-base font-bold tabular-nums text-foreground">
+                {formatDistance(totalDistance)}
               </p>
-              <div className="flex items-baseline gap-1.5 mb-2">
-                <span className="text-4xl font-bold tabular-nums tracking-tight">
-                  {formatDistance(lastActivity.distance_m)}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span className="text-primary font-medium">
-                  {TYPE_LABELS[lastActivity.type] ?? lastActivity.type}
-                </span>
-                <span className="opacity-30">·</span>
-                <span className="tabular-nums">{formatDuration(lastActivity.duration_s)}</span>
-                <span className="opacity-30">·</span>
-                <span className="tabular-nums">{formatPace(lastActivity.avg_pace_s_km)}</span>
-                {lastActivity.avg_hr != null && (
-                  <>
-                    <span className="opacity-30">·</span>
-                    <span className="tabular-nums">{lastActivity.avg_hr} bpm</span>
-                  </>
-                )}
-              </div>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground">Tempo</p>
+              <p className="text-base font-bold tabular-nums text-foreground">
+                {formatDuration(totalDuration)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground">Passo Medio</p>
+              <p className="text-base font-bold tabular-nums text-foreground">
+                {totalDistance > 0 ? formatPace(Math.round(totalDuration / (totalDistance / 1000))) : "-"}
+              </p>
             </div>
           </div>
-        </Link>
-      ) : (
-        <div className="rounded-2xl bg-card border border-white/[0.06] p-6 mb-6 text-center">
-          <p className="text-muted-foreground text-sm mb-4">
-            Nessuna corsa ancora registrata.
-          </p>
-          <Button asChild>
-            <Link href="/activities/new">Registra la prima</Link>
-          </Button>
+
+          {/* Weekday Visualizer */}
+          <div className="flex justify-between items-center gap-1 mb-5">
+            {weekDays.map((day, i) => {
+              const hasRun = day.activities.length > 0;
+              const totalDistOnDay = day.activities.reduce((sum, a) => sum + a.distance_m, 0);
+              const mainActivity = day.activities.reduce((prev, current) => 
+                (prev && prev.distance_m > current.distance_m) ? prev : current
+              , day.activities[0]);
+
+              return (
+                <div key={i} className="flex flex-col items-center flex-1">
+                  <span className="text-[10px] font-medium text-muted-foreground/60 mb-1.5">
+                    {day.label}
+                  </span>
+                  {hasRun ? (
+                    <Link
+                      href={`/activities/${mainActivity.id}`}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold transition-transform active:scale-95 border border-transparent shadow-sm ${
+                        TYPE_COLORS[mainActivity.type] ?? "bg-muted text-muted-foreground"
+                      }`}
+                      title={`${TYPE_LABELS[mainActivity.type] ?? mainActivity.type}: ${formatDistance(totalDistOnDay)}`}
+                    >
+                      {day.label}
+                    </Link>
+                  ) : (
+                    <div className="w-8 h-8 rounded-full border border-border/40 flex items-center justify-center text-[11px] text-muted-foreground/30 font-medium bg-muted/10">
+                      {day.label}
+                    </div>
+                  )}
+                  <span className="text-[9px] tabular-nums mt-1.5 font-semibold text-muted-foreground/80">
+                    {hasRun ? `${(totalDistOnDay / 1000).toFixed(0)}k` : "\u00A0"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-border/40 my-4" />
+
+          {/* Focus Ultima Corsa */}
+          {lastActivity ? (
+            <div>
+              <div className="flex items-center justify-between mb-2.5">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+                  Ultima Corsa
+                </span>
+                <span className="text-xs text-muted-foreground font-medium">
+                  {formatShortDate(lastActivity.started_at.slice(0, 10))}
+                </span>
+              </div>
+              <Link 
+                href={`/activities/${lastActivity.id}`}
+                className="block rounded-xl bg-card border border-border p-4 hover:bg-muted/10 transition-all duration-200 active:scale-[0.99] group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <span className="text-2xl font-bold tabular-nums tracking-tight">
+                        {formatDistance(lastActivity.distance_m)}
+                      </span>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        TYPE_COLORS[lastActivity.type] ?? "bg-zinc-500/20 text-zinc-400"
+                      }`}>
+                        {TYPE_LABELS[lastActivity.type] ?? lastActivity.type}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground flex-wrap">
+                      <span className="tabular-nums font-medium text-foreground/80">{formatDuration(lastActivity.duration_s)}</span>
+                      <span className="opacity-30">·</span>
+                      <span className="tabular-nums font-medium text-foreground/80">{formatPace(lastActivity.avg_pace_s_km)}</span>
+                      {lastActivity.avg_hr != null && (
+                        <>
+                          <span className="opacity-30">·</span>
+                          <span className="tabular-nums font-medium text-foreground/80">{lastActivity.avg_hr} bpm</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-muted-foreground/40 group-hover:text-foreground/70 transition-colors text-lg font-medium pr-1 pl-2">›</span>
+                </div>
+              </Link>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-2">
+              Nessuna corsa registrata.
+            </p>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-3">

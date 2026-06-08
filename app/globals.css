@@ -118,6 +118,10 @@
   --sidebar-accent-foreground: oklch(0.25 0.01 80);
   --sidebar-border: oklch(0.85 0.01 80);
   --sidebar-ring: oklch(0.68 0.16 30);
+
+  /* Glass colors for light mode */
+  --glass-bg: oklch(0.97 0.01 80 / 0.7);
+  --glass-strong-bg: oklch(0.97 0.01 80 / 0.85);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -165,6 +169,10 @@
     --sidebar-accent-foreground: oklch(0.93 0.01 80);
     --sidebar-border: oklch(0.25 0.022 263);
     --sidebar-ring: oklch(0.68 0.16 30);
+
+    /* Glass colors for dark mode */
+    --glass-bg: oklch(0.17 0.012 260 / 0.7);
+    --glass-strong-bg: oklch(0.15 0.012 260 / 0.85);
   }
 }
 
@@ -212,6 +220,10 @@
   --sidebar-accent-foreground: oklch(0.93 0.01 80);
   --sidebar-border: oklch(0.25 0.022 263);
   --sidebar-ring: oklch(0.68 0.16 30);
+
+  /* Glass colors for dark mode class fallback */
+  --glass-bg: oklch(0.17 0.012 260 / 0.7);
+  --glass-strong-bg: oklch(0.15 0.012 260 / 0.85);
 }
 
 @layer base {
@@ -250,12 +262,12 @@
 
   /* Glass surface */
   .glass {
-    background: oklch(0.17 0.012 260 / 0.7);
+    background: var(--glass-bg);
     backdrop-filter: blur(20px) saturate(1.2);
     -webkit-backdrop-filter: blur(20px) saturate(1.2);
   }
   .glass-strong {
-    background: oklch(0.15 0.012 260 / 0.85);
+    background: var(--glass-strong-bg);
     backdrop-filter: blur(40px) saturate(1.3);
     -webkit-backdrop-filter: blur(40px) saturate(1.3);
   }
