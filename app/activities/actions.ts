@@ -159,9 +159,18 @@ export async function deleteActivity(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
+  // Reset del planned_workout collegato prima di cancellare la corsa, così non
+  // resta un link rotto con status "completed" e activity_id inesistente.
+  await supabase
+    .from("planned_workouts")
+    .update({ activity_id: null, status: "planned" })
+    .eq("activity_id", id)
+    .eq("user_id", user.id);
+
   // RLS + filtro esplicito su user_id: l'utente cancella solo le proprie corse.
   await supabase.from("activities").delete().eq("id", id).eq("user_id", user.id);
 
+  revalidatePath("/plan");
   revalidatePath("/activities");
   redirect("/activities");
 }
