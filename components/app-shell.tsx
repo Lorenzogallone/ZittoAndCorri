@@ -34,7 +34,7 @@ export function AppShell({
     <div className="app-viewport flex h-screen flex-col overflow-hidden">
       {/* Header */}
       {hasHeader && (
-        <header className="z-40 shrink-0 glass-strong border-b border-white/[0.06] pt-safe">
+        <header className="z-40 shrink-0 glass-strong border-b border-border pt-safe">
           <div className="mx-auto flex h-12 max-w-lg items-center justify-between px-5">
             {backHref ? (
               <a

@@ -22,13 +22,13 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  easy: "bg-emerald-500/15 text-emerald-400",
-  tempo: "bg-amber-500/15 text-amber-400",
-  interval: "bg-red-500/15 text-red-400",
-  long: "bg-blue-500/15 text-blue-400",
-  race: "bg-primary/15 text-primary",
-  recovery: "bg-teal-500/15 text-teal-400",
-  cross: "bg-purple-500/15 text-purple-400",
+  easy: "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
+  tempo: "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400",
+  interval: "bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400",
+  long: "bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400",
+  race: "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary",
+  recovery: "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400",
+  cross: "bg-zinc-500/10 text-zinc-600 dark:bg-zinc-500/20 dark:text-zinc-400",
 };
 
 const ZONE_LABELS: Record<string, string> = {
@@ -81,7 +81,7 @@ function ZoneBar({ zoneEntries }: { zoneEntries: [string, number][] }) {
       : 0;
 
   return (
-    <div className="rounded-2xl bg-card border border-white/[0.06] p-5 mb-4">
+    <div className="rounded-2xl bg-card border border-border p-5 mb-4">
       <h2 className="text-sm font-semibold mb-4">Zone HR</h2>
       <div className="flex flex-col gap-3">
         {zoneEntries.map(([zone, seconds]) => {
@@ -228,7 +228,7 @@ export default async function ActivityDetailPage({
 
       {/* HR nel tempo */}
       {hrChartData && hrChartData.length >= 2 && (
-        <div className="rounded-2xl bg-card border border-white/[0.06] p-5 mb-4">
+        <div className="rounded-2xl bg-card border border-border p-5 mb-4">
           <h2 className="text-sm font-semibold mb-4">Frequenza cardiaca</h2>
           <HrChart data={hrChartData} />
         </div>
@@ -236,7 +236,7 @@ export default async function ActivityDetailPage({
 
       {/* Passo per km */}
       {computedSplits && computedSplits.length > 0 && (
-        <div className="rounded-2xl bg-card border border-white/[0.06] p-5 mb-4">
+        <div className="rounded-2xl bg-card border border-border p-5 mb-4">
           <h2 className="text-sm font-semibold mb-4">Passo per km</h2>
           <PaceChart splits={computedSplits} />
         </div>
@@ -244,7 +244,7 @@ export default async function ActivityDetailPage({
 
       {/* Profilo altimetrico */}
       {eleChartData && eleChartData.length >= 2 && (
-        <div className="rounded-2xl bg-card border border-white/[0.06] p-5 mb-4">
+        <div className="rounded-2xl bg-card border border-border p-5 mb-4">
           <h2 className="text-sm font-semibold mb-4">Profilo altimetrico</h2>
           <ElevationChart data={eleChartData} />
         </div>
@@ -255,7 +255,7 @@ export default async function ActivityDetailPage({
 
       {/* Notes */}
       {activity.notes && (
-        <div className="rounded-2xl bg-card border border-white/[0.06] p-5 mb-4">
+        <div className="rounded-2xl bg-card border border-border p-5 mb-4">
           <h2 className="text-sm font-semibold mb-2">Note</h2>
           <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
             {activity.notes}

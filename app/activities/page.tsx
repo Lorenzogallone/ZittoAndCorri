@@ -5,7 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
 import type { Activity } from "@/lib/types";
-import { Plus, Activity as ActivityIcon } from "lucide-react";
+import { Plus, Activity as ActivityIcon, Heart, Mountain } from "lucide-react";
 
 const TYPE_LABELS: Record<string, string> = {
   easy: "Easy",
@@ -18,13 +18,13 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  easy: "bg-emerald-500/15 text-emerald-400",
-  tempo: "bg-amber-500/15 text-amber-400",
-  interval: "bg-red-500/15 text-red-400",
-  long: "bg-blue-500/15 text-blue-400",
-  race: "bg-primary/15 text-primary",
-  recovery: "bg-teal-500/15 text-teal-400",
-  cross: "bg-purple-500/15 text-purple-400",
+  easy: "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
+  tempo: "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400",
+  interval: "bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400",
+  long: "bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400",
+  race: "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary",
+  recovery: "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400",
+  cross: "bg-zinc-500/10 text-zinc-600 dark:bg-zinc-500/20 dark:text-zinc-400",
 };
 
 function formatDate(iso: string): string {
@@ -44,7 +44,7 @@ export default async function ActivitiesPage() {
   const { data: activities } = await supabase
     .from("activities")
     .select(
-      "id, started_at, type, distance_m, duration_s, avg_pace_s_km, avg_hr",
+      "id, started_at, type, distance_m, duration_s, avg_pace_s_km, avg_hr, elevation_gain_m, rpe, notes",
     )
     .order("started_at", { ascending: false })
     .returns<
@@ -57,8 +57,34 @@ export default async function ActivitiesPage() {
         | "duration_s"
         | "avg_pace_s_km"
         | "avg_hr"
+        | "elevation_gain_m"
+        | "rpe"
+        | "notes"
       >[]
     >();
+
+  const list = activities ?? [];
+
+  // Compute 30-day stats and trends
+  const nowMs = Date.now();
+  const thirtyDaysAgoMs = nowMs - 30 * 24 * 3600 * 1000;
+  const sixtyDaysAgoMs = nowMs - 60 * 24 * 3600 * 1000;
+
+  const last30DaysRuns = list.filter(
+    (a) => new Date(a.started_at).getTime() >= thirtyDaysAgoMs
+  );
+  const prev30DaysRuns = list.filter((a) => {
+    const time = new Date(a.started_at).getTime();
+    return time >= sixtyDaysAgoMs && time < thirtyDaysAgoMs;
+  });
+
+  const dist30 = last30DaysRuns.reduce((sum, a) => sum + a.distance_m, 0);
+  const time30 = last30DaysRuns.reduce((sum, a) => sum + a.duration_s, 0);
+  const count30 = last30DaysRuns.length;
+
+  const distPrev30 = prev30DaysRuns.reduce((sum, a) => sum + a.distance_m, 0);
+  const diffKm = (dist30 - distPrev30) / 1000;
+  const isPositiveTrend = diffKm >= 0;
 
   return (
     <AppShell
@@ -72,7 +98,57 @@ export default async function ActivitiesPage() {
         </Button>
       }
     >
-      {!activities || activities.length === 0 ? (
+      {/* 30 Days Stats & Trend Card */}
+      {list.length > 0 && (
+        <div className="mb-6 rounded-2xl bg-card border border-border p-5 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent pointer-events-none" />
+          
+          <div className="relative">
+            <h2 className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">
+              Ultimi 30 Giorni
+            </h2>
+
+            <div className="grid grid-cols-3 gap-2 text-center py-2.5 bg-muted/20 rounded-xl border border-border/30 mb-3">
+              <div>
+                <p className="text-[10px] text-muted-foreground">Distanza</p>
+                <p className="text-base font-bold tabular-nums text-foreground">
+                  {formatDistance(dist30)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground">Corse</p>
+                <p className="text-base font-bold tabular-nums text-foreground">
+                  {count30}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground">Tempo</p>
+                <p className="text-base font-bold tabular-nums text-foreground">
+                  {formatDuration(time30)}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-xs flex-wrap">
+              <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
+                isPositiveTrend 
+                  ? "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
+                  : "bg-muted text-muted-foreground"
+              }`}>
+                {isPositiveTrend ? "▲ Volume in crescita" : "▼ Volume in calo"}
+              </span>
+              <span className="text-muted-foreground font-medium">
+                {isPositiveTrend 
+                  ? `+${diffKm.toFixed(1)} km rispetto ai 30gg prima`
+                  : `${diffKm.toFixed(1)} km rispetto ai 30gg prima`
+                }
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {list.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
             <ActivityIcon size={28} className="text-muted-foreground" />
@@ -92,35 +168,67 @@ export default async function ActivitiesPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {activities.map((a) => (
+          {list.map((a) => (
             <Link
               key={a.id}
               href={`/activities/${a.id}`}
-              className="block rounded-2xl bg-card border border-white/[0.06] p-4 transition-all duration-200 active:scale-[0.98] hover:bg-card/80"
+              className="block rounded-2xl bg-card border border-border p-4 transition-all duration-200 active:scale-[0.98] hover:bg-muted/10 group"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span
-                      className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium ${
+                      className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold ${
                         TYPE_COLORS[a.type] ?? "bg-muted text-muted-foreground"
                       }`}
                     >
                       {TYPE_LABELS[a.type] ?? a.type}
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground font-medium">
                       {formatDate(a.started_at)}
                     </span>
                   </div>
-                  <span className="text-xl font-bold tabular-nums tracking-tight">
+                  <span className="text-xl font-bold tabular-nums tracking-tight text-foreground">
                     {formatDistance(a.distance_m)}
                   </span>
+                  
+                  {/* Rich parameters */}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap mt-0.5">
+                    {a.avg_hr && (
+                      <span className="flex items-center gap-0.5">
+                        <Heart size={11} className="text-red-500/80 fill-red-500/20" /> {a.avg_hr} bpm
+                      </span>
+                    )}
+                    {a.avg_hr && a.elevation_gain_m && <span className="opacity-30">·</span>}
+                    {a.elevation_gain_m && (
+                      <span className="flex items-center gap-0.5">
+                        <Mountain size={11} className="text-foreground/60" /> +{a.elevation_gain_m}m
+                      </span>
+                    )}
+                    {(a.avg_hr || a.elevation_gain_m) && a.rpe && <span className="opacity-30">·</span>}
+                    {a.rpe && (
+                      <span className="flex items-center gap-0.5 font-medium">
+                        RPE {a.rpe}/10
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="text-right text-sm text-muted-foreground tabular-nums">
-                  <div>{formatDuration(a.duration_s)}</div>
-                  <div className="text-xs">{formatPace(a.avg_pace_s_km)}</div>
+                
+                <div className="text-right text-sm text-muted-foreground tabular-nums shrink-0 self-center flex items-center gap-2">
+                  <div>
+                    <div className="font-semibold text-foreground/90">{formatDuration(a.duration_s)}</div>
+                    <div className="text-xs font-medium">{formatPace(a.avg_pace_s_km)}</div>
+                  </div>
+                  <span className="text-muted-foreground/30 group-hover:text-foreground/70 transition-colors text-lg font-medium pr-1 pl-1">›</span>
                 </div>
               </div>
+
+              {/* Note snippet */}
+              {a.notes && (
+                <div className="mt-3 text-xs text-muted-foreground/80 italic line-clamp-1 border-t border-border/30 pt-2 group-hover:text-muted-foreground transition-colors">
+                  &ldquo;{a.notes}&rdquo;
+                </div>
+              )}
             </Link>
           ))}
         </div>

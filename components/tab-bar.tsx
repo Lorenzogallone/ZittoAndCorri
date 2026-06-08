@@ -21,7 +21,7 @@ export function TabBar() {
 
   return (
     <nav
-      className="z-50 shrink-0 glass-strong border-t border-white/[0.06]"
+      className="z-50 shrink-0 glass-strong border-t border-border"
       role="tablist"
     >
       <div className="mx-auto flex max-w-md items-center justify-around px-2" style={{ paddingTop: '4px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 4px)' }}>
