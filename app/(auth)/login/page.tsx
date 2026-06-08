@@ -31,13 +31,11 @@ export default function LoginPage() {
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-primary/10 blur-[100px] pointer-events-none" />
 
       <div className="relative flex flex-col items-center gap-3 text-center">
-        <div className="relative w-20 h-20 mb-2 rounded-2xl overflow-hidden bg-primary/10 flex items-center justify-center border border-white/[0.08] shadow-inner">
-          <img
-            src="/logo.png"
-            alt="Zitto e Corri Logo"
-            className="w-16 h-16 object-contain"
-          />
-        </div>
+        <img
+          src="/logo.png"
+          alt="Zitto e Corri Logo"
+          className="w-20 h-20 mb-2 rounded-2xl object-cover border border-white/[0.08] shadow-inner dark:invert dark:hue-rotate-180"
+        />
         <h1 className="text-4xl font-bold tracking-tight">
           Zitto e Corri
         </h1>

@@ -106,7 +106,7 @@ export default async function SettingsPage() {
         <img
           src="/logo.png"
           alt="Zitto e Corri Logo"
-          className="w-6 h-6 object-contain filter grayscale"
+          className="w-6 h-6 rounded object-cover filter grayscale dark:invert dark:hue-rotate-180"
         />
         <span>Zitto e Corri v0.1.0</span>
       </div>
