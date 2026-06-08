@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import crypto from "crypto";
 
 export interface ProfileFormState {
   error?: string;
@@ -47,4 +48,24 @@ export async function updateProfile(
 
   revalidatePath("/settings");
   return { ok: true };
+}
+
+export async function regenerateApiKey(): Promise<{ error?: string; ok?: boolean; key?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const newKey = crypto.randomUUID();
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ api_key: newKey })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings");
+  return { ok: true, key: newKey };
 }

@@ -21,21 +21,29 @@ export async function POST(req: NextRequest) {
 
   if (token) {
     // Autenticazione Bearer
-    if (!ingestToken || !ingestUserId) {
-      return Response.json(
-        { error: "Bearer auth non configurata sul server." },
-        { status: 500 },
-      );
-    }
-    if (token !== ingestToken) {
-      return Response.json({ error: "Token non valido." }, { status: 401 });
-    }
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     supabase = createServiceClient(url, serviceKey);
-    userId = ingestUserId;
+
+    // Cerca il profilo con questa api_key (usando service role per bypassare RLS)
+    const { data: profile, error: dbError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("api_key", token)
+      .maybeSingle();
+
+    if (dbError || !profile) {
+      // Fallback sul token statico in .env.local per retrocompatibilità
+      if (ingestToken && token === ingestToken && ingestUserId) {
+        userId = ingestUserId;
+      } else {
+        return Response.json({ error: "Token non valido." }, { status: 401 });
+      }
+    } else {
+      userId = profile.id;
+    }
   } else {
-    // Autenticazione sessione cookie
+    // Autenticazione sessione cookie (browser)
     supabase = await createClient();
     const {
       data: { user },
