@@ -1,12 +1,9 @@
-// Route Handler: POST /api/import. PLAN.md §6.
-// Auth: sessione cookie (browser) oppure Authorization: Bearer INGEST_TOKEN (Shortcut/script).
-// Con Bearer token usa INGEST_USER_ID come user_id (nessuna migrazione DB richiesta).
-
 import type { NextRequest } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { ingestActivity } from "@/lib/ingest/ingest";
+import { parseGpx } from "@/lib/ingest/adapters/gpx";
 import type { Profile } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
@@ -67,23 +64,33 @@ export async function POST(req: NextRequest) {
     profile: profile ?? { max_hr: null, resting_hr: 50 },
   };
 
-  let body: unknown;
+  let body: { gpx?: string; notes?: string };
   try {
     body = await req.json();
   } catch {
     return Response.json({ error: "Body JSON non valido." }, { status: 400 });
   }
 
-  const inputs = Array.isArray(body) ? body : [body];
+  const gpxText = body.gpx;
+  if (!gpxText || typeof gpxText !== "string" || gpxText.trim() === "") {
+    return Response.json({ error: "File GPX non fornito." }, { status: 400 });
+  }
 
   try {
-    const ids: string[] = [];
-    for (const inp of inputs) {
-      ids.push(await ingestActivity(inp, ctx));
+    // 1. Parsa il file GPX
+    const input = parseGpx(gpxText);
+    
+    // Override delle note se fornite nel body della richiesta
+    if (body.notes) {
+      input.notes = body.notes;
     }
-    return Response.json(ids.length === 1 ? { id: ids[0] } : { ids });
+
+    // 2. Ingesta l'attività
+    const activityId = await ingestActivity(input, ctx);
+
+    return Response.json({ success: true, id: activityId });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Errore durante l'import.";
+    const msg = e instanceof Error ? e.message : "Errore durante l'import del GPX.";
     return Response.json({ error: msg }, { status: 422 });
   }
 }

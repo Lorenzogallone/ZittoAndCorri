@@ -38,6 +38,7 @@ export interface Profile {
   max_hr: number | null;
   resting_hr: number | null;
   birthdate: string | null;
+  api_key: string | null;
   created_at: string;
 }
 
