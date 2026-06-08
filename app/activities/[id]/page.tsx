@@ -11,6 +11,8 @@ import type { Activity, ActivityStream, Evaluation, Profile, TimeInZone } from "
 import { Clock, Gauge, Heart, HeartPulse, Mountain, Flame } from "lucide-react";
 import { HrChart, PaceChart, ElevationChart } from "./activity-charts";
 import { ActivityEvaluation } from "@/components/activity-evaluation";
+import ActivityMap from "@/components/activity-map";
+
 
 const TYPE_LABELS: Record<string, string> = {
   easy: "Easy",
@@ -234,6 +236,13 @@ export default async function ActivityDetailPage({
           <StatCard icon={Flame} label="RPE" value={`${activity.rpe}/10`} />
         )}
       </div>
+
+      {/* Percorso GPS (Mappa) */}
+      {streams?.gps_series && streams.gps_series.length >= 2 && (
+        <div className="mb-4">
+          <ActivityMap gpsSeries={streams.gps_series} />
+        </div>
+      )}
 
       {/* HR nel tempo */}
       {hrChartData && hrChartData.length >= 2 && (

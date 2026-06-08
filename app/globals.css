@@ -424,3 +424,15 @@ input[type="datetime-local"]::-webkit-date-and-time-value {
   background-size: 200% 100%;
   animation: ai-shimmer 2s ease-in-out infinite;
 }
+
+/* ============================================================
+   PWA Splash Loader Animations
+   ============================================================ */
+@keyframes pwa-loading-bar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-pwa-loading {
+  animation: pwa-loading-bar 1.5s infinite ease-in-out;
+}
