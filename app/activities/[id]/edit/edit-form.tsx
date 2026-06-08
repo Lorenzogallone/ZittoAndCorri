@@ -105,7 +105,7 @@ export function EditActivityForm({ activity }: Props) {
               id="duration"
               name="duration"
               type="text"
-              inputMode="numeric"
+              inputMode="text"
               defaultValue={formatDuration(activity.duration_s)}
               readOnly={isImported}
               className={isImported ? "bg-muted/40 cursor-not-allowed opacity-80" : ""}

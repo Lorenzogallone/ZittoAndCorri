@@ -116,7 +116,7 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
             id="target_pace"
             name="target_pace"
             type="text"
-            inputMode="numeric"
+            inputMode="text"
             placeholder="5:30"
           />
         </div>
@@ -128,7 +128,7 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
           id="target_duration"
           name="target_duration"
           type="text"
-          inputMode="numeric"
+          inputMode="text"
           placeholder="55:00"
         />
       </div>
