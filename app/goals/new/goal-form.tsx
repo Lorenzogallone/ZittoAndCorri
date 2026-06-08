@@ -72,7 +72,7 @@ export function GoalForm() {
           id="target_time"
           name="target_time"
           type="text"
-          inputMode="numeric"
+          inputMode="text"
           placeholder="1:45:00"
         />
         <p className="text-xs text-muted-foreground">Opzionale — formato h:mm:ss o mm:ss</p>
