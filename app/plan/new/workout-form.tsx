@@ -76,12 +76,12 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
       {goals.length > 0 && (
         <div className="grid gap-2.5">
           <Label htmlFor="goal_id">Obiettivo (opzionale)</Label>
-          <Select name="goal_id" defaultValue="">
+          <Select name="goal_id" defaultValue="none">
             <SelectTrigger id="goal_id">
               <SelectValue placeholder="Nessun obiettivo collegato" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Nessun obiettivo</SelectItem>
+              <SelectItem value="none">Nessun obiettivo</SelectItem>
               {goals.map((g) => (
                 <SelectItem key={g.id} value={g.id}>
                   {g.race_name}
