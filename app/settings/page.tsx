@@ -100,6 +100,16 @@ export default async function SettingsPage() {
           Esci
         </Button>
       </form>
+
+      {/* Discrete version info and logo branding */}
+      <div className="mt-12 flex flex-col items-center justify-center gap-2 opacity-40 text-[11px] text-muted-foreground pb-6">
+        <img
+          src="/logo.png"
+          alt="Zitto e Corri Logo"
+          className="w-6 h-6 object-contain filter grayscale"
+        />
+        <span>Zitto e Corri v0.1.0</span>
+      </div>
     </AppShell>
   );
 }
