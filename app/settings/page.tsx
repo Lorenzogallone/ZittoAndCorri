@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions/auth";
 import { AppShell } from "@/components/app-shell";
 import { ProfileForm } from "./profile-form";
-import { ApiKeySection } from "./api-key-section";
+import { IntegrationsSection } from "./integrations-section";
 import { Button } from "@/components/ui/button";
 import type { Profile, Goal } from "@/lib/types";
 import { formatDistance, formatDuration, daysUntil } from "@/lib/format";
@@ -52,70 +52,10 @@ export default async function SettingsPage() {
         </div>
       </div>
 
-      {/* Profile Form */}
+      {/* Parametri Atleta */}
       <div className="rounded-2xl bg-card border border-white/[0.06] p-5 mb-6">
-        <h2 className="text-sm font-semibold mb-1">Parametri atleta</h2>
-        <p className="text-xs text-muted-foreground mb-5">
-          HR max e a riposo servono per il calcolo delle zone.
-        </p>
+        <h2 className="text-sm font-semibold mb-4">Parametri atleta</h2>
         <ProfileForm profile={profile ?? null} />
-      </div>
-
-      {/* Chiave API personale */}
-      <div className="rounded-2xl bg-card border border-white/[0.06] p-5 mb-6">
-        <h2 className="text-sm font-semibold mb-1">Integrazioni API</h2>
-        <p className="text-xs text-muted-foreground mb-5">
-          Usa questa chiave per autenticare i tuoi script o Comandi Rapidi iOS su iPhone.
-        </p>
-        <ApiKeySection initialApiKey={profile?.api_key ?? null} />
-      </div>
-
-      {/* Guida Comandi Rapidi iOS */}
-      <div className="rounded-2xl bg-card border border-white/[0.06] p-5 mb-6">
-        <h2 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
-          <span>📲</span> Integrazione iPhone (Comandi Rapidi)
-        </h2>
-        <p className="text-xs text-muted-foreground mb-4">
-          Configura il tuo iPhone per inviare corse a Zitto e Corri gratis.
-        </p>
-        
-        <div className="space-y-4 text-xs">
-          <div className="rounded-xl bg-muted/20 border border-white/[0.03] p-3.5">
-            <h3 className="font-semibold text-foreground mb-1.5 flex items-center gap-1">
-              <span>1.</span> Metodo Apple Health (Solo dati e cardio)
-            </h3>
-            <p className="text-muted-foreground leading-relaxed mb-2">
-              Importa al volo l'ultimo allenamento di corsa salvato in Apple Health (registrato con Apple Watch, Strava o altre app). Non include la mappa.
-            </p>
-            <ol className="list-decimal list-inside space-y-1 text-muted-foreground/90 pl-1">
-              <li>Apri l'app <strong>Comandi Rapidi</strong> su iOS.</li>
-              <li>Crea un nuovo comando: cerca l'azione <strong>"Trova allenamenti"</strong> (filtra per Corsa, ordina per data, limite 1).</li>
-              <li>Aggiungi l'azione <strong>"Ottieni contenuto dell'URL"</strong>.</li>
-              <li>Imposta come URL: <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-[10px]">https://[tuo-dominio]/api/import</code>.</li>
-              <li>Usa il metodo <strong>POST</strong> ed aggiungi l'intestazione <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-[10px]">Authorization: Bearer [tua_chiave_api]</code>.</li>
-              <li>Passa i parametri in formato JSON (Dizionario): <code className="bg-muted px-1 py-0.5 rounded font-mono text-[10px]">started_at</code>, <code className="bg-muted px-1 py-0.5 rounded font-mono text-[10px]">distance_m</code>, <code className="bg-muted px-1 py-0.5 rounded font-mono text-[10px]">duration_s</code>, <code className="bg-muted px-1 py-0.5 rounded font-mono text-[10px]">avg_hr</code>.</li>
-            </ol>
-          </div>
-
-          <div className="rounded-xl bg-muted/20 border border-white/[0.03] p-3.5">
-            <h3 className="font-semibold text-foreground mb-1.5 flex items-center gap-1">
-              <span>2.</span> Metodo File GPX (Mappa, grafici e split)
-            </h3>
-            <p className="text-muted-foreground leading-relaxed mb-2">
-              Importa il file GPX completo (comprensivo di mappa GPS, grafici e split al km) condividendolo direttamente su iPhone.
-            </p>
-            <ol className="list-decimal list-inside space-y-1 text-muted-foreground/90 pl-1">
-              <li>Installa un'app gratuita per esportare GPX su iPhone (es. <strong>WorkoutGPX</strong> o <strong>GPX Export</strong>) oppure usa <strong>WorkOutDoors</strong>.</li>
-              <li>Esporta la corsa in formato GPX e tocca <strong>Condividi</strong>.</li>
-              <li>Crea un Comando Rapido abilitato nel foglio di condivisione per i file GPX.</li>
-              <li>Imposta il comando per leggere il file condiviso come testo ed effettuare un <strong>POST</strong> a: <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-[10px]">https://[tuo-dominio]/api/import/gpx</code>.</li>
-              <li>Usa l'intestazione <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-[10px]">Authorization: Bearer [tua_chiave_api]</code> e invia il JSON: <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-[10px]">{"{ \"gpx\": testo_gpx, \"notes\": \"Importato da iPhone\" }"}</code>.</li>
-            </ol>
-            <p className="text-[10px] text-primary mt-2 font-medium">
-              💡 Trovi i dettagli precisi per creare questi comandi passo-passo nel file <code className="bg-muted px-1 py-0.5 rounded font-mono">INSTRUCTIONS.md</code> nella cartella del progetto.
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* Obiettivo */}
@@ -149,6 +89,9 @@ export default async function SettingsPage() {
           )}
         </div>
       </Link>
+
+      {/* Integrazioni & API (Collassabile) */}
+      <IntegrationsSection apiKey={profile?.api_key ?? null} />
 
       {/* Logout */}
       <div className="separator my-4" />
