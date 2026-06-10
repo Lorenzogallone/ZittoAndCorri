@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import { updateActivity, deleteActivity, type EditActivityFormState } from "../../actions";
 import { WORKOUT_TYPES } from "@/lib/types";
 import type { Activity } from "@/lib/types";
@@ -41,6 +41,10 @@ export function EditActivityForm({ activity }: Props) {
   const initialState: EditActivityFormState = {};
   const [state, formAction, pending] = useActionState(updateActivity, initialState);
   const isImported = activity.source !== "manual";
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, startDeleteTransition] = useTransition();
+  const deleteFormRef = useRef<HTMLFormElement>(null);
 
   return (
     <div className="flex flex-col gap-4">
@@ -200,12 +204,61 @@ export function EditActivityForm({ activity }: Props) {
 
       <div className="border-b border-white/[0.06] my-1" />
 
-      <form action={deleteActivity} className="flex justify-center w-full">
-        <input type="hidden" name="id" value={activity.id} />
-        <Button type="submit" variant="destructive" size="sm" className="w-full">
+      {!confirmDelete ? (
+        <Button
+          variant="destructive"
+          size="sm"
+          className="w-full"
+          onClick={() => setConfirmDelete(true)}
+        >
           Elimina corsa
         </Button>
-      </form>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-center text-muted-foreground">
+            Sei sicuro di voler eliminare questa corsa? L&apos;operazione non è reversibile.
+          </p>
+          {deleteError && (
+            <p className="text-destructive text-sm text-center">{deleteError}</p>
+          )}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              disabled={isDeleting}
+              onClick={() => setConfirmDelete(false)}
+            >
+              Annulla
+            </Button>
+            <form
+              ref={deleteFormRef}
+              action={async (fd) => {
+                startDeleteTransition(async () => {
+                  try {
+                    await deleteActivity(fd);
+                  } catch {
+                    setDeleteError("Errore durante l'eliminazione. Riprova.");
+                    setConfirmDelete(false);
+                  }
+                });
+              }}
+              className="flex-1"
+            >
+              <input type="hidden" name="id" value={activity.id} />
+              <Button
+                type="submit"
+                variant="destructive"
+                size="sm"
+                className="w-full"
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Eliminazione..." : "Sì, elimina"}
+              </Button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
