@@ -24,7 +24,7 @@ export default function ActivityMapClient({ gpsSeries }: ActivityMapClientProps)
       window.matchMedia("(prefers-color-scheme: dark)").matches;
 
     const styleUrl = isDarkTheme
-      ? "https://tiles.openfreemap.org/styles/dark-matter"
+      ? "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
       : "https://tiles.openfreemap.org/styles/positron";
 
     // Initialize MapLibre Map
