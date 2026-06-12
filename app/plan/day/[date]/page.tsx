@@ -4,28 +4,15 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
-import type { PlannedWorkout, Activity } from "@/lib/types";
+import type { PlannedWorkout, Activity, WorkoutType, Sport } from "@/lib/types";
 import { Plus } from "lucide-react";
-
-const TYPE_LABELS: Record<string, string> = {
-  easy: "Easy",
-  tempo: "Tempo",
-  interval: "Ripetute",
-  long: "Lungo",
-  race: "Gara",
-  recovery: "Recupero",
-  cross: "Cross",
-};
-
-const TYPE_COLORS: Record<string, string> = {
-  easy: "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
-  tempo: "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400",
-  interval: "bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400",
-  long: "bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400",
-  race: "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary",
-  recovery: "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400",
-  cross: "bg-zinc-500/10 text-zinc-600 dark:bg-zinc-500/20 dark:text-zinc-400",
-};
+import {
+  TYPE_LABELS,
+  TYPE_COLORS,
+  SPORT_LABELS,
+  SPORT_COLORS,
+  SPORT_ICONS,
+} from "@/lib/activity-meta";
 
 function isValidDate(d: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
@@ -40,7 +27,7 @@ function formatLongDate(iso: string): string {
   });
 }
 
-function TypeBadge({ type }: { type: string }) {
+function TypeBadge({ type }: { type: WorkoutType }) {
   return (
     <span
       className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -48,6 +35,18 @@ function TypeBadge({ type }: { type: string }) {
       }`}
     >
       {TYPE_LABELS[type] ?? type}
+    </span>
+  );
+}
+
+function SportBadge({ sport }: { sport: Sport }) {
+  const Icon = SPORT_ICONS[sport];
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${SPORT_COLORS[sport]}`}
+    >
+      <Icon size={12} />
+      {SPORT_LABELS[sport]}
     </span>
   );
 }
@@ -77,7 +76,7 @@ export default async function DayViewPage({ params }: Props) {
     supabase
       .from("activities")
       .select(
-        "id, started_at, type, distance_m, duration_s, avg_pace_s_km, avg_hr",
+        "id, started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr",
       )
       .eq("user_id", user.id)
       .gte("started_at", `${date}T00:00:00`)
@@ -89,6 +88,7 @@ export default async function DayViewPage({ params }: Props) {
           | "id"
           | "started_at"
           | "type"
+          | "sport"
           | "distance_m"
           | "duration_s"
           | "avg_pace_s_km"
@@ -171,17 +171,24 @@ export default async function DayViewPage({ params }: Props) {
 
         {dayActivities.length > 0 ? (
           <div className="flex flex-col gap-2">
-            {dayActivities.map((a) => (
+            {dayActivities.map((a) => {
+              const isRun = (a.sport ?? "running") === "running";
+              return (
               <Link key={a.id} href={`/activities/${a.id}`} className="block">
                 <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-4 py-3 transition-transform duration-200 active:scale-[0.98]">
-                  <TypeBadge type={a.type} />
+                  {isRun ? <TypeBadge type={a.type} /> : <SportBadge sport={a.sport ?? "other"} />}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium tabular-nums">
-                      {formatDistance(a.distance_m)} · {formatDuration(a.duration_s)}
+                      {[
+                        a.distance_m > 0 && formatDistance(a.distance_m),
+                        formatDuration(a.duration_s),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                     <p className="truncate text-xs text-muted-foreground tabular-nums">
                       {[
-                        formatPace(a.avg_pace_s_km),
+                        a.avg_pace_s_km != null && formatPace(a.avg_pace_s_km),
                         a.avg_hr != null && `${a.avg_hr} bpm`,
                       ]
                         .filter(Boolean)
@@ -191,7 +198,8 @@ export default async function DayViewPage({ params }: Props) {
                   <span className="text-sm text-muted-foreground/40">›</span>
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">Nessuna corsa registrata.</p>

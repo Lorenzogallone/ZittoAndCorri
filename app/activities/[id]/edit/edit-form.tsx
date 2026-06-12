@@ -2,8 +2,8 @@
 
 import { useActionState, useRef, useState, useTransition } from "react";
 import { updateActivity, deleteActivity, type EditActivityFormState } from "../../actions";
-import { WORKOUT_TYPES } from "@/lib/types";
-import type { Activity } from "@/lib/types";
+import { WORKOUT_TYPES, SPORTS } from "@/lib/types";
+import type { Activity, Sport } from "@/lib/types";
 import { formatDuration } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,16 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const TYPE_LABELS: Record<string, string> = {
-  easy: "Easy",
-  tempo: "Tempo",
-  interval: "Ripetute",
-  long: "Lungo",
-  race: "Gara",
-  recovery: "Recupero",
-  cross: "Cross",
-};
+import { TYPE_LABELS, SPORT_LABELS } from "@/lib/activity-meta";
 
 function formatDateTimeLocal(isoString: string): string {
   const d = new Date(isoString);
@@ -41,6 +32,8 @@ export function EditActivityForm({ activity }: Props) {
   const initialState: EditActivityFormState = {};
   const [state, formAction, pending] = useActionState(updateActivity, initialState);
   const isImported = activity.source !== "manual";
+  const [sport, setSport] = useState<Sport>(activity.sport ?? "running");
+  const isRunning = sport === "running";
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, startDeleteTransition] = useTransition();
@@ -68,20 +61,38 @@ export function EditActivityForm({ activity }: Props) {
         </div>
 
         <div className="grid gap-2.5">
-          <Label htmlFor="type">Tipo (Tag)</Label>
-          <Select name="type" defaultValue={activity.type}>
-            <SelectTrigger id="type">
+          <Label htmlFor="sport">Sport</Label>
+          <Select name="sport" value={sport} onValueChange={(v) => setSport(v as Sport)}>
+            <SelectTrigger id="sport">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {WORKOUT_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {TYPE_LABELS[t] ?? t}
+              {SPORTS.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {SPORT_LABELS[s]}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+
+        {isRunning && (
+          <div className="grid gap-2.5">
+            <Label htmlFor="type">Tipo (Tag)</Label>
+            <Select name="type" defaultValue={activity.type}>
+              <SelectTrigger id="type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {WORKOUT_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {TYPE_LABELS[t] ?? t}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div className="grid gap-2.5">
@@ -98,7 +109,7 @@ export function EditActivityForm({ activity }: Props) {
               defaultValue={(activity.distance_m / 1000).toFixed(2)}
               readOnly={isImported}
               className={isImported ? "bg-muted/40 cursor-not-allowed opacity-80" : ""}
-              required
+              required={isRunning}
             />
           </div>
           <div className="grid gap-2.5">

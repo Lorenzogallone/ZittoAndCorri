@@ -28,8 +28,13 @@ export async function ingestActivity(
   // 1. validazione
   const data = ActivityInput.parse(input);
 
+  // Le attività non running usano sempre il tipo 'cross' (vincolo DB).
+  const type = data.sport === "running" ? data.type : "cross";
+
   // 2. campi derivati (deterministici, mai dall'LLM)
-  const avg_pace_s_km = avgPace(data.distance_m, data.duration_s);
+  // Niente passo per attività senza distanza (palestra, yoga, calcio…).
+  const avg_pace_s_km =
+    data.distance_m > 0 ? avgPace(data.distance_m, data.duration_s) : null;
 
   // Zone HR: preferisce la serie reale; fallback alla zona-da-media
   const time_in_zone =
@@ -49,7 +54,8 @@ export async function ingestActivity(
     .insert({
       user_id: ctx.userId,
       source: data.source,
-      type: data.type,
+      type,
+      sport: data.sport,
       started_at: data.started_at,
       distance_m: data.distance_m,
       duration_s: data.duration_s,
@@ -59,6 +65,7 @@ export async function ingestActivity(
       max_hr: data.max_hr ?? null,
       elevation_gain_m: data.elevation_gain_m ?? null,
       rpe: data.rpe ?? null,
+      calories: data.calories ?? null,
       time_in_zone,
       splits,
       notes: data.notes ?? null,
@@ -70,14 +77,14 @@ export async function ingestActivity(
   if (error) throw error;
 
   // 3b. insert activity_streams se presenti (pesanti, separati dal prompt)
-  if (data.hr_series || data.gps_series) {
+  if (data.hr_series || data.gps_series || data.cadence_series) {
     const { error: streamError } = await ctx.supabase
       .from("activity_streams")
       .insert({
         activity_id: row.id,
         hr_series: data.hr_series ?? null,
         gps_series: data.gps_series ?? null,
-        cadence: null,
+        cadence: data.cadence_series ?? null,
       });
     if (streamError) throw streamError;
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useEffect } from "react";
+import { useActionState, useState } from "react";
 import { updateProfile, type ProfileFormState } from "./actions";
 import type { Profile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -17,12 +17,14 @@ export function ProfileForm({ profile }: { profile: Partial<Profile> | null }) {
   );
   const [isOpen, setIsOpen] = useState(false);
 
-  // Chiudi il modal quando il salvataggio va a buon fine
-  useEffect(() => {
-    if (state.ok) {
-      setIsOpen(false);
-    }
-  }, [state.ok]);
+  // Chiudi il modal quando il salvataggio va a buon fine: adattamento dello
+  // stato durante il render (pattern React per derivare da props/state),
+  // senza passare da un effect.
+  const [prevOk, setPrevOk] = useState(state.ok);
+  if (state.ok !== prevOk) {
+    setPrevOk(state.ok);
+    if (state.ok) setIsOpen(false);
+  }
 
   return (
     <div>

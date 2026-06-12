@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { ActivityForm } from "./activity-form";
+import { todayIso, isoDaysFromNow } from "@/lib/dates";
 import type { PlannedWorkout } from "@/lib/types";
 
 export default async function NewActivityPage() {
@@ -11,9 +12,9 @@ export default async function NewActivityPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const today = new Date().toISOString().slice(0, 10);
-  const minus3 = new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-  const plus3 = new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  const today = todayIso();
+  const minus3 = isoDaysFromNow(-3);
+  const plus3 = isoDaysFromNow(3);
 
   const { data: nearbyWorkouts } = await supabase
     .from("planned_workouts")

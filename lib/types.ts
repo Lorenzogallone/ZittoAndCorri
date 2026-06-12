@@ -27,6 +27,27 @@ export const WORKOUT_TYPES: WorkoutType[] = [
   "cross",
 ];
 
+// Sport dell'attività. "running" è il default storico; gli altri servono per
+// le attività extra (importate da .fit o manuali) che alimentano il carico ma
+// non le statistiche di corsa. Colonna `activities.sport` (text + CHECK).
+export const SPORTS = [
+  "running",
+  "cycling",
+  "swimming",
+  "strength",
+  "hiking",
+  "walking",
+  "soccer",
+  "tennis",
+  "padel",
+  "yoga",
+  "pilates",
+  "ski",
+  "other",
+] as const;
+
+export type Sport = (typeof SPORTS)[number];
+
 export type ZoneKey = "z1" | "z2" | "z3" | "z4" | "z5";
 
 /** Secondi trascorsi per zona HR. */
@@ -68,6 +89,7 @@ export interface Activity {
   user_id: string;
   source: ActivitySource;
   type: WorkoutType;
+  sport: Sport;
   started_at: string;
   distance_m: number;
   duration_s: number;
@@ -201,5 +223,7 @@ export interface ProposedWorkout {
 /** Output strutturato della generazione piano (responseSchema Gemini). */
 export interface PlanGenerationResult {
   review_summary: string;
+  /** Memoria di fase del coach, persistita in athlete_snapshot.narrative. */
+  coach_memory?: string;
   workouts: ProposedWorkout[];
 }

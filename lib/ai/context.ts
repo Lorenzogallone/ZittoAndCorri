@@ -15,21 +15,13 @@ import type {
   Profile,
   WorkoutType,
 } from "@/lib/types";
-
-const TYPE_LABELS: Record<WorkoutType, string> = {
-  easy: "Easy",
-  tempo: "Tempo",
-  interval: "Ripetute",
-  long: "Lungo",
-  race: "Gara",
-  recovery: "Recupero",
-  cross: "Cross",
-};
+import { TYPE_LABELS, SPORT_LABELS } from "@/lib/activity-meta";
 
 type CtxActivity = Pick<
   Activity,
   | "started_at"
   | "type"
+  | "sport"
   | "distance_m"
   | "duration_s"
   | "avg_pace_s_km"
@@ -37,6 +29,12 @@ type CtxActivity = Pick<
   | "rpe"
   | "notes"
 >;
+
+/** Tronca un testo lungo per il prompt senza spezzare a metà parola. */
+function clip(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return text.slice(0, max).replace(/\s+\S*$/, "") + "…";
+}
 
 export interface AthleteContext {
   /** Markdown compatto (~400-600 token) da mettere nel prompt. */
@@ -119,7 +117,9 @@ export async function buildAthleteContext(
     { data: latestRuns },
     { data: recentPlanned },
     { data: upcomingPlanned },
-    { data: lastPlanReview },
+    { data: recentReviews },
+    { data: recentEvals },
+    { data: snapshot },
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -136,17 +136,18 @@ export async function buildAthleteContext(
       >(),
     supabase
       .from("activities")
-      .select("started_at, type, distance_m, duration_s, avg_pace_s_km, avg_hr, rpe, notes")
+      .select("started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr, rpe, notes")
       .eq("user_id", userId)
       .gte("started_at", `${since42}T00:00:00`)
       .order("started_at", { ascending: true })
       .returns<CtxActivity[]>(),
-    // Ultime corse SENZA filtro temporale: garantiscono che il modello veda
-    // sempre le corse più recenti, anche dopo lunghi stop (> 6 settimane).
+    // Ultime corse (solo running) SENZA filtro temporale: garantiscono che il
+    // modello veda sempre le corse più recenti, anche dopo lunghi stop.
     supabase
       .from("activities")
-      .select("started_at, type, distance_m, duration_s, avg_pace_s_km, avg_hr, rpe, notes")
+      .select("started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr, rpe, notes")
       .eq("user_id", userId)
+      .eq("sport", "running")
       .order("started_at", { ascending: false })
       .limit(5)
       .returns<CtxActivity[]>(),
@@ -182,17 +183,44 @@ export async function buildAthleteContext(
           | "description"
         >[]
       >(),
-    // Piano precedente: l'ultima review generata, per capire se è un replan.
+    // Storico piani: le ultime review generate. La più recente serve anche a
+    // capire se questo è un replan; le summary danno continuità tra i cicli.
     supabase
       .from("plan_reviews")
-      .select("range_start, range_end, created_at")
+      .select("range_start, range_end, summary, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle<{ range_start: string; range_end: string; created_at: string }>(),
+      .limit(3)
+      .returns<
+        Array<{
+          range_start: string;
+          range_end: string;
+          summary: string;
+          created_at: string;
+        }>
+      >(),
+    // Ultime valutazioni del coach: per coerenza tra i feedback.
+    supabase
+      .from("evaluations")
+      .select("summary, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(3)
+      .returns<Array<{ summary: string | null; created_at: string }>>(),
+    // Memoria coach: narrativa di fase aggiornata a ogni generazione piano.
+    supabase
+      .from("athlete_snapshot")
+      .select("narrative, updated_at")
+      .eq("user_id", userId)
+      .maybeSingle<{ narrative: Record<string, unknown> | null; updated_at: string }>(),
   ]);
 
   const activities = acts ?? [];
+  // Statistiche di corsa (passi, volumi, predizioni) solo dal running; il
+  // carico invece usa tutto — vedi sotto.
+  const runActivities = activities.filter((a) => (a.sport ?? "running") === "running");
+  const otherActivities = activities.filter((a) => (a.sport ?? "running") !== "running");
+  const lastPlanReview = recentReviews?.[0] ?? null;
   const lines: string[] = [];
 
   // Intestazione obiettivo
@@ -217,8 +245,19 @@ export async function buildAthleteContext(
     lines.push(`## Atleta — agg. ${shortDate(today)}`, `Nessun obiettivo attivo.`);
   }
 
-  // Predizioni Riegel
-  const best = bestReference(activities);
+  // Memoria coach: fase di allenamento mantenuta dall'LLM piano dopo piano.
+  const coachMemory =
+    snapshot?.narrative && typeof snapshot.narrative === "object"
+      ? (snapshot.narrative as { coach_memory?: unknown }).coach_memory
+      : null;
+  if (typeof coachMemory === "string" && coachMemory.trim()) {
+    lines.push(
+      `Fase di allenamento (memoria coach, agg. ${shortDate(snapshot!.updated_at)}): ${clip(coachMemory.trim(), 600)}`,
+    );
+  }
+
+  // Predizioni Riegel — solo dalle corse.
+  const best = bestReference(runActivities);
   if (best) {
     try {
       const p = predictRaces(best, goal?.distance_m);
@@ -234,7 +273,8 @@ export async function buildAthleteContext(
     }
   }
 
-  // Carico ATL/CTL/TSB
+  // Carico ATL/CTL/TSB — su TUTTE le attività (sRPE = durata × RPE vale anche
+  // per calcio, bici, palestra…): la fatica non-corsa conta.
   if (activities.length > 0) {
     const { atl, ctl, tsb } = computeATLCTL(
       activities.map((a) => ({
@@ -244,18 +284,24 @@ export async function buildAthleteContext(
       })),
     );
     const fresh = tsb > 5 ? "fresco" : tsb < -10 ? "affaticato" : "in equilibrio";
-    lines.push(`Carico: ATL ${atl} / CTL ${ctl} → TSB ${tsb} (${fresh}).`);
+    lines.push(
+      `Carico: ATL ${atl} / CTL ${ctl} → TSB ${tsb} (${fresh}).${
+        otherActivities.length > 0
+          ? " Include anche le attività non di corsa."
+          : ""
+      }`,
+    );
 
-    // Volume ultime 4 settimane
+    // Volume ultime 4 settimane — solo corsa.
     const since28 = isoDaysAgo(28);
-    const vol = activities
+    const vol = runActivities
       .filter((a) => a.started_at.slice(0, 10) >= since28)
       .reduce((s, a) => s + a.distance_m, 0);
-    lines.push(`Volume medio: ${(vol / 4 / 1000).toFixed(1)} km/sett (ultime 4).`);
+    lines.push(`Volume medio: ${(vol / 4 / 1000).toFixed(1)} km/sett di corsa (ultime 4).`);
   }
 
-  // Passi per tipo
-  const paces = pacePerType(activities);
+  // Passi per tipo — solo corsa.
+  const paces = pacePerType(runActivities);
   const paceParts = Object.entries(paces).map(
     ([t, s]) => `${TYPE_LABELS[t as WorkoutType]} ${formatPace(s)}`,
   );
@@ -323,8 +369,9 @@ export async function buildAthleteContext(
     }
   }
 
-  // Ultime 2 settimane — piano vs reale (giorno per giorno). Le corse possono
-  // cadere anche in un giorno diverso da quello pianificato.
+  // Ultime 2 settimane — piano vs reale (giorno per giorno), incluse le
+  // attività non di corsa: spiegano i giorni in cui la corsa è saltata
+  // (es. "piano Easy | fatto Calcio 1:30").
   const acts14 = activities.filter((a) => a.started_at.slice(0, 10) >= fourteenAgo);
   const pva = buildPlanVsActual(recentPlanned ?? [], acts14);
   if (pva.length > 0) {
@@ -342,10 +389,33 @@ export async function buildAthleteContext(
       const done =
         d.actual.length > 0
           ? d.actual
-              .map((a) => `${TYPE_LABELS[a.type]} ${formatDistance(a.distance_m)}`)
+              .map((a) =>
+                (a.sport ?? "running") === "running"
+                  ? `${TYPE_LABELS[a.type]} ${formatDistance(a.distance_m)}`
+                  : `${SPORT_LABELS[a.sport ?? "other"]} ${formatDuration(a.duration_s)}`,
+              )
               .join(", ")
           : "—";
       lines.push(`- ${shortDate(d.date)}: piano ${plan} | fatto ${done}`);
+    }
+  }
+
+  // Altre attività (non corsa, ultimi 28gg): fanno parte del carico e
+  // spiegano stanchezza o allenamenti saltati.
+  const since28d = isoDaysAgo(28);
+  const others28 = otherActivities
+    .filter((a) => a.started_at.slice(0, 10) >= since28d)
+    .slice(-8);
+  if (others28.length > 0) {
+    lines.push(`Altre attività (non corsa, ultimi 28gg):`);
+    for (const a of others28) {
+      lines.push(
+        `- ${shortDate(a.started_at)} ${SPORT_LABELS[a.sport ?? "other"]} ${formatDuration(
+          a.duration_s,
+        )}${a.distance_m > 0 ? ` ${formatDistance(a.distance_m)}` : ""}${
+          a.avg_hr ? ` HR${a.avg_hr}` : ""
+        }${a.rpe ? ` RPE${a.rpe}` : ""}${a.notes ? ` "${clip(a.notes, 60)}"` : ""}`,
+      );
     }
   }
 
@@ -363,13 +433,37 @@ export async function buildAthleteContext(
     }
   }
 
+  // Storico piani recenti: le review dei cicli precedenti danno continuità
+  // alla progressione (cosa si è lavorato e perché).
+  if (recentReviews && recentReviews.length > 0) {
+    lines.push(`Storico piani recenti (dal più recente):`);
+    for (const r of recentReviews) {
+      lines.push(
+        `- ${shortDate(r.range_start)}–${shortDate(r.range_end)}: ${clip(r.summary, 280)}`,
+      );
+    }
+  }
+
+  // Valutazioni recenti del coach: per coerenza coi feedback già dati.
+  const evals = (recentEvals ?? []).filter(
+    (e): e is { summary: string; created_at: string } =>
+      typeof e.summary === "string" && e.summary.trim() !== "",
+  );
+  if (evals.length > 0) {
+    lines.push(`Tue valutazioni recenti (dal più recente):`);
+    for (const e of evals) {
+      lines.push(`- ${shortDate(e.created_at)}: ${clip(e.summary, 200)}`);
+    }
+  }
+
   return { markdown: lines.join("\n"), activeGoal: goal ?? null };
 }
 
-/** Riga di dettaglio compatta di una singola corsa, per la valutazione. */
+/** Riga di dettaglio compatta di una singola attività, per la valutazione. */
 export function activityDetailLine(a: {
   started_at: string;
   type: WorkoutType;
+  sport?: Activity["sport"] | null;
   distance_m: number;
   duration_s: number;
   avg_pace_s_km: number | null;
@@ -379,11 +473,15 @@ export function activityDetailLine(a: {
   elevation_gain_m: number | null;
   notes: string | null;
 }): string {
+  const isRun = (a.sport ?? "running") === "running";
+  const head = isRun
+    ? TYPE_LABELS[a.type]
+    : `${SPORT_LABELS[a.sport ?? "other"]} (non corsa)`;
   const parts = [
-    `${TYPE_LABELS[a.type]} ${formatDistance(a.distance_m)}`,
+    `${head}${a.distance_m > 0 ? ` ${formatDistance(a.distance_m)}` : ""}`,
     `durata ${formatDuration(a.duration_s)}`,
-    `passo ${formatPace(a.avg_pace_s_km)}`,
   ];
+  if (a.avg_pace_s_km != null) parts.push(`passo ${formatPace(a.avg_pace_s_km)}`);
   if (a.avg_hr) parts.push(`HR media ${a.avg_hr}`);
   if (a.max_hr) parts.push(`HR max ${a.max_hr}`);
   if (a.elevation_gain_m) parts.push(`disl +${a.elevation_gain_m}m`);

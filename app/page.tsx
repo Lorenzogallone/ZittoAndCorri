@@ -4,29 +4,17 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { formatDistance, formatDuration, formatPace, daysUntil } from "@/lib/format";
+import { todayIso, isoDaysFromNow } from "@/lib/dates";
 import { computeAdherence } from "@/lib/metrics/adherence";
 import type { Activity, Goal, PlannedWorkout, Profile } from "@/lib/types";
 import { Plus } from "lucide-react";
-
-const TYPE_LABELS: Record<string, string> = {
-  easy: "Easy",
-  tempo: "Tempo",
-  interval: "Ripetute",
-  long: "Lungo",
-  race: "Gara",
-  recovery: "Recupero",
-  cross: "Cross",
-};
-
-const TYPE_COLORS: Record<string, string> = {
-  easy: "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
-  tempo: "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400",
-  interval: "bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400",
-  long: "bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400",
-  race: "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary",
-  recovery: "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400",
-  cross: "bg-zinc-500/10 text-zinc-600 dark:bg-zinc-500/20 dark:text-zinc-400",
-};
+import {
+  TYPE_LABELS,
+  TYPE_COLORS,
+  SPORT_LABELS,
+  SPORT_COLORS,
+  SPORT_ICONS,
+} from "@/lib/activity-meta";
 
 function formatShortDate(iso: string): string {
   return new Date(iso + "T00:00:00").toLocaleDateString("it-IT", {
@@ -46,10 +34,8 @@ export default async function Home() {
     redirect("/login");
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const fourteenAgo = new Date(Date.now() - 14 * 24 * 3600 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  const today = todayIso();
+  const fourteenAgo = isoDaysFromNow(-14);
   const now = new Date();
   const day = now.getDay();
   // Get Monday of the current week (adjust when Sunday = 0)
@@ -73,12 +59,12 @@ export default async function Home() {
       .maybeSingle<Pick<Profile, "display_name">>(),
     supabase
       .from("activities")
-      .select("id, started_at, type, distance_m, duration_s, avg_pace_s_km, avg_hr")
+      .select("id, started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr")
       .eq("user_id", user.id)
       .order("started_at", { ascending: false })
       .limit(1)
       .maybeSingle<
-        Pick<Activity, "id" | "started_at" | "type" | "distance_m" | "duration_s" | "avg_pace_s_km" | "avg_hr">
+        Pick<Activity, "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" | "avg_pace_s_km" | "avg_hr">
       >(),
     supabase
       .from("goals")
@@ -104,11 +90,11 @@ export default async function Home() {
       .returns<Array<{ status: string; date: string }>>(),
     supabase
       .from("activities")
-      .select("id, started_at, type, distance_m, duration_s, avg_pace_s_km, avg_hr")
+      .select("id, started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr")
       .eq("user_id", user.id)
       .gte("started_at", startOfWeekISO)
       .order("started_at", { ascending: true })
-      .returns<Pick<Activity, "id" | "started_at" | "type" | "distance_m" | "duration_s" | "avg_pace_s_km" | "avg_hr">[]>(),
+      .returns<Pick<Activity, "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" | "avg_pace_s_km" | "avg_hr">[]>(),
   ]);
 
   const greeting = profile?.display_name
@@ -126,9 +112,12 @@ export default async function Home() {
       : null;
 
   const weekActivities = thisWeekActivities ?? [];
-  const totalDistance = weekActivities.reduce((acc, curr) => acc + curr.distance_m, 0);
-  const totalDuration = weekActivities.reduce((acc, curr) => acc + curr.duration_s, 0);
-  const runCount = weekActivities.length;
+  // Le statistiche settimanali (km, passo) sono solo di corsa: una sgambata
+  // in bici non deve gonfiare il volume running.
+  const weekRuns = weekActivities.filter((a) => a.sport === "running");
+  const totalDistance = weekRuns.reduce((acc, curr) => acc + curr.distance_m, 0);
+  const totalDuration = weekRuns.reduce((acc, curr) => acc + curr.duration_s, 0);
+  const runCount = weekRuns.length;
 
   const weekdaysLabels = ["L", "M", "M", "G", "V", "S", "D"];
   const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -314,26 +303,43 @@ export default async function Home() {
           {/* Weekday Visualizer */}
           <div className="flex justify-between items-center gap-1 mb-5">
             {weekDays.map((day, i) => {
-              const hasRun = day.activities.length > 0;
-              const totalDistOnDay = day.activities.reduce((sum, a) => sum + a.distance_m, 0);
-              const mainActivity = day.activities.reduce((prev, current) => 
-                (prev && prev.distance_m > current.distance_m) ? prev : current
-              , day.activities[0]);
+              const hasActivity = day.activities.length > 0;
+              // La corsa ha la precedenza come attivit\u00E0 "principale" del giorno;
+              // altrimenti l'attivit\u00E0 pi\u00F9 lunga di altro sport.
+              const dayRuns = day.activities.filter((a) => a.sport === "running");
+              const pool = dayRuns.length > 0 ? dayRuns : day.activities;
+              const mainActivity = pool.reduce(
+                (prev, current) =>
+                  prev && prev.duration_s > current.duration_s ? prev : current,
+                pool[0],
+              );
+              const runDistOnDay = dayRuns.reduce((sum, a) => sum + a.distance_m, 0);
+              const isRunDay = dayRuns.length > 0;
+              const SportIcon = mainActivity
+                ? SPORT_ICONS[mainActivity.sport ?? "other"]
+                : null;
 
               return (
                 <div key={i} className="flex flex-col items-center flex-1">
                   <span className="text-[10px] font-medium text-muted-foreground/60 mb-1.5">
                     {day.label}
                   </span>
-                  {hasRun ? (
+                  {hasActivity ? (
                     <Link
                       href={`/activities/${mainActivity.id}`}
                       className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold transition-transform active:scale-95 border border-transparent shadow-sm ${
-                        TYPE_COLORS[mainActivity.type] ?? "bg-muted text-muted-foreground"
+                        (isRunDay
+                          ? TYPE_COLORS[mainActivity.type]
+                          : SPORT_COLORS[mainActivity.sport ?? "other"]) ??
+                        "bg-muted text-muted-foreground"
                       }`}
-                      title={`${TYPE_LABELS[mainActivity.type] ?? mainActivity.type}: ${formatDistance(totalDistOnDay)}`}
+                      title={
+                        isRunDay
+                          ? `${TYPE_LABELS[mainActivity.type] ?? mainActivity.type}: ${formatDistance(runDistOnDay)}`
+                          : `${SPORT_LABELS[mainActivity.sport ?? "other"]}: ${formatDuration(mainActivity.duration_s)}`
+                      }
                     >
-                      {day.label}
+                      {isRunDay || !SportIcon ? day.label : <SportIcon size={14} />}
                     </Link>
                   ) : (
                     <div className="w-8 h-8 rounded-full border border-border/40 flex items-center justify-center text-[11px] text-muted-foreground/30 font-medium bg-muted/10">
@@ -341,7 +347,7 @@ export default async function Home() {
                     </div>
                   )}
                   <span className="text-[9px] tabular-nums mt-1.5 font-semibold text-muted-foreground/80">
-                    {hasRun ? `${(totalDistOnDay / 1000).toFixed(0)}k` : "\u00A0"}
+                    {isRunDay ? `${(runDistOnDay / 1000).toFixed(0)}k` : "\u00A0"}
                   </span>
                 </div>
               );
@@ -356,7 +362,7 @@ export default async function Home() {
             <div>
               <div className="flex items-center justify-between mb-2.5">
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
-                  Ultima Corsa
+                  {lastActivity.sport === "running" ? "Ultima Corsa" : "Ultima Attività"}
                 </span>
                 <span className="text-xs text-muted-foreground font-medium">
                   {formatShortDate(lastActivity.started_at.slice(0, 10))}
@@ -370,19 +376,33 @@ export default async function Home() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <span className="text-2xl font-bold tabular-nums tracking-tight">
-                        {formatDistance(lastActivity.distance_m)}
+                        {lastActivity.distance_m > 0
+                          ? formatDistance(lastActivity.distance_m)
+                          : formatDuration(lastActivity.duration_s)}
                       </span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                        TYPE_COLORS[lastActivity.type] ?? "bg-zinc-500/20 text-zinc-400"
-                      }`}>
-                        {TYPE_LABELS[lastActivity.type] ?? lastActivity.type}
-                      </span>
+                      {lastActivity.sport === "running" ? (
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          TYPE_COLORS[lastActivity.type] ?? "bg-zinc-500/20 text-zinc-400"
+                        }`}>
+                          {TYPE_LABELS[lastActivity.type] ?? lastActivity.type}
+                        </span>
+                      ) : (
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          SPORT_COLORS[lastActivity.sport ?? "other"]
+                        }`}>
+                          {SPORT_LABELS[lastActivity.sport ?? "other"]}
+                        </span>
+                      )}
                     </div>
-                    
+
                     <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground flex-wrap">
                       <span className="tabular-nums font-medium text-foreground/80">{formatDuration(lastActivity.duration_s)}</span>
-                      <span className="opacity-30">·</span>
-                      <span className="tabular-nums font-medium text-foreground/80">{formatPace(lastActivity.avg_pace_s_km)}</span>
+                      {lastActivity.avg_pace_s_km != null && (
+                        <>
+                          <span className="opacity-30">·</span>
+                          <span className="tabular-nums font-medium text-foreground/80">{formatPace(lastActivity.avg_pace_s_km)}</span>
+                        </>
+                      )}
                       {lastActivity.avg_hr != null && (
                         <>
                           <span className="opacity-30">·</span>

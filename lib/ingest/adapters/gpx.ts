@@ -82,6 +82,7 @@ export function parseGpx(xml: string): ActivityInput {
   return {
     source: "file",
     type: "easy",
+    sport: "running",
     started_at: points[0].time,
     distance_m: Math.round(distance_m),
     duration_s,

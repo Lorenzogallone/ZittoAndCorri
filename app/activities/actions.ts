@@ -39,8 +39,14 @@ export async function createActivity(
   const startedAt = new Date(startedAtLocal);
   if (Number.isNaN(startedAt.getTime())) return { error: "Data/ora non valida." };
 
-  const distanceKm = Number(formData.get("distance_km"));
-  if (!Number.isFinite(distanceKm) || distanceKm <= 0) {
+  const sport = String(formData.get("sport") ?? "running");
+  const isRunning = sport === "running";
+
+  // Distanza: obbligatoria per la corsa; opzionale per gli altri sport
+  // (palestra, calcio, yoga… spesso non ne hanno una sensata).
+  const distanceRaw = String(formData.get("distance_km") ?? "").trim();
+  const distanceKm = distanceRaw === "" ? 0 : Number(formData.get("distance_km"));
+  if (!Number.isFinite(distanceKm) || distanceKm < 0 || (isRunning && distanceKm <= 0)) {
     return { error: "Distanza non valida." };
   }
   const duration_s = parseDuration(String(formData.get("duration") ?? ""));
@@ -65,6 +71,7 @@ export async function createActivity(
       {
         source: "manual",
         type,
+        sport,
         started_at: startedAt.toISOString(),
         distance_m: Math.round(distanceKm * 1000),
         duration_s,
@@ -209,8 +216,14 @@ export async function updateActivity(
   const startedAt = new Date(startedAtLocal);
   if (Number.isNaN(startedAt.getTime())) return { error: "Data/ora non valida." };
 
-  const distanceKm = Number(formData.get("distance_km"));
-  if (!Number.isFinite(distanceKm) || distanceKm <= 0) {
+  // Sport: se non arriva dal form (form vecchi) resta quello esistente.
+  const sportRaw = String(formData.get("sport") ?? "").trim();
+  const sport = sportRaw || activity.sport || "running";
+  const isRunning = sport === "running";
+
+  const distanceRaw = String(formData.get("distance_km") ?? "").trim();
+  const distanceKm = distanceRaw === "" ? 0 : Number(formData.get("distance_km"));
+  if (!Number.isFinite(distanceKm) || distanceKm < 0 || (isRunning && distanceKm <= 0)) {
     return { error: "Distanza non valida." };
   }
   const duration_s = parseDuration(String(formData.get("duration") ?? ""));
@@ -218,7 +231,8 @@ export async function updateActivity(
     return { error: "Durata non valida (usa h:mm:ss o mm:ss)." };
   }
 
-  const type = String(formData.get("type") ?? "easy");
+  // Vincolo DB: le attività non running hanno sempre type 'cross'.
+  const type = isRunning ? String(formData.get("type") ?? "easy") : "cross";
   const notes = String(formData.get("notes") ?? "").trim();
   const rpe = optInt(formData, "rpe");
   const avg_hr = optInt(formData, "avg_hr");
@@ -226,7 +240,7 @@ export async function updateActivity(
   const elevation_gain_m = optInt(formData, "elevation_gain_m");
 
   const distance_m = Math.round(distanceKm * 1000);
-  const avg_pace_s_km = avgPace(distance_m, duration_s);
+  const avg_pace_s_km = distance_m > 0 ? avgPace(distance_m, duration_s) : null;
 
   // Fetch profile to calculate zone
   const { data: profile } = await supabase
@@ -262,6 +276,7 @@ export async function updateActivity(
     .from("activities")
     .update({
       type,
+      sport,
       notes: notes || null,
       rpe: rpe ?? null,
       started_at: startedAt.toISOString(),
@@ -287,7 +302,7 @@ export async function updateActivity(
 }
 
 export async function saveParsedActivity(
-  input: any,
+  input: unknown,
   plannedWorkoutId?: string,
 ): Promise<{ error?: string; id?: string }> {
   const supabase = await createClient();

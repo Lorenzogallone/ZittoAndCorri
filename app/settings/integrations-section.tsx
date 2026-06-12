@@ -60,7 +60,7 @@ export function IntegrationsSection({ apiKey }: IntegrationsSectionProps) {
                     1. Importazione Apple Health (Solo metriche)
                   </h3>
                   <p className="text-muted-foreground leading-relaxed">
-                    Importa automaticamente la distanza, durata e frequenza cardiaca media dall'ultimo allenamento registrato in Apple Health tramite un Comando Rapido (Shortcuts). Non include la mappa GPS.
+                    Importa automaticamente la distanza, durata e frequenza cardiaca media dall&apos;ultimo allenamento registrato in Apple Health tramite un Comando Rapido (Shortcuts). Non include la mappa GPS.
                   </p>
                   <div className="bg-black/20 rounded-lg p-3 border border-white/[0.02] space-y-2">
                     <p className="font-medium text-foreground">Parametri di configurazione:</p>
@@ -79,7 +79,7 @@ export function IntegrationsSection({ apiKey }: IntegrationsSectionProps) {
                     2. Importazione File GPX (Mappa, Cardio & Altitudine)
                   </h3>
                   <p className="text-muted-foreground leading-relaxed">
-                    Consente di importare il file GPX completo (con coordinate GPS e mappa) condividendolo tramite il foglio di condivisione di iOS dopo l'esportazione da app come <strong className="text-foreground">WorkoutGPX</strong> o <strong className="text-foreground">WorkOutDoors</strong>.
+                    Consente di importare il file GPX completo (con coordinate GPS e mappa) condividendolo tramite il foglio di condivisione di iOS dopo l&apos;esportazione da app come <strong className="text-foreground">WorkoutGPX</strong> o <strong className="text-foreground">WorkOutDoors</strong>.
                   </p>
                   <div className="bg-black/20 rounded-lg p-3 border border-white/[0.02] space-y-2">
                     <p className="font-medium text-foreground">Parametri di configurazione:</p>
