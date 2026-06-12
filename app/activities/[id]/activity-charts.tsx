@@ -21,16 +21,18 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 import { formatDuration, formatPace } from "@/lib/format";
 import type { Split, HrPoint, GpsPoint } from "@/lib/types";
 
+// true solo dopo l'hydration (recharts non supporta il render SSR).
+const noopSubscribe = () => () => {};
 function useMounted() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  return mounted;
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
 }
 
 // --- HR nel tempo -------------------------------------------------------

@@ -4,28 +4,16 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
+import { nowMs } from "@/lib/dates";
 import type { Activity } from "@/lib/types";
 import { Plus, Activity as ActivityIcon, Heart, Mountain } from "lucide-react";
-
-const TYPE_LABELS: Record<string, string> = {
-  easy: "Easy",
-  tempo: "Tempo",
-  interval: "Ripetute",
-  long: "Lungo",
-  race: "Gara",
-  recovery: "Recupero",
-  cross: "Cross",
-};
-
-const TYPE_COLORS: Record<string, string> = {
-  easy: "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
-  tempo: "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400",
-  interval: "bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400",
-  long: "bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400",
-  race: "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary",
-  recovery: "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400",
-  cross: "bg-zinc-500/10 text-zinc-600 dark:bg-zinc-500/20 dark:text-zinc-400",
-};
+import {
+  TYPE_LABELS,
+  TYPE_COLORS,
+  SPORT_LABELS,
+  SPORT_COLORS,
+  SPORT_ICONS,
+} from "@/lib/activity-meta";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", {
@@ -44,7 +32,7 @@ export default async function ActivitiesPage() {
   const { data: activities } = await supabase
     .from("activities")
     .select(
-      "id, started_at, type, distance_m, duration_s, avg_pace_s_km, avg_hr, elevation_gain_m, rpe, notes",
+      "id, started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr, elevation_gain_m, rpe, notes",
     )
     .order("started_at", { ascending: false })
     .returns<
@@ -53,6 +41,7 @@ export default async function ActivitiesPage() {
         | "id"
         | "started_at"
         | "type"
+        | "sport"
         | "distance_m"
         | "duration_s"
         | "avg_pace_s_km"
@@ -65,15 +54,17 @@ export default async function ActivitiesPage() {
 
   const list = activities ?? [];
 
-  // Compute 30-day stats and trends
-  const nowMs = Date.now();
-  const thirtyDaysAgoMs = nowMs - 30 * 24 * 3600 * 1000;
-  const sixtyDaysAgoMs = nowMs - 60 * 24 * 3600 * 1000;
+  // Compute 30-day stats and trends — solo corsa: gli altri sport non
+  // contano nel volume km.
+  const now = nowMs();
+  const thirtyDaysAgoMs = now - 30 * 24 * 3600 * 1000;
+  const sixtyDaysAgoMs = now - 60 * 24 * 3600 * 1000;
 
-  const last30DaysRuns = list.filter(
+  const runsOnly = list.filter((a) => a.sport === "running");
+  const last30DaysRuns = runsOnly.filter(
     (a) => new Date(a.started_at).getTime() >= thirtyDaysAgoMs
   );
-  const prev30DaysRuns = list.filter((a) => {
+  const prev30DaysRuns = runsOnly.filter((a) => {
     const time = new Date(a.started_at).getTime();
     return time >= sixtyDaysAgoMs && time < thirtyDaysAgoMs;
   });
@@ -168,7 +159,10 @@ export default async function ActivitiesPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {list.map((a) => (
+          {list.map((a) => {
+            const isRun = (a.sport ?? "running") === "running";
+            const SportIcon = SPORT_ICONS[a.sport ?? "other"];
+            return (
             <Link
               key={a.id}
               href={`/activities/${a.id}`}
@@ -177,19 +171,32 @@ export default async function ActivitiesPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span
-                      className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold ${
-                        TYPE_COLORS[a.type] ?? "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {TYPE_LABELS[a.type] ?? a.type}
-                    </span>
+                    {isRun ? (
+                      <span
+                        className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold ${
+                          TYPE_COLORS[a.type] ?? "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {TYPE_LABELS[a.type] ?? a.type}
+                      </span>
+                    ) : (
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold ${
+                          SPORT_COLORS[a.sport ?? "other"]
+                        }`}
+                      >
+                        <SportIcon size={12} />
+                        {SPORT_LABELS[a.sport ?? "other"]}
+                      </span>
+                    )}
                     <span className="text-xs text-muted-foreground font-medium">
                       {formatDate(a.started_at)}
                     </span>
                   </div>
                   <span className="text-xl font-bold tabular-nums tracking-tight text-foreground">
-                    {formatDistance(a.distance_m)}
+                    {a.distance_m > 0
+                      ? formatDistance(a.distance_m)
+                      : formatDuration(a.duration_s)}
                   </span>
                   
                   {/* Rich parameters */}
@@ -217,7 +224,9 @@ export default async function ActivitiesPage() {
                 <div className="text-right text-sm text-muted-foreground tabular-nums shrink-0 self-center flex items-center gap-2">
                   <div>
                     <div className="font-semibold text-foreground/90">{formatDuration(a.duration_s)}</div>
-                    <div className="text-xs font-medium">{formatPace(a.avg_pace_s_km)}</div>
+                    {a.avg_pace_s_km != null && (
+                      <div className="text-xs font-medium">{formatPace(a.avg_pace_s_km)}</div>
+                    )}
                   </div>
                   <span className="text-muted-foreground/30 group-hover:text-foreground/70 transition-colors text-lg font-medium pr-1 pl-1">›</span>
                 </div>
@@ -230,7 +239,8 @@ export default async function ActivitiesPage() {
                 </div>
               )}
             </Link>
-          ))}
+            );
+          })}
         </div>
       )}
     </AppShell>
