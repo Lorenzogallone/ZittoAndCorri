@@ -23,20 +23,18 @@ interface AiThinkingOverlayProps {
 }
 
 export function AiThinkingOverlay({ pending, variant }: AiThinkingOverlayProps) {
-  const [visibleSteps, setVisibleSteps] = useState(0);
+  const [visibleSteps, setVisibleSteps] = useState(pending ? 1 : 0);
   const [elapsed, setElapsed] = useState(0);
   const steps = variant === "plan" ? PLAN_STEPS : EVALUATION_STEPS;
 
-  // Reset when pending changes
-  useEffect(() => {
-    if (pending) {
-      setVisibleSteps(1);
-      setElapsed(0);
-    } else {
-      setVisibleSteps(0);
-      setElapsed(0);
-    }
-  }, [pending]);
+  // Reset quando pending cambia: adattamento dello stato durante il render
+  // (niente setState dentro un effect → niente render a cascata).
+  const [prevPending, setPrevPending] = useState(pending);
+  if (pending !== prevPending) {
+    setPrevPending(pending);
+    setVisibleSteps(pending ? 1 : 0);
+    setElapsed(0);
+  }
 
   // Reveal steps progressively
   useEffect(() => {

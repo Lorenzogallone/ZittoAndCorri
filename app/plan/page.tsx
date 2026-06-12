@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { PlanCalendar } from "@/components/plan-calendar";
 import { computeAdherence } from "@/lib/metrics/adherence";
-import { formatDistance } from "@/lib/format";
+import { formatDistance, daysUntil } from "@/lib/format";
+import { isoDaysFromNow } from "@/lib/dates";
 import { PlanGenerator } from "@/components/plan-generator";
 import type { PlannedWorkout, Goal, Activity, PlanReview } from "@/lib/types";
 
@@ -42,9 +43,7 @@ export default async function PlanPage({ searchParams }: Props) {
   if (!user) redirect("/login");
 
   // Fetch parallelo: workout mese + goal attivo + workout ultimi 14gg per aderenza
-  const fourteenAgo = new Date(Date.now() - 14 * 24 * 3600 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  const fourteenAgo = isoDaysFromNow(-14);
 
   const [
     { data: monthWorkouts },
@@ -76,11 +75,11 @@ export default async function PlanPage({ searchParams }: Props) {
         .returns<Array<{ status: string; date: string }>>(),
       supabase
         .from("activities")
-        .select("id, started_at, type")
+        .select("id, started_at, type, sport")
         .eq("user_id", user.id)
         .gte("started_at", `${start}T00:00:00`)
         .lte("started_at", `${end}T23:59:59`)
-        .returns<Pick<Activity, "id" | "started_at" | "type">[]>(),
+        .returns<Pick<Activity, "id" | "started_at" | "type" | "sport">[]>(),
       supabase
         .from("plan_reviews")
         .select("summary, comments, created_at")
@@ -98,15 +97,8 @@ export default async function PlanPage({ searchParams }: Props) {
         )
       : null;
 
-  const weeksLeft = activeGoal?.race_date
-    ? Math.max(
-        0,
-        Math.ceil(
-          (new Date(activeGoal.race_date).getTime() - Date.now()) /
-            (7 * 24 * 3600 * 1000),
-        ),
-      )
-    : null;
+  const daysToRace = daysUntil(activeGoal?.race_date);
+  const weeksLeft = daysToRace != null ? Math.ceil(daysToRace / 7) : null;
 
   return (
     <AppShell title="Piano">

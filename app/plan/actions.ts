@@ -284,6 +284,19 @@ export async function generatePlan(
   });
   if (revError) console.error("generatePlan/plan_reviews:", revError.message);
 
+  // Memoria coach: la narrativa di fase prodotta dall'LLM viene persistita e
+  // rientra in tutti i prompt futuri (continuità della progressione).
+  const coachMemory =
+    typeof result.coach_memory === "string" ? result.coach_memory.trim() : "";
+  if (coachMemory) {
+    const { error: memError } = await supabase.from("athlete_snapshot").upsert({
+      user_id: user.id,
+      narrative: { coach_memory: coachMemory },
+      updated_at: new Date().toISOString(),
+    });
+    if (memError) console.error("generatePlan/athlete_snapshot:", memError.message);
+  }
+
   revalidatePath("/plan");
   return { ok: true };
 }

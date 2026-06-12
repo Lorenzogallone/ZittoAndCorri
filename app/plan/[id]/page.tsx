@@ -18,16 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const TYPE_LABELS: Record<string, string> = {
-  easy: "Easy",
-  tempo: "Tempo",
-  interval: "Ripetute",
-  long: "Lungo",
-  race: "Gara",
-  recovery: "Recupero",
-  cross: "Cross",
-};
+import { TYPE_LABELS } from "@/lib/activity-meta";
 
 const STATUS_LABELS: Record<string, string> = {
   planned: "Pianificato",

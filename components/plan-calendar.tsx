@@ -1,17 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import type { PlannedWorkout, AdherenceResult, WorkoutType } from "@/lib/types";
-
-const TYPE_COLORS: Record<string, string> = {
-  easy: "bg-green-500/20 text-green-400",
-  tempo: "bg-orange-500/20 text-orange-400",
-  interval: "bg-red-500/20 text-red-400",
-  long: "bg-violet-500/20 text-violet-400",
-  race: "bg-yellow-500/20 text-yellow-400",
-  recovery: "bg-blue-500/20 text-blue-400",
-  cross: "bg-zinc-500/20 text-zinc-400",
-};
+import type { PlannedWorkout, AdherenceResult, WorkoutType, Sport } from "@/lib/types";
+import { TYPE_COLORS, SPORT_COLORS, SPORT_LABELS } from "@/lib/activity-meta";
 
 const TYPE_SHORT: Record<string, string> = {
   easy: "Easy",
@@ -51,6 +42,7 @@ interface CompletedActivity {
   id: string;
   started_at: string;
   type: WorkoutType;
+  sport?: Sport;
 }
 
 interface ActiveGoal {
@@ -177,17 +169,24 @@ export function PlanCalendar({ workouts, activities, goal, month, today, adheren
                 </span>
               )}
 
-              {/* Corse fatte (indicatori visivi) */}
-              {dayActivities.map((a) => (
-                <span
-                  key={a.id}
-                  className={`block rounded px-1 py-0.5 text-[9px] font-medium leading-tight truncate ${
-                    TYPE_COLORS[a.type] ?? "bg-zinc-500/20 text-zinc-400"
-                  }`}
-                >
-                  ✓ {TYPE_SHORT[a.type] ?? a.type}
-                </span>
-              ))}
+              {/* Attività fatte (indicatori visivi): corse col tipo, altri
+                  sport con la propria label/colore */}
+              {dayActivities.map((a) => {
+                const isRun = (a.sport ?? "running") === "running";
+                return (
+                  <span
+                    key={a.id}
+                    className={`block rounded px-1 py-0.5 text-[9px] font-medium leading-tight truncate ${
+                      (isRun
+                        ? TYPE_COLORS[a.type]
+                        : SPORT_COLORS[a.sport ?? "other"]) ??
+                      "bg-zinc-500/20 text-zinc-400"
+                    }`}
+                  >
+                    ✓ {isRun ? TYPE_SHORT[a.type] ?? a.type : SPORT_LABELS[a.sport ?? "other"]}
+                  </span>
+                );
+              })}
 
               {/* Allenamenti pianificati (indicatori visivi) */}
               {dayWorkouts.map((w) => (

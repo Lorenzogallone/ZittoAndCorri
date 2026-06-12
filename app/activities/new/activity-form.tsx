@@ -3,10 +3,11 @@
 import { useActionState, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createActivity, saveParsedActivity, type ActivityFormState } from "../actions";
-import { WORKOUT_TYPES } from "@/lib/types";
-import type { PlannedWorkout } from "@/lib/types";
+import { WORKOUT_TYPES, SPORTS } from "@/lib/types";
+import type { PlannedWorkout, Sport } from "@/lib/types";
 import type { ActivityInput } from "@/lib/ingest/schema";
 import { parseGpx } from "@/lib/ingest/adapters/gpx";
+import { parseFit } from "@/lib/ingest/adapters/fit";
 import { formatDuration, parseDuration } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,16 +21,34 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Upload, PenLine } from "lucide-react";
+import { TYPE_LABELS, SPORT_LABELS } from "@/lib/activity-meta";
 
-const TYPE_LABELS: Record<string, string> = {
-  easy: "Easy",
-  tempo: "Tempo",
-  interval: "Ripetute",
-  long: "Lungo",
-  race: "Gara",
-  recovery: "Recupero",
-  cross: "Cross",
-};
+/** Select sport condiviso tra form manuale e review file. */
+function SportSelect({
+  value,
+  onChange,
+}: {
+  value: Sport;
+  onChange: (s: Sport) => void;
+}) {
+  return (
+    <div className="grid gap-2.5">
+      <Label htmlFor="sport">Sport</Label>
+      <Select name="sport" value={value} onValueChange={(v) => onChange(v as Sport)}>
+        <SelectTrigger id="sport">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {SPORTS.map((s) => (
+            <SelectItem key={s} value={s}>
+              {SPORT_LABELS[s]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 type NearbyWorkout = Pick<
   PlannedWorkout,
@@ -46,6 +65,8 @@ interface Props {
 function ManualForm({ nearbyWorkouts, today }: Props) {
   const initialState: ActivityFormState = {};
   const [state, formAction, pending] = useActionState(createActivity, initialState);
+  const [sport, setSport] = useState<Sport>("running");
+  const isRunning = sport === "running";
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
@@ -54,25 +75,31 @@ function ManualForm({ nearbyWorkouts, today }: Props) {
         <Input id="started_at" name="started_at" type="datetime-local" required />
       </div>
 
-      <div className="grid gap-2.5">
-        <Label htmlFor="type">Tipo</Label>
-        <Select name="type" defaultValue="easy">
-          <SelectTrigger id="type">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {WORKOUT_TYPES.map((t) => (
-              <SelectItem key={t} value={t}>
-                {TYPE_LABELS[t] ?? t}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <SportSelect value={sport} onChange={setSport} />
+
+      {isRunning && (
+        <div className="grid gap-2.5">
+          <Label htmlFor="type">Tipo</Label>
+          <Select name="type" defaultValue="easy">
+            <SelectTrigger id="type">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {WORKOUT_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {TYPE_LABELS[t] ?? t}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2.5">
-          <Label htmlFor="distance_km">Distanza (km)</Label>
+          <Label htmlFor="distance_km">
+            Distanza (km{isRunning ? "" : ", opzionale"})
+          </Label>
           <Input
             id="distance_km"
             name="distance_km"
@@ -80,8 +107,8 @@ function ManualForm({ nearbyWorkouts, today }: Props) {
             step="0.01"
             min="0"
             inputMode="decimal"
-            placeholder="10.00"
-            required
+            placeholder={isRunning ? "10.00" : "—"}
+            required={isRunning}
           />
         </div>
         <div className="grid gap-2.5">
@@ -161,7 +188,7 @@ function ManualForm({ nearbyWorkouts, today }: Props) {
       )}
 
       <Button type="submit" disabled={pending} size="lg" className="w-full mt-2">
-        {pending ? "Salvo…" : "Salva corsa"}
+        {pending ? "Salvo…" : isRunning ? "Salva corsa" : "Salva attività"}
       </Button>
     </form>
   );
@@ -193,6 +220,8 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [sport, setSport] = useState<Sport>(initialData.sport ?? "running");
+  const isRunning = sport === "running";
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -200,7 +229,7 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
     setError(null);
 
     const formData = new FormData(e.currentTarget);
-    const type = formData.get("type") as string;
+    const type = isRunning ? (formData.get("type") as string) : "cross";
     const notes = formData.get("notes") as string;
     const startedAtLocal = formData.get("started_at") as string;
     const distanceKm = Number(formData.get("distance_km"));
@@ -228,7 +257,8 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
 
     const activityInput: ActivityInput = {
       ...initialData,
-      type: type as any,
+      type: type as ActivityInput["type"],
+      sport,
       notes: notes || undefined,
       started_at: startedAtDate.toISOString(),
       distance_m: Math.round(distanceKm * 1000),
@@ -251,42 +281,46 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
-        <h3 className="text-lg font-semibold text-foreground">Revisione file GPX</h3>
+        <h3 className="text-lg font-semibold text-foreground">Revisione attività</h3>
         <p className="text-xs text-muted-foreground">
           I dati sono stati estratti con successo. Puoi modificarli prima di salvare.
         </p>
       </div>
 
       <div className="grid gap-2.5">
-        <Label htmlFor="notes">Nome / Note corsa</Label>
+        <Label htmlFor="notes">Nome / Note attività</Label>
         <Input
           id="notes"
           name="notes"
           type="text"
-          defaultValue={initialData.notes ?? "Corsa GPX"}
-          placeholder="Nome o note della corsa"
+          defaultValue={initialData.notes ?? "Attività importata"}
+          placeholder="Nome o note dell'attività"
           required
         />
       </div>
 
-      <div className="grid gap-2.5">
-        <Label htmlFor="type">Tipo (Tag)</Label>
-        <Select name="type" defaultValue={initialData.type ?? "easy"}>
-          <SelectTrigger id="type">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {WORKOUT_TYPES.map((t) => (
-              <SelectItem key={t} value={t}>
-                {TYPE_LABELS[t] ?? t}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <SportSelect value={sport} onChange={setSport} />
+
+      {isRunning && (
+        <div className="grid gap-2.5">
+          <Label htmlFor="type">Tipo (Tag)</Label>
+          <Select name="type" defaultValue={initialData.type ?? "easy"}>
+            <SelectTrigger id="type">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {WORKOUT_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {TYPE_LABELS[t] ?? t}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="grid gap-2.5">
-        <Label htmlFor="started_at">Data e ora (da GPX)</Label>
+        <Label htmlFor="started_at">Data e ora (dal file)</Label>
         <Input
           id="started_at"
           name="started_at"
@@ -300,7 +334,7 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
 
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2.5">
-          <Label htmlFor="distance_km">Distanza (km - da GPX)</Label>
+          <Label htmlFor="distance_km">Distanza (km - dal file)</Label>
           <Input
             id="distance_km"
             name="distance_km"
@@ -315,7 +349,7 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
           />
         </div>
         <div className="grid gap-2.5">
-          <Label htmlFor="duration">Durata (da GPX)</Label>
+          <Label htmlFor="duration">Durata (dal file)</Label>
           <Input
             id="duration"
             name="duration"
@@ -330,7 +364,7 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
       </div>
 
       <div className="separator my-1" />
-      <p className="text-xs text-muted-foreground uppercase tracking-wider">Dati Cardio & Dislivello (da GPX)</p>
+      <p className="text-xs text-muted-foreground uppercase tracking-wider">Dati Cardio & Dislivello (dal file)</p>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2.5">
@@ -424,7 +458,7 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
           Indietro
         </Button>
         <Button type="submit" className="flex-1" disabled={pending}>
-          {pending ? "Salvo..." : "Salva corsa"}
+          {pending ? "Salvo..." : isRunning ? "Salva corsa" : "Salva attività"}
         </Button>
       </div>
     </form>
@@ -452,11 +486,18 @@ function GpxUploadForm({ nearbyWorkouts, today }: GpxUploadFormProps) {
     setError(null);
 
     try {
-      const text = await file.text();
-      const input = parseGpx(text);
+      const ext = file.name.split(".").pop()?.toLowerCase();
+      let input: ActivityInput;
+      if (ext === "fit") {
+        input = await parseFit(await file.arrayBuffer());
+      } else if (ext === "gpx") {
+        input = parseGpx(await file.text());
+      } else {
+        throw new Error("Formato non supportato: usa un file .gpx o .fit.");
+      }
       setParsedInput(input);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore durante il parsing del GPX.");
+      setError(err instanceof Error ? err.message : "Errore durante il parsing del file.");
       setParsedInput(null);
     } finally {
       setIsParsing(false);
@@ -481,11 +522,11 @@ function GpxUploadForm({ nearbyWorkouts, today }: GpxUploadFormProps) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
-        <Label className="text-sm font-medium">File GPX da Strava</Label>
+        <Label className="text-sm font-medium">File GPX o FIT</Label>
         <input
           ref={inputRef}
           type="file"
-          accept=".gpx"
+          accept=".gpx,.fit"
           className="hidden"
           onChange={handleFileChange}
         />
@@ -497,13 +538,13 @@ function GpxUploadForm({ nearbyWorkouts, today }: GpxUploadFormProps) {
         >
           <Upload size={32} className="text-muted-foreground" />
           <span className="text-sm text-muted-foreground font-medium">
-            {isParsing ? "Analisi file in corso..." : fileName ? fileName : "Tocca per scegliere un file .gpx"}
+            {isParsing ? "Analisi file in corso..." : fileName ? fileName : "Tocca per scegliere un file .gpx o .fit"}
           </span>
         </button>
         <p className="text-xs text-muted-foreground text-center">
-          Solo file .gpx esportati da Strava, Garmin o Coros.
+          File .gpx o .fit esportati da Strava, Garmin o Coros.
           <br />
-          Passo, zone HR e split vengono calcolati in automatico.
+          Lo sport viene riconosciuto dal file; passo, zone HR e split sono calcolati in automatico.
         </p>
       </div>
 
@@ -547,7 +588,7 @@ export function ActivityForm({ nearbyWorkouts, today }: Props) {
           }`}
         >
           <Upload size={15} />
-          Da file GPX
+          Da file (GPX/FIT)
         </button>
       </div>
 

@@ -16,6 +16,7 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
   const [showKey, setShowKey] = useState(false);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleCopy = async () => {
     if (!apiKey) return;
@@ -35,15 +36,16 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
     if (!confirmRegen) return;
 
     setLoading(true);
+    setError(null);
     try {
       const res = await regenerateApiKey();
       if (res.error) {
-        alert("Errore durante la rigenerazione: " + res.error);
+        setError("Errore durante la rigenerazione: " + res.error);
       } else if (res.key) {
         setApiKey(res.key);
       }
-    } catch (err) {
-      alert("Errore imprevisto.");
+    } catch {
+      setError("Errore imprevisto. Riprova.");
     } finally {
       setLoading(false);
     }
@@ -90,6 +92,11 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
           )}
         </div>
       </div>
+      {error && (
+        <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3">
+          <p className="text-destructive text-sm" role="alert">{error}</p>
+        </div>
+      )}
       <div className="flex justify-end">
         <Button
           type="button"

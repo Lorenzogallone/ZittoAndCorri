@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { deleteActivity } from "../actions";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
@@ -12,27 +11,13 @@ import { Clock, Gauge, Heart, HeartPulse, Mountain, Flame } from "lucide-react";
 import { HrChart, PaceChart, ElevationChart } from "./activity-charts";
 import { ActivityEvaluation } from "@/components/activity-evaluation";
 import ActivityMap from "@/components/activity-map";
-
-
-const TYPE_LABELS: Record<string, string> = {
-  easy: "Easy",
-  tempo: "Tempo",
-  interval: "Ripetute",
-  long: "Lungo",
-  race: "Gara",
-  recovery: "Recupero",
-  cross: "Cross",
-};
-
-const TYPE_COLORS: Record<string, string> = {
-  easy: "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
-  tempo: "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400",
-  interval: "bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400",
-  long: "bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400",
-  race: "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary",
-  recovery: "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400",
-  cross: "bg-zinc-500/10 text-zinc-600 dark:bg-zinc-500/20 dark:text-zinc-400",
-};
+import {
+  TYPE_LABELS,
+  TYPE_COLORS,
+  SPORT_LABELS,
+  SPORT_COLORS,
+  SPORT_ICONS,
+} from "@/lib/activity-meta";
 
 const ZONE_LABELS: Record<string, string> = {
   z1: "Z1 · Recupero",
@@ -156,6 +141,9 @@ export default async function ActivityDetailPage({
 
   if (!activity) notFound();
 
+  const isRun = (activity.sport ?? "running") === "running";
+  const SportIcon = SPORT_ICONS[activity.sport ?? "other"];
+
   const dateLabel = new Date(activity.started_at).toLocaleString("it-IT", {
     dateStyle: "full",
     timeStyle: "short",
@@ -205,16 +193,29 @@ export default async function ActivityDetailPage({
       {/* Hero */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-2">
-          <span
-            className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-medium ${
-              TYPE_COLORS[activity.type] ?? "bg-muted text-muted-foreground"
-            }`}
-          >
-            {TYPE_LABELS[activity.type] ?? activity.type}
-          </span>
+          {isRun ? (
+            <span
+              className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-medium ${
+                TYPE_COLORS[activity.type] ?? "bg-muted text-muted-foreground"
+              }`}
+            >
+              {TYPE_LABELS[activity.type] ?? activity.type}
+            </span>
+          ) : (
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium ${
+                SPORT_COLORS[activity.sport ?? "other"]
+              }`}
+            >
+              <SportIcon size={13} />
+              {SPORT_LABELS[activity.sport ?? "other"]}
+            </span>
+          )}
         </div>
         <h1 className="text-3xl font-bold tracking-tight mb-1">
-          {formatDistance(activity.distance_m)}
+          {activity.distance_m > 0
+            ? formatDistance(activity.distance_m)
+            : formatDuration(activity.duration_s)}
         </h1>
         <p className="text-muted-foreground text-sm capitalize">{dateLabel}</p>
       </div>
@@ -222,7 +223,9 @@ export default async function ActivityDetailPage({
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-2.5 mb-6">
         <StatCard icon={Clock} label="Durata" value={formatDuration(activity.duration_s)} />
-        <StatCard icon={Gauge} label="Passo" value={formatPace(activity.avg_pace_s_km)} />
+        {activity.avg_pace_s_km != null && (
+          <StatCard icon={Gauge} label="Passo" value={formatPace(activity.avg_pace_s_km)} />
+        )}
         {activity.avg_hr != null && (
           <StatCard icon={Heart} label="HR media" value={`${activity.avg_hr} bpm`} />
         )}
