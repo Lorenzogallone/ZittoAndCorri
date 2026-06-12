@@ -274,7 +274,8 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
       setError(res.error);
       setPending(false);
     } else if (res.id) {
-      router.push(`/activities/${res.id}`);
+      // replace: il form di review non deve restare nella history.
+      router.replace(`/activities/${res.id}`);
     }
   };
 

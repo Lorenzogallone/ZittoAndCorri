@@ -15,3 +15,12 @@ export function isoDaysFromNow(days: number): string {
 export function nowMs(): number {
   return Date.now();
 }
+
+/** Sposta una data ISO YYYY-MM-DD di `days` giorni (negativo = indietro). */
+export function isoDateShift(isoDate: string, days: number): string {
+  return new Date(
+    new Date(`${isoDate}T00:00:00Z`).getTime() + days * 24 * 3600 * 1000,
+  )
+    .toISOString()
+    .slice(0, 10);
+}

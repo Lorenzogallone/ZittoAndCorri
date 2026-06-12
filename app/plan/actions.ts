@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, RedirectType } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { parseDuration } from "@/lib/format";
 import { buildAthleteContext } from "@/lib/ai/context";
@@ -84,7 +84,7 @@ export async function createPlannedWorkout(
   if (error) return { error: error.message };
 
   revalidatePath("/plan");
-  redirect("/plan");
+  redirect("/plan", RedirectType.replace);
 }
 
 export async function updateWorkoutStatus(formData: FormData): Promise<void> {
@@ -166,7 +166,7 @@ export async function deletePlannedWorkout(formData: FormData): Promise<void> {
     .eq("user_id", user.id);
 
   revalidatePath("/plan");
-  redirect("/plan");
+  redirect("/plan", RedirectType.replace);
 }
 
 function isoDate(d: Date): string {

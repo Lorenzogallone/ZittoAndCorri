@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, RedirectType } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ingestActivity } from "@/lib/ingest/ingest";
 import { parseGpx } from "@/lib/ingest/adapters/gpx";
@@ -104,7 +104,7 @@ export async function createActivity(
   }
 
   revalidatePath("/activities");
-  redirect(`/activities/${activityId}`);
+  redirect(`/activities/${activityId}`, RedirectType.replace);
 }
 
 export interface GpxImportFormState {
@@ -153,7 +153,7 @@ export async function importGpxActivity(
   }
 
   revalidatePath("/activities");
-  redirect(`/activities/${activityId}`);
+  redirect(`/activities/${activityId}`, RedirectType.replace);
 }
 
 export async function deleteActivity(formData: FormData): Promise<void> {
@@ -179,7 +179,7 @@ export async function deleteActivity(formData: FormData): Promise<void> {
 
   revalidatePath("/plan");
   revalidatePath("/activities");
-  redirect("/activities");
+  redirect("/activities", RedirectType.replace);
 }
 
 export interface EditActivityFormState {
@@ -296,9 +296,41 @@ export async function updateActivity(
     return { error: error.message };
   }
 
+  // Collegamento al workout pianificato: il campo è presente solo se il form
+  // lo mostra. "none" scollega; un id diverso sposta il collegamento.
+  const plannedRaw = formData.get("planned_workout_id");
+  if (plannedRaw !== null) {
+    const desiredId = String(plannedRaw) === "none" ? null : String(plannedRaw);
+    const { data: current } = await supabase
+      .from("planned_workouts")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("activity_id", id)
+      .limit(1)
+      .maybeSingle<{ id: string }>();
+
+    if ((current?.id ?? null) !== desiredId) {
+      if (current) {
+        await supabase
+          .from("planned_workouts")
+          .update({ activity_id: null, status: "planned" })
+          .eq("id", current.id)
+          .eq("user_id", user.id);
+      }
+      if (desiredId) {
+        await supabase
+          .from("planned_workouts")
+          .update({ activity_id: id, status: "completed" })
+          .eq("id", desiredId)
+          .eq("user_id", user.id);
+      }
+      revalidatePath("/plan");
+    }
+  }
+
   revalidatePath(`/activities/${id}`);
   revalidatePath("/activities");
-  redirect(`/activities/${id}`);
+  redirect(`/activities/${id}`, RedirectType.replace);
 }
 
 export async function saveParsedActivity(
