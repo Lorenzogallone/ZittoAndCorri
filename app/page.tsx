@@ -397,7 +397,7 @@ export default async function Home() {
 
                     <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground flex-wrap">
                       <span className="tabular-nums font-medium text-foreground/80">{formatDuration(lastActivity.duration_s)}</span>
-                      {lastActivity.avg_pace_s_km != null && (
+                      {lastActivity.sport === "running" && lastActivity.avg_pace_s_km != null && (
                         <>
                           <span className="opacity-30">·</span>
                           <span className="tabular-nums font-medium text-foreground/80">{formatPace(lastActivity.avg_pace_s_km)}</span>

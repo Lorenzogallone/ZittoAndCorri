@@ -32,7 +32,7 @@ export default async function ActivitiesPage() {
   const { data: activities } = await supabase
     .from("activities")
     .select(
-      "id, started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr, elevation_gain_m, rpe, notes",
+      "id, started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr, elevation_gain_m, rpe",
     )
     .order("started_at", { ascending: false })
     .returns<
@@ -48,7 +48,6 @@ export default async function ActivitiesPage() {
         | "avg_hr"
         | "elevation_gain_m"
         | "rpe"
-        | "notes"
       >[]
     >();
 
@@ -79,7 +78,7 @@ export default async function ActivitiesPage() {
 
   return (
     <AppShell
-      title="Le mie corse"
+      title="Le mie attività"
       headerAction={
         <Button asChild size="sm">
           <Link href="/activities/new">
@@ -145,7 +144,7 @@ export default async function ActivitiesPage() {
             <ActivityIcon size={28} className="text-muted-foreground" />
           </div>
           <div>
-            <p className="text-foreground font-medium mb-1">Nessuna corsa</p>
+            <p className="text-foreground font-medium mb-1">Nessuna attività</p>
             <p className="text-muted-foreground text-sm">
               Inizia a tracciare i tuoi allenamenti.
             </p>
@@ -153,7 +152,7 @@ export default async function ActivitiesPage() {
           <Button asChild>
             <Link href="/activities/new">
               <Plus size={16} />
-              Nuova corsa
+              Nuova attività
             </Link>
           </Button>
         </div>
@@ -224,20 +223,14 @@ export default async function ActivitiesPage() {
                 <div className="text-right text-sm text-muted-foreground tabular-nums shrink-0 self-center flex items-center gap-2">
                   <div>
                     <div className="font-semibold text-foreground/90">{formatDuration(a.duration_s)}</div>
-                    {a.avg_pace_s_km != null && (
+                    {/* Il passo min/km ha senso solo per la corsa. */}
+                    {isRun && a.avg_pace_s_km != null && (
                       <div className="text-xs font-medium">{formatPace(a.avg_pace_s_km)}</div>
                     )}
                   </div>
                   <span className="text-muted-foreground/30 group-hover:text-foreground/70 transition-colors text-lg font-medium pr-1 pl-1">›</span>
                 </div>
               </div>
-
-              {/* Note snippet */}
-              {a.notes && (
-                <div className="mt-3 text-xs text-muted-foreground/80 italic line-clamp-1 border-t border-border/30 pt-2 group-hover:text-muted-foreground transition-colors">
-                  &ldquo;{a.notes}&rdquo;
-                </div>
-              )}
             </Link>
             );
           })}

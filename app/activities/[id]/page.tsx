@@ -180,11 +180,13 @@ export default async function ActivityDetailPage({
   return (
     <AppShell
       backHref="/activities"
-      backLabel="Corse"
+      backLabel="Attività"
       hideTabBar
       headerAction={
         <Button asChild variant="outline" size="sm">
-          <Link href={`/activities/${activity.id}/edit`}>
+          {/* replace: l'editor sostituisce il dettaglio nella history, così
+              dopo il salvataggio "indietro" torna a lista/home, non al form. */}
+          <Link href={`/activities/${activity.id}/edit`} replace>
             Modifica
           </Link>
         </Button>
@@ -223,7 +225,7 @@ export default async function ActivityDetailPage({
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-2.5 mb-6">
         <StatCard icon={Clock} label="Durata" value={formatDuration(activity.duration_s)} />
-        {activity.avg_pace_s_km != null && (
+        {isRun && activity.avg_pace_s_km != null && (
           <StatCard icon={Gauge} label="Passo" value={formatPace(activity.avg_pace_s_km)} />
         )}
         {activity.avg_hr != null && (

@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Loading() {
   return (
-    <AppShell title="Le mie corse">
+    <AppShell title="Le mie attività">
       <div className="flex flex-col gap-3">
         <div className="grid grid-cols-3 gap-3 mb-2">
           <Skeleton className="h-20 rounded-2xl" />

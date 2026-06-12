@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, RedirectType } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { parseDuration } from "@/lib/format";
 
@@ -64,7 +64,7 @@ export async function createGoal(
   if (error) return { error: error.message };
 
   revalidatePath("/goals");
-  redirect("/goals");
+  redirect("/goals", RedirectType.replace);
 }
 
 export async function updateGoal(
@@ -121,7 +121,7 @@ export async function updateGoal(
   if (error) return { error: error.message };
 
   revalidatePath("/goals");
-  redirect("/goals");
+  redirect("/goals", RedirectType.replace);
 }
 
 export async function deleteGoal(formData: FormData): Promise<void> {
@@ -137,7 +137,7 @@ export async function deleteGoal(formData: FormData): Promise<void> {
   await supabase.from("goals").delete().eq("id", id).eq("user_id", user.id);
 
   revalidatePath("/goals");
-  redirect("/goals");
+  redirect("/goals", RedirectType.replace);
 }
 
 export async function setActiveGoal(formData: FormData): Promise<void> {
