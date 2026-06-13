@@ -15,10 +15,7 @@ import {
   ACCENT_ORDER,
   STYLES,
   STYLE_ORDER,
-  subscribeThemePrefs,
-  getThemePrefsSnapshot,
-  getThemePrefsServerSnapshot,
-  setThemePrefs,
+  applyThemePrefs,
   subscribeSystemDark,
   getSystemDarkSnapshot,
   getSystemDarkServerSnapshot,
@@ -27,6 +24,7 @@ import {
   type StyleKey,
   type ThemePrefs,
 } from "@/lib/theme";
+import { updateThemePrefs } from "./actions";
 
 const MODES: { key: ThemeMode; label: string; icon: typeof Sun }[] = [
   { key: "auto", label: "Auto", icon: Monitor },
@@ -34,16 +32,12 @@ const MODES: { key: ThemeMode; label: string; icon: typeof Sun }[] = [
   { key: "dark", label: "Scuro", icon: Moon },
 ];
 
-export function ThemeSettings() {
+export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
   const [isOpen, setIsOpen] = useState(false);
+  // Sorgente di verità: il DB (seed iniettato server-side). Qui partiamo dal
+  // valore salvato e ottimisticamente applichiamo + persistiamo a ogni cambio.
+  const [prefs, setPrefs] = useState<ThemePrefs>(initial);
 
-  // Preferenze e tema di sistema letti come store esterni: niente setState in
-  // effect, niente mismatch d'idratazione (snapshot server = default).
-  const prefs = useSyncExternalStore(
-    subscribeThemePrefs,
-    getThemePrefsSnapshot,
-    getThemePrefsServerSnapshot,
-  );
   const systemDark = useSyncExternalStore(
     subscribeSystemDark,
     getSystemDarkSnapshot,
@@ -54,7 +48,10 @@ export function ThemeSettings() {
     prefs.mode === "dark" || (prefs.mode === "auto" && systemDark);
 
   function update(patch: Partial<ThemePrefs>) {
-    setThemePrefs({ ...prefs, ...patch });
+    const next = { ...prefs, ...patch };
+    setPrefs(next);
+    applyThemePrefs(next); // applicazione live immediata (+ cache localStorage)
+    void updateThemePrefs(next); // persistenza DB best-effort
   }
 
   return (

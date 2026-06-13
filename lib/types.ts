@@ -60,6 +60,10 @@ export interface Profile {
   resting_hr: number | null;
   birthdate: string | null;
   api_key: string | null;
+  /** Preferenze tema (Impostazioni → Aspetto). Vedi lib/theme.ts. */
+  theme_mode: string | null;
+  theme_accent: string | null;
+  theme_style: string | null;
   created_at: string;
 }
 

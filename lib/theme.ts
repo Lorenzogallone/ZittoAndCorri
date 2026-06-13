@@ -231,10 +231,79 @@ export function applyThemeToDocument(
   }
 }
 
-/** Wrapper comodo lato browser. */
+/** Wrapper comodo lato browser: applica al DOM, aggiorna la cache localStorage
+ *  (per l'offline) e il global usato dal watcher. */
 export function applyThemePrefs(prefs: ThemePrefs) {
   if (typeof document === "undefined") return;
   applyThemeToDocument(document, prefs, ACCENTS, STYLES, NEUTRAL_KEYS);
+  saveThemePref("mode", prefs.mode);
+  saveThemePref("accent", prefs.accent);
+  saveThemePref("style", prefs.style);
+  (window as unknown as { __zcThemePrefs?: ThemePrefs }).__zcThemePrefs = prefs;
+}
+
+/** Preferenze correnti note al client: il global è impostato dall'init script
+ *  (seed dal DB) e da applyThemePrefs; fallback a localStorage. */
+export function getCurrentPrefs(): ThemePrefs {
+  if (typeof window === "undefined") return { ...DEFAULT_PREFS };
+  const g = (window as unknown as { __zcThemePrefs?: ThemePrefs }).__zcThemePrefs;
+  return g ?? readThemePrefs();
+}
+
+/** Normalizza un oggetto sconosciuto in ThemePrefs valide (usata dal server). */
+export function sanitizePrefs(input: {
+  mode?: string | null;
+  accent?: string | null;
+  style?: string | null;
+}): ThemePrefs {
+  const mode = input.mode as ThemeMode;
+  const accent = input.accent as AccentKey;
+  const style = input.style as StyleKey;
+  return {
+    mode: mode === "light" || mode === "dark" || mode === "auto" ? mode : DEFAULT_PREFS.mode,
+    accent: accent && ACCENTS[accent] ? accent : DEFAULT_PREFS.accent,
+    style: style && STYLES[style] ? style : DEFAULT_PREFS.style,
+  };
+}
+
+// Sottoscrizione alla preferenza di sistema chiaro/scuro (per le anteprime).
+export function subscribeSystemDark(cb: () => void): () => void {
+  const mql = window.matchMedia("(prefers-color-scheme: dark)");
+  mql.addEventListener("change", cb);
+  return () => mql.removeEventListener("change", cb);
+}
+
+export function getSystemDarkSnapshot(): boolean {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+export function getSystemDarkServerSnapshot(): boolean {
+  return false;
+}
+
+// ── Script inline anti-FOUC ──────────────────────────────────────────────────
+// Costruito server-side col seed dal DB (`serverPrefs`): è la sorgente di
+// verità, sincronizzata tra dispositivi. Se assente (utente non loggato, query
+// fallita/offline, colonne non ancora migrate) si ripiega sulla cache
+// localStorage e infine sui default. In ogni caso aggiorna la cache localStorage
+// e applica la palette PRIMA del primo paint.
+export function themeInitScript(serverPrefs: ThemePrefs | null): string {
+  return `(function(){try{
+var ACCENTS=${JSON.stringify(ACCENTS)};
+var STYLES=${JSON.stringify(STYLES)};
+var NK=${JSON.stringify(NEUTRAL_KEYS)};
+var K=${JSON.stringify(STORAGE_KEYS)};
+var server=${JSON.stringify(serverPrefs)};
+var apply=${applyThemeToDocument.toString()};
+var ls=window.localStorage;
+var prefs=server||{mode:ls.getItem(K.mode)||"auto",accent:ls.getItem(K.accent)||"coral",style:ls.getItem(K.style)||"warm"};
+if(["auto","light","dark"].indexOf(prefs.mode)<0)prefs.mode="auto";
+if(!ACCENTS[prefs.accent])prefs.accent="coral";
+if(!STYLES[prefs.style])prefs.style="warm";
+try{ls.setItem(K.mode,prefs.mode);ls.setItem(K.accent,prefs.accent);ls.setItem(K.style,prefs.style);}catch(e){}
+window.__zcThemePrefs=prefs;
+apply(document,prefs,ACCENTS,STYLES,NK);
+}catch(e){}})();`;
 }
 
 /** Legge le preferenze salvate (con fallback ai default). SSR-safe. */
@@ -268,85 +337,3 @@ export function saveThemePref<K extends keyof ThemePrefs>(
   }
 }
 
-// ── Store esterno per useSyncExternalStore ───────────────────────────────────
-// Espone le preferenze come store esterno così i componenti possono leggerle
-// senza setState dentro un effect e senza mismatch d'idratazione (snapshot
-// server = default). Lo snapshot client è memoizzato: stessa reference finché
-// non cambia davvero (requisito di useSyncExternalStore).
-
-const listeners = new Set<() => void>();
-let cachedPrefs: ThemePrefs | null = null;
-
-export function subscribeThemePrefs(cb: () => void): () => void {
-  listeners.add(cb);
-  const onStorage = (e: StorageEvent) => {
-    if (
-      !e.key ||
-      e.key === STORAGE_KEYS.mode ||
-      e.key === STORAGE_KEYS.accent ||
-      e.key === STORAGE_KEYS.style
-    ) {
-      cachedPrefs = null;
-      cb();
-    }
-  };
-  window.addEventListener("storage", onStorage);
-  return () => {
-    listeners.delete(cb);
-    window.removeEventListener("storage", onStorage);
-  };
-}
-
-export function getThemePrefsSnapshot(): ThemePrefs {
-  if (!cachedPrefs) cachedPrefs = readThemePrefs();
-  return cachedPrefs;
-}
-
-export function getThemePrefsServerSnapshot(): ThemePrefs {
-  return DEFAULT_PREFS; // reference stabile per SSR + idratazione
-}
-
-/** Aggiorna le preferenze: salva, applica al DOM e notifica gli iscritti. */
-export function setThemePrefs(next: ThemePrefs) {
-  saveThemePref("mode", next.mode);
-  saveThemePref("accent", next.accent);
-  saveThemePref("style", next.style);
-  cachedPrefs = next;
-  applyThemePrefs(next);
-  listeners.forEach((l) => l());
-}
-
-// Sottoscrizione alla preferenza di sistema chiaro/scuro (per le anteprime).
-export function subscribeSystemDark(cb: () => void): () => void {
-  const mql = window.matchMedia("(prefers-color-scheme: dark)");
-  mql.addEventListener("change", cb);
-  return () => mql.removeEventListener("change", cb);
-}
-
-export function getSystemDarkSnapshot(): boolean {
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
-}
-
-export function getSystemDarkServerSnapshot(): boolean {
-  return false;
-}
-
-// ── Script inline anti-FOUC ──────────────────────────────────────────────────
-// Serializza dati + logica una sola volta. Viene iniettato in cima al <body>
-// così la palette è corretta già al primo paint.
-export const THEME_INIT_SCRIPT = `(function(){try{
-var ACCENTS=${JSON.stringify(ACCENTS)};
-var STYLES=${JSON.stringify(STYLES)};
-var NK=${JSON.stringify(NEUTRAL_KEYS)};
-var K=${JSON.stringify(STORAGE_KEYS)};
-var apply=${applyThemeToDocument.toString()};
-var ls=window.localStorage;
-var prefs={
-  mode:ls.getItem(K.mode)||"auto",
-  accent:ls.getItem(K.accent)||"coral",
-  style:ls.getItem(K.style)||"warm"
-};
-if(!ACCENTS[prefs.accent])prefs.accent="coral";
-if(!STYLES[prefs.style])prefs.style="warm";
-apply(document,prefs,ACCENTS,STYLES,NK);
-}catch(e){}})();`;

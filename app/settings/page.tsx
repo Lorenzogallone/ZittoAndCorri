@@ -7,6 +7,7 @@ import { ProfileForm } from "./profile-form";
 import { IntegrationsSection } from "./integrations-section";
 import { ThemeSettings } from "./theme-settings";
 import { Button } from "@/components/ui/button";
+import { sanitizePrefs } from "@/lib/theme";
 import type { Profile, Goal } from "@/lib/types";
 import { formatDistance, formatDuration, daysUntil } from "@/lib/format";
 import { LogOut } from "lucide-react";
@@ -18,7 +19,7 @@ export default async function SettingsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { data: activeGoal }] = await Promise.all([
+  const [{ data: profile }, { data: activeGoal }, themeRes] = await Promise.all([
     supabase
       .from("profiles")
       .select("display_name, max_hr, resting_hr, birthdate, api_key")
@@ -30,7 +31,20 @@ export default async function SettingsPage() {
       .eq("user_id", user.id)
       .eq("is_active", true)
       .maybeSingle<Pick<Goal, "race_name" | "race_date" | "distance_m" | "target_time_s">>(),
+    // Query separata e tollerante: se la migration 0005 non è stata applicata
+    // l'errore resta isolato qui e il tema usa i default (la pagina non si rompe).
+    supabase
+      .from("profiles")
+      .select("theme_mode, theme_accent, theme_style")
+      .eq("id", user.id)
+      .maybeSingle<Pick<Profile, "theme_mode" | "theme_accent" | "theme_style">>(),
   ]);
+
+  const initialTheme = sanitizePrefs({
+    mode: themeRes.data?.theme_mode ?? null,
+    accent: themeRes.data?.theme_accent ?? null,
+    style: themeRes.data?.theme_style ?? null,
+  });
 
   const displayName = profile?.display_name || user.email?.split("@")[0] || "Runner";
   const initials = displayName
@@ -99,7 +113,7 @@ export default async function SettingsPage() {
       </div>
 
       {/* Aspetto: modalità, colore principale e stile */}
-      <ThemeSettings />
+      <ThemeSettings initial={initialTheme} />
 
       {/* Integrazioni & API (Collassabile) */}
       <IntegrationsSection apiKey={profile?.api_key ?? null} />

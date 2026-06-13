@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { applyThemePrefs, readThemePrefs } from "@/lib/theme";
+import { applyThemePrefs, getCurrentPrefs } from "@/lib/theme";
 
 /**
  * Tiene reattiva la modalità "automatica": quando l'utente cambia chiaro/scuro
@@ -12,7 +12,7 @@ export function ThemeWatcher() {
   useEffect(() => {
     const mql = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => {
-      const prefs = readThemePrefs();
+      const prefs = getCurrentPrefs();
       if (prefs.mode === "auto") applyThemePrefs(prefs);
     };
     mql.addEventListener("change", onChange);

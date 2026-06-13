@@ -5,7 +5,8 @@ import { NavigationProgress } from "@/components/navigation-progress";
 import { PwaRegister } from "@/components/pwa-register";
 import { PwaSplashLoader } from "@/components/pwa-splash-loader";
 import { ThemeWatcher } from "@/components/theme-watcher";
-import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import { createClient } from "@/lib/supabase/server";
+import { themeInitScript, sanitizePrefs, type ThemePrefs } from "@/lib/theme";
 import "./globals.css";
 
 
@@ -88,11 +89,43 @@ const PWA_SPLASH_HTML = `
 <script>(function(){try{var s=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;if(!s||sessionStorage.getItem("pwa-splash-shown")){var e=document.getElementById("pwa-splash");if(e)e.remove();}}catch(err){}})();</script>
 `;
 
-export default function RootLayout({
+/** Legge le preferenze tema dal profilo (sorgente di verità, sync cross-device).
+ *  Tollerante: senza utente, con errori o se la migration 0005 non è ancora
+ *  applicata torna null → l'init script ripiega su localStorage/default. */
+async function getThemeSeed(): Promise<ThemePrefs | null> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("theme_mode, theme_accent, theme_style")
+      .eq("id", user.id)
+      .maybeSingle<{
+        theme_mode: string | null;
+        theme_accent: string | null;
+        theme_style: string | null;
+      }>();
+    if (error || !data) return null;
+    return sanitizePrefs({
+      mode: data.theme_mode,
+      accent: data.theme_accent,
+      style: data.theme_style,
+    });
+  } catch {
+    return null;
+  }
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const themeSeed = await getThemeSeed();
+
   return (
     <html
       lang="it"
@@ -101,8 +134,8 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {/* Theme init: imposta classe (dark/light) e variabili colore inline
-            in base alla preferenza salvata, PRIMA del primo paint (anti-FOUC). */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+            dal seed DB, PRIMA del primo paint (anti-FOUC + sync cross-device). */}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript(themeSeed) }} />
         <div
           id="pwa-splash-root"
           suppressHydrationWarning
