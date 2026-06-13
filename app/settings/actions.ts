@@ -84,8 +84,11 @@ export async function updateThemePrefs(
     return { error: error.message };
   }
 
-  // Aggiorna il seed iniettato dal root layout su tutte le pagine.
-  revalidatePath("/", "layout");
+  // NB: niente revalidatePath qui. Il tema è già applicato live sul client
+  // (applyThemePrefs) e qui lo rendiamo solo durevole; rivalidare il ROOT layout
+  // costringerebbe Next a un reload completo del documento — in PWA standalone
+  // si vede come l'app che si ricarica (a volte restando bloccata sullo splash).
+  // Il seed aggiornato dal DB viene comunque letto al prossimo caricamento.
   return { ok: true };
 }
 

@@ -31,10 +31,10 @@ export function AppShell({
     // keeps the tab bar glued to the very bottom of the screen on every page,
     // regardless of how much content there is — fixing the "floats up on short
     // pages" issue on iOS Safari (where `position: fixed` anchors to the large
-    // layout viewport). L'altezza (con fallback vh → dvh) è gestita interamente
-    // da `.app-viewport`: niente `h-screen` qui, così su iPhone 15 in standalone
-    // vince `100dvh` e la tab bar resta incollata in basso senza gap.
-    <div className="app-viewport flex flex-col overflow-hidden">
+    // layout viewport). `h-screen` is the fallback for browsers without dvh;
+    // in standalone `.app-viewport` forza `100vh` (vedi globals.css), così la
+    // tab bar resta incollata in basso senza accorciarsi.
+    <div className="app-viewport flex h-screen flex-col overflow-hidden">
       {/* Header */}
       {hasHeader && (
         <header className="z-40 shrink-0 glass-strong border-b border-border pt-safe">

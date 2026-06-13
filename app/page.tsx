@@ -41,6 +41,10 @@ export default async function Home() {
   const startOfWeek = new Date(now.setDate(diff));
   startOfWeek.setHours(0, 0, 0, 0);
   const startOfWeekISO = startOfWeek.toISOString();
+  const weekStartDateStr = startOfWeek.toISOString().slice(0, 10);
+  const weekEndDate = new Date(startOfWeek);
+  weekEndDate.setDate(startOfWeek.getDate() + 6);
+  const weekEndDateStr = weekEndDate.toISOString().slice(0, 10);
 
   const [
     { data: profile },
@@ -49,6 +53,7 @@ export default async function Home() {
     { data: nextWorkouts },
     { data: recentPlanned },
     { data: thisWeekActivities },
+    { data: thisWeekPlanned },
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -93,6 +98,16 @@ export default async function Home() {
       .gte("started_at", startOfWeekISO)
       .order("started_at", { ascending: true })
       .returns<Pick<Activity, "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" | "avg_pace_s_km" | "avg_hr">[]>(),
+    // Allenamenti pianificati di questa settimana (per evidenziare i giorni
+    // futuri con un colore dedicato nel visualizzatore settimanale).
+    supabase
+      .from("planned_workouts")
+      .select("id, date, type, target_distance_m")
+      .eq("user_id", user.id)
+      .eq("status", "planned")
+      .gte("date", weekStartDateStr)
+      .lte("date", weekEndDateStr)
+      .returns<Pick<PlannedWorkout, "id" | "date" | "type" | "target_distance_m">[]>(),
   ]);
 
   const greeting = profile?.display_name
@@ -110,12 +125,20 @@ export default async function Home() {
       : null;
 
   const weekActivities = thisWeekActivities ?? [];
+  const weekPlanned = thisWeekPlanned ?? [];
   // Le statistiche settimanali (km, passo) sono solo di corsa: una sgambata
   // in bici non deve gonfiare il volume running.
   const weekRuns = weekActivities.filter((a) => a.sport === "running");
   const totalDistance = weekRuns.reduce((acc, curr) => acc + curr.distance_m, 0);
   const totalDuration = weekRuns.reduce((acc, curr) => acc + curr.duration_s, 0);
-  const runCount = weekRuns.length;
+  // Riepilogo in alto a destra: tutte le attività della settimana (ogni sport),
+  // non solo le corse.
+  const totalActivities = weekActivities.length;
+
+  const currentDateLabel = new Date(`${today}T00:00:00`).toLocaleDateString(
+    "it-IT",
+    { weekday: "long", day: "numeric", month: "long" },
+  );
 
   const weekdaysLabels = ["L", "M", "M", "G", "V", "S", "D"];
   const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -125,6 +148,7 @@ export default async function Home() {
       dateStr: d.toISOString().slice(0, 10),
       label: weekdaysLabels[i],
       activities: [] as typeof weekActivities,
+      planned: [] as typeof weekPlanned,
     };
   });
 
@@ -132,6 +156,11 @@ export default async function Home() {
     const actDate = new Date(act.started_at);
     const dayOfWeek = (actDate.getDay() + 6) % 7;
     weekDays[dayOfWeek].activities.push(act);
+  }
+
+  for (const p of weekPlanned) {
+    const idx = weekDays.findIndex((d) => d.dateStr === p.date);
+    if (idx >= 0) weekDays[idx].planned.push(p);
   }
 
   return (
@@ -226,13 +255,18 @@ export default async function Home() {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent pointer-events-none" />
         
         <div className="relative">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
-              Questa Settimana
-            </h2>
-            {runCount > 0 && (
-              <span className="text-xs text-muted-foreground font-medium">
-                {runCount} {runCount === 1 ? "corsa" : "corse"}
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h2 className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+                Questa Settimana
+              </h2>
+              <p className="text-[11px] text-muted-foreground/70 mt-0.5 capitalize">
+                {currentDateLabel}
+              </p>
+            </div>
+            {totalActivities > 0 && (
+              <span className="rounded-full bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground font-medium tabular-nums">
+                {totalActivities} {totalActivities === 1 ? "attività" : "attività"}
               </span>
             )}
           </div>
@@ -260,7 +294,7 @@ export default async function Home() {
           </div>
 
           {/* Weekday Visualizer */}
-          <div className="flex justify-between items-center gap-1 mb-5">
+          <div className="flex justify-between items-center gap-1 mb-3">
             {weekDays.map((day, i) => {
               const hasActivity = day.activities.length > 0;
               // La corsa ha la precedenza come attivit\u00E0 "principale" del giorno;
@@ -277,10 +311,25 @@ export default async function Home() {
               const SportIcon = mainActivity
                 ? SPORT_ICONS[mainActivity.sport ?? "other"]
                 : null;
+              const isToday = day.dateStr === today;
+              // Allenamento pianificato e ancora da svolgere (oggi o futuro):
+              // evidenziato con un colore dedicato (indaco tratteggiato).
+              const futurePlanned =
+                !hasActivity && day.dateStr >= today && day.planned.length > 0;
+              const plannedDist = day.planned.reduce(
+                (s, p) => s + (p.target_distance_m ?? 0),
+                0,
+              );
 
               return (
                 <div key={i} className="flex flex-col items-center flex-1">
-                  <span className="text-[10px] font-medium text-muted-foreground/60 mb-1.5">
+                  <span
+                    className={`text-[10px] mb-1.5 ${
+                      isToday
+                        ? "text-primary font-bold"
+                        : "text-muted-foreground/60 font-medium"
+                    }`}
+                  >
                     {day.label}
                   </span>
                   {hasActivity ? (
@@ -291,7 +340,7 @@ export default async function Home() {
                           ? TYPE_COLORS[mainActivity.type]
                           : SPORT_COLORS[mainActivity.sport ?? "other"]) ??
                         "bg-muted text-muted-foreground"
-                      }`}
+                      } ${isToday ? "ring-2 ring-primary/50 ring-offset-1 ring-offset-card" : ""}`}
                       title={
                         isRunDay
                           ? `${TYPE_LABELS[mainActivity.type] ?? mainActivity.type}: ${formatDistance(runDistOnDay)}`
@@ -300,17 +349,57 @@ export default async function Home() {
                     >
                       {isRunDay || !SportIcon ? day.label : <SportIcon size={14} />}
                     </Link>
+                  ) : futurePlanned ? (
+                    <Link
+                      href={`/plan/${day.planned[0].id}`}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold transition-transform active:scale-95 border border-dashed border-indigo-400/70 bg-indigo-500/5 text-indigo-500 dark:text-indigo-300 ${
+                        isToday ? "ring-2 ring-primary/50 ring-offset-1 ring-offset-card" : ""
+                      }`}
+                      title={`Pianificato: ${day.planned
+                        .map((p) => TYPE_LABELS[p.type] ?? p.type)
+                        .join(", ")}`}
+                    >
+                      {day.label}
+                    </Link>
                   ) : (
-                    <div className="w-8 h-8 rounded-full border border-border/40 flex items-center justify-center text-[11px] text-muted-foreground/30 font-medium bg-muted/10">
+                    <div
+                      className={`w-8 h-8 rounded-full border flex items-center justify-center text-[11px] font-medium bg-muted/10 ${
+                        isToday
+                          ? "border-primary/50 text-primary ring-2 ring-primary/30 ring-offset-1 ring-offset-card"
+                          : "border-border/40 text-muted-foreground/30"
+                      }`}
+                    >
                       {day.label}
                     </div>
                   )}
-                  <span className="text-[9px] tabular-nums mt-1.5 font-semibold text-muted-foreground/80">
-                    {isRunDay ? `${(runDistOnDay / 1000).toFixed(0)}k` : "\u00A0"}
+                  <span
+                    className={`text-[9px] tabular-nums mt-1.5 font-semibold ${
+                      futurePlanned
+                        ? "text-indigo-500/80 dark:text-indigo-300/80"
+                        : "text-muted-foreground/80"
+                    }`}
+                  >
+                    {isRunDay
+                      ? `${(runDistOnDay / 1000).toFixed(0)}k`
+                      : futurePlanned && plannedDist > 0
+                        ? `${(plannedDist / 1000).toFixed(0)}k`
+                        : "\u00A0"}
                   </span>
                 </div>
               );
             })}
+          </div>
+
+          {/* Legenda: distingue svolto da pianificato */}
+          <div className="flex items-center justify-center gap-4 mb-4 text-[9px] text-muted-foreground/70">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-primary/30 border border-primary/40" />
+              Svolto
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full border border-dashed border-indigo-400/70 bg-indigo-500/10" />
+              Pianificato
+            </span>
           </div>
 
           {/* Divider */}
