@@ -24,7 +24,16 @@ export function TabBar() {
       className="z-50 shrink-0 glass-strong border-t border-border"
       role="tablist"
     >
-      <div className="mx-auto flex max-w-md items-center justify-around px-2" style={{ paddingTop: '2px', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      {/* Padding inferiore ridotto: lasciamo solo una piccola parte della
+          safe-area (home-indicator) così la barra siede più in basso, senza il
+          gap eccessivo dato dall'intera env(safe-area-inset-bottom). */}
+      <div
+        className="mx-auto flex max-w-md items-center justify-around px-2"
+        style={{
+          paddingTop: "2px",
+          paddingBottom: "max(env(safe-area-inset-bottom, 0px) - 16px, 4px)",
+        }}
+      >
         {tabs.map(({ href, label, icon: Icon }) => {
           const active = isActive(href);
           return (

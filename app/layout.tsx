@@ -86,7 +86,7 @@ const PWA_SPLASH_HTML = `
   </div>
   <div class="ps-track"><div class="ps-bar"></div></div>
 </div>
-<script>(function(){try{var s=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;if(!s||sessionStorage.getItem("pwa-splash-shown")){var e=document.getElementById("pwa-splash");if(e)e.remove();}}catch(err){}})();</script>
+<script>(function(){try{var s=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;if(!s||sessionStorage.getItem("pwa-splash-shown")){var e=document.getElementById("pwa-splash");if(e)e.remove();}}catch(err){}try{setTimeout(function(){var e=document.getElementById("pwa-splash");if(e){e.style.opacity="0";e.style.pointerEvents="none";setTimeout(function(){if(e&&e.parentNode)e.parentNode.removeChild(e);},400);}},6000);}catch(err){}})();</script>
 `;
 
 /** Legge le preferenze tema dal profilo (sorgente di verità, sync cross-device).

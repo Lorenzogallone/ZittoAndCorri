@@ -305,16 +305,19 @@
   }
 
   /* Full-screen app viewport.
-     `100vh` resta come fallback per i browser senza supporto a `dvh`; `100dvh`
-     è l'altezza corretta del viewport visibile su iOS 16+/iPhone 15, anche in
-     standalone (PWA), e include l'area della home-indicator. Il vecchio override
-     a `100vh` solo in standalone misurava PIÙ ALTO dell'area visibile sugli
-     iPhone con Dynamic Island, spingendo la tab bar troppo in alto e lasciando
-     un gap sotto. Con `100dvh` la barra resta incollata in basso; il sfondo
-     dell'<html> combacia col tema, quindi non si vede nessuna striscia. */
+     In Safari `100dvh` è corretta (cresce/si riduce con la toolbar).
+     In standalone (PWA) su iPhone, invece, `100dvh` misura PIÙ CORTO dello
+     schermo fisico (esclude l'area safe-area in basso): il contenitore si
+     accorcia e la tab bar resta a mezz'aria. Lì `100vh` è l'altezza piena
+     affidabile (la home-indicator si limita a sovrapporsi e la tab bar si
+     scosta da sola con un po' di padding safe-area). */
   .app-viewport {
-    height: 100vh;
     height: 100dvh;
+  }
+  @media all and (display-mode: standalone) {
+    .app-viewport {
+      height: 100vh;
+    }
   }
 
   /* Navigation progress bar */
