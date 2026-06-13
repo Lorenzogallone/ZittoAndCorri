@@ -18,10 +18,14 @@ export default function ActivityMapClient({ gpsSeries }: ActivityMapClientProps)
   useEffect(() => {
     if (!mapContainerRef.current || gpsSeries.length < 2) return;
 
-    // Detect dark or light mode based on DOM class or prefers-color-scheme
-    const isDarkTheme =
-      document.documentElement.classList.contains("dark") ||
-      window.matchMedia("(prefers-color-scheme: dark)").matches;
+    // Rileva il tema: la classe forzata (.dark/.light, impostata dal theme
+    // init) ha priorità; in automatico si cade sulla preferenza di sistema.
+    const root = document.documentElement;
+    const isDarkTheme = root.classList.contains("dark")
+      ? true
+      : root.classList.contains("light")
+        ? false
+        : window.matchMedia("(prefers-color-scheme: dark)").matches;
 
     const styleUrl = isDarkTheme
       ? "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"

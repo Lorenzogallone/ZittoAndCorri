@@ -2,12 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
-import { Button } from "@/components/ui/button";
 import { formatDistance, formatDuration, formatPace, daysUntil } from "@/lib/format";
 import { todayIso, isoDaysFromNow } from "@/lib/dates";
 import { computeAdherence } from "@/lib/metrics/adherence";
 import type { Activity, Goal, PlannedWorkout, Profile } from "@/lib/types";
-import { Plus } from "lucide-react";
 import {
   TYPE_LABELS,
   TYPE_COLORS,
@@ -223,45 +221,6 @@ export default async function Home() {
         </div>
       )}
 
-      {/* Prossimi allenamenti */}
-      {nextWorkouts && nextWorkouts.length > 0 && (
-        <div className="mb-6">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
-            Prossimi allenamenti
-          </p>
-          <div className="flex flex-col gap-2">
-            {nextWorkouts.map((w) => (
-              <Link key={w.id} href={`/plan/${w.id}`} className="block">
-                <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-4 py-3 transition-transform duration-200 active:scale-[0.98]">
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      TYPE_COLORS[w.type] ?? "bg-zinc-500/20 text-zinc-400"
-                    }`}
-                  >
-                    {TYPE_LABELS[w.type] ?? w.type}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {formatShortDate(w.date)}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {[
-                        w.target_distance_m && formatDistance(w.target_distance_m),
-                        w.target_duration_s && formatDuration(w.target_duration_s),
-                        w.description,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                  </div>
-                  <span className="text-muted-foreground/40 text-sm">›</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Riepilogo Settimanale & Focus Ultima Corsa */}
       <div className="mb-6 rounded-2xl bg-card border border-border p-5 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent pointer-events-none" />
@@ -423,18 +382,44 @@ export default async function Home() {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 gap-3">
-        <Button asChild size="lg" className="w-full">
-          <Link href="/activities/new">
-            <Plus size={18} />
-            Nuova corsa
-          </Link>
-        </Button>
-        <Button asChild variant="outline" size="lg" className="w-full">
-          <Link href="/activities">Le mie corse</Link>
-        </Button>
-      </div>
+      {/* Prossimi allenamenti */}
+      {nextWorkouts && nextWorkouts.length > 0 && (
+        <div className="mb-2">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
+            Prossimi allenamenti
+          </p>
+          <div className="flex flex-col gap-2">
+            {nextWorkouts.map((w) => (
+              <Link key={w.id} href={`/plan/${w.id}`} className="block">
+                <div className="flex items-center gap-3 rounded-xl bg-card border border-border px-4 py-3 transition-transform duration-200 active:scale-[0.98]">
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      TYPE_COLORS[w.type] ?? "bg-zinc-500/20 text-zinc-400"
+                    }`}
+                  >
+                    {TYPE_LABELS[w.type] ?? w.type}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {formatShortDate(w.date)}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {[
+                        w.target_distance_m && formatDistance(w.target_distance_m),
+                        w.target_duration_s && formatDuration(w.target_duration_s),
+                        w.description,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  </div>
+                  <span className="text-muted-foreground/40 text-sm">›</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
