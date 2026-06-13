@@ -5,6 +5,7 @@ import { signOut } from "@/app/actions/auth";
 import { AppShell } from "@/components/app-shell";
 import { ProfileForm } from "./profile-form";
 import { IntegrationsSection } from "./integrations-section";
+import { ThemeSettings } from "./theme-settings";
 import { Button } from "@/components/ui/button";
 import type { Profile, Goal } from "@/lib/types";
 import { formatDistance, formatDuration, daysUntil } from "@/lib/format";
@@ -89,6 +90,16 @@ export default async function SettingsPage() {
           )}
         </div>
       </Link>
+
+      {/* Impostazioni */}
+      <div className="mb-3 px-1">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Impostazioni
+        </h2>
+      </div>
+
+      {/* Aspetto: modalità, colore principale e stile */}
+      <ThemeSettings />
 
       {/* Integrazioni & API (Collassabile) */}
       <IntegrationsSection apiKey={profile?.api_key ?? null} />
