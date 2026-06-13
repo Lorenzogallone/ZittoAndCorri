@@ -100,6 +100,12 @@ function ZoneBar({ zoneEntries }: { zoneEntries: [string, number][] }) {
   );
 }
 
+// La server action `evaluateActivity` (Coach AI) gira come parte di questa
+// route: tempo extra per la chiamata a Gemini così la funzione non viene
+// killata dalla piattaforma (causa del "crash"/reload in PWA). Vedi DEADLINE_MS
+// in lib/ai/gemini.ts.
+export const maxDuration = 60;
+
 export default async function ActivityDetailPage({
   params,
 }: {

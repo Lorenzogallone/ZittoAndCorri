@@ -26,6 +26,12 @@ function monthBounds(month: string): { start: string; end: string } {
   return { start, end };
 }
 
+// La server action `generatePlan` (Coach AI) gira come parte di questa route:
+// le diamo abbastanza tempo per la chiamata a Gemini (vedi DEADLINE_MS in
+// lib/ai/gemini.ts, tenuto sotto questo valore) così la funzione non viene
+// killata dalla piattaforma — causa del "crash"/reload in PWA.
+export const maxDuration = 60;
+
 interface Props {
   searchParams: Promise<{ month?: string }>;
 }
