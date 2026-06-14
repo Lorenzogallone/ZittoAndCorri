@@ -4,11 +4,13 @@ import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions/auth";
 import { AppShell } from "@/components/app-shell";
 import { ProfileForm } from "./profile-form";
+import { TechInfoCard } from "./tech-info-card";
 import { IntegrationsSection } from "./integrations-section";
 import { ThemeSettings } from "./theme-settings";
 import { Button } from "@/components/ui/button";
 import { sanitizePrefs } from "@/lib/theme";
-import type { Profile, Goal } from "@/lib/types";
+import { computeATLCTL } from "@/lib/metrics/load";
+import type { Profile, Goal, Activity } from "@/lib/types";
 import { formatDistance, formatDuration, daysUntil } from "@/lib/format";
 import { LogOut } from "lucide-react";
 
@@ -19,32 +21,48 @@ export default async function SettingsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { data: activeGoal }, themeRes] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("display_name, max_hr, resting_hr, birthdate, api_key")
-      .eq("id", user.id)
-      .maybeSingle<Partial<Profile>>(),
-    supabase
-      .from("goals")
-      .select("race_name, race_date, distance_m, target_time_s")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .maybeSingle<Pick<Goal, "race_name" | "race_date" | "distance_m" | "target_time_s">>(),
-    // Query separata e tollerante: se la migration 0005 non è stata applicata
-    // l'errore resta isolato qui e il tema usa i default (la pagina non si rompe).
-    supabase
-      .from("profiles")
-      .select("theme_mode, theme_accent, theme_style")
-      .eq("id", user.id)
-      .maybeSingle<Pick<Profile, "theme_mode" | "theme_accent" | "theme_style">>(),
-  ]);
+  const [{ data: profile }, { data: activeGoal }, { data: activities }, themeRes] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("display_name, max_hr, resting_hr, birthdate, api_key")
+        .eq("id", user.id)
+        .maybeSingle<Partial<Profile>>(),
+      supabase
+        .from("goals")
+        .select("race_name, race_date, distance_m, target_time_s")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle<Pick<Goal, "race_name" | "race_date" | "distance_m" | "target_time_s">>(),
+      // Carico/freschezza (ATL/CTL/TSB) su TUTTE le attività: la sRPE conta
+      // anche per gli sport diversi dalla corsa.
+      supabase
+        .from("activities")
+        .select("started_at, duration_s, rpe")
+        .eq("user_id", user.id)
+        .returns<Pick<Activity, "started_at" | "duration_s" | "rpe">[]>(),
+      // Query separata e tollerante: se la migration 0005 non è stata applicata
+      // l'errore resta isolato qui e il tema usa i default (la pagina non si rompe).
+      supabase
+        .from("profiles")
+        .select("theme_mode, theme_accent, theme_style")
+        .eq("id", user.id)
+        .maybeSingle<Pick<Profile, "theme_mode" | "theme_accent" | "theme_style">>(),
+    ]);
 
   const initialTheme = sanitizePrefs({
     mode: themeRes.data?.theme_mode ?? null,
     accent: themeRes.data?.theme_accent ?? null,
     style: themeRes.data?.theme_style ?? null,
   });
+
+  const load = computeATLCTL(
+    (activities ?? []).map((a) => ({
+      started_at: a.started_at,
+      duration_s: a.duration_s,
+      rpe: a.rpe,
+    })),
+  );
 
   const displayName = profile?.display_name || user.email?.split("@")[0] || "Runner";
   const initials = displayName
@@ -67,11 +85,14 @@ export default async function SettingsPage() {
         </div>
       </div>
 
-      {/* Parametri Atleta */}
-      <div className="rounded-2xl bg-card border border-white/[0.06] p-5 mb-6">
-        <h2 className="text-sm font-semibold mb-4">Parametri atleta</h2>
-        <ProfileForm profile={profile ?? null} />
-      </div>
+      {/* Stato di forma: TSB/ATL/CTL con spiegazioni a richiesta (tasto info).
+          Più rilevante dei parametri atleta, quindi mostrato per primo. */}
+      <TechInfoCard
+        atl={load.atl}
+        ctl={load.ctl}
+        tsb={load.tsb}
+        hasData={(activities?.length ?? 0) > 0}
+      />
 
       {/* Obiettivo */}
       <Link href="/goals" className="block mb-6">
@@ -104,6 +125,12 @@ export default async function SettingsPage() {
           )}
         </div>
       </Link>
+
+      {/* Parametri Atleta: meno rilevanti, quindi sotto a forma e obiettivo. */}
+      <div className="rounded-2xl bg-card border border-white/[0.06] p-5 mb-6">
+        <h2 className="text-sm font-semibold mb-4">Parametri atleta</h2>
+        <ProfileForm profile={profile ?? null} />
+      </div>
 
       {/* Impostazioni */}
       <div className="mb-3 px-1">

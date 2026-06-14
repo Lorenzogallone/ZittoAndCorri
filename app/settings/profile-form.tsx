@@ -28,15 +28,10 @@ export function ProfileForm({ profile }: { profile: Partial<Profile> | null }) {
 
   return (
     <div>
-      {/* Visualizzazione sola lettura */}
+      {/* Visualizzazione sola lettura — il nome è già nell'header in alto,
+          qui restano solo i dati fisiologici usati per i calcoli. */}
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-3 gap-4">
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground block">Nome</span>
-            <span className="font-semibold text-sm text-foreground truncate block">
-              {profile?.display_name || "Non impostato"}
-            </span>
-          </div>
           <div className="space-y-1">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground block">HR Max</span>
             <span className="font-semibold text-sm text-foreground block">
@@ -49,33 +44,31 @@ export function ProfileForm({ profile }: { profile: Partial<Profile> | null }) {
               {profile?.resting_hr ? `${profile.resting_hr} bpm` : "Non imp."}
             </span>
           </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4">
-          <div className="space-y-1 col-span-2">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground block">Data di nascita</span>
+          <div className="space-y-1">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground block">Nascita</span>
             <span className="font-semibold text-sm text-foreground block">
               {profile?.birthdate
                 ? new Date(profile.birthdate).toLocaleDateString("it-IT", {
                     day: "numeric",
-                    month: "long",
+                    month: "short",
                     year: "numeric",
                   })
-                : "Non impostata"}
+                : "Non imp."}
             </span>
           </div>
-          <div className="flex items-end justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsOpen(true)}
-              className="text-xs h-8 flex items-center gap-1.5 hover:bg-white/[0.05]"
-            >
-              <Edit2 size={12} />
-              Modifica
-            </Button>
-          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsOpen(true)}
+            className="text-xs h-8 flex items-center gap-1.5 hover:bg-white/[0.05]"
+          >
+            <Edit2 size={12} />
+            Modifica
+          </Button>
         </div>
       </div>
 
