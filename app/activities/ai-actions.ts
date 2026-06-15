@@ -1,17 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { buildAthleteContext, activityDetailLine } from "@/lib/ai/context";
 import { buildEvaluationPrompt, evaluationSchema } from "@/lib/ai/prompt";
-import { generateStructured, PRIMARY_MODEL } from "@/lib/ai/gemini";
+import { generateStructured, aiErrorMessage, PRIMARY_MODEL } from "@/lib/ai/gemini";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
 import { TYPE_LABELS } from "@/lib/activity-meta";
 import type { Activity, EvaluationResult, PlannedWorkout } from "@/lib/types";
 
 export interface EvaluationActionState {
   error?: string;
+  /** Id del job AI in background da interrogare in polling lato client. */
+  jobId?: string;
 }
 
 type EvalActivity = Pick<
@@ -87,13 +90,26 @@ async function findPlannedForActivity(
   return sameDay ?? null;
 }
 
+/** Marca un job AI come fallito con un messaggio mostrabile all'utente. */
+async function failJob(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobId: string,
+  message: string,
+): Promise<void> {
+  await supabase
+    .from("ai_jobs")
+    .update({ status: "error", error: message, updated_at: new Date().toISOString() })
+    .eq("id", jobId);
+}
+
 /**
  * Valuta una corsa con Gemini (bottone manuale). Le note inserite dall'utente
- * vengono prima salvate e poi passate al prompt. Tiene una sola valutazione
- * corrente per corsa.
+ * vengono salvate subito; la chiamata AI (lenta) gira in background via
+ * `after()` e aggiorna `ai_jobs`. Il client fa polling dello stato, così non
+ * resta una connessione lunga aperta → niente reload/crash della PWA su mobile.
+ * Tiene una sola valutazione corrente per corsa.
  */
-export async function evaluateActivity(
-  _prevState: EvaluationActionState,
+export async function startEvaluation(
   formData: FormData,
 ): Promise<EvaluationActionState> {
   const supabase = await createClient();
@@ -119,21 +135,56 @@ export async function evaluateActivity(
     .eq("user_id", user.id);
   if (updateError) return { error: updateError.message };
 
+  // Verifica subito che la corsa esista (errore immediato, prima del job).
+  const { data: activity } = await supabase
+    .from("activities")
+    .select("id")
+    .eq("id", activityId)
+    .eq("user_id", user.id)
+    .maybeSingle<{ id: string }>();
+  if (!activity) return { error: "Corsa non trovata." };
+
+  const { data: job, error: jobError } = await supabase
+    .from("ai_jobs")
+    .insert({ user_id: user.id, kind: "evaluation", ref_id: activityId, status: "pending" })
+    .select("id")
+    .single<{ id: string }>();
+  if (jobError || !job) {
+    return { error: "Impossibile avviare la valutazione. Riprova." };
+  }
+
+  const userId = user.id;
+  after(() => runEvaluation(job.id, userId, activityId));
+
+  return { jobId: job.id };
+}
+
+/** Lavoro pesante della valutazione, eseguito dopo la risposta (Next `after()`). */
+async function runEvaluation(
+  jobId: string,
+  userId: string,
+  activityId: string,
+): Promise<void> {
+  const supabase = await createClient();
+
   const { data: activity } = await supabase
     .from("activities")
     .select(
       "id, user_id, started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr, max_hr, rpe, elevation_gain_m, notes",
     )
     .eq("id", activityId)
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .maybeSingle<EvalActivity>();
-  if (!activity) return { error: "Corsa non trovata." };
+  if (!activity) {
+    await failJob(supabase, jobId, "Corsa non trovata.");
+    return;
+  }
 
   let result: EvaluationResult;
   try {
     const [context, planned] = await Promise.all([
-      buildAthleteContext(supabase, user.id),
-      findPlannedForActivity(supabase, user.id, activityId, activity.started_at),
+      buildAthleteContext(supabase, userId),
+      findPlannedForActivity(supabase, userId, activityId, activity.started_at),
     ]);
     const prompt = buildEvaluationPrompt(
       context.markdown,
@@ -142,11 +193,9 @@ export async function evaluateActivity(
     );
     result = await generateStructured<EvaluationResult>(prompt, evaluationSchema);
   } catch (err) {
-    console.error("evaluateActivity:", err);
-    return {
-      error:
-        "Valutazione AI non riuscita (riprova più tardi o controlla la quota Gemini).",
-    };
+    console.error("runEvaluation:", err);
+    await failJob(supabase, jobId, aiErrorMessage(err));
+    return;
   }
 
   // Una sola valutazione corrente per corsa: rimuovi le precedenti.
@@ -154,17 +203,23 @@ export async function evaluateActivity(
     .from("evaluations")
     .delete()
     .eq("activity_id", activityId)
-    .eq("user_id", user.id);
+    .eq("user_id", userId);
 
   const { error: insertError } = await supabase.from("evaluations").insert({
-    user_id: user.id,
+    user_id: userId,
     activity_id: activityId,
     model: PRIMARY_MODEL,
     summary: result.summary,
     flags: result.flags ?? {},
   });
-  if (insertError) return { error: insertError.message };
+  if (insertError) {
+    await failJob(supabase, jobId, insertError.message);
+    return;
+  }
 
   revalidatePath(`/activities/${activityId}`);
-  return {};
+  await supabase
+    .from("ai_jobs")
+    .update({ status: "done", updated_at: new Date().toISOString() })
+    .eq("id", jobId);
 }

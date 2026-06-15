@@ -7,8 +7,8 @@ import {
   updateWorkoutStatus,
   linkActivityToWorkout,
   unlinkActivityFromWorkout,
-  deletePlannedWorkout,
 } from "../actions";
+import { DeleteWorkoutButton } from "./delete-workout-button";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
 import type { PlannedWorkout, Activity } from "@/lib/types";
 import {
@@ -191,18 +191,8 @@ export default async function PlannedWorkoutPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Delete */}
-      <form action={deletePlannedWorkout}>
-        <input type="hidden" name="id" value={workout.id} />
-        <Button
-          type="submit"
-          variant="outline"
-          size="sm"
-          className="w-full text-destructive hover:text-destructive"
-        >
-          Elimina allenamento
-        </Button>
-      </form>
+      {/* Delete con conferma + feedback */}
+      <DeleteWorkoutButton workoutId={workout.id} />
     </AppShell>
   );
 }

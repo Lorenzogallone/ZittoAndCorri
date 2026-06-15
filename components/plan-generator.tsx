@@ -1,19 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
 import { Sparkles } from "lucide-react";
-import { generatePlan, type GeneratePlanState } from "@/app/plan/actions";
+import { startPlanGeneration } from "@/app/plan/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AiThinkingOverlay } from "@/components/ai-thinking-overlay";
-
-const initialState: GeneratePlanState = {};
+import { useAiJob } from "@/lib/use-ai-job";
 
 export function PlanGenerator() {
-  const [state, formAction, pending] = useActionState(
-    generatePlan,
-    initialState,
-  );
+  const { pending, done, error, start } = useAiJob();
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-card p-5">
@@ -39,7 +34,14 @@ export function PlanGenerator() {
           vincoli: verranno rispettati.
         </p>
 
-        <form action={formAction} className="flex flex-col gap-2.5">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const fd = new FormData(e.currentTarget);
+            start(() => startPlanGeneration(fd));
+          }}
+          className="flex flex-col gap-2.5"
+        >
           <Textarea
             name="comments"
             rows={3}
@@ -47,12 +49,12 @@ export function PlanGenerator() {
             disabled={pending}
           />
 
-          {state.error && (
+          {error && (
             <p className="text-destructive text-sm" role="alert">
-              {state.error}
+              {error}
             </p>
           )}
-          {state.ok && !pending && (
+          {done && !pending && (
             <p className="text-emerald-600 dark:text-emerald-400 text-sm">
               Piano aggiornato! La review è qui sotto.
             </p>

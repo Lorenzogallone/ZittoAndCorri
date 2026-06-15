@@ -3,18 +3,46 @@
 import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 
+// Step "di pensiero" che si accumulano durante i ~50s medi della chiamata AI.
+// Ogni step compare ogni ~3-4s nei primi 30s (frequente, sembra vivo), poi
+// rallenta leggermente. Gli step restano visibili man mano che si aggiungono.
 const PLAN_STEPS = [
-  "Analizzo il tuo storico corse…",
-  "Valuto obiettivi e aderenza…",
-  "Costruisco il piano personalizzato…",
-  "Ottimizzazione finale…",
+  "Leggo il tuo storico corse…",
+  "Misuro carico e fatica accumulata…",
+  "Calcolo aderenza alle ultime settimane…",
+  "Rivedo l'obiettivo attivo…",
+  "Valuto il tuo livello di forma attuale…",
+  "Stimo il volume sostenibile…",
+  "Distribuisco intensità nella settimana…",
+  "Costruisco gli allenamenti chiave…",
+  "Aggiungo corse di recupero e facili…",
+  "Bilancio lunedì-domenica…",
+  "Inserisco le note e i vincoli richiesti…",
+  "Controllo la progressione del piano…",
+  "Rifinisco i dettagli finali…",
 ];
 
 const EVALUATION_STEPS = [
-  "Analizzo i dati della corsa…",
-  "Confronto col piano e obiettivi…",
-  "Genero valutazione personalizzata…",
-  "Preparo i suggerimenti…",
+  "Leggo i dati della corsa…",
+  "Analizzo il passo…",
+  "Analizzo la frequenza cardiaca…",
+  "Confronto con il piano del giorno…",
+  "Verifico l'aderenza agli obiettivi…",
+  "Stimo l'effort percepito…",
+  "Valuto il dislivello e le condizioni…",
+  "Individuo punti di forza…",
+  "Individuo punti da migliorare…",
+  "Verifico rischi di sovraccarico…",
+  "Incrocio con le ultime settimane…",
+  "Preparo i suggerimenti del coach…",
+  "Rifinisco la valutazione…",
+];
+
+// Uno step nuovo ogni ~3-4s per i primi 30s, poi ogni ~5s fino a ~55s.
+// L'array ha tanti elementi quanti PLAN_STEPS / EVALUATION_STEPS.
+const STEP_DELAYS_MS = [
+  0, 3_000, 6_000, 9_500, 13_000, 16_500,
+  20_000, 24_000, 28_000, 33_000, 38_000, 44_000, 51_000,
 ];
 
 interface AiThinkingOverlayProps {
@@ -40,10 +68,9 @@ export function AiThinkingOverlay({ pending, variant }: AiThinkingOverlayProps) 
   useEffect(() => {
     if (!pending) return;
 
-    const stepDelays = [0, 2000, 4500, 7000]; // ms delay for each step to appear
     const timers: ReturnType<typeof setTimeout>[] = [];
 
-    stepDelays.forEach((delay, idx) => {
+    STEP_DELAYS_MS.forEach((delay, idx) => {
       if (idx === 0) return; // first step is already shown
       const t = setTimeout(() => {
         setVisibleSteps((prev) => Math.max(prev, idx + 1));
@@ -121,6 +148,14 @@ export function AiThinkingOverlay({ pending, variant }: AiThinkingOverlayProps) 
           );
         })}
       </div>
+
+      {/* Nota rassicurante sulla coda lunga: la generazione richiede in media
+          ~50s, qui evitiamo che l'utente pensi che si sia bloccato. */}
+      <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
+        {elapsed < 45
+          ? "Di solito ci vogliono circa 50 secondi: puoi lasciare l'app aperta."
+          : "Ci siamo quasi, ancora un istante…"}
+      </p>
     </div>
   );
 }
