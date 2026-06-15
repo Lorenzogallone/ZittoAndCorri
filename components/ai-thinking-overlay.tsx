@@ -3,19 +3,29 @@
 import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 
+// Più step "di pensiero", distribuiti su ~45s per coprire la durata media reale
+// della chiamata AI (~50s) senza che l'utente resti su un messaggio fermo.
 const PLAN_STEPS = [
   "Analizzo il tuo storico corse…",
-  "Valuto obiettivi e aderenza…",
-  "Costruisco il piano personalizzato…",
-  "Ottimizzazione finale…",
+  "Valuto carico, aderenza e recupero…",
+  "Rivedo gli obiettivi attivi…",
+  "Costruisco il piano delle 2 settimane…",
+  "Bilancio intensità e volumi…",
+  "Rifinisco e do gli ultimi ritocchi…",
 ];
 
 const EVALUATION_STEPS = [
   "Analizzo i dati della corsa…",
-  "Confronto col piano e obiettivi…",
-  "Genero valutazione personalizzata…",
-  "Preparo i suggerimenti…",
+  "Confronto passo, FC e dislivello…",
+  "Incrocio col piano e gli obiettivi…",
+  "Valuto fatica e qualità dell'allenamento…",
+  "Preparo i suggerimenti del coach…",
+  "Rifinisco la valutazione…",
 ];
+
+// Comparsa progressiva degli step, spalmata fino a ~40s (l'ultimo resta finché
+// il job non finisce). Indicizzata per step: stepDelays[i] = ms di comparsa.
+const STEP_DELAYS_MS = [0, 4_000, 10_000, 18_000, 28_000, 40_000];
 
 interface AiThinkingOverlayProps {
   pending: boolean;
@@ -40,10 +50,9 @@ export function AiThinkingOverlay({ pending, variant }: AiThinkingOverlayProps) 
   useEffect(() => {
     if (!pending) return;
 
-    const stepDelays = [0, 2000, 4500, 7000]; // ms delay for each step to appear
     const timers: ReturnType<typeof setTimeout>[] = [];
 
-    stepDelays.forEach((delay, idx) => {
+    STEP_DELAYS_MS.forEach((delay, idx) => {
       if (idx === 0) return; // first step is already shown
       const t = setTimeout(() => {
         setVisibleSteps((prev) => Math.max(prev, idx + 1));
@@ -121,6 +130,14 @@ export function AiThinkingOverlay({ pending, variant }: AiThinkingOverlayProps) 
           );
         })}
       </div>
+
+      {/* Nota rassicurante sulla coda lunga: la generazione richiede in media
+          ~50s, qui evitiamo che l'utente pensi che si sia bloccato. */}
+      <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
+        {elapsed < 45
+          ? "Di solito ci vogliono circa 50 secondi: puoi lasciare l'app aperta."
+          : "Ci siamo quasi, ancora un istante…"}
+      </p>
     </div>
   );
 }
