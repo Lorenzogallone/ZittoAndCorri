@@ -3,29 +3,47 @@
 import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 
-// Più step "di pensiero", distribuiti su ~45s per coprire la durata media reale
-// della chiamata AI (~50s) senza che l'utente resti su un messaggio fermo.
+// Step "di pensiero" che si accumulano durante i ~50s medi della chiamata AI.
+// Ogni step compare ogni ~3-4s nei primi 30s (frequente, sembra vivo), poi
+// rallenta leggermente. Gli step restano visibili man mano che si aggiungono.
 const PLAN_STEPS = [
-  "Analizzo il tuo storico corse…",
-  "Valuto carico, aderenza e recupero…",
-  "Rivedo gli obiettivi attivi…",
-  "Costruisco il piano delle 2 settimane…",
-  "Bilancio intensità e volumi…",
-  "Rifinisco e do gli ultimi ritocchi…",
+  "Leggo il tuo storico corse…",
+  "Misuro carico e fatica accumulata…",
+  "Calcolo aderenza alle ultime settimane…",
+  "Rivedo l'obiettivo attivo…",
+  "Valuto il tuo livello di forma attuale…",
+  "Stimo il volume sostenibile…",
+  "Distribuisco intensità nella settimana…",
+  "Costruisco gli allenamenti chiave…",
+  "Aggiungo corse di recupero e facili…",
+  "Bilancio lunedì-domenica…",
+  "Inserisco le note e i vincoli richiesti…",
+  "Controllo la progressione del piano…",
+  "Rifinisco i dettagli finali…",
 ];
 
 const EVALUATION_STEPS = [
-  "Analizzo i dati della corsa…",
-  "Confronto passo, FC e dislivello…",
-  "Incrocio col piano e gli obiettivi…",
-  "Valuto fatica e qualità dell'allenamento…",
+  "Leggo i dati della corsa…",
+  "Analizzo il passo…",
+  "Analizzo la frequenza cardiaca…",
+  "Confronto con il piano del giorno…",
+  "Verifico l'aderenza agli obiettivi…",
+  "Stimo l'effort percepito…",
+  "Valuto il dislivello e le condizioni…",
+  "Individuo punti di forza…",
+  "Individuo punti da migliorare…",
+  "Verifico rischi di sovraccarico…",
+  "Incrocio con le ultime settimane…",
   "Preparo i suggerimenti del coach…",
   "Rifinisco la valutazione…",
 ];
 
-// Comparsa progressiva degli step, spalmata fino a ~40s (l'ultimo resta finché
-// il job non finisce). Indicizzata per step: stepDelays[i] = ms di comparsa.
-const STEP_DELAYS_MS = [0, 4_000, 10_000, 18_000, 28_000, 40_000];
+// Uno step nuovo ogni ~3-4s per i primi 30s, poi ogni ~5s fino a ~55s.
+// L'array ha tanti elementi quanti PLAN_STEPS / EVALUATION_STEPS.
+const STEP_DELAYS_MS = [
+  0, 3_000, 6_000, 9_500, 13_000, 16_500,
+  20_000, 24_000, 28_000, 33_000, 38_000, 44_000, 51_000,
+];
 
 interface AiThinkingOverlayProps {
   pending: boolean;
