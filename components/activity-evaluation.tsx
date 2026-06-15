@@ -1,14 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
 import { Sparkles } from "lucide-react";
-import {
-  evaluateActivity,
-  type EvaluationActionState,
-} from "@/app/activities/ai-actions";
+import { startEvaluation } from "@/app/activities/ai-actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AiThinkingOverlay } from "@/components/ai-thinking-overlay";
+import { useAiJob } from "@/lib/use-ai-job";
 import type { Evaluation } from "@/lib/types";
 
 interface FlagMeta {
@@ -30,8 +27,6 @@ const TONE_CLASSES: Record<FlagMeta["tone"], string> = {
   bad: "bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400",
 };
 
-const initialState: EvaluationActionState = {};
-
 interface Props {
   activityId: string;
   initialNotes: string | null;
@@ -43,10 +38,7 @@ export function ActivityEvaluation({
   initialNotes,
   evaluation,
 }: Props) {
-  const [state, formAction, pending] = useActionState(
-    evaluateActivity,
-    initialState,
-  );
+  const { pending, error, start } = useAiJob();
 
   const activeFlags = evaluation?.flags
     ? Object.entries(evaluation.flags).filter(([, v]) => v === true)
@@ -84,7 +76,14 @@ export function ActivityEvaluation({
         </div>
       )}
 
-      <form action={formAction} className="flex flex-col gap-2.5">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          start(() => startEvaluation(fd));
+        }}
+        className="flex flex-col gap-2.5"
+      >
         <input type="hidden" name="activity_id" value={activityId} />
         <label
           htmlFor="ai-notes"
@@ -100,9 +99,9 @@ export function ActivityEvaluation({
           placeholder="Es. gambe pesanti, ho saltato la colazione, fastidio al polpaccio…"
         />
 
-        {state.error && (
+        {error && (
           <p className="text-destructive text-sm" role="alert">
-            {state.error}
+            {error}
           </p>
         )}
 
@@ -113,7 +112,7 @@ export function ActivityEvaluation({
               ? "Rivaluta corsa"
               : "Valuta corsa"}
         </Button>
-        {!evaluation && !state.error && (
+        {!evaluation && !error && (
           <p className="text-xs text-muted-foreground text-center">
             Aggiungi le note e chiedi al coach una valutazione della corsa.
           </p>

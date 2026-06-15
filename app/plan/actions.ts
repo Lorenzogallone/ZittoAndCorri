@@ -1,12 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { redirect, RedirectType } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { parseDuration } from "@/lib/format";
 import { buildAthleteContext } from "@/lib/ai/context";
 import { buildPlanPrompt, planSchema } from "@/lib/ai/prompt";
-import { generateStructured, PRIMARY_MODEL } from "@/lib/ai/gemini";
+import { generateStructured, aiErrorMessage, PRIMARY_MODEL } from "@/lib/ai/gemini";
 import {
   WORKOUT_TYPES,
   type PlannedStatus,
@@ -21,7 +22,8 @@ export interface WorkoutFormState {
 
 export interface GeneratePlanState {
   error?: string;
-  ok?: boolean;
+  /** Id del job AI in background da interrogare in polling lato client. */
+  jobId?: string;
 }
 
 function optDuration(formData: FormData, key: string): number | null {
@@ -159,11 +161,14 @@ export async function deletePlannedWorkout(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
-  await supabase
+  // Propaga l'errore del delete: il client (DeleteWorkoutButton) lo intercetta e
+  // mostra un feedback, invece di redirezionare come se fosse andato a buon fine.
+  const { error } = await supabase
     .from("planned_workouts")
     .delete()
     .eq("id", id)
     .eq("user_id", user.id);
+  if (error) throw new Error(error.message);
 
   revalidatePath("/plan");
   redirect("/plan", RedirectType.replace);
@@ -211,13 +216,29 @@ function sanitizeWorkout(
   };
 }
 
+/** Marca un job AI come fallito con un messaggio mostrabile all'utente. */
+async function failJob(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobId: string,
+  message: string,
+): Promise<void> {
+  await supabase
+    .from("ai_jobs")
+    .update({ status: "error", error: message, updated_at: new Date().toISOString() })
+    .eq("id", jobId);
+}
+
 /**
  * Bottone "Pianifica": review delle ultime 2 settimane + nuovo piano per i
  * prossimi 14 giorni. Sovrascrive solo i workout ancora `planned` e non
  * collegati a una corsa; preserva completati/collegati. PLAN.md §8.
+ *
+ * Avvia il job e risponde SUBITO con il suo id: il lavoro pesante (chiamata
+ * Gemini) gira in background via `after()` e aggiorna `ai_jobs`. Il client fa
+ * polling, così non resta nessuna connessione lunga aperta → niente reload/
+ * crash della PWA su rete mobile.
  */
-export async function generatePlan(
-  _prevState: GeneratePlanState,
+export async function startPlanGeneration(
   formData: FormData,
 ): Promise<GeneratePlanState> {
   const supabase = await createClient();
@@ -228,53 +249,81 @@ export async function generatePlan(
 
   const comments = String(formData.get("comments") ?? "").trim() || null;
 
+  const { data: job, error: jobError } = await supabase
+    .from("ai_jobs")
+    .insert({ user_id: user.id, kind: "plan", status: "pending" })
+    .select("id")
+    .single<{ id: string }>();
+  if (jobError || !job) {
+    return { error: "Impossibile avviare la generazione. Riprova." };
+  }
+
+  const userId = user.id;
+  after(() => runPlanGeneration(job.id, userId, comments));
+
+  return { jobId: job.id };
+}
+
+/** Lavoro pesante del piano, eseguito dopo la risposta (Next `after()`). */
+async function runPlanGeneration(
+  jobId: string,
+  userId: string,
+  comments: string | null,
+): Promise<void> {
+  const supabase = await createClient();
   const start = isoDate(new Date());
   const end = isoDate(new Date(Date.now() + 13 * 86_400_000));
 
   let result: PlanGenerationResult;
   let goalId: string | null = null;
   try {
-    const context = await buildAthleteContext(supabase, user.id);
+    const context = await buildAthleteContext(supabase, userId);
     goalId = context.activeGoal?.id ?? null;
     const prompt = buildPlanPrompt(context.markdown, start, end, comments);
     result = await generateStructured<PlanGenerationResult>(prompt, planSchema);
   } catch (err) {
-    console.error("generatePlan:", err);
-    return {
-      error:
-        "Generazione del piano non riuscita (riprova più tardi o controlla la quota Gemini).",
-    };
+    console.error("runPlanGeneration:", err);
+    await failJob(supabase, jobId, aiErrorMessage(err));
+    return;
   }
 
   const rows = (result.workouts ?? [])
-    .map((w) => sanitizeWorkout(w, start, end, user.id, goalId))
+    .map((w) => sanitizeWorkout(w, start, end, userId, goalId))
     .filter((r): r is Record<string, unknown> => r !== null);
 
   if (rows.length === 0) {
-    return {
-      error:
-        "L'AI non ha prodotto allenamenti validi per le prossime 2 settimane. Riprova.",
-    };
+    await failJob(
+      supabase,
+      jobId,
+      "L'AI non ha prodotto allenamenti validi per le prossime 2 settimane. Riprova.",
+    );
+    return;
   }
 
   // Sovrascrive solo i 'planned' futuri non collegati a una corsa.
   const { error: delError } = await supabase
     .from("planned_workouts")
     .delete()
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("status", "planned")
     .is("activity_id", null)
     .gte("date", start)
     .lte("date", end);
-  if (delError) return { error: delError.message };
+  if (delError) {
+    await failJob(supabase, jobId, delError.message);
+    return;
+  }
 
   const { error: insError } = await supabase.from("planned_workouts").insert(rows);
-  if (insError) return { error: insError.message };
+  if (insError) {
+    await failJob(supabase, jobId, insError.message);
+    return;
+  }
 
   // La review è secondaria: i workout sono già salvati. Se la tabella
   // plan_reviews non esiste ancora (migration da applicare) logga ma non blocca.
   const { error: revError } = await supabase.from("plan_reviews").insert({
-    user_id: user.id,
+    user_id: userId,
     goal_id: goalId,
     range_start: start,
     range_end: end,
@@ -282,7 +331,7 @@ export async function generatePlan(
     comments,
     model: PRIMARY_MODEL,
   });
-  if (revError) console.error("generatePlan/plan_reviews:", revError.message);
+  if (revError) console.error("runPlanGeneration/plan_reviews:", revError.message);
 
   // Memoria coach: la narrativa di fase prodotta dall'LLM viene persistita e
   // rientra in tutti i prompt futuri (continuità della progressione).
@@ -290,13 +339,17 @@ export async function generatePlan(
     typeof result.coach_memory === "string" ? result.coach_memory.trim() : "";
   if (coachMemory) {
     const { error: memError } = await supabase.from("athlete_snapshot").upsert({
-      user_id: user.id,
+      user_id: userId,
       narrative: { coach_memory: coachMemory },
       updated_at: new Date().toISOString(),
     });
-    if (memError) console.error("generatePlan/athlete_snapshot:", memError.message);
+    if (memError)
+      console.error("runPlanGeneration/athlete_snapshot:", memError.message);
   }
 
   revalidatePath("/plan");
-  return { ok: true };
+  await supabase
+    .from("ai_jobs")
+    .update({ status: "done", updated_at: new Date().toISOString() })
+    .eq("id", jobId);
 }

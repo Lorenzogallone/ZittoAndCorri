@@ -25,6 +25,22 @@ class AiTimeoutError extends Error {
   }
 }
 
+/**
+ * Messaggio utente corretto per un errore della pipeline AI. Distingue il
+ * timeout interno (deadline superato) dal vero rate-limit Gemini: prima
+ * mostravamo "controlla la quota Gemini" per qualsiasi errore, confondendo
+ * l'utente quando la quota era in realtà a posto e il problema era solo lentezza.
+ */
+export function aiErrorMessage(err: unknown): string {
+  if (err instanceof AiTimeoutError) {
+    return "L'AI ci sta mettendo troppo e la richiesta è scaduta. Riprova tra poco.";
+  }
+  if (isRateLimit(err)) {
+    return "Quota Gemini esaurita per ora. Riprova più tardi.";
+  }
+  return "Richiesta AI non riuscita. Riprova tra poco.";
+}
+
 let client: GoogleGenAI | null = null;
 
 function getClient(): GoogleGenAI {
