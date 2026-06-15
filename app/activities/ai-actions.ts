@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { buildAthleteContext, activityDetailLine } from "@/lib/ai/context";
 import { buildEvaluationPrompt, evaluationSchema } from "@/lib/ai/prompt";
-import { generateStructured, PRIMARY_MODEL } from "@/lib/ai/gemini";
+import { generateStructured, aiErrorMessage, PRIMARY_MODEL } from "@/lib/ai/gemini";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
 import { TYPE_LABELS } from "@/lib/activity-meta";
 import type { Activity, EvaluationResult, PlannedWorkout } from "@/lib/types";
@@ -143,10 +143,7 @@ export async function evaluateActivity(
     result = await generateStructured<EvaluationResult>(prompt, evaluationSchema);
   } catch (err) {
     console.error("evaluateActivity:", err);
-    return {
-      error:
-        "Valutazione AI non riuscita (riprova più tardi o controlla la quota Gemini).",
-    };
+    return { error: aiErrorMessage(err) };
   }
 
   // Una sola valutazione corrente per corsa: rimuovi le precedenti.

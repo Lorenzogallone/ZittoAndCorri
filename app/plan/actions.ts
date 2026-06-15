@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { parseDuration } from "@/lib/format";
 import { buildAthleteContext } from "@/lib/ai/context";
 import { buildPlanPrompt, planSchema } from "@/lib/ai/prompt";
-import { generateStructured, PRIMARY_MODEL } from "@/lib/ai/gemini";
+import { generateStructured, aiErrorMessage, PRIMARY_MODEL } from "@/lib/ai/gemini";
 import {
   WORKOUT_TYPES,
   type PlannedStatus,
@@ -159,11 +159,14 @@ export async function deletePlannedWorkout(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
-  await supabase
+  // Propaga l'errore del delete: il client (DeleteWorkoutButton) lo intercetta e
+  // mostra un feedback, invece di redirezionare come se fosse andato a buon fine.
+  const { error } = await supabase
     .from("planned_workouts")
     .delete()
     .eq("id", id)
     .eq("user_id", user.id);
+  if (error) throw new Error(error.message);
 
   revalidatePath("/plan");
   redirect("/plan", RedirectType.replace);
@@ -240,10 +243,7 @@ export async function generatePlan(
     result = await generateStructured<PlanGenerationResult>(prompt, planSchema);
   } catch (err) {
     console.error("generatePlan:", err);
-    return {
-      error:
-        "Generazione del piano non riuscita (riprova più tardi o controlla la quota Gemini).",
-    };
+    return { error: aiErrorMessage(err) };
   }
 
   const rows = (result.workouts ?? [])
