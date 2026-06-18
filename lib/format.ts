@@ -38,6 +38,46 @@ export function activeDuration(a: {
   return a.moving_time_s ?? a.duration_s;
 }
 
+/**
+ * Distanza in km di un allenamento pianificato: quella esplicita se presente,
+ * altrimenti stimata da durata e passo (per i target a tempo/ritmo). Comodo per
+ * mostrare sempre i km anche quando il coach fissa l'obiettivo come passo o
+ * durata. Ritorna i metri e se è una stima; null se non calcolabile.
+ */
+export function plannedDistanceM(w: {
+  target_distance_m?: number | null;
+  target_duration_s?: number | null;
+  target_pace_s_km?: number | null;
+}): { meters: number; estimated: boolean } | null {
+  if (w.target_distance_m != null) {
+    return { meters: w.target_distance_m, estimated: false };
+  }
+  if (
+    w.target_duration_s != null &&
+    w.target_pace_s_km != null &&
+    w.target_pace_s_km > 0
+  ) {
+    return {
+      meters: Math.round((w.target_duration_s / w.target_pace_s_km) * 1000),
+      estimated: true,
+    };
+  }
+  return null;
+}
+
+/** "X,XX km" preceduto da ~ se la distanza è stimata da durata e passo. */
+export function formatPlannedDistance(
+  w: {
+    target_distance_m?: number | null;
+    target_duration_s?: number | null;
+    target_pace_s_km?: number | null;
+  },
+): string | null {
+  const d = plannedDistanceM(w);
+  if (!d) return null;
+  return `${d.estimated ? "~" : ""}${formatDistance(d.meters)}`;
+}
+
 /** Giorni interi rimanenti a raceDate (min 0). Null se raceDate è null. */
 export function daysUntil(raceDate: string | null | undefined): number | null {
   if (!raceDate) return null;
