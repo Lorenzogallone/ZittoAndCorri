@@ -240,7 +240,11 @@ export async function updateActivity(
   const elevation_gain_m = optInt(formData, "elevation_gain_m");
 
   const distance_m = Math.round(distanceKm * 1000);
-  const avg_pace_s_km = distance_m > 0 ? avgPace(distance_m, duration_s) : null;
+  // Passo sul tempo in movimento se la corsa ne ha uno (import FIT/GPX con
+  // pause): coerente con il calcolo in ingest e con Strava. La durata totale
+  // resta modificabile; moving_time_s non si edita qui, lo preserviamo.
+  const paceTime = activity.moving_time_s ?? duration_s;
+  const avg_pace_s_km = distance_m > 0 ? avgPace(distance_m, paceTime) : null;
 
   // Fetch profile to calculate zone
   const { data: profile } = await supabase

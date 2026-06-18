@@ -33,8 +33,11 @@ export async function ingestActivity(
 
   // 2. campi derivati (deterministici, mai dall'LLM)
   // Niente passo per attività senza distanza (palestra, yoga, calcio…).
+  // Passo sul tempo in movimento quando disponibile (pause escluse): è il passo
+  // medio che mostra Strava. Senza moving_time si usa il tempo totale.
+  const paceTime = data.moving_time_s ?? data.duration_s;
   const avg_pace_s_km =
-    data.distance_m > 0 ? avgPace(data.distance_m, data.duration_s) : null;
+    data.distance_m > 0 ? avgPace(data.distance_m, paceTime) : null;
 
   // Zone HR: preferisce la serie reale; fallback alla zona-da-media
   const time_in_zone =
