@@ -54,6 +54,13 @@ export function parseGpx(xml: string): ActivityInput {
   let hrSum = 0;
   let hrCount = 0;
   let hrMax = 0;
+  // Tempo "in movimento" stimato: lo Strava-GPX non marca le pause, ma durante
+  // l'auto-pause smette di registrare punti → si vedono come buchi temporali.
+  // Sommiamo i delta tra punti escludendo i salti lunghi (pausa di
+  // registrazione) e i tratti praticamente da fermo (velocità sotto soglia).
+  let moving_s = 0;
+  const PAUSE_GAP_S = 10; // gap oltre i ~10s = pausa/auto-pause
+  const MIN_SPEED_MS = 0.5; // sotto ~0.5 m/s sei di fatto fermo
 
   const gpsSeries: ActivityInput["gps_series"] = [];
   const hrSeries: ActivityInput["hr_series"] = [];
@@ -64,9 +71,18 @@ export function parseGpx(xml: string): ActivityInput {
 
     if (i > 0) {
       const prev = points[i - 1];
-      distance_m += haversine(prev.lat, prev.lon, p.lat, p.lon);
+      const segDist = haversine(prev.lat, prev.lon, p.lat, p.lon);
+      distance_m += segDist;
       const eleDiff = p.ele - prev.ele;
       if (eleDiff > 0) totalEleGain += eleDiff;
+
+      const dt = (new Date(p.time).getTime() - new Date(prev.time).getTime()) / 1000;
+      if (dt > 0) {
+        const speed = segDist / dt;
+        // Conta il tratto come "in movimento" solo se non è un buco di
+        // registrazione (pausa) né un tratto da fermo.
+        if (dt <= PAUSE_GAP_S && speed >= MIN_SPEED_MS) moving_s += dt;
+      }
     }
 
     gpsSeries.push({ t, lat: p.lat, lon: p.lon, ele: p.ele });
@@ -86,6 +102,12 @@ export function parseGpx(xml: string): ActivityInput {
     started_at: points[0].time,
     distance_m: Math.round(distance_m),
     duration_s,
+    // Solo se c'è stata davvero una pausa (moving < elapsed); altrimenti lascia
+    // undefined e si usa il tempo totale come prima.
+    moving_time_s:
+      moving_s > 0 && Math.round(moving_s) < duration_s
+        ? Math.round(moving_s)
+        : undefined,
     avg_hr: hrCount > 0 ? Math.round(hrSum / hrCount) : undefined,
     max_hr: hrMax > 0 ? hrMax : undefined,
     elevation_gain_m: Math.round(totalEleGain) || undefined,

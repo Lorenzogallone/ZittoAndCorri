@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { formatDistance, formatDuration, formatPace } from "@/lib/format";
+import { formatDistance, formatDuration, formatPace, activeDuration } from "@/lib/format";
 import { nowMs } from "@/lib/dates";
 import type { Activity } from "@/lib/types";
 import { Plus, Activity as ActivityIcon, Heart, Mountain } from "lucide-react";
@@ -32,7 +32,7 @@ export default async function ActivitiesPage() {
   const { data: activities } = await supabase
     .from("activities")
     .select(
-      "id, started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr, elevation_gain_m, rpe",
+      "id, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km, avg_hr, elevation_gain_m, rpe",
     )
     .order("started_at", { ascending: false })
     .returns<
@@ -44,6 +44,7 @@ export default async function ActivitiesPage() {
         | "sport"
         | "distance_m"
         | "duration_s"
+        | "moving_time_s"
         | "avg_pace_s_km"
         | "avg_hr"
         | "elevation_gain_m"
@@ -69,7 +70,7 @@ export default async function ActivitiesPage() {
   });
 
   const dist30 = last30DaysRuns.reduce((sum, a) => sum + a.distance_m, 0);
-  const time30 = last30DaysRuns.reduce((sum, a) => sum + a.duration_s, 0);
+  const time30 = last30DaysRuns.reduce((sum, a) => sum + activeDuration(a), 0);
   const count30 = last30DaysRuns.length;
 
   const distPrev30 = prev30DaysRuns.reduce((sum, a) => sum + a.distance_m, 0);
@@ -195,7 +196,7 @@ export default async function ActivitiesPage() {
                   <span className="text-xl font-bold tabular-nums tracking-tight text-foreground">
                     {a.distance_m > 0
                       ? formatDistance(a.distance_m)
-                      : formatDuration(a.duration_s)}
+                      : formatDuration(activeDuration(a))}
                   </span>
                   
                   {/* Rich parameters */}
@@ -222,7 +223,7 @@ export default async function ActivitiesPage() {
                 
                 <div className="text-right text-sm text-muted-foreground tabular-nums shrink-0 self-center flex items-center gap-2">
                   <div>
-                    <div className="font-semibold text-foreground/90">{formatDuration(a.duration_s)}</div>
+                    <div className="font-semibold text-foreground/90">{formatDuration(activeDuration(a))}</div>
                     {/* Il passo min/km ha senso solo per la corsa. */}
                     {isRun && a.avg_pace_s_km != null && (
                       <div className="text-xs font-medium">{formatPace(a.avg_pace_s_km)}</div>

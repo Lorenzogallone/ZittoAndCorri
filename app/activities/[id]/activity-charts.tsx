@@ -37,8 +37,12 @@ function useMounted() {
 
 // --- HR nel tempo -------------------------------------------------------
 
+// HR sempre rosso, a prescindere dall'accento del tema (il rosso è il colore
+// universale della frequenza cardiaca).
+const HR_COLOR = "#ef4444";
+
 const hrConfig: ChartConfig = {
-  bpm: { label: "HR", color: "var(--color-chart-1)" },
+  bpm: { label: "HR", color: HR_COLOR },
 };
 
 export function HrChart({ data }: { data: HrPoint[] }) {
@@ -78,7 +82,7 @@ export function HrChart({ data }: { data: HrPoint[] }) {
           <Line
             type="monotone"
             dataKey="bpm"
-            stroke="var(--color-chart-1)"
+            stroke={HR_COLOR}
             strokeWidth={1.5}
             dot={false}
           />
@@ -108,7 +112,7 @@ export function PaceChart({ splits }: { splits: Split[] }) {
   return (
     <ChartContainer config={paceConfig} className="h-40">
       <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} initialDimension={{ width: 100, height: 100 }}>
-        <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+        <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
           <XAxis
             dataKey="km"
@@ -117,6 +121,10 @@ export function PaceChart({ splits }: { splits: Split[] }) {
             axisLine={false}
           />
           <YAxis
+            // Larghezza esplicita: le etichette del passo sono "m:ss" (es. 5:30),
+            // più larghe di un numero secco. Senza spazio sufficiente i primi
+            // caratteri venivano tagliati a sinistra.
+            width={46}
             tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
             tickLine={false}
             axisLine={false}
