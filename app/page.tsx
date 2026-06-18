@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
-import { formatDistance, formatDuration, formatPace, daysUntil } from "@/lib/format";
+import { formatDistance, formatDuration, formatPace, daysUntil, activeDuration } from "@/lib/format";
 import { todayIso, isoDaysFromNow } from "@/lib/dates";
 import { computeAdherence } from "@/lib/metrics/adherence";
 import type { Activity, Goal, PlannedWorkout, Profile } from "@/lib/types";
@@ -62,12 +62,12 @@ export default async function Home() {
       .maybeSingle<Pick<Profile, "display_name">>(),
     supabase
       .from("activities")
-      .select("id, started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr")
+      .select("id, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km, avg_hr")
       .eq("user_id", user.id)
       .order("started_at", { ascending: false })
       .limit(1)
       .maybeSingle<
-        Pick<Activity, "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" | "avg_pace_s_km" | "avg_hr">
+        Pick<Activity, "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" | "moving_time_s" | "avg_pace_s_km" | "avg_hr">
       >(),
     supabase
       .from("goals")
@@ -93,11 +93,11 @@ export default async function Home() {
       .returns<Array<{ status: string; date: string }>>(),
     supabase
       .from("activities")
-      .select("id, started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr")
+      .select("id, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km, avg_hr")
       .eq("user_id", user.id)
       .gte("started_at", startOfWeekISO)
       .order("started_at", { ascending: true })
-      .returns<Pick<Activity, "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" | "avg_pace_s_km" | "avg_hr">[]>(),
+      .returns<Pick<Activity, "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" | "moving_time_s" | "avg_pace_s_km" | "avg_hr">[]>(),
     // Allenamenti pianificati di questa settimana (per evidenziare i giorni
     // futuri con un colore dedicato nel visualizzatore settimanale).
     supabase
@@ -130,7 +130,7 @@ export default async function Home() {
   // in bici non deve gonfiare il volume running.
   const weekRuns = weekActivities.filter((a) => a.sport === "running");
   const totalDistance = weekRuns.reduce((acc, curr) => acc + curr.distance_m, 0);
-  const totalDuration = weekRuns.reduce((acc, curr) => acc + curr.duration_s, 0);
+  const totalDuration = weekRuns.reduce((acc, curr) => acc + activeDuration(curr), 0);
   // Riepilogo in alto a destra: tutte le attività della settimana (ogni sport),
   // non solo le corse.
   const totalActivities = weekActivities.length;
@@ -303,7 +303,7 @@ export default async function Home() {
               const pool = dayRuns.length > 0 ? dayRuns : day.activities;
               const mainActivity = pool.reduce(
                 (prev, current) =>
-                  prev && prev.duration_s > current.duration_s ? prev : current,
+                  prev && activeDuration(prev) > activeDuration(current) ? prev : current,
                 pool[0],
               );
               const runDistOnDay = dayRuns.reduce((sum, a) => sum + a.distance_m, 0);
@@ -344,7 +344,7 @@ export default async function Home() {
                       title={
                         isRunDay
                           ? `${TYPE_LABELS[mainActivity.type] ?? mainActivity.type}: ${formatDistance(runDistOnDay)}`
-                          : `${SPORT_LABELS[mainActivity.sport ?? "other"]}: ${formatDuration(mainActivity.duration_s)}`
+                          : `${SPORT_LABELS[mainActivity.sport ?? "other"]}: ${formatDuration(activeDuration(mainActivity))}`
                       }
                     >
                       {isRunDay || !SportIcon ? day.label : <SportIcon size={14} />}
@@ -426,7 +426,7 @@ export default async function Home() {
                       <span className="text-2xl font-bold tabular-nums tracking-tight">
                         {lastActivity.distance_m > 0
                           ? formatDistance(lastActivity.distance_m)
-                          : formatDuration(lastActivity.duration_s)}
+                          : formatDuration(activeDuration(lastActivity))}
                       </span>
                       {lastActivity.sport === "running" ? (
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
@@ -444,7 +444,7 @@ export default async function Home() {
                     </div>
 
                     <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground flex-wrap">
-                      <span className="tabular-nums font-medium text-foreground/80">{formatDuration(lastActivity.duration_s)}</span>
+                      <span className="tabular-nums font-medium text-foreground/80">{formatDuration(activeDuration(lastActivity))}</span>
                       {lastActivity.sport === "running" && lastActivity.avg_pace_s_km != null && (
                         <>
                           <span className="opacity-30">·</span>

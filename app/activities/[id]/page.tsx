@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { formatDistance, formatDuration, formatPace } from "@/lib/format";
+import { formatDistance, formatDuration, formatPace, activeDuration } from "@/lib/format";
 import { timeInZoneFromSeries } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
 import type { Activity, ActivityStream, Evaluation, Profile, TimeInZone } from "@/lib/types";
@@ -178,6 +178,14 @@ export default async function ActivityDetailPage({
   const hrChartData = streams?.hr_series
     ? downsample(streams.hr_series, 300)
     : null;
+  // La mappa riceve la traccia downsamplata: la serie GPS grezza può avere
+  // migliaia di punti e, serializzata intera nel payload RSC, rende lentissima
+  // la navigazione su rete mobile (la pagina resta "in loading"). ~500 punti
+  // bastano per disegnare un percorso fedele.
+  const mapGps =
+    streams?.gps_series && streams.gps_series.length >= 2
+      ? downsample(streams.gps_series, 500)
+      : null;
   const eleChartData =
     streams?.gps_series && streams.gps_series.some((p) => p.ele != null)
       ? downsample(streams.gps_series, 300)
@@ -223,14 +231,14 @@ export default async function ActivityDetailPage({
         <h1 className="text-3xl font-bold tracking-tight mb-1">
           {activity.distance_m > 0
             ? formatDistance(activity.distance_m)
-            : formatDuration(activity.duration_s)}
+            : formatDuration(activeDuration(activity))}
         </h1>
         <p className="text-muted-foreground text-sm capitalize">{dateLabel}</p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-2.5 mb-6">
-        <StatCard icon={Clock} label="Durata" value={formatDuration(activity.duration_s)} />
+        <StatCard icon={Clock} label="Durata" value={formatDuration(activeDuration(activity))} />
         {isRun && activity.avg_pace_s_km != null && (
           <StatCard icon={Gauge} label="Passo" value={formatPace(activity.avg_pace_s_km)} />
         )}
@@ -249,9 +257,9 @@ export default async function ActivityDetailPage({
       </div>
 
       {/* Percorso GPS (Mappa) */}
-      {streams?.gps_series && streams.gps_series.length >= 2 && (
+      {mapGps && (
         <div className="mb-4">
-          <ActivityMap gpsSeries={streams.gps_series} />
+          <ActivityMap gpsSeries={mapGps} />
         </div>
       )}
 
