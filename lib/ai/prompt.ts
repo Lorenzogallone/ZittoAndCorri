@@ -115,6 +115,7 @@ export function buildPlanPrompt(
     `- Pianifica SOLO date comprese tra ${windowStart} e ${windowEnd} (incluse).`,
     "- Non programmare ogni singolo giorno: includi riposo e alterna intensità e volume in modo sensato verso l'obiettivo.",
     "- I passi target devono essere coerenti coi passi medi reali dell'atleta per ciascun tipo.",
+    "- Tieni conto dei feedback dell'atleta sulle corse recenti (note e RPE nel contesto, es. 'stanco', 'gambe pesanti', 'rilassato', 'scattante'): se le ultime corse segnalano fatica, fastidi o RPE alti su sedute facili, alleggerisci volume/intensità; se l'atleta è riposato e brillante, puoi progredire con più decisione.",
     "- Scrivi descrizioni brevi e operative in italiano.",
     "- Dai continuità alla progressione: la 'memoria coach' e lo 'storico piani recenti' nel contesto dicono in che fase siete (base, costruzione, intensità, velocità, scarico, avvicinamento gara). Prosegui il blocco in corso o passa al successivo in modo motivato; inserisci scarico periodico. Non ricominciare da capo a ogni piano.",
     "- Tieni conto delle attività non di corsa (calcio, bici, palestra…): se ricorrono in giorni fissi trattale come impegni da rispettare (pianifica riposo o easy intorno); un giorno con attività intensa di altro sport conta come carico, non come giorno libero — il giorno dopo meglio easy o riposo.",
