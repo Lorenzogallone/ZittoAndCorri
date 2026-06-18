@@ -26,6 +26,18 @@ export function formatDistance(distance_m: number | null | undefined): string {
   return `${(distance_m / 1000).toFixed(2)} km`;
 }
 
+/**
+ * Tempo "effettivo" di un'attività: il tempo in movimento (pause escluse) se
+ * disponibile, altrimenti il tempo totale. È il tempo che mostra Strava, usato
+ * ovunque per durata, totali e carico.
+ */
+export function activeDuration(a: {
+  duration_s: number;
+  moving_time_s?: number | null;
+}): number {
+  return a.moving_time_s ?? a.duration_s;
+}
+
 /** Giorni interi rimanenti a raceDate (min 0). Null se raceDate è null. */
 export function daysUntil(raceDate: string | null | undefined): number | null {
   if (!raceDate) return null;

@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { formatDistance, formatDuration, formatPace } from "@/lib/format";
+import { formatDistance, formatDuration, formatPace, activeDuration } from "@/lib/format";
 import type { PlannedWorkout, Activity, WorkoutType, Sport } from "@/lib/types";
 import { Plus } from "lucide-react";
 import {
@@ -76,7 +76,7 @@ export default async function DayViewPage({ params }: Props) {
     supabase
       .from("activities")
       .select(
-        "id, started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr",
+        "id, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km, avg_hr",
       )
       .eq("user_id", user.id)
       .gte("started_at", `${date}T00:00:00`)
@@ -91,6 +91,7 @@ export default async function DayViewPage({ params }: Props) {
           | "sport"
           | "distance_m"
           | "duration_s"
+          | "moving_time_s"
           | "avg_pace_s_km"
           | "avg_hr"
         >[]
@@ -181,7 +182,7 @@ export default async function DayViewPage({ params }: Props) {
                     <p className="truncate text-sm font-medium tabular-nums">
                       {[
                         a.distance_m > 0 && formatDistance(a.distance_m),
-                        formatDuration(a.duration_s),
+                        formatDuration(activeDuration(a)),
                       ]
                         .filter(Boolean)
                         .join(" · ")}

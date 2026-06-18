@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { sanitizePrefs } from "@/lib/theme";
 import { computeATLCTL } from "@/lib/metrics/load";
 import type { Profile, Goal, Activity } from "@/lib/types";
-import { formatDistance, formatDuration, daysUntil } from "@/lib/format";
+import { formatDistance, formatDuration, daysUntil, activeDuration } from "@/lib/format";
 import { LogOut } from "lucide-react";
 
 export default async function SettingsPage() {
@@ -38,9 +38,9 @@ export default async function SettingsPage() {
       // anche per gli sport diversi dalla corsa.
       supabase
         .from("activities")
-        .select("started_at, duration_s, rpe")
+        .select("started_at, duration_s, moving_time_s, rpe")
         .eq("user_id", user.id)
-        .returns<Pick<Activity, "started_at" | "duration_s" | "rpe">[]>(),
+        .returns<Pick<Activity, "started_at" | "duration_s" | "moving_time_s" | "rpe">[]>(),
       // Query separata e tollerante: se la migration 0005 non è stata applicata
       // l'errore resta isolato qui e il tema usa i default (la pagina non si rompe).
       supabase
@@ -59,7 +59,8 @@ export default async function SettingsPage() {
   const load = computeATLCTL(
     (activities ?? []).map((a) => ({
       started_at: a.started_at,
-      duration_s: a.duration_s,
+      // Carico sul tempo in movimento (pause escluse) quando disponibile.
+      duration_s: activeDuration(a),
       rpe: a.rpe,
     })),
   );

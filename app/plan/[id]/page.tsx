@@ -9,7 +9,7 @@ import {
   unlinkActivityFromWorkout,
 } from "../actions";
 import { DeleteWorkoutButton } from "./delete-workout-button";
-import { formatDistance, formatDuration, formatPace } from "@/lib/format";
+import { formatDistance, formatDuration, formatPace, activeDuration } from "@/lib/format";
 import type { PlannedWorkout, Activity } from "@/lib/types";
 import {
   Select,
@@ -64,12 +64,12 @@ export default async function PlannedWorkoutPage({ params }: Props) {
   toDate.setDate(toDate.getDate() + 3);
   const { data: nearbyActivities } = await supabase
     .from("activities")
-    .select("id, started_at, type, distance_m, duration_s")
+    .select("id, started_at, type, distance_m, duration_s, moving_time_s")
     .eq("user_id", user.id)
     .gte("started_at", fromDate.toISOString().slice(0, 10) + "T00:00:00")
     .lte("started_at", toDate.toISOString().slice(0, 10) + "T23:59:59")
     .order("started_at", { ascending: false })
-    .returns<Pick<Activity, "id" | "started_at" | "type" | "distance_m" | "duration_s">[]>();
+    .returns<Pick<Activity, "id" | "started_at" | "type" | "distance_m" | "duration_s" | "moving_time_s">[]>();
 
   const linkedActivity = workout.activity_id
     ? { id: workout.activity_id }
@@ -157,7 +157,7 @@ export default async function PlannedWorkoutPage({ params }: Props) {
                   <SelectItem key={a.id} value={a.id}>
                     {new Date(a.started_at).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" })}
                     {" — "}
-                    {TYPE_LABELS[a.type] ?? a.type} — {formatDistance(a.distance_m)} — {formatDuration(a.duration_s)}
+                    {TYPE_LABELS[a.type] ?? a.type} — {formatDistance(a.distance_m)} — {formatDuration(activeDuration(a))}
                   </SelectItem>
                 ))}
               </SelectContent>

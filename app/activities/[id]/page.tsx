@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { formatDistance, formatDuration, formatPace } from "@/lib/format";
+import { formatDistance, formatDuration, formatPace, activeDuration } from "@/lib/format";
 import { timeInZoneFromSeries } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
 import type { Activity, ActivityStream, Evaluation, Profile, TimeInZone } from "@/lib/types";
@@ -231,14 +231,14 @@ export default async function ActivityDetailPage({
         <h1 className="text-3xl font-bold tracking-tight mb-1">
           {activity.distance_m > 0
             ? formatDistance(activity.distance_m)
-            : formatDuration(activity.duration_s)}
+            : formatDuration(activeDuration(activity))}
         </h1>
         <p className="text-muted-foreground text-sm capitalize">{dateLabel}</p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-2.5 mb-6">
-        <StatCard icon={Clock} label="Durata" value={formatDuration(activity.duration_s)} />
+        <StatCard icon={Clock} label="Durata" value={formatDuration(activeDuration(activity))} />
         {isRun && activity.avg_pace_s_km != null && (
           <StatCard icon={Gauge} label="Passo" value={formatPace(activity.avg_pace_s_km)} />
         )}
