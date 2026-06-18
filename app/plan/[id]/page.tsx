@@ -9,7 +9,7 @@ import {
   unlinkActivityFromWorkout,
 } from "../actions";
 import { DeleteWorkoutButton } from "./delete-workout-button";
-import { formatDistance, formatDuration, formatPace, activeDuration } from "@/lib/format";
+import { formatDistance, formatDuration, formatPace, activeDuration, formatPlannedDistance } from "@/lib/format";
 import type { PlannedWorkout, Activity } from "@/lib/types";
 import {
   Select,
@@ -96,8 +96,9 @@ export default async function PlannedWorkoutPage({ params }: Props) {
         <p className="font-semibold text-lg">{formatDate(workout.date)}</p>
 
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          {workout.target_distance_m != null && (
-            <span>{formatDistance(workout.target_distance_m)}</span>
+          {/* Distanza sempre mostrata: esplicita o stimata da durata+passo. */}
+          {formatPlannedDistance(workout) && (
+            <span>{formatPlannedDistance(workout)}</span>
           )}
           {workout.target_pace_s_km != null && (
             <span>{formatPace(workout.target_pace_s_km)}</span>

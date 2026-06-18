@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { formatDistance, formatDuration, formatPace, activeDuration } from "@/lib/format";
+import { formatDistance, formatDuration, formatPace, activeDuration, formatPlannedDistance } from "@/lib/format";
 import type { PlannedWorkout, Activity, WorkoutType, Sport } from "@/lib/types";
 import { Plus } from "lucide-react";
 import {
@@ -130,7 +130,7 @@ export default async function DayViewPage({ params }: Props) {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
                       {[
-                        w.target_distance_m && formatDistance(w.target_distance_m),
+                        formatPlannedDistance(w),
                         w.target_pace_s_km && formatPace(w.target_pace_s_km),
                         w.target_duration_s && formatDuration(w.target_duration_s),
                       ]

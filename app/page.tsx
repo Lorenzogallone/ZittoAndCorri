@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
-import { formatDistance, formatDuration, formatPace, daysUntil, activeDuration } from "@/lib/format";
+import { formatDistance, formatDuration, formatPace, daysUntil, activeDuration, formatPlannedDistance } from "@/lib/format";
 import { todayIso, isoDaysFromNow } from "@/lib/dates";
 import { computeAdherence } from "@/lib/metrics/adherence";
 import type { Activity, Goal, PlannedWorkout, Profile } from "@/lib/types";
@@ -77,13 +77,13 @@ export default async function Home() {
       .maybeSingle<Pick<Goal, "race_name" | "race_date" | "distance_m" | "target_time_s">>(),
     supabase
       .from("planned_workouts")
-      .select("id, date, type, target_distance_m, target_duration_s, description")
+      .select("id, date, type, target_distance_m, target_pace_s_km, target_duration_s, description")
       .eq("user_id", user.id)
       .eq("status", "planned")
       .gte("date", today)
       .order("date")
       .limit(2)
-      .returns<Pick<PlannedWorkout, "id" | "date" | "type" | "target_distance_m" | "target_duration_s" | "description">[]>(),
+      .returns<Pick<PlannedWorkout, "id" | "date" | "type" | "target_distance_m" | "target_pace_s_km" | "target_duration_s" | "description">[]>(),
     supabase
       .from("planned_workouts")
       .select("status, date")
@@ -494,7 +494,7 @@ export default async function Home() {
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
                       {[
-                        w.target_distance_m && formatDistance(w.target_distance_m),
+                        formatPlannedDistance(w),
                         w.target_duration_s && formatDuration(w.target_duration_s),
                         w.description,
                       ]
