@@ -178,6 +178,14 @@ export default async function ActivityDetailPage({
   const hrChartData = streams?.hr_series
     ? downsample(streams.hr_series, 300)
     : null;
+  // La mappa riceve la traccia downsamplata: la serie GPS grezza può avere
+  // migliaia di punti e, serializzata intera nel payload RSC, rende lentissima
+  // la navigazione su rete mobile (la pagina resta "in loading"). ~500 punti
+  // bastano per disegnare un percorso fedele.
+  const mapGps =
+    streams?.gps_series && streams.gps_series.length >= 2
+      ? downsample(streams.gps_series, 500)
+      : null;
   const eleChartData =
     streams?.gps_series && streams.gps_series.some((p) => p.ele != null)
       ? downsample(streams.gps_series, 300)
@@ -249,9 +257,9 @@ export default async function ActivityDetailPage({
       </div>
 
       {/* Percorso GPS (Mappa) */}
-      {streams?.gps_series && streams.gps_series.length >= 2 && (
+      {mapGps && (
         <div className="mb-4">
-          <ActivityMap gpsSeries={streams.gps_series} />
+          <ActivityMap gpsSeries={mapGps} />
         </div>
       )}
 
