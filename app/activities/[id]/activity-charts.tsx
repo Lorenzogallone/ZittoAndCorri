@@ -37,8 +37,12 @@ function useMounted() {
 
 // --- HR nel tempo -------------------------------------------------------
 
+// HR sempre rosso, a prescindere dall'accento del tema (il rosso è il colore
+// universale della frequenza cardiaca).
+const HR_COLOR = "#ef4444";
+
 const hrConfig: ChartConfig = {
-  bpm: { label: "HR", color: "var(--color-chart-1)" },
+  bpm: { label: "HR", color: HR_COLOR },
 };
 
 export function HrChart({ data }: { data: HrPoint[] }) {
@@ -78,7 +82,7 @@ export function HrChart({ data }: { data: HrPoint[] }) {
           <Line
             type="monotone"
             dataKey="bpm"
-            stroke="var(--color-chart-1)"
+            stroke={HR_COLOR}
             strokeWidth={1.5}
             dot={false}
           />
