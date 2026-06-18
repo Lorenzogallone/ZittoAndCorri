@@ -8,7 +8,8 @@ import { AiThinkingOverlay } from "@/components/ai-thinking-overlay";
 import { useAiJob } from "@/lib/use-ai-job";
 
 export function PlanGenerator() {
-  const { pending, done, error, start } = useAiJob();
+  // Chiave stabile: riprende il polling se la PWA si ricarica durante l'attesa.
+  const { pending, done, error, start } = useAiJob("plan");
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-card p-5">
