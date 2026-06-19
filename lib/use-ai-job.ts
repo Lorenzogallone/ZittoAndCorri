@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { pollAiJob } from "@/app/actions/ai-jobs";
+import { clientLog, isStandalone } from "@/lib/clientlog";
 
 const POLL_INTERVAL_MS = 2_000;
 // Oltre questo tempo smettiamo di interrogare il job: la chiamata AI ha un
@@ -108,11 +109,20 @@ export function useAiJob(persistKey?: string) {
         try {
           const status = await pollAiJob(jobId);
           if (runId !== runIdRef.current) return;
+          clientLog("aijob:poll", { key: persistKey, status: status.status });
           if (status.status === "done") {
             if (persistKey) clearPersisted(persistKey);
             setDone(true);
             setPending(false);
-            router.refresh();
+            // In PWA standalone iOS, router.refresh() (RSC fetch) può restare
+            // appeso lasciando l'UI senza il risultato: un reload completo è
+            // affidabile. Da browser usiamo il refresh soft (niente flash).
+            if (isStandalone()) {
+              clientLog("aijob:done-hard-reload", { key: persistKey });
+              window.location.reload();
+            } else {
+              router.refresh();
+            }
             return;
           }
           if (status.status === "error") {
@@ -179,6 +189,7 @@ export function useAiJob(persistKey?: string) {
       const jobId = res.jobId;
       const deadline = Date.now() + MAX_POLL_MS;
       if (persistKey) writePersisted(persistKey, { jobId, deadline });
+      clientLog("aijob:start", { key: persistKey, jobId });
 
       runPoll(jobId, deadline, runId);
     },
