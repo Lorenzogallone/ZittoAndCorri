@@ -1,7 +1,9 @@
 "use client";
 
-import { useActionState, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { updateActivity, deleteActivity, type EditActivityFormState } from "../../actions";
+import { navigateAfterMutation } from "@/lib/nav";
 import { WORKOUT_TYPES, SPORTS } from "@/lib/types";
 import type { Activity, PlannedWorkout, Sport } from "@/lib/types";
 import { formatDuration } from "@/lib/format";
@@ -39,7 +41,14 @@ interface Props {
 export function EditActivityForm({ activity, plannedOptions, linkedWorkoutId }: Props) {
   const initialState: EditActivityFormState = {};
   const [state, formAction, pending] = useActionState(updateActivity, initialState);
+  const router = useRouter();
   const isImported = activity.source !== "manual";
+
+  // Modifica salvata → torna al dettaglio (client-side; full load in PWA
+  // standalone, dove la soft-navigation RSC resta appesa in loading).
+  useEffect(() => {
+    if (state.id) navigateAfterMutation(router, `/activities/${state.id}`);
+  }, [state.id, router]);
   const [sport, setSport] = useState<Sport>(activity.sport ?? "running");
   const isRunning = sport === "running";
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -284,6 +293,7 @@ export function EditActivityForm({ activity, plannedOptions, linkedWorkoutId }: 
                 startDeleteTransition(async () => {
                   try {
                     await deleteActivity(fd);
+                    navigateAfterMutation(router, "/activities");
                   } catch {
                     setDeleteError("Errore durante l'eliminazione. Riprova.");
                     setConfirmDelete(false);
