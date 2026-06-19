@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { PwaRegister } from "@/components/pwa-register";
 import { PwaSplashLoader } from "@/components/pwa-splash-loader";
+import { PwaDiagnostics } from "@/components/pwa-diagnostics";
 import { ThemeWatcher } from "@/components/theme-watcher";
 import { createClient } from "@/lib/supabase/server";
 import { themeInitScript, sanitizePrefs, type ThemePrefs } from "@/lib/theme";
@@ -143,6 +144,7 @@ export default async function RootLayout({
         />
         <PwaRegister />
         <PwaSplashLoader />
+        <PwaDiagnostics />
         <ThemeWatcher />
         <Suspense fallback={null}>
           <NavigationProgress />

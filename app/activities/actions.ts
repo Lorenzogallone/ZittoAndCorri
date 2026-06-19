@@ -13,6 +13,8 @@ import { computeSplits } from "@/lib/metrics/splits";
 
 export interface ActivityFormState {
   error?: string;
+  /** Id della corsa creata: il client naviga al dettaglio (vedi navigateAfterMutation). */
+  id?: string;
 }
 
 /** Legge un campo numero opzionale dal form; "" → undefined. */
@@ -104,7 +106,9 @@ export async function createActivity(
   }
 
   revalidatePath("/activities");
-  redirect(`/activities/${activityId}`, RedirectType.replace);
+  // Niente redirect lato server: torniamo l'id e il client naviga (soft da
+  // browser, full load in PWA standalone, dove la soft-navigation si impalla).
+  return { id: activityId };
 }
 
 export interface GpxImportFormState {
@@ -179,11 +183,14 @@ export async function deleteActivity(formData: FormData): Promise<void> {
 
   revalidatePath("/plan");
   revalidatePath("/activities");
-  redirect("/activities", RedirectType.replace);
+  // La navigazione la fa il client (navigateAfterMutation): niente redirect lato
+  // server, che in PWA standalone lascia la pagina appesa in loading.
 }
 
 export interface EditActivityFormState {
   error?: string;
+  /** Id della corsa aggiornata: il client naviga al dettaglio. */
+  id?: string;
 }
 
 export async function updateActivity(
@@ -334,7 +341,7 @@ export async function updateActivity(
 
   revalidatePath(`/activities/${id}`);
   revalidatePath("/activities");
-  redirect(`/activities/${id}`, RedirectType.replace);
+  return { id };
 }
 
 export async function saveParsedActivity(

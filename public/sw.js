@@ -1,7 +1,7 @@
 // Service worker: precache degli asset statici dell'app shell + runtime cache
 // per gli asset immutabili di Next. I contenuti autenticati (pagine, payload
 // RSC, API, Supabase) NON vengono mai cachati.
-const VERSION = "v1";
+const VERSION = "v2";
 const STATIC_CACHE = `static-${VERSION}`;
 
 const PRECACHE_URLS = [
@@ -46,6 +46,12 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
 
+  // Le navigazioni e le fetch RSC NON devono mai passare per la logica del SW:
+  // su iOS standalone un intercept (anche solo il passaggio nel handler) può far
+  // restare la richiesta appesa → pagina bloccata in loading. Le lasciamo sempre
+  // alla rete, gestite dal browser.
+  if (request.mode === "navigate") return;
+
   const url = new URL(request.url);
 
   // Solo stessa origine; mai API, mai payload RSC (header RSC) — quelli vanno
@@ -53,6 +59,8 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/")) return;
   if (request.headers.get("RSC") === "1") return;
+  // Anche le richieste RSC senza header esplicito (?_rsc=…) restano in rete.
+  if (url.searchParams.has("_rsc")) return;
 
   if (isStaticAsset(url)) {
     // Cache-first: gli asset /_next/static/ hanno hash nel nome, immutabili.
