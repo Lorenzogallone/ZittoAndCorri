@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createActivity, saveParsedActivity, type ActivityFormState } from "../actions";
+import { navigateAfterMutation } from "@/lib/nav";
 import { WORKOUT_TYPES, SPORTS } from "@/lib/types";
 import type { PlannedWorkout, Sport } from "@/lib/types";
 import type { ActivityInput } from "@/lib/ingest/schema";
@@ -65,8 +66,15 @@ interface Props {
 function ManualForm({ nearbyWorkouts, today }: Props) {
   const initialState: ActivityFormState = {};
   const [state, formAction, pending] = useActionState(createActivity, initialState);
+  const router = useRouter();
   const [sport, setSport] = useState<Sport>("running");
   const isRunning = sport === "running";
+
+  // Salvataggio andato a buon fine → vai al dettaglio (client-side; in PWA
+  // standalone è un full load, affidabile dove la soft-navigation si impalla).
+  useEffect(() => {
+    if (state.id) navigateAfterMutation(router, `/activities/${state.id}`);
+  }, [state.id, router]);
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
@@ -275,7 +283,7 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
       setPending(false);
     } else if (res.id) {
       // replace: il form di review non deve restare nella history.
-      router.replace(`/activities/${res.id}`);
+      navigateAfterMutation(router, `/activities/${res.id}`);
     }
   };
 
