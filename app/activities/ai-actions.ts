@@ -45,7 +45,7 @@ type EvalPlanned = Pick<
 >;
 
 /** Riga compatta del workout previsto, per il prompt di valutazione. */
-function plannedWorkoutLine(w: EvalPlanned): string {
+function plannedWorkoutLine(w: EvalPlanned, activityDay: string): string {
   const parts = [
     TYPE_LABELS[w.type] ?? w.type,
     w.target_distance_m ? formatDistance(w.target_distance_m) : null,
@@ -54,6 +54,7 @@ function plannedWorkoutLine(w: EvalPlanned): string {
   ].filter(Boolean);
   let line = parts.join(" ");
   if (w.description) line += ` — "${w.description}"`;
+  if (w.date !== activityDay) line += ` (previsto il ${w.date}, collegato manualmente)`;
   return line;
 }
 
@@ -189,7 +190,7 @@ async function runEvaluation(
     const prompt = buildEvaluationPrompt(
       context.markdown,
       activityDetailLine(activity),
-      planned ? plannedWorkoutLine(planned) : null,
+      planned ? plannedWorkoutLine(planned, activity.started_at.slice(0, 10)) : null,
     );
     result = await generateStructured<EvaluationResult>(prompt, evaluationSchema);
   } catch (err) {
