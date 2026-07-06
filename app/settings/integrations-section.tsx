@@ -119,10 +119,12 @@ export function IntegrationsSection({ apiKey }: IntegrationsSectionProps) {
                     </ul>
                   </div>
                   <p className="text-[10px] text-muted-foreground/80 mt-2 font-medium">
-                    💡 Il file .fit (con cadenza e tutte le serie completa) si ottiene dall&apos;export
+                    💡 Il file .fit (con cadenza e tutte le serie complete) si ottiene dall&apos;export
                     dati dell&apos;account Zepp o dalla sincronizzazione con Strava; per l&apos;uso quotidiano il GPX
-                    condiviso dall&apos;app (GPS + battito) è già sufficiente. Metriche come zone HR, deriva
-                    cardiaca e split vengono calcolate in automatico all&apos;import.
+                    condiviso dall&apos;app (GPS + battito) è già sufficiente. Se poi importi anche il .fit della
+                    stessa corsa (subito o giorni dopo), l&apos;attività viene <strong className="text-foreground">arricchita,
+                    non duplicata</strong>: stessi ±10 minuti di inizio = stessa attività. Zone HR, deriva
+                    cardiaca, cadenza e split vengono ricalcolate in automatico.
                   </p>
                 </div>
               </div>

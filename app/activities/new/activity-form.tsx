@@ -9,6 +9,7 @@ import type { PlannedWorkout, Sport } from "@/lib/types";
 import type { ActivityInput } from "@/lib/ingest/schema";
 import { parseGpx } from "@/lib/ingest/adapters/gpx";
 import { parseFit } from "@/lib/ingest/adapters/fit";
+import { mergeActivityInputs } from "@/lib/ingest/merge";
 import { formatDuration, parseDuration } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -486,23 +487,43 @@ function GpxUploadForm({ nearbyWorkouts, today }: GpxUploadFormProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const parseOne = async (file: File): Promise<ActivityInput> => {
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (ext === "fit") return parseFit(await file.arrayBuffer());
+    if (ext === "gpx") return parseGpx(await file.text());
+    throw new Error("Formato non supportato: usa file .gpx o .fit.");
+  };
 
-    setFileName(file.name);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+
+    setFileName(files.map((f) => f.name).join(" + "));
     setIsParsing(true);
     setError(null);
 
     try {
-      const ext = file.name.split(".").pop()?.toLowerCase();
+      if (files.length > 2) {
+        throw new Error("Massimo due file: un .gpx e un .fit della stessa attività.");
+      }
       let input: ActivityInput;
-      if (ext === "fit") {
-        input = await parseFit(await file.arrayBuffer());
-      } else if (ext === "gpx") {
-        input = parseGpx(await file.text());
+      if (files.length === 2) {
+        // GPX + FIT della stessa attività: il FIT è il file ricco (cadenza,
+        // calorie, moving time), il GPX riempie i buchi e dà il nome traccia.
+        const exts = files.map((f) => f.name.split(".").pop()?.toLowerCase());
+        const fitFile = files[exts.indexOf("fit")];
+        const gpxFile = files[exts.indexOf("gpx")];
+        if (!fitFile || !gpxFile) {
+          throw new Error(
+            "Con due file servono un .gpx e un .fit della stessa attività.",
+          );
+        }
+        input = mergeActivityInputs(
+          await parseOne(fitFile),
+          await parseOne(gpxFile),
+        );
       } else {
-        throw new Error("Formato non supportato: usa un file .gpx o .fit.");
+        input = await parseOne(files[0]);
       }
       setParsedInput(input);
     } catch (err) {
@@ -536,6 +557,7 @@ function GpxUploadForm({ nearbyWorkouts, today }: GpxUploadFormProps) {
           ref={inputRef}
           type="file"
           accept=".gpx,.fit"
+          multiple
           className="hidden"
           onChange={handleFileChange}
         />
@@ -547,13 +569,16 @@ function GpxUploadForm({ nearbyWorkouts, today }: GpxUploadFormProps) {
         >
           <Upload size={32} className="text-muted-foreground" />
           <span className="text-sm text-muted-foreground font-medium">
-            {isParsing ? "Analisi file in corso..." : fileName ? fileName : "Tocca per scegliere un file .gpx o .fit"}
+            {isParsing ? "Analisi file in corso..." : fileName ? fileName : "Tocca per scegliere file .gpx e/o .fit"}
           </span>
         </button>
         <p className="text-xs text-muted-foreground text-center">
-          File .gpx o .fit esportati da Strava, Garmin o Coros.
+          File .gpx o .fit esportati da Strava, Garmin, Coros o Zepp. Puoi
+          selezionare anche entrambi (GPX + FIT) della stessa attività: i dati
+          vengono combinati.
           <br />
-          Lo sport viene riconosciuto dal file; passo, zone HR e split sono calcolati in automatico.
+          Lo sport viene riconosciuto dal file; passo, zone HR, split, cadenza e
+          deriva cardiaca sono calcolati in automatico.
         </p>
       </div>
 
