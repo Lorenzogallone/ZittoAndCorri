@@ -12,6 +12,14 @@ const MAX_POLL_MS = 75_000;
 // In PWA standalone: tempo concesso a router.refresh() per far arrivare il
 // nuovo contenuto server-rendered prima di ripiegare sul reload completo.
 const REFRESH_WATCHDOG_MS = 8_000;
+// Circuit breaker anti-loop: non più di UN reload automatico per contesto in
+// questa finestra. Su iOS il clear di localStorage può andare perso attraverso
+// un reload (persistenza asincrona di WebKit): senza questo freno un job
+// 'done' rimasto persistito rimetterebbe in loop reload → splash → reload.
+const RELOAD_BREAKER_MS = 90_000;
+// Un job persistito può essere ripreso al massimo così tante volte: oltre,
+// qualcosa è andato storto (loop di rilanci) e va abbandonato.
+const MAX_RESUMES = 2;
 
 interface StartResult {
   jobId?: string;
@@ -22,6 +30,8 @@ interface StartResult {
 interface PersistedJob {
   jobId: string;
   deadline: number;
+  /** Quante volte il polling è stato ripreso dopo un reload/rilancio. */
+  resumes?: number;
 }
 
 /** Chiave localStorage per un dato contesto (es. "plan", "eval:<id>"). */
@@ -46,13 +56,42 @@ function readPersisted(key: string): PersistedJob | null {
       typeof parsed.deadline === "number" &&
       Date.now() < parsed.deadline
     ) {
-      return { jobId: parsed.jobId, deadline: parsed.deadline };
+      return {
+        jobId: parsed.jobId,
+        deadline: parsed.deadline,
+        resumes: typeof parsed.resumes === "number" ? parsed.resumes : 0,
+      };
     }
   } catch {
     // voce corrotta: cade nel clear sotto
   }
   clearPersisted(key);
   return null;
+}
+
+/** Chiave del circuit breaker reload per un dato contesto. */
+function breakerKeyFor(key?: string): string {
+  return `ai-job-reload:${key ?? "anon"}`;
+}
+
+/** True se per questo contesto non c'è stato un reload automatico recente. */
+function canAutoReload(key?: string): boolean {
+  try {
+    const raw = window.localStorage.getItem(breakerKeyFor(key));
+    if (raw && Date.now() - Number(raw) < RELOAD_BREAKER_MS) return false;
+  } catch {
+    // localStorage assente: nessuna memoria del breaker, si può ricaricare
+  }
+  return true;
+}
+
+/** Registra il reload automatico appena deciso (PRIMA di eseguirlo). */
+function markAutoReload(key?: string): void {
+  try {
+    window.localStorage.setItem(breakerKeyFor(key), String(Date.now()));
+  } catch {
+    // ignora
+  }
 }
 
 function writePersisted(key: string, job: PersistedJob): void {
@@ -131,6 +170,29 @@ export function useAiJob(
     watchdogRef.current = null;
   }, [refreshSignal, persistKey]);
 
+  // Reload automatico con circuit breaker: al massimo uno per contesto ogni
+  // RELOAD_BREAKER_MS. Se un reload recente c'è già stato, NON ricarica (è
+  // così che si spezzano i loop reload → splash → reload): resta sulla pagina
+  // e tenta un ultimo refresh soft.
+  const reloadOnce = useCallback(
+    (reason: string) => {
+      if (!canAutoReload(persistKey)) {
+        clientLog("aijob:reload-suppressed", { key: persistKey, reason });
+        if (persistKey) clearPersisted(persistKey);
+        try {
+          router.refresh();
+        } catch {
+          // niente: meglio una pagina ferma di un loop di reload
+        }
+        return;
+      }
+      markAutoReload(persistKey);
+      clientLog(reason, { key: persistKey });
+      window.location.reload();
+    },
+    [persistKey, router],
+  );
+
   const finishWithRefresh = useCallback(() => {
     setDone(true);
     setPending(false);
@@ -139,26 +201,26 @@ export function useAiJob(
     if (isStandalone() && !canConfirm) {
       // Nessun segnale per verificare il refresh soft: in PWA il reload
       // completo resta l'unica opzione affidabile.
-      clientLog("aijob:done-hard-reload", { key: persistKey });
-      window.location.reload();
+      reloadOnce("aijob:done-hard-reload");
       return;
     }
 
     clientLog("aijob:done-soft-refresh", { key: persistKey });
     signalAtDoneRef.current = signalRef.current;
-    router.refresh();
 
     if (isStandalone()) {
-      // Watchdog: se il payload RSC non arriva (refresh appeso, tipico di
-      // iOS standalone su rete mobile), ripiega sul reload completo.
+      // Watchdog (armato PRIMA del refresh): se il payload RSC non arriva
+      // (refresh appeso, tipico di iOS standalone su rete mobile), ripiega
+      // sul reload completo — uno solo, grazie al breaker.
       if (watchdogRef.current) clearTimeout(watchdogRef.current);
       watchdogRef.current = setTimeout(() => {
         watchdogRef.current = null;
-        clientLog("aijob:refresh-watchdog-reload", { key: persistKey });
-        window.location.reload();
+        reloadOnce("aijob:refresh-watchdog-reload");
       }, REFRESH_WATCHDOG_MS);
     }
-  }, [persistKey, refreshSignal, router]);
+
+    router.refresh();
+  }, [persistKey, refreshSignal, reloadOnce, router]);
 
   // Ciclo di polling riusato sia all'avvio sia alla ripresa post-reload.
   const runPoll = useCallback(
@@ -177,7 +239,14 @@ export function useAiJob(
           clientLog("aijob:poll", { key: persistKey, status: status.status });
           if (status.status === "done") {
             if (persistKey) clearPersisted(persistKey);
-            finishWithRefresh();
+            // Isolato dal ciclo di poll: se il refresh lancia, il catch
+            // esterno NON deve rimettere in coda il polling di un job già
+            // concluso (sarebbe un loop di refresh ogni 2s).
+            try {
+              finishWithRefresh();
+            } catch {
+              // stato done già impostato: al peggio serve un refresh manuale
+            }
             return;
           }
           if (status.status === "error") {
@@ -205,10 +274,21 @@ export function useAiJob(
 
   // Ripresa al montaggio: se c'è un job persistito ancora valido (es. dopo un
   // reload della PWA su iOS), riattacca il polling e mostra di nuovo l'overlay.
+  // Il contatore `resumes` limita le riprese: se lo stesso job viene ripreso
+  // più di MAX_RESUMES volte significa che l'app sta ripartendo in loop —
+  // il job va abbandonato, non ripreso all'infinito.
   useEffect(() => {
     if (!persistKey) return;
     const saved = readPersisted(persistKey);
     if (!saved) return;
+    const resumes = saved.resumes ?? 0;
+    if (resumes >= MAX_RESUMES) {
+      clientLog("aijob:resume-abandoned", { key: persistKey, resumes });
+      clearPersisted(persistKey);
+      return;
+    }
+    writePersisted(persistKey, { ...saved, resumes: resumes + 1 });
+    clientLog("aijob:resume", { key: persistKey, resumes: resumes + 1 });
     const runId = ++runIdRef.current;
     setError(null);
     setDone(false);
