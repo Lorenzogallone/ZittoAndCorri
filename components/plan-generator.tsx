@@ -7,15 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { AiThinkingOverlay } from "@/components/ai-thinking-overlay";
 import { useAiJob } from "@/lib/use-ai-job";
 
-interface Props {
-  /** created_at dell'ultima review: cambia quando il nuovo piano è arrivato,
-   *  permettendo il refresh soft (niente reload) anche in PWA standalone. */
-  latestReviewAt: string | null;
-}
-
-export function PlanGenerator({ latestReviewAt }: Props) {
-  // Chiave stabile: riprende il polling se la PWA si ricarica durante l'attesa.
-  const { pending, done, error, start } = useAiJob("plan", latestReviewAt);
+export function PlanGenerator() {
+  // Chiave stabile: riprende il polling se la PWA si ricarica durante l'attesa
+  // e, dopo il reload post-generazione, riporta lo scroll dov'era.
+  const { pending, done, error, start } = useAiJob("plan");
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-card p-5">
