@@ -7,7 +7,7 @@ import { formatDistance, formatDuration, formatPace, activeDuration } from "@/li
 import { timeInZoneFromSeries } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
 import type { Activity, ActivityStream, Evaluation, Profile, TimeInZone } from "@/lib/types";
-import { Clock, Gauge, Heart, HeartPulse, Mountain, Flame } from "lucide-react";
+import { Clock, Gauge, Heart, HeartPulse, Mountain, Flame, Footprints, TrendingUp } from "lucide-react";
 import { HrChart, PaceChart, ElevationChart } from "./activity-charts";
 import { ActivityEvaluation } from "@/components/activity-evaluation";
 import ActivityMap from "@/components/activity-map";
@@ -250,6 +250,16 @@ export default async function ActivityDetailPage({
         )}
         {activity.elevation_gain_m != null && (
           <StatCard icon={Mountain} label="Dislivello +" value={`${activity.elevation_gain_m} m`} />
+        )}
+        {activity.avg_cadence_spm != null && (
+          <StatCard icon={Footprints} label="Cadenza" value={`${activity.avg_cadence_spm} spm`} />
+        )}
+        {activity.hr_drift_pct != null && (
+          <StatCard
+            icon={TrendingUp}
+            label="Deriva cardiaca"
+            value={`${activity.hr_drift_pct > 0 ? "+" : ""}${activity.hr_drift_pct}%`}
+          />
         )}
         {activity.rpe != null && (
           <StatCard icon={Flame} label="RPE" value={`${activity.rpe}/10`} />

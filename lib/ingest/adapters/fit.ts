@@ -1,7 +1,7 @@
-// Adapter FIT → ActivityInput. Decodifica i file .fit di Garmin/Coros/Wahoo
-// con l'SDK ufficiale (@garmin/fitsdk) e mappa sport/sub_sport sulla nostra
-// taxonomy. Come gpx.ts: gira nel browser, produce un ActivityInput pronto
-// per ingestActivity.
+// Adapter FIT → ActivityInput. Decodifica i file .fit di Garmin/Coros/Wahoo/
+// Amazfit con l'SDK ufficiale (@garmin/fitsdk) e mappa sport/sub_sport sulla
+// nostra taxonomy. Come gpx.ts: gira sia nel browser (form di import) sia sul
+// server (/api/import/file), produce un ActivityInput pronto per ingestActivity.
 
 import type { ActivityInput } from "@/lib/ingest/schema";
 import type { Sport } from "@/lib/types";

@@ -106,10 +106,22 @@ export default async function PlannedWorkoutPage({ params }: Props) {
           {workout.target_duration_s != null && (
             <span>{formatDuration(workout.target_duration_s)}</span>
           )}
+          {workout.target_hr_bpm != null && (
+            <span className="text-rose-400">♥ ≤ {workout.target_hr_bpm} bpm</span>
+          )}
         </div>
 
         {workout.description && (
           <p className="mt-3 text-sm text-muted-foreground">{workout.description}</p>
+        )}
+
+        {workout.focus && (
+          <div className="mt-3 rounded-xl bg-primary/[0.06] border border-primary/15 px-3.5 py-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-1">
+              Focus del coach
+            </p>
+            <p className="text-sm leading-relaxed text-foreground/90">{workout.focus}</p>
+          </div>
         )}
       </div>
 

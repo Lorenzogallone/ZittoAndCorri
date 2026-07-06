@@ -133,13 +133,14 @@ export default async function DayViewPage({ params }: Props) {
                         formatPlannedDistance(w),
                         w.target_pace_s_km && formatPace(w.target_pace_s_km),
                         w.target_duration_s && formatDuration(w.target_duration_s),
+                        w.target_hr_bpm && `♥ ≤ ${w.target_hr_bpm}`,
                       ]
                         .filter(Boolean)
                         .join(" · ") || "Allenamento"}
                     </p>
-                    {w.description && (
+                    {(w.description || w.focus) && (
                       <p className="truncate text-xs text-muted-foreground">
-                        {w.description}
+                        {w.description ?? w.focus}
                       </p>
                     )}
                   </div>

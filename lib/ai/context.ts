@@ -7,6 +7,8 @@ import { predictRaces } from "@/lib/metrics/predict";
 import { computeATLCTL } from "@/lib/metrics/load";
 import { computeAdherence } from "@/lib/metrics/adherence";
 import { buildPlanVsActual } from "@/lib/metrics/plan-vs-actual";
+import { calibratePaces } from "@/lib/metrics/pace-calibration";
+import { zoneForHr } from "@/lib/metrics/zones";
 import { formatPace, formatDuration, formatDistance } from "@/lib/format";
 import type {
   Activity,
@@ -27,8 +29,13 @@ type CtxActivity = Pick<
   | "avg_pace_s_km"
   | "avg_hr"
   | "rpe"
+  | "hr_drift_pct"
+  | "avg_cadence_spm"
   | "notes"
 >;
+
+const CTX_ACTIVITY_SELECT =
+  "started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr, rpe, hr_drift_pct, avg_cadence_spm, notes";
 
 /** Tronca un testo lungo per il prompt senza spezzare a metà parola. */
 function clip(text: string, max: number): string {
@@ -136,7 +143,7 @@ export async function buildAthleteContext(
       >(),
     supabase
       .from("activities")
-      .select("started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr, rpe, notes")
+      .select(CTX_ACTIVITY_SELECT)
       .eq("user_id", userId)
       .gte("started_at", `${since42}T00:00:00`)
       .order("started_at", { ascending: true })
@@ -145,7 +152,7 @@ export async function buildAthleteContext(
     // modello veda sempre le corse più recenti, anche dopo lunghi stop.
     supabase
       .from("activities")
-      .select("started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr, rpe, notes")
+      .select(CTX_ACTIVITY_SELECT)
       .eq("user_id", userId)
       .eq("sport", "running")
       .order("started_at", { ascending: false })
@@ -168,7 +175,9 @@ export async function buildAthleteContext(
       >(),
     supabase
       .from("planned_workouts")
-      .select("date, type, target_distance_m, target_pace_s_km, target_duration_s, description")
+      .select(
+        "date, type, target_distance_m, target_pace_s_km, target_duration_s, target_hr_bpm, description, focus",
+      )
       .eq("user_id", userId)
       .gt("date", today)
       .order("date")
@@ -180,7 +189,9 @@ export async function buildAthleteContext(
           | "target_distance_m"
           | "target_pace_s_km"
           | "target_duration_s"
+          | "target_hr_bpm"
           | "description"
+          | "focus"
         >[]
       >(),
     // Storico piani: le ultime review generate. La più recente serve anche a
@@ -307,6 +318,31 @@ export async function buildAthleteContext(
   );
   if (paceParts.length > 0) lines.push(`Passi medi: ${paceParts.join(" · ")}.`);
 
+  // Calibrazione ritmi ↔ HR (deterministico): dice se i ritmi correnti sono
+  // davvero nella zona attesa per il tipo. Segnale chiave: se le easy escono
+  // in Z3/Z4, per l'atleta quel passo OGGI non è easy e i target del piano
+  // vanno adeguati.
+  const hrConfig = {
+    max_hr: profile?.max_hr ?? null,
+    resting_hr: profile?.resting_hr ?? null,
+  };
+  const calibration = calibratePaces(runActivities, hrConfig);
+  if (calibration) {
+    lines.push(`Calibrazione ritmi ↔ HR (ultime 6 sett):`);
+    for (const c of calibration) {
+      const drift =
+        c.avg_drift_pct != null && Math.abs(c.avg_drift_pct) >= 3
+          ? `, deriva HR ${c.avg_drift_pct > 0 ? "+" : ""}${c.avg_drift_pct}%`
+          : "";
+      const verdict = c.too_hard
+        ? ` ⚠ sopra la zona attesa (${c.expected_zone.toUpperCase()}): a questo ritmo l'atleta oggi fatica più del dovuto — proponi target più conservativi finché la HR non rientra`
+        : ` ok, in zona attesa`;
+      lines.push(
+        `- ${TYPE_LABELS[c.type]}: ${formatPace(c.avg_pace_s_km)} a HR ~${c.avg_hr} (${c.zone.toUpperCase()}${drift}) su ${c.runs} corse →${verdict}.`,
+      );
+    }
+  }
+
   // Aderenza 14gg
   if (recentPlanned && recentPlanned.length > 0) {
     const a = computeAdherence(recentPlanned, today);
@@ -358,6 +394,7 @@ export async function buildAthleteContext(
         w.target_distance_m ? formatDistance(w.target_distance_m) : null,
         w.target_pace_s_km ? formatPace(w.target_pace_s_km) : null,
         w.target_duration_s ? formatDuration(w.target_duration_s) : null,
+        w.target_hr_bpm ? `HR≤${w.target_hr_bpm}` : null,
       ]
         .filter(Boolean)
         .join(" ");
@@ -420,15 +457,25 @@ export async function buildAthleteContext(
   }
 
   // Ultime corse — SEMPRE presenti (anche se più vecchie di 6 settimane).
+  // Con zona della HR media, deriva cardiaca e cadenza quando disponibili:
+  // sono i segnali che permettono al coach di giudicare lo sforzo reale.
   if (runs.length > 0) {
     lines.push(`Ultime corse:`);
     for (const a of runs) {
+      const zone = a.avg_hr ? zoneForHr(a.avg_hr, hrConfig) : null;
+      const drift =
+        a.hr_drift_pct != null && Math.abs(a.hr_drift_pct) >= 3
+          ? ` deriva${a.hr_drift_pct > 0 ? "+" : ""}${a.hr_drift_pct}%`
+          : "";
+      const cadence = a.avg_cadence_spm ? ` cad${a.avg_cadence_spm}` : "";
       lines.push(
         `- ${shortDate(a.started_at)} ${TYPE_LABELS[a.type]} ${formatDistance(
           a.distance_m,
-        )} ${formatPace(a.avg_pace_s_km)}${a.avg_hr ? ` HR${a.avg_hr}` : ""}${
-          a.rpe ? ` RPE${a.rpe}` : ""
-        }${a.notes ? ` "${a.notes.slice(0, 80)}"` : ""}`,
+        )} ${formatPace(a.avg_pace_s_km)}${
+          a.avg_hr ? ` HR${a.avg_hr}${zone ? ` (${zone.toUpperCase()})` : ""}` : ""
+        }${drift}${cadence}${a.rpe ? ` RPE${a.rpe}` : ""}${
+          a.notes ? ` "${a.notes.slice(0, 80)}"` : ""
+        }`,
       );
     }
   }
@@ -460,19 +507,25 @@ export async function buildAthleteContext(
 }
 
 /** Riga di dettaglio compatta di una singola attività, per la valutazione. */
-export function activityDetailLine(a: {
-  started_at: string;
-  type: WorkoutType;
-  sport?: Activity["sport"] | null;
-  distance_m: number;
-  duration_s: number;
-  avg_pace_s_km: number | null;
-  avg_hr: number | null;
-  max_hr: number | null;
-  rpe: number | null;
-  elevation_gain_m: number | null;
-  notes: string | null;
-}): string {
+export function activityDetailLine(
+  a: {
+    started_at: string;
+    type: WorkoutType;
+    sport?: Activity["sport"] | null;
+    distance_m: number;
+    duration_s: number;
+    avg_pace_s_km: number | null;
+    avg_hr: number | null;
+    max_hr: number | null;
+    rpe: number | null;
+    elevation_gain_m: number | null;
+    hr_drift_pct?: number | null;
+    avg_cadence_spm?: number | null;
+    time_in_zone?: Activity["time_in_zone"];
+    notes: string | null;
+  },
+  profile?: Pick<Profile, "max_hr" | "resting_hr"> | null,
+): string {
   const isRun = (a.sport ?? "running") === "running";
   const head = isRun
     ? TYPE_LABELS[a.type]
@@ -482,11 +535,27 @@ export function activityDetailLine(a: {
     `durata ${formatDuration(a.duration_s)}`,
   ];
   if (a.avg_pace_s_km != null) parts.push(`passo ${formatPace(a.avg_pace_s_km)}`);
-  if (a.avg_hr) parts.push(`HR media ${a.avg_hr}`);
+  if (a.avg_hr) {
+    const zone = profile ? zoneForHr(a.avg_hr, profile) : null;
+    parts.push(`HR media ${a.avg_hr}${zone ? ` (${zone.toUpperCase()})` : ""}`);
+  }
   if (a.max_hr) parts.push(`HR max ${a.max_hr}`);
+  if (a.hr_drift_pct != null) {
+    parts.push(
+      `deriva cardiaca ${a.hr_drift_pct > 0 ? "+" : ""}${a.hr_drift_pct}%`,
+    );
+  }
+  if (a.avg_cadence_spm) parts.push(`cadenza ${a.avg_cadence_spm} spm`);
   if (a.elevation_gain_m) parts.push(`disl +${a.elevation_gain_m}m`);
   if (a.rpe) parts.push(`RPE ${a.rpe}/10`);
   let line = `${shortDate(a.started_at)} — ${parts.join(", ")}.`;
+  // Distribuzione del tempo per zona HR: più informativa della sola media.
+  if (a.time_in_zone && Object.keys(a.time_in_zone).length > 0) {
+    const zoneParts = (["z1", "z2", "z3", "z4", "z5"] as const)
+      .filter((z) => (a.time_in_zone?.[z] ?? 0) >= 60)
+      .map((z) => `${z.toUpperCase()} ${formatDuration(a.time_in_zone![z]!)}`);
+    if (zoneParts.length > 0) line += ` Tempo in zona: ${zoneParts.join(" · ")}.`;
+  }
   if (a.notes) line += ` Note atleta: "${a.notes}"`;
   return line;
 }

@@ -94,6 +94,39 @@ export function IntegrationsSection({ apiKey }: IntegrationsSectionProps) {
                     💡 Per le istruzioni dettagliate sulla creazione dei flussi di automazione in Comandi Rapidi, consulta il file <code className="bg-muted px-1 py-0.5 rounded font-mono text-foreground">INSTRUCTIONS.md</code> nella cartella radice del progetto.
                   </p>
                 </div>
+
+                <div className="rounded-xl bg-muted/20 border border-white/[0.03] p-4 space-y-2">
+                  <h3 className="font-semibold text-foreground flex items-center gap-1.5 text-sm">
+                    <Smartphone size={14} className="text-primary" />
+                    3. Amazfit / Zepp — import in un tap (FIT o GPX)
+                  </h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Zepp non ha un&apos;API pubblica gratuita, ma puoi evitare tutti i passaggi manuali con un
+                    Comando Rapido nel foglio di condivisione: in Zepp apri l&apos;allenamento →{" "}
+                    <strong className="text-foreground">Condividi → Esporta dati (GPX)</strong> → scegli il tuo
+                    Comando Rapido. Il comando manda il file così com&apos;è al nuovo endpoint, che riconosce da solo
+                    se è un .fit o un .gpx: niente più download + upload a mano.
+                  </p>
+                  <div className="bg-black/20 rounded-lg p-3 border border-white/[0.02] space-y-2">
+                    <p className="font-medium text-foreground">Comando Rapido (una volta sola):</p>
+                    <ul className="list-disc list-inside space-y-1.5 text-muted-foreground/90 pl-1">
+                      <li>Attiva &quot;Mostra nel foglio di condivisione&quot; (tipi: file)</li>
+                      <li>Azione &quot;Ottieni contenuto di URL&quot;:</li>
+                      <li>URL: <code className="bg-muted px-1.5 py-0.5 rounded text-primary font-mono text-[10px]">https://zitto-and-corri.vercel.app/api/import/file</code></li>
+                      <li>Metodo: <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono text-[10px]">POST</code></li>
+                      <li>Header: <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono text-[10px]">Authorization: Bearer [tua_chiave_api]</code></li>
+                      <li>Corpo della richiesta: <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono text-[10px]">File</code> → l&apos;input del foglio di condivisione</li>
+                    </ul>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/80 mt-2 font-medium">
+                    💡 Il file .fit (con cadenza e tutte le serie complete) si ottiene dall&apos;export
+                    dati dell&apos;account Zepp o dalla sincronizzazione con Strava; per l&apos;uso quotidiano il GPX
+                    condiviso dall&apos;app (GPS + battito) è già sufficiente. Se poi importi anche il .fit della
+                    stessa corsa (subito o giorni dopo), l&apos;attività viene <strong className="text-foreground">arricchita,
+                    non duplicata</strong>: stessi ±10 minuti di inizio = stessa attività. Zone HR, deriva
+                    cardiaca, cadenza e split vengono ricalcolate in automatico.
+                  </p>
+                </div>
               </div>
             )}
           </div>
