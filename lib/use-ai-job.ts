@@ -9,6 +9,9 @@ const POLL_INTERVAL_MS = 2_000;
 // Oltre questo tempo smettiamo di interrogare il job: la chiamata AI ha un
 // deadline interno < 60s, quindi un job ancora 'pending' qui è bloccato.
 const MAX_POLL_MS = 75_000;
+// In PWA standalone: tempo concesso a router.refresh() per far arrivare il
+// nuovo contenuto server-rendered prima di ripiegare sul reload completo.
+const REFRESH_WATCHDOG_MS = 8_000;
 
 interface StartResult {
   jobId?: string;
@@ -82,8 +85,18 @@ function clearPersisted(key: string): void {
  * il polling riparte da solo. Serve su iOS PWA standalone, dove il sistema può
  * rilanciare l'app (tornando allo splash) durante l'attesa: senza ripresa il
  * job finirebbe lato server ma l'UI resterebbe bloccata.
+ *
+ * `refreshSignal` (opzionale) è un valore server-rendered che CAMBIA quando il
+ * risultato è arrivato (es. created_at dell'ultima review/valutazione). Con il
+ * segnale, anche in PWA standalone si usa il refresh soft (niente flash da
+ * reload): un watchdog controlla che il segnale cambi entro pochi secondi e
+ * solo se il refresh soft si impalla — capita su iOS con l'RSC fetch — ripiega
+ * sul reload completo. Senza segnale, in standalone si ricarica come prima.
  */
-export function useAiJob(persistKey?: string) {
+export function useAiJob(
+  persistKey?: string,
+  refreshSignal?: string | number | null,
+) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
@@ -91,9 +104,61 @@ export function useAiJob(persistKey?: string) {
 
   // Invalida i poll in volo quando parte una nuova richiesta o si smonta.
   const runIdRef = useRef(0);
-  useEffect(() => () => {
-    runIdRef.current += 1;
-  }, []);
+
+  // Refresh soft in corso: segnale catturato al momento del 'done' + watchdog.
+  const signalRef = useRef(refreshSignal);
+  useEffect(() => {
+    signalRef.current = refreshSignal;
+  }, [refreshSignal]);
+  const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const signalAtDoneRef = useRef<string | number | null | undefined>(undefined);
+
+  useEffect(
+    () => () => {
+      runIdRef.current += 1;
+      if (watchdogRef.current) clearTimeout(watchdogRef.current);
+    },
+    [],
+  );
+
+  // Il nuovo contenuto server-rendered è arrivato (il segnale è cambiato):
+  // il refresh soft ha funzionato, il watchdog non serve più.
+  useEffect(() => {
+    if (watchdogRef.current == null) return;
+    if (signalAtDoneRef.current === refreshSignal) return;
+    clientLog("aijob:refresh-confirmed", { key: persistKey });
+    clearTimeout(watchdogRef.current);
+    watchdogRef.current = null;
+  }, [refreshSignal, persistKey]);
+
+  const finishWithRefresh = useCallback(() => {
+    setDone(true);
+    setPending(false);
+
+    const canConfirm = refreshSignal !== undefined;
+    if (isStandalone() && !canConfirm) {
+      // Nessun segnale per verificare il refresh soft: in PWA il reload
+      // completo resta l'unica opzione affidabile.
+      clientLog("aijob:done-hard-reload", { key: persistKey });
+      window.location.reload();
+      return;
+    }
+
+    clientLog("aijob:done-soft-refresh", { key: persistKey });
+    signalAtDoneRef.current = signalRef.current;
+    router.refresh();
+
+    if (isStandalone()) {
+      // Watchdog: se il payload RSC non arriva (refresh appeso, tipico di
+      // iOS standalone su rete mobile), ripiega sul reload completo.
+      if (watchdogRef.current) clearTimeout(watchdogRef.current);
+      watchdogRef.current = setTimeout(() => {
+        watchdogRef.current = null;
+        clientLog("aijob:refresh-watchdog-reload", { key: persistKey });
+        window.location.reload();
+      }, REFRESH_WATCHDOG_MS);
+    }
+  }, [persistKey, refreshSignal, router]);
 
   // Ciclo di polling riusato sia all'avvio sia alla ripresa post-reload.
   const runPoll = useCallback(
@@ -112,17 +177,7 @@ export function useAiJob(persistKey?: string) {
           clientLog("aijob:poll", { key: persistKey, status: status.status });
           if (status.status === "done") {
             if (persistKey) clearPersisted(persistKey);
-            setDone(true);
-            setPending(false);
-            // In PWA standalone iOS, router.refresh() (RSC fetch) può restare
-            // appeso lasciando l'UI senza il risultato: un reload completo è
-            // affidabile. Da browser usiamo il refresh soft (niente flash).
-            if (isStandalone()) {
-              clientLog("aijob:done-hard-reload", { key: persistKey });
-              window.location.reload();
-            } else {
-              router.refresh();
-            }
+            finishWithRefresh();
             return;
           }
           if (status.status === "error") {
@@ -145,7 +200,7 @@ export function useAiJob(persistKey?: string) {
 
       setTimeout(poll, POLL_INTERVAL_MS);
     },
-    [persistKey, router],
+    [persistKey, finishWithRefresh],
   );
 
   // Ripresa al montaggio: se c'è un job persistito ancora valido (es. dopo un

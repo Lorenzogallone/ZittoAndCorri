@@ -113,15 +113,29 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
         </div>
       </div>
 
-      <div className="grid gap-2.5">
-        <Label htmlFor="target_duration">Durata (h:mm:ss)</Label>
-        <Input
-          id="target_duration"
-          name="target_duration"
-          type="text"
-          inputMode="text"
-          placeholder="55:00"
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-2.5">
+          <Label htmlFor="target_duration">Durata (h:mm:ss)</Label>
+          <Input
+            id="target_duration"
+            name="target_duration"
+            type="text"
+            inputMode="text"
+            placeholder="55:00"
+          />
+        </div>
+        <div className="grid gap-2.5">
+          <Label htmlFor="target_hr_bpm">HR max (bpm)</Label>
+          <Input
+            id="target_hr_bpm"
+            name="target_hr_bpm"
+            type="number"
+            min="80"
+            max="220"
+            inputMode="numeric"
+            placeholder="150"
+          />
+        </div>
       </div>
 
       <div className="grid gap-2.5">
@@ -131,6 +145,16 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
           name="description"
           rows={3}
           placeholder="10km a ritmo facile, HR < 145."
+        />
+      </div>
+
+      <div className="grid gap-2.5">
+        <Label htmlFor="focus">Focus (opzionale)</Label>
+        <Textarea
+          id="focus"
+          name="focus"
+          rows={2}
+          placeholder="Es. resta sotto la HR anche se il passo cala; pensa alla cadenza."
         />
       </div>
 

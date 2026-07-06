@@ -37,6 +37,8 @@ export function buildEvaluationPrompt(
     "- I numeri (passi, volumi, carico, predizioni) sono già calcolati e te li fornisco — NON inventarne di nuovi, puoi solo commentarli. Produci solo testo qualitativo in italiano.",
     "- Confronta l'attività con l'allenamento previsto indicato sotto (può essere stato pianificato per un altro giorno e collegato manualmente): era la seduta in programma? È stata eseguita ai target (distanza, passo)? Se differisce, dillo e spiega cosa cambia.",
     "- Inquadra la corsa nella fase di allenamento corrente (vedi memoria coach nel contesto): un easy in settimana di scarico si giudica diversamente da uno in piena fase di carico.",
+    "- Giudica lo sforzo REALE, non solo il passo: usa HR media e relativa zona, tempo in zona, deriva cardiaca (decoupling) e cadenza quando presenti. Se una seduta easy/lungo esce sopra Z2 o con deriva alta, dillo esplicitamente (flag easy_too_fast) e spiega la conseguenza: a oggi quel ritmo non è davvero easy e il piano dovrà tenerne conto. Se il workout previsto aveva una HR target, confronta HR reale vs target.",
+    "- Se ci sono segnali sullo stile di corsa (cadenza bassa, deriva ricorrente), dai UN consiglio pratico e concreto su cosa curare la prossima volta (es. su cosa pensare, cosa privilegiare o sacrificare), senza trasformare la valutazione in una lezione.",
     "- Considera la fatica delle attività non di corsa recenti (calcio, bici, palestra…): possono spiegare gambe pesanti o un passo più lento, o motivare un giorno di corsa saltato.",
     "- Cita aderenza e TSB solo in modo qualitativo (es. 'sei un po' affaticato'), e tieni conto delle note dell'atleta e del contesto temporale (es. ripresa dopo uno stop).",
     "- Mantieni coerenza con le tue valutazioni precedenti: non contraddirti e non ripetere sempre le stesse frasi.",
@@ -89,10 +91,22 @@ export const planSchema: Schema = {
             description: "Passo target in secondi/km.",
           },
           target_duration_s: { type: Type.INTEGER, nullable: true },
+          target_hr_bpm: {
+            type: Type.INTEGER,
+            nullable: true,
+            description:
+              "HR media massima indicativa per la seduta (bpm), coerente con le zone dell'atleta (max/riposo nel contesto). Obbligatoria per easy/recovery/long; per ripetute/tempo indicala solo se utile.",
+          },
           description: {
             type: Type.STRING,
             nullable: true,
             description: "Breve descrizione in italiano, es. struttura ripetute.",
+          },
+          focus: {
+            type: Type.STRING,
+            nullable: true,
+            description:
+              "Indicazioni da coach per la seduta (1-3 frasi in italiano): a cosa pensare mentre corri, cosa privilegiare e cosa sacrificare (es. 'sacrifica il passo pur di restare sotto la HR target'), spunti tecnici o mentali.",
           },
         },
         required: ["date", "type"],
@@ -115,6 +129,9 @@ export function buildPlanPrompt(
     `- Pianifica SOLO date comprese tra ${windowStart} e ${windowEnd} (incluse).`,
     "- Non programmare ogni singolo giorno: includi riposo e alterna intensità e volume in modo sensato verso l'obiettivo.",
     "- I passi target devono essere coerenti coi passi medi reali dell'atleta per ciascun tipo.",
+    "- Usa la 'Calibrazione ritmi ↔ HR' nel contesto: se per un tipo di seduta la HR esce sopra la zona attesa (es. easy in Z3/Z4) o la deriva cardiaca è alta, quel ritmo OGGI non è sostenibile per quel tipo — rallenta i target di conseguenza e ricordalo nella review. Non riproporre lo stesso passo sperando che vada meglio.",
+    "- Per ogni seduta compila anche target_hr_bpm (per easy/recovery/long è il vincolo principale: meglio dare la HR e lasciare il passo come conseguenza) e focus: cosa pensare durante la corsa, cosa privilegiare e cosa sacrificare (es. 'se la HR sale oltre il target, sacrifica il passo'), come farebbe un coach presente sul campo. Varia i focus tra le sedute: tecnica di corsa, cadenza, respirazione, gestione mentale.",
+    "- Se l'atleta ha una cadenza media bassa (<165 spm nel contesto), può valere un focus sulla cadenza in una seduta easy; non ossessionare su questo in ogni seduta.",
     "- Tieni conto dei feedback dell'atleta sulle corse recenti (note e RPE nel contesto, es. 'stanco', 'gambe pesanti', 'rilassato', 'scattante'): se le ultime corse segnalano fatica, fastidi o RPE alti su sedute facili, alleggerisci volume/intensità; se l'atleta è riposato e brillante, puoi progredire con più decisione.",
     "- Scrivi descrizioni brevi e operative in italiano.",
     "- Dai continuità alla progressione: la 'memoria coach' e lo 'storico piani recenti' nel contesto dicono in che fase siete (base, costruzione, intensità, velocità, scarico, avvicinamento gara). Prosegui il blocco in corso o passa al successivo in modo motivato; inserisci scarico periodico. Non ricominciare da capo a ogni piano.",

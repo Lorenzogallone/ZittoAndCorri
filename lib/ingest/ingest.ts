@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { avgPace } from "@/lib/metrics/pace";
 import { timeInZoneFromAverage, timeInZoneFromSeries } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
+import { avgCadenceSpm, computeHrDrift } from "@/lib/metrics/effort";
 import type { Activity, Profile } from "@/lib/types";
 import { ActivityInput } from "./schema";
 
@@ -51,6 +52,19 @@ export async function ingestActivity(
       ? computeSplits(data.gps_series, data.hr_series)
       : null;
 
+  // Metriche di sforzo dagli stream: cadenza media e deriva cardiaca
+  // (decoupling passo/HR). Danno al coach AI segnali sullo stile di corsa e
+  // su quanto un ritmo è davvero sostenibile.
+  const avg_cadence_spm = avgCadenceSpm(data.cadence_series, data.sport);
+  const hr_drift_pct = computeHrDrift(data.hr_series, data.gps_series);
+
+  // Il payload originale serve per audit/riprocessing, ma gli stream pesanti
+  // vivono già in activity_streams: duplicarli qui gonfierebbe ogni riga.
+  const rawPayload = { ...data };
+  delete rawPayload.hr_series;
+  delete rawPayload.gps_series;
+  delete rawPayload.cadence_series;
+
   // 3. insert activities (RLS + user_id esplicito)
   const { data: row, error } = await ctx.supabase
     .from("activities")
@@ -69,10 +83,14 @@ export async function ingestActivity(
       elevation_gain_m: data.elevation_gain_m ?? null,
       rpe: data.rpe ?? null,
       calories: data.calories ?? null,
+      // Colonne della migration 0007: incluse solo se valorizzate, così
+      // l'ingest senza stream continua a funzionare anche su DB non migrato.
+      ...(avg_cadence_spm != null ? { avg_cadence_spm } : {}),
+      ...(hr_drift_pct != null ? { hr_drift_pct } : {}),
       time_in_zone,
       splits,
       notes: data.notes ?? null,
-      raw_payload: data,
+      raw_payload: rawPayload,
     })
     .select("id")
     .single<Pick<Activity, "id">>();

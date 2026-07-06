@@ -71,6 +71,11 @@ export async function createPlannedWorkout(
   const target_duration_s = optDuration(formData, "target_duration");
   const description = String(formData.get("description") ?? "").trim() || null;
 
+  const hrRaw = optFloat(formData, "target_hr_bpm");
+  const target_hr_bpm =
+    hrRaw != null && hrRaw >= 80 && hrRaw <= 220 ? Math.round(hrRaw) : null;
+  const focus = String(formData.get("focus") ?? "").trim() || null;
+
   const { error } = await supabase.from("planned_workouts").insert({
     user_id: user.id,
     date,
@@ -79,7 +84,9 @@ export async function createPlannedWorkout(
     target_distance_m,
     target_pace_s_km,
     target_duration_s,
+    target_hr_bpm,
     description,
+    focus,
     status: "planned",
   });
 
@@ -200,6 +207,10 @@ function sanitizeWorkout(
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < start || date > end) return null;
   if (!WORKOUT_TYPES.includes(w.type as WorkoutType)) return null;
 
+  // HR target: intero plausibile (80–220 bpm), altrimenti null.
+  const hr = posIntOrNull(w.target_hr_bpm);
+  const target_hr_bpm = hr != null && hr >= 80 && hr <= 220 ? hr : null;
+
   return {
     user_id: userId,
     goal_id: goalId,
@@ -208,9 +219,14 @@ function sanitizeWorkout(
     target_distance_m: posIntOrNull(w.target_distance_m),
     target_pace_s_km: posIntOrNull(w.target_pace_s_km),
     target_duration_s: posIntOrNull(w.target_duration_s),
+    target_hr_bpm,
     description:
       typeof w.description === "string" && w.description.trim() !== ""
         ? w.description.trim()
+        : null,
+    focus:
+      typeof w.focus === "string" && w.focus.trim() !== ""
+        ? w.focus.trim()
         : null,
     status: "planned" as PlannedStatus,
   };

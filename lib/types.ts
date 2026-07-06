@@ -104,6 +104,10 @@ export interface Activity {
   elevation_gain_m: number | null;
   rpe: number | null;
   calories: number | null;
+  /** Cadenza media in passi/minuto, derivata dagli stream in ingest. */
+  avg_cadence_spm: number | null;
+  /** Deriva cardiaca % (decoupling passo/HR prima vs seconda metà). */
+  hr_drift_pct: number | null;
   time_in_zone: TimeInZone | null;
   splits: Split[] | null;
   notes: string | null;
@@ -168,7 +172,11 @@ export interface PlannedWorkout {
   target_distance_m: number | null;
   target_pace_s_km: number | null;
   target_duration_s: number | null;
+  /** HR media massima indicativa per la seduta (bpm). */
+  target_hr_bpm: number | null;
   description: string | null;
+  /** Indicazioni del coach: cosa pensare, cosa privilegiare/sacrificare. */
+  focus: string | null;
   status: PlannedStatus;
   activity_id: string | null;
   created_at: string;
@@ -221,7 +229,9 @@ export interface ProposedWorkout {
   target_distance_m: number | null;
   target_pace_s_km: number | null;
   target_duration_s: number | null;
+  target_hr_bpm: number | null;
   description: string | null;
+  focus: string | null;
 }
 
 /** Output strutturato della generazione piano (responseSchema Gemini). */
