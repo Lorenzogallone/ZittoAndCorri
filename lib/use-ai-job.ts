@@ -197,7 +197,7 @@ export function useAiJob(
     setDone(true);
     setPending(false);
 
-    const canConfirm = refreshSignal !== undefined;
+    const canConfirm = refreshSignal != null;
     if (isStandalone() && !canConfirm) {
       // Nessun segnale per verificare il refresh soft: in PWA il reload
       // completo resta l'unica opzione affidabile.
