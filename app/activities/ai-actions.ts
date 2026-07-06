@@ -9,7 +9,7 @@ import { buildEvaluationPrompt, evaluationSchema } from "@/lib/ai/prompt";
 import { generateStructured, aiErrorMessage, PRIMARY_MODEL } from "@/lib/ai/gemini";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
 import { TYPE_LABELS } from "@/lib/activity-meta";
-import type { Activity, EvaluationResult, PlannedWorkout } from "@/lib/types";
+import type { Activity, EvaluationResult, PlannedWorkout, Profile } from "@/lib/types";
 
 export interface EvaluationActionState {
   error?: string;
@@ -31,6 +31,9 @@ type EvalActivity = Pick<
   | "max_hr"
   | "rpe"
   | "elevation_gain_m"
+  | "hr_drift_pct"
+  | "avg_cadence_spm"
+  | "time_in_zone"
   | "notes"
 >;
 
@@ -41,7 +44,9 @@ type EvalPlanned = Pick<
   | "target_distance_m"
   | "target_pace_s_km"
   | "target_duration_s"
+  | "target_hr_bpm"
   | "description"
+  | "focus"
 >;
 
 /** Riga compatta del workout previsto, per il prompt di valutazione. */
@@ -51,9 +56,11 @@ function plannedWorkoutLine(w: EvalPlanned, activityDay: string): string {
     w.target_distance_m ? formatDistance(w.target_distance_m) : null,
     w.target_pace_s_km ? `@${formatPace(w.target_pace_s_km)}` : null,
     w.target_duration_s ? formatDuration(w.target_duration_s) : null,
+    w.target_hr_bpm ? `HR ≤ ${w.target_hr_bpm}` : null,
   ].filter(Boolean);
   let line = parts.join(" ");
   if (w.description) line += ` — "${w.description}"`;
+  if (w.focus) line += ` — focus: "${w.focus}"`;
   if (w.date !== activityDay) line += ` (previsto il ${w.date}, collegato manualmente)`;
   return line;
 }
@@ -70,7 +77,7 @@ async function findPlannedForActivity(
   startedAt: string,
 ): Promise<EvalPlanned | null> {
   const select =
-    "type, date, target_distance_m, target_pace_s_km, target_duration_s, description";
+    "type, date, target_distance_m, target_pace_s_km, target_duration_s, target_hr_bpm, description, focus";
 
   const { data: linked } = await supabase
     .from("planned_workouts")
@@ -171,7 +178,7 @@ async function runEvaluation(
   const { data: activity } = await supabase
     .from("activities")
     .select(
-      "id, user_id, started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr, max_hr, rpe, elevation_gain_m, notes",
+      "id, user_id, started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr, max_hr, rpe, elevation_gain_m, hr_drift_pct, avg_cadence_spm, time_in_zone, notes",
     )
     .eq("id", activityId)
     .eq("user_id", userId)
@@ -183,13 +190,18 @@ async function runEvaluation(
 
   let result: EvaluationResult;
   try {
-    const [context, planned] = await Promise.all([
+    const [context, planned, { data: profile }] = await Promise.all([
       buildAthleteContext(supabase, userId),
       findPlannedForActivity(supabase, userId, activityId, activity.started_at),
+      supabase
+        .from("profiles")
+        .select("max_hr, resting_hr")
+        .eq("id", userId)
+        .maybeSingle<Pick<Profile, "max_hr" | "resting_hr">>(),
     ]);
     const prompt = buildEvaluationPrompt(
       context.markdown,
-      activityDetailLine(activity),
+      activityDetailLine(activity, profile),
       planned ? plannedWorkoutLine(planned, activity.started_at.slice(0, 10)) : null,
     );
     result = await generateStructured<EvaluationResult>(prompt, evaluationSchema);

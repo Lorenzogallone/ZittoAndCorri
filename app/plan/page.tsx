@@ -156,7 +156,7 @@ export default async function PlanPage({ searchParams }: Props) {
 
       {/* 3. Card coach AI (transizione tra calendario e review) */}
       <div className="mt-4">
-        <PlanGenerator />
+        <PlanGenerator latestReviewAt={latestReview?.created_at ?? null} />
       </div>
 
       {/* 4. Ultima review del coach */}

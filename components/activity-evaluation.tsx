@@ -38,8 +38,13 @@ export function ActivityEvaluation({
   initialNotes,
   evaluation,
 }: Props) {
-  // Chiave per-corsa: riprende il polling se la PWA si ricarica durante l'attesa.
-  const { pending, error, start } = useAiJob(`eval:${activityId}`);
+  // Chiave per-corsa: riprende il polling se la PWA si ricarica durante
+  // l'attesa. created_at della valutazione = segnale che il risultato è
+  // arrivato → refresh soft senza reload anche in PWA.
+  const { pending, error, start } = useAiJob(
+    `eval:${activityId}`,
+    evaluation?.created_at ?? null,
+  );
 
   const activeFlags = evaluation?.flags
     ? Object.entries(evaluation.flags).filter(([, v]) => v === true)
