@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getGeminiApiKey } from "@/lib/ai/credentials";
+import { getGeminiConfig } from "@/lib/ai/credentials";
+import type { GeminiModelId } from "@/lib/ai/models";
 import { buildAiContext, serializeAiContext } from "@/lib/ai/context-envelope";
 import {
   buildCoachPrompt,
@@ -62,8 +63,8 @@ export async function sendCoachMessage(message: string): Promise<CoachActionResu
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const apiKey = await getGeminiApiKey(user.id);
-  if (!apiKey) return { error: "Configura prima la tua chiave Gemini nelle impostazioni." };
+  const gemini = await getGeminiConfig(user.id);
+  if (!gemini) return { error: "Configura prima la tua chiave Gemini nelle impostazioni." };
 
   const { data: userMessage, error: messageError } = await supabase
     .from("coach_messages")
@@ -80,7 +81,7 @@ export async function sendCoachMessage(message: string): Promise<CoachActionResu
   if (jobError || !job) return { error: "Impossibile avviare il coach." };
 
   const userId = user.id;
-  after(() => runCoachTurn(job.id, userId, userMessage.id, text, apiKey));
+  after(() => runCoachTurn(job.id, userId, userMessage.id, text, gemini.apiKey, gemini.model));
   revalidatePath("/");
   return { jobId: job.id };
 }
@@ -91,6 +92,7 @@ async function runCoachTurn(
   sourceMessageId: string,
   userText: string,
   apiKey: string,
+  model: GeminiModelId,
 ) {
   const admin = createAdminClient();
   try {
@@ -100,7 +102,7 @@ async function runCoachTurn(
     const raw = await generateStructured<unknown>(
       buildCoachPrompt(serializeAiContext(context), userText),
       coachResponseSchema,
-      { apiKey },
+      { apiKey, model },
     );
     const result = coachResponseSchemaZod.parse(raw);
     const start = context.meta.today;

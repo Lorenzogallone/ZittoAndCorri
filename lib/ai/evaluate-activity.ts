@@ -2,11 +2,12 @@ import "server-only";
 
 import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getGeminiApiKey } from "@/lib/ai/credentials";
+import { getGeminiConfig } from "@/lib/ai/credentials";
 import { buildAiContext, serializeAiContext } from "@/lib/ai/context-envelope";
 import { activityDetailLine } from "@/lib/ai/context";
 import { buildEvaluationPrompt, evaluationResponseSchemaZod, evaluationSchema } from "@/lib/ai/prompt";
-import { aiErrorMessage, generateStructured, PRIMARY_MODEL } from "@/lib/ai/gemini";
+import { aiErrorMessage, generateStructured } from "@/lib/ai/gemini";
+import type { GeminiModelId } from "@/lib/ai/models";
 import { isoDateShift } from "@/lib/dates";
 import type { Activity, EvaluationResult, PlannedWorkout, Profile } from "@/lib/types";
 
@@ -21,14 +22,14 @@ export async function enqueueActivityEvaluation(
   userId: string,
   activityId: string,
 ): Promise<string | null> {
-  const apiKey = await getGeminiApiKey(userId);
-  if (!apiKey) return null;
+  const gemini = await getGeminiConfig(userId);
+  if (!gemini) return null;
   const admin = createAdminClient();
   const { data: current } = await admin.from("ai_jobs").select("id").eq("user_id", userId).eq("kind", "evaluation").eq("ref_id", activityId).eq("status", "pending").limit(1).maybeSingle<{ id: string }>();
   if (current) return current.id;
   const { data: job, error } = await admin.from("ai_jobs").insert({ user_id: userId, kind: "evaluation", ref_id: activityId, status: "pending" }).select("id").single<{ id: string }>();
   if (error || !job) throw error ?? new Error("Job non creato");
-  after(() => runActivityEvaluation(job.id, userId, activityId, apiKey));
+  after(() => runActivityEvaluation(job.id, userId, activityId, gemini.apiKey, gemini.model));
   return job.id;
 }
 
@@ -45,7 +46,13 @@ export async function enqueueActivityEvaluationSafely(
   }
 }
 
-async function runActivityEvaluation(jobId: string, userId: string, activityId: string, apiKey: string) {
+async function runActivityEvaluation(
+  jobId: string,
+  userId: string,
+  activityId: string,
+  apiKey: string,
+  model: GeminiModelId,
+) {
   const admin = createAdminClient();
   try {
     const [activityResult, profileResult, context] = await Promise.all([
@@ -99,12 +106,12 @@ async function runActivityEvaluation(jobId: string, userId: string, activityId: 
         nearbyPlan?.length ? JSON.stringify(nearbyPlan) : null,
       ),
       evaluationSchema,
-      { apiKey },
+      { apiKey, model },
     );
     const result: EvaluationResult = evaluationResponseSchemaZod.parse(rawResult);
 
     const evaluationPayload = {
-      model: PRIMARY_MODEL,
+      model,
       summary: result.summary,
       details: result.details,
       flags: result.flags ?? {},

@@ -92,6 +92,21 @@ export function AiThinkingOverlay({ pending, variant }: AiThinkingOverlayProps) 
 
   if (!pending) return null;
 
+  if (variant === "evaluation") {
+    return (
+      <div className="mt-1 py-2" aria-live="polite">
+        <div className="mb-3 flex items-center gap-2 text-primary">
+          <Sparkles size={15} className="animate-pulse" />
+          <span className="text-sm font-semibold">Il Coach sta analizzando…</span>
+        </div>
+        <div className="ai-shimmer-bar mb-3 h-0.5 w-full rounded-full" />
+        <p className="text-xs text-muted-foreground">
+          {steps[Math.max(0, visibleSteps - 1)]}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="ai-thinking-overlay mt-3 rounded-xl border border-primary/20 bg-card/80 p-4 backdrop-blur-sm">
       {/* Header */}
@@ -149,13 +164,6 @@ export function AiThinkingOverlay({ pending, variant }: AiThinkingOverlayProps) 
         })}
       </div>
 
-      {/* Nota rassicurante sulla coda lunga: la generazione richiede in media
-          ~50s, qui evitiamo che l'utente pensi che si sia bloccato. */}
-      <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
-        {elapsed < 45
-          ? "Di solito ci vogliono circa 50 secondi: puoi lasciare l'app aperta."
-          : "Ci siamo quasi, ancora un istante…"}
-      </p>
     </div>
   );
 }

@@ -6,7 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import { sanitizePrefs, type ThemePrefs } from "@/lib/theme";
 import crypto from "crypto";
 import { verifyGeminiApiKey } from "@/lib/ai/gemini";
-import { removeGeminiApiKey, storeGeminiApiKey } from "@/lib/ai/credentials";
+import { getGeminiApiKey, removeGeminiApiKey, setGeminiModel, storeGeminiApiKey } from "@/lib/ai/credentials";
+import { isGeminiModelId } from "@/lib/ai/models";
 
 export interface ProfileFormState {
   error?: string;
@@ -148,5 +149,26 @@ export async function deleteGeminiApiKey(): Promise<{ error?: string; ok?: boole
   }
   revalidatePath("/settings");
   revalidatePath("/");
+  return { ok: true };
+}
+
+export async function saveGeminiModel(model: string): Promise<{ error?: string; ok?: boolean }> {
+  if (!isGeminiModelId(model)) return { error: "Modello Gemini non supportato." };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  try {
+    const apiKey = await getGeminiApiKey(user.id);
+    if (!apiKey) return { error: "Configura prima la chiave Gemini." };
+    await verifyGeminiApiKey(apiKey, model);
+    await setGeminiModel(user.id, model);
+  } catch (error) {
+    console.error("saveGeminiModel:", error instanceof Error ? error.message : error);
+    return { error: "Il modello non risulta accessibile con questa chiave Gemini." };
+  }
+
+  revalidatePath("/settings");
   return { ok: true };
 }

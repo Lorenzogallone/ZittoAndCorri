@@ -313,6 +313,7 @@ export interface PlanProposal {
 export interface AiCredentialMetadata {
   provider: "gemini";
   last_four: string;
+  model: string;
   verified_at: string;
   updated_at: string;
 }

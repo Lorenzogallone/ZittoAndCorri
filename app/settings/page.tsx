@@ -36,7 +36,7 @@ export default async function SettingsPage({
       .maybeSingle<Pick<Profile, "theme_mode" | "theme_accent" | "theme_style">>(),
     supabase
       .from("user_ai_credentials")
-      .select("provider, last_four, verified_at, updated_at")
+      .select("provider, last_four, model, verified_at, updated_at")
       .eq("user_id", user.id)
       .maybeSingle<AiCredentialMetadata>(),
     supabase

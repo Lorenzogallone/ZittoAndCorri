@@ -99,9 +99,41 @@ test("le sezioni del dettaglio attività sono aperte e richiudibili", () => {
 test("le note del coach diventano dettagli strutturati senza chip diagnostici", () => {
   const prompt = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
   const evaluation = readFileSync(new URL("../components/activity-evaluation.tsx", import.meta.url), "utf8");
+  const activityPage = readFileSync(new URL("../app/activities/[id]/page.tsx", import.meta.url), "utf8");
   const migration = readFileSync(new URL("../supabase/migrations/0011_evaluation_details.sql", import.meta.url), "utf8");
   assert.match(prompt, /Trasforma le note libere.*campo details/);
-  assert.match(evaluation, /Dettagli aggiuntivi/);
+  assert.match(activityPage, /evaluation\?\.details/);
+  assert.doesNotMatch(evaluation, /Dettagli aggiuntivi/);
   assert.doesNotMatch(evaluation, /Sovraccarico|Easy troppo veloce|FLAG_META/);
   assert.match(migration, /add column if not exists details jsonb/);
+});
+
+test("durante la rivalutazione spariscono subito review e form", () => {
+  const evaluation = readFileSync(new URL("../components/activity-evaluation.tsx", import.meta.url), "utf8");
+  assert.match(evaluation, /evaluation\?\.summary && !isAnalyzing/);
+  assert.match(evaluation, /!isAnalyzing && \(/);
+  assert.match(evaluation, /form\.reset\(\)/);
+});
+
+test("l'errore quota interrompe il caricamento e resta leggibile", () => {
+  const evaluation = readFileSync(new URL("../components/activity-evaluation.tsx", import.meta.url), "utf8");
+  const gemini = readFileSync(new URL("../lib/ai/gemini.ts", import.meta.url), "utf8");
+  assert.match(evaluation, /initialAnalyzing && !displayedError/);
+  assert.match(evaluation, /initialError/);
+  assert.match(gemini, /Quota del modello Gemini esaurita\. Scegli un altro modello nelle impostazioni oppure attendi il ripristino\./);
+  assert.match(gemini, /if \(isQuotaExhausted\(err\)\) throw err/);
+  assert.doesNotMatch(gemini, /Quota Gemini[^\n]*più/);
+});
+
+test("il modello Gemini scelto viene persistito e usato da tutti i flussi AI", () => {
+  const models = readFileSync(new URL("../lib/ai/models.ts", import.meta.url), "utf8");
+  const migration = readFileSync(new URL("../supabase/migrations/0012_gemini_model_preference.sql", import.meta.url), "utf8");
+  const credentials = readFileSync(new URL("../lib/ai/credentials.ts", import.meta.url), "utf8");
+  const coach = readFileSync(new URL("../app/coach/actions.ts", import.meta.url), "utf8");
+  const evaluation = readFileSync(new URL("../lib/ai/evaluate-activity.ts", import.meta.url), "utf8");
+  assert.match(models, /DEFAULT_GEMINI_MODEL[^\n]*"gemini-3\.5-flash-lite"/);
+  assert.match(migration, /add column if not exists model text not null default 'gemini-3\.5-flash-lite'/);
+  assert.match(credentials, /update\(\{ model, updated_at:/);
+  assert.match(coach, /\{ apiKey, model \}/);
+  assert.match(evaluation, /model,/);
 });

@@ -13,9 +13,10 @@ import type { Evaluation } from "@/lib/types";
 interface Props {
   activityId: string;
   initialNotes: string | null;
-  evaluation: Pick<Evaluation, "summary" | "details" | "created_at"> | null;
+  evaluation: Pick<Evaluation, "summary" | "created_at"> | null;
   initialAnalyzing?: boolean;
   initialFailed?: boolean;
+  initialError?: string | null;
   keyConfigured?: boolean;
 }
 
@@ -25,13 +26,16 @@ export function ActivityEvaluation({
   evaluation,
   initialAnalyzing = false,
   initialFailed = false,
+  initialError = null,
   keyConfigured = true,
 }: Props) {
   // Chiave per-corsa: riprende il polling se la PWA si ricarica durante
   // l'attesa e, dopo il reload post-analisi, riporta lo scroll dov'era.
   const { pending, error, start } = useAiJob(`eval:${activityId}`);
-
-  const details = evaluation?.details ?? [];
+  const displayedError = error ?? initialError;
+  // Un errore terminale ricevuto dal polling deve prevalere sul valore server
+  // iniziale `initialAnalyzing`, che può restare true fino al prossimo refresh.
+  const isAnalyzing = pending || (initialAnalyzing && !displayedError);
 
   return (
     <CollapsibleSection
@@ -42,85 +46,68 @@ export function ActivityEvaluation({
         </span>
       )}
     >
-      {evaluation?.summary && (
+      {evaluation?.summary && !isAnalyzing && (
         <div className="mb-4">
           <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
             {evaluation.summary}
           </p>
-          {details.length > 0 && (
-            <div className="mt-4 rounded-xl border border-border/60 bg-background/35 px-4 py-3">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Dettagli aggiuntivi
-              </p>
-              <ul className="flex list-disc flex-col gap-1.5 pl-4 text-sm text-foreground/90 marker:text-primary">
-                {details.map((detail, index) => (
-                  <li key={`${detail}-${index}`}>{detail}</li>
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
       )}
 
-      {initialAnalyzing && !evaluation?.summary && !pending && (
-        <p className="mb-4 text-sm text-muted-foreground">
-          Analisi automatica in corso. Puoi continuare a usare l&apos;app: il feedback apparirà anche nella chat.
-        </p>
-      )}
-
-      {!keyConfigured && (
+      {!keyConfigured && !isAnalyzing && (
         <Link href="/settings?focus=gemini#gemini-integration" onClick={() => window.sessionStorage.setItem("settings-focus", "gemini")} className="mb-4 block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">
           Configura la chiave Gemini per ricevere il feedback AI
         </Link>
       )}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const fd = new FormData(e.currentTarget);
-          start(() => startEvaluation(fd));
-        }}
-        className="flex flex-col gap-2.5"
-      >
-        <input type="hidden" name="activity_id" value={activityId} />
-        <label
-          htmlFor="ai-notes"
-          className="text-xs text-muted-foreground uppercase tracking-wider"
+      {displayedError && !isAnalyzing && (
+        <div className="mb-3 border-l-2 border-destructive pl-3" role="alert">
+          <p className="text-sm font-medium text-destructive">{displayedError}</p>
+          {/quota/i.test(displayedError) && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Attendi il ripristino del limite gratuito prima di riprovare.
+            </p>
+          )}
+        </div>
+      )}
+
+      {!isAnalyzing && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const form = e.currentTarget;
+            const fd = new FormData(form);
+            form.reset();
+            start(() => startEvaluation(fd));
+          }}
+          className="flex flex-col gap-2.5"
         >
-          {evaluation ? "Aggiungi altri dettagli (opzionale)" : "Note per il coach (opzionali)"}
-        </label>
-        <Textarea
-          id="ai-notes"
-          name="notes"
-          rows={3}
-          defaultValue={evaluation ? "" : initialNotes ?? ""}
-          placeholder="Es. gambe pesanti, ho saltato la colazione, fastidio al polpaccio…"
-        />
+          <input type="hidden" name="activity_id" value={activityId} />
+          <label
+            htmlFor="ai-notes"
+            className="text-xs font-medium text-muted-foreground"
+          >
+            Note per il coach
+          </label>
+          <Textarea
+            id="ai-notes"
+            name="notes"
+            rows={3}
+            defaultValue={evaluation ? "" : initialNotes ?? ""}
+            placeholder="Gambe pesanti, poco sonno, fastidio al polpaccio…"
+          />
 
-        {error && (
-          <p className="text-destructive text-sm" role="alert">
-            {error}
-          </p>
-        )}
-
-        <Button type="submit" disabled={pending || !keyConfigured} variant="outline" className="w-full">
-          {pending
-            ? "Valuto…"
-            : evaluation
+          <Button type="submit" disabled={!keyConfigured} variant="outline" className="w-full">
+            {evaluation
               ? "Rivaluta corsa"
               : initialFailed
                 ? "Riprova analisi"
                 : "Valuta corsa"}
-        </Button>
-        {!evaluation && !error && (
-          <p className="text-xs text-muted-foreground text-center">
-            Il coach trasformerà il commento in dettagli brevi e ordinati.
-          </p>
-        )}
-      </form>
+          </Button>
+        </form>
+      )}
 
-      {/* AI Thinking Overlay */}
-      <AiThinkingOverlay pending={pending} variant="evaluation" />
+      <AiThinkingOverlay pending={isAnalyzing} variant="evaluation" />
     </CollapsibleSection>
   );
 }
