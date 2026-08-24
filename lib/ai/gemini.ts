@@ -3,8 +3,9 @@
 // in lib/metrics (principio §2.1). La chiave non tocca mai il client.
 import "server-only";
 import { GoogleGenAI, type Schema } from "@google/genai";
+import { DEFAULT_GEMINI_MODEL } from "@/lib/ai/models";
 
-export const PRIMARY_MODEL = "gemini-2.5-flash";
+export const PRIMARY_MODEL = DEFAULT_GEMINI_MODEL;
 const FALLBACK_MODEL = "gemini-2.5-flash-lite";
 const MAX_RETRIES = 3;
 
@@ -36,7 +37,9 @@ export function aiErrorMessage(err: unknown): string {
     return "L'AI ci sta mettendo troppo e la richiesta è scaduta. Riprova tra poco.";
   }
   if (isRateLimit(err)) {
-    return "Quota Gemini esaurita per ora. Riprova più tardi.";
+    // Solo caratteri ASCII: il messaggio attraversa una Server Action/RSC e
+    // resta leggibile anche nei client che interpretano male il charset.
+    return "Quota del modello Gemini esaurita. Scegli un altro modello nelle impostazioni oppure attendi il ripristino.";
   }
   return "Richiesta AI non riuscita. Riprova tra poco.";
 }
@@ -47,8 +50,8 @@ function getClient(apiKey: string): GoogleGenAI {
 }
 
 /** Verifica la credenziale senza generare contenuto. */
-export async function verifyGeminiApiKey(apiKey: string): Promise<void> {
-  await getClient(apiKey).models.get({ model: PRIMARY_MODEL });
+export async function verifyGeminiApiKey(apiKey: string, model = PRIMARY_MODEL): Promise<void> {
+  await getClient(apiKey).models.get({ model });
 }
 
 /** True se l'errore è un rate-limit del free tier (per minuto/giorno). */
@@ -57,6 +60,12 @@ function isRateLimit(err: unknown): boolean {
   if (status === 429) return true;
   const msg = err instanceof Error ? err.message : String(err);
   return /\b429\b|RESOURCE_EXHAUSTED|rate.?limit/i.test(msg);
+}
+
+/** Quota del progetto/free tier esaurita: ritentare subito spreca chiamate. */
+function isQuotaExhausted(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /RESOURCE_EXHAUSTED|quota|free.?tier|requests.?per.?day/i.test(msg);
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -125,6 +134,9 @@ export async function generateStructured<T>(
       lastErr = err;
       if (err instanceof AiTimeoutError) throw err;
       if (!isRateLimit(err)) throw err;
+      // Una quota esaurita non può recuperare con retry a distanza di pochi
+      // secondi né passando al modello lite: termina il job al primo errore.
+      if (isQuotaExhausted(err)) throw err;
       // Non dormire oltre il deadline.
       const backoff = 500 * 2 ** attempt; // 0.5s, 1s, 2s
       if (Date.now() + backoff >= deadlineAt) break;
@@ -132,7 +144,11 @@ export async function generateStructured<T>(
     }
   }
 
-  // Fallback al modello con limiti diversi prima di arrendersi (se c'è tempo).
+  // Se l'utente ha scelto esplicitamente un modello, rispetta la scelta anche
+  // in errore: potrà passare a un endpoint con quota diversa dalle impostazioni.
+  if (opts.model) throw lastErr ?? new Error("Richiesta AI non riuscita");
+
+  // Fallback storico solo per chiamate che non specificano alcun modello.
   try {
     return JSON.parse(
       await withDeadline(callModel(opts.apiKey, FALLBACK_MODEL, prompt, schema), deadlineAt),

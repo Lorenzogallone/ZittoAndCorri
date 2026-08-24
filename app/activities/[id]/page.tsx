@@ -277,6 +277,18 @@ export default async function ActivityDetailPage({
           {activity.rpe != null && (
             <StatCard icon={Flame} label="RPE" value={`${activity.rpe}/10`} />
           )}
+          {(evaluation?.details?.length ?? 0) > 0 && (
+            <div className="col-span-2 border-t border-border/60 pt-3">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">
+                Dettagli
+              </p>
+              <ul className="flex list-disc flex-col gap-1 pl-4 text-sm text-foreground/90 marker:text-primary">
+                {evaluation!.details!.map((detail, index) => (
+                  <li key={`${detail}-${index}`}>{detail}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </CollapsibleSection>
 
@@ -322,6 +334,7 @@ export default async function ActivityDetailPage({
         evaluation={evaluation ?? null}
         initialAnalyzing={evaluationJob?.status === "pending"}
         initialFailed={evaluationJob?.status === "error"}
+        initialError={evaluationJob?.status === "error" ? evaluationJob.error : null}
         keyConfigured={Boolean(credential)}
       />
 
