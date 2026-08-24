@@ -40,6 +40,8 @@ export function mapFitSport(
       return "walking";
     case "soccer":
       return "soccer";
+    case "volleyball":
+      return "beach_volley";
     case "tennis":
       return "tennis";
     case "racket":
