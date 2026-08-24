@@ -37,8 +37,9 @@ export const WORKOUT_TYPES: WorkoutType[] = [
 export const ACTIVITY_TYPES: ActivityType[] = ["unclassified", ...WORKOUT_TYPES];
 
 // Sport dell'attività. "running" è il default storico; gli altri servono per
-// le attività extra (importate da .fit o manuali) che alimentano il carico ma
-// non le statistiche di corsa. Colonna `activities.sport` (text + CHECK).
+// le attività extra (importate da .fit o manuali) che alimentano il carico.
+// Camminate ed escursioni entrano anche nei riepiloghi della distanza a piedi.
+// Colonna `activities.sport` (text + CHECK).
 export const SPORTS = [
   "running",
   "cycling",
@@ -47,6 +48,7 @@ export const SPORTS = [
   "hiking",
   "walking",
   "soccer",
+  "beach_volley",
   "tennis",
   "padel",
   "yoga",
@@ -56,6 +58,11 @@ export const SPORTS = [
 ] as const;
 
 export type Sport = (typeof SPORTS)[number];
+
+/** Sport a piedi la cui distanza è confrontabile nei riepiloghi di volume. */
+export function isFootDistanceSport(sport: Sport): boolean {
+  return sport === "running" || sport === "walking" || sport === "hiking";
+}
 
 export type ZoneKey = "z1" | "z2" | "z3" | "z4" | "z5";
 

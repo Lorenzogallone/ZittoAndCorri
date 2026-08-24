@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { extractFitSessionMetadata } from "../lib/ingest/adapters/fit-metadata.ts";
 import { AI_CONTEXT_SECTIONS, missingAiContextSections } from "../lib/ai/context-contract.ts";
+import { isFootDistanceSport } from "../lib/types.ts";
 
 test("normalizza RPE e titolo dalla sessione FIT", () => {
   assert.deepEqual(extractFitSessionMetadata({ workoutRpe: 40, sportProfileName: " Corsa facile " }), {
@@ -136,4 +137,39 @@ test("il modello Gemini scelto viene persistito e usato da tutti i flussi AI", (
   assert.match(credentials, /update\(\{ model, updated_at:/);
   assert.match(coach, /\{ apiKey, model \}/);
   assert.match(evaluation, /model,/);
+});
+
+test("il tasto Profilo apre sempre la pagina profilo", () => {
+  const tabs = readFileSync(new URL("../components/tab-bar.tsx", import.meta.url), "utf8");
+  const settings = readFileSync(new URL("../app/settings/page.tsx", import.meta.url), "utf8");
+  const backButton = readFileSync(new URL("../components/back-button.tsx", import.meta.url), "utf8");
+  assert.match(tabs, /href: "\/profile", label: "Profilo"/);
+  assert.match(settings, /backHref="\/profile"/);
+  assert.match(backButton, /<Link href=\{fallbackHref\}/);
+  assert.doesNotMatch(backButton, /window\.history\.length/);
+});
+
+test("i riepiloghi includono corsa, camminata ed escursione", () => {
+  assert.equal(isFootDistanceSport("running"), true);
+  assert.equal(isFootDistanceSport("walking"), true);
+  assert.equal(isFootDistanceSport("hiking"), true);
+  assert.equal(isFootDistanceSport("cycling"), false);
+  assert.equal(isFootDistanceSport("beach_volley"), false);
+
+  const home = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const activities = readFileSync(new URL("../app/activities/page.tsx", import.meta.url), "utf8");
+  assert.match(home, /isFootDistanceSport\(item\.sport\)/);
+  assert.match(activities, /isFootDistanceSport\(a\.sport\)/);
+  assert.match(activities, />Attività<\/p>/);
+});
+
+test("Beach volley è disponibile e riconosciuto dai file FIT", () => {
+  const types = readFileSync(new URL("../lib/types.ts", import.meta.url), "utf8");
+  const metadata = readFileSync(new URL("../lib/activity-meta.ts", import.meta.url), "utf8");
+  const fit = readFileSync(new URL("../lib/ingest/adapters/fit.ts", import.meta.url), "utf8");
+  const migration = readFileSync(new URL("../supabase/migrations/0013_beach_volley.sql", import.meta.url), "utf8");
+  assert.match(types, /"beach_volley"/);
+  assert.match(metadata, /beach_volley: "Beach volley"/);
+  assert.match(fit, /case "volleyball":\s+return "beach_volley"/);
+  assert.match(migration, /'beach_volley'/);
 });

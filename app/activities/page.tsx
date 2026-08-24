@@ -5,7 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { formatDistance, formatDuration, formatPace, activeDuration } from "@/lib/format";
 import { nowMs } from "@/lib/dates";
-import type { Activity } from "@/lib/types";
+import { isFootDistanceSport, type Activity } from "@/lib/types";
 import { Plus, Activity as ActivityIcon, Heart, Mountain } from "lucide-react";
 import {
   TYPE_LABELS,
@@ -58,26 +58,26 @@ export default async function ActivitiesPage() {
   const list = activities ?? [];
   const pendingActivityIds = new Set((pendingEvaluationJobs ?? []).flatMap((job) => job.ref_id ? [job.ref_id] : []));
 
-  // Compute 30-day stats and trends — solo corsa: gli altri sport non
-  // contano nel volume km.
+  // Distanza, tempo e trend comprendono le attività a piedi confrontabili:
+  // corsa, camminata ed escursione. Gli altri sport restano fuori dal volume km.
   const now = nowMs();
   const thirtyDaysAgoMs = now - 30 * 24 * 3600 * 1000;
   const sixtyDaysAgoMs = now - 60 * 24 * 3600 * 1000;
 
-  const runsOnly = list.filter((a) => a.sport === "running");
-  const last30DaysRuns = runsOnly.filter(
+  const footDistanceActivities = list.filter((a) => isFootDistanceSport(a.sport));
+  const last30DaysActivities = footDistanceActivities.filter(
     (a) => new Date(a.started_at).getTime() >= thirtyDaysAgoMs
   );
-  const prev30DaysRuns = runsOnly.filter((a) => {
+  const prev30DaysActivities = footDistanceActivities.filter((a) => {
     const time = new Date(a.started_at).getTime();
     return time >= sixtyDaysAgoMs && time < thirtyDaysAgoMs;
   });
 
-  const dist30 = last30DaysRuns.reduce((sum, a) => sum + a.distance_m, 0);
-  const time30 = last30DaysRuns.reduce((sum, a) => sum + activeDuration(a), 0);
-  const count30 = last30DaysRuns.length;
+  const dist30 = last30DaysActivities.reduce((sum, a) => sum + a.distance_m, 0);
+  const time30 = last30DaysActivities.reduce((sum, a) => sum + activeDuration(a), 0);
+  const count30 = last30DaysActivities.length;
 
-  const distPrev30 = prev30DaysRuns.reduce((sum, a) => sum + a.distance_m, 0);
+  const distPrev30 = prev30DaysActivities.reduce((sum, a) => sum + a.distance_m, 0);
   const diffKm = (dist30 - distPrev30) / 1000;
   const isPositiveTrend = diffKm >= 0;
 
@@ -111,7 +111,7 @@ export default async function ActivitiesPage() {
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground">Corse</p>
+                <p className="text-[10px] text-muted-foreground">Attività</p>
                 <p className="text-base font-bold tabular-nums text-foreground">
                   {count30}
                 </p>

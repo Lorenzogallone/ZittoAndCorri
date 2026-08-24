@@ -8,7 +8,7 @@ import { CoachChat } from "@/components/coach-chat";
 import { todayIso, isoDaysFromNow } from "@/lib/dates";
 import { formatDistance, formatPlannedDistance } from "@/lib/format";
 import { TYPE_LABELS } from "@/lib/activity-meta";
-import type { Activity, CoachMessage, Goal, PlanProposal, PlannedWorkout } from "@/lib/types";
+import { isFootDistanceSport, type Activity, type CoachMessage, type Goal, type PlanProposal, type PlannedWorkout } from "@/lib/types";
 
 export const maxDuration = 60;
 
@@ -35,7 +35,9 @@ export default async function Home() {
       ? user.user_metadata.name
       : null;
   const name = authName?.split(" ")[0] ?? user.email?.split("@")[0] ?? "Runner";
-  const weeklyKm = (activitiesRes.data ?? []).filter((item) => item.sport === "running").reduce((sum, item) => sum + item.distance_m, 0);
+  const weeklyDistance = (activitiesRes.data ?? [])
+    .filter((item) => isFootDistanceSport(item.sport))
+    .reduce((sum, item) => sum + item.distance_m, 0);
   const next = nextRes.data;
   const goal = goalRes.data;
 
@@ -51,7 +53,7 @@ export default async function Home() {
           <div className="min-w-0 flex-1"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Prossimo allenamento</p><p className="mt-1 truncate text-sm font-semibold">{next ? TYPE_LABELS[next.type] : "Riposo"}</p><p className="mt-0.5 text-xs text-muted-foreground">{next ? `${next.date}${formatPlannedDistance(next) ? ` · ${formatPlannedDistance(next)}` : ""}` : "Nessuna seduta in programma"}</p></div>
           <span className="text-muted-foreground/50">›</span>
         </Link>
-        <Link href="/activities" className="rounded-2xl border border-border bg-card p-4"><Footprints size={18} className="mb-3 text-primary" /><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Ultimi 7 giorni</p><p className="mt-1 text-base font-semibold">{formatDistance(weeklyKm)}</p><p className="mt-0.5 text-xs text-muted-foreground">di corsa</p></Link>
+        <Link href="/activities" className="rounded-2xl border border-border bg-card p-4"><Footprints size={18} className="mb-3 text-primary" /><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Ultimi 7 giorni</p><p className="mt-1 text-base font-semibold">{formatDistance(weeklyDistance)}</p><p className="mt-0.5 text-xs text-muted-foreground">corsa, cammino ed escursioni</p></Link>
         <Link href="/goals" className="rounded-2xl border border-border bg-card p-4"><Flag size={18} className="mb-3 text-primary" /><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Obiettivo</p><p className="mt-1 truncate text-base font-semibold">{goal?.race_name ?? "Da impostare"}</p><p className="mt-0.5 text-xs text-muted-foreground">{goal ? formatDistance(goal.distance_m) : "Parlane al coach"}</p></Link>
       </div>
       <Suspense fallback={<div className="h-[54svh] animate-pulse rounded-[1.75rem] bg-muted" />}>
