@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Activity, Calendar, User } from "lucide-react";
+import { MessageCircle, Activity, Calendar, User } from "lucide-react";
 
 const tabs = [
-  { href: "/", label: "Home", icon: Home },
+  { href: "/", label: "Coach", icon: MessageCircle },
   { href: "/activities", label: "Corse", icon: Activity },
   { href: "/plan", label: "Piano", icon: Calendar },
-  { href: "/settings", label: "Profilo", icon: User },
+  { href: "/profile", label: "Profilo", icon: User },
 ] as const;
 
 export function TabBar() {

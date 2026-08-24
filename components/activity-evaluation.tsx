@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { startEvaluation } from "@/app/activities/ai-actions";
 import { Button } from "@/components/ui/button";
@@ -31,12 +32,18 @@ interface Props {
   activityId: string;
   initialNotes: string | null;
   evaluation: Pick<Evaluation, "summary" | "flags" | "created_at"> | null;
+  initialAnalyzing?: boolean;
+  initialFailed?: boolean;
+  keyConfigured?: boolean;
 }
 
 export function ActivityEvaluation({
   activityId,
   initialNotes,
   evaluation,
+  initialAnalyzing = false,
+  initialFailed = false,
+  keyConfigured = true,
 }: Props) {
   // Chiave per-corsa: riprende il polling se la PWA si ricarica durante
   // l'attesa e, dopo il reload post-analisi, riporta lo scroll dov'era.
@@ -78,6 +85,18 @@ export function ActivityEvaluation({
         </div>
       )}
 
+      {initialAnalyzing && !evaluation?.summary && !pending && (
+        <p className="mb-4 text-sm text-muted-foreground">
+          Analisi automatica in corso. Puoi continuare a usare l&apos;app: il feedback apparirà anche nella chat.
+        </p>
+      )}
+
+      {!keyConfigured && (
+        <Link href="/settings?focus=gemini#gemini-integration" onClick={() => window.sessionStorage.setItem("settings-focus", "gemini")} className="mb-4 block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">
+          Configura la chiave Gemini per ricevere il feedback AI
+        </Link>
+      )}
+
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -107,12 +126,14 @@ export function ActivityEvaluation({
           </p>
         )}
 
-        <Button type="submit" disabled={pending} variant="outline" className="w-full">
+        <Button type="submit" disabled={pending || !keyConfigured} variant="outline" className="w-full">
           {pending
             ? "Valuto…"
             : evaluation
               ? "Rivaluta corsa"
-              : "Valuta corsa"}
+              : initialFailed
+                ? "Riprova analisi"
+                : "Valuta corsa"}
         </Button>
         {!evaluation && !error && (
           <p className="text-xs text-muted-foreground text-center">

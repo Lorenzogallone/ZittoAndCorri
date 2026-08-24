@@ -29,6 +29,7 @@ function ewmaAlpha(days: number): number {
  */
 export function computeATLCTL(
   activities: Array<{ started_at: string; duration_s: number; rpe: number | null }>,
+  asOfDate: string = new Date().toISOString().slice(0, 10),
 ): ATLCTLResult {
   if (activities.length === 0) {
     return { atl: 0, ctl: 0, tsb: 0, series: [] };
@@ -44,12 +45,11 @@ export function computeATLCTL(
 
   // 2. Genera la sequenza di date dall'attività più vecchia a oggi
   const sorted = [...loadByDate.keys()].sort();
-  const today = new Date().toISOString().slice(0, 10);
   const startDate = sorted[0];
 
   const days: Array<{ date: string; load: number }> = [];
   let cursor = new Date(startDate);
-  const end = new Date(today);
+  const end = new Date(`${asOfDate}T00:00:00Z`);
   while (cursor <= end) {
     const d = cursor.toISOString().slice(0, 10);
     days.push({ date: d, load: loadByDate.get(d) ?? 0 });

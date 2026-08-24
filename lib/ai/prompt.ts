@@ -1,6 +1,7 @@
 // Prompt + responseSchema per i due task del Coach AI. PLAN.md §8.
 import { Type, type Schema } from "@google/genai";
 import { WORKOUT_TYPES } from "@/lib/types";
+import { z } from "zod";
 
 // ── Valutazione di una singola corsa ─────────────────────────────────────────
 
@@ -25,6 +26,23 @@ export const evaluationSchema: Schema = {
   },
   required: ["summary", "flags"],
 };
+
+export const evaluationResponseSchemaZod = z.object({
+  summary: z.string().min(1).max(4000),
+  flags: z.object({
+    good_progress: z.boolean().nullish(),
+    overreaching: z.boolean().nullish(),
+    injury_risk: z.boolean().nullish(),
+    easy_too_fast: z.boolean().nullish(),
+    on_track: z.boolean().nullish(),
+  }).transform((flags) => {
+    const cleaned: Record<string, boolean> = {};
+    for (const [key, value] of Object.entries(flags)) {
+      if (typeof value === "boolean") cleaned[key] = value;
+    }
+    return cleaned;
+  }),
+});
 
 export function buildEvaluationPrompt(
   contextMarkdown: string,
@@ -151,4 +169,87 @@ export function buildPlanPrompt(
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+// ── Conversazione coach + proposta non applicata ────────────────────────────
+
+const memoryCategories = [
+  "availability", "vacation", "weather", "preference", "fatigue",
+  "limitation", "pace_hr", "long_term",
+] as const;
+
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+export const coachResponseSchemaZod = z.object({
+  reply: z.string().min(1),
+  conversation_summary: z.string().min(1),
+  memories: z.array(z.object({
+    memory_id: z.string().uuid().nullable(),
+    category: z.enum(memoryCategories),
+    content: z.string().min(1),
+    valid_from: isoDate.nullable(),
+    valid_until: isoDate.nullable(),
+    confidence: z.number().min(0).max(1),
+  })).default([]),
+  plan_summary: z.string().nullable(),
+  workouts: z.array(z.object({
+    date: isoDate,
+    type: z.enum(WORKOUT_TYPES as [typeof WORKOUT_TYPES[number], ...typeof WORKOUT_TYPES[number][]]),
+    target_distance_m: z.number().int().positive().nullable(),
+    target_pace_s_km: z.number().int().positive().nullable(),
+    target_duration_s: z.number().int().positive().nullable(),
+    target_hr_bpm: z.number().int().min(80).max(220).nullable(),
+    description: z.string().nullable(),
+    focus: z.string().nullable(),
+  })).default([]),
+});
+
+export type CoachResponse = z.infer<typeof coachResponseSchemaZod>;
+
+export const coachResponseSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    reply: { type: Type.STRING },
+    conversation_summary: { type: Type.STRING },
+    memories: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          memory_id: { type: Type.STRING, nullable: true },
+          category: { type: Type.STRING, enum: [...memoryCategories] },
+          content: { type: Type.STRING },
+          valid_from: { type: Type.STRING, nullable: true },
+          valid_until: { type: Type.STRING, nullable: true },
+          confidence: { type: Type.NUMBER },
+        },
+        required: ["memory_id", "category", "content", "valid_from", "valid_until", "confidence"],
+      },
+    },
+    plan_summary: { type: Type.STRING, nullable: true },
+    workouts: planSchema.properties!.workouts,
+  },
+  required: ["reply", "conversation_summary", "memories", "plan_summary", "workouts"],
+};
+
+export function buildCoachPrompt(contextJson: string, userMessage: string): string {
+  return [
+    "Sei il coach AI personale dell'atleta. Rispondi in italiano, con tono concreto, umano e sintetico.",
+    "Il contesto JSON è la sola fonte numerica: ogni valore dichiara origine e dati mancanti. Non inventare numeri, allenamenti svolti o condizioni non presenti.",
+    "Regole operative:",
+    "- Comprendi disponibilità, vacanze, caldo, fatica, limitazioni, preferenze e feedback passo-HR; estrai solo nuovi ricordi davvero utili.",
+    "- Per correggere o prolungare un ricordo già presente usa il suo id in memory_id; per un ricordo nuovo usa null. Non duplicare informazioni equivalenti.",
+    "- Usa date YYYY-MM-DD in Europe/Rome. Se una condizione temporanea non ha durata, falla scadere 7 giorni dopo meta.today. Se l'ambiguità cambia molto il piano, chiedi chiarimenti e non proporre workout.",
+    "- Escursioni e altri sport dichiarati sono vincoli e carico atteso: non inserirli come workout nel calendario.",
+    "- Se il messaggio non richiede una modifica del piano, lascia workouts vuoto e plan_summary null.",
+    "- Se serve adattare o creare il piano, proponi l'intero piano sensato tra meta.today e i successivi 13 giorni. Non applicarlo: l'utente lo confermerà nell'interfaccia.",
+    "- Preserva riposo e progressività. Per easy/recovery/long la HR è il vincolo principale; se la calibrazione mostra un passo troppo duro, rallentalo invece di riproporlo.",
+    "- conversation_summary deve aggiornare in poche frasi il riassunto precedente, preservando solo informazioni utili non già coperte dai ricordi strutturati.",
+    "",
+    "# Contesto affidabile",
+    contextJson,
+    "",
+    "# Nuovo messaggio dell'atleta",
+    userMessage,
+  ].join("\n");
 }

@@ -1,6 +1,6 @@
 /**
  * Import one-shot di un file GPX Strava → tabella activities.
- * Usa la service_role key: non richiede sessione browser.
+ * Usa la secret key Supabase: non richiede sessione browser.
  *
  * Uso:
  *   export PATH="$HOME/.nvm/versions/node/v24.16.0/bin:$PATH"
@@ -27,9 +27,9 @@ function loadEnv(path = ".env.local") {
 loadEnv();
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SERVICE_KEY = process.env.SUPABASE_SECRET_KEY;
 if (!SUPABASE_URL || !SERVICE_KEY) {
-  console.error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local");
+  console.error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SECRET_KEY in .env.local");
   process.exit(1);
 }
 

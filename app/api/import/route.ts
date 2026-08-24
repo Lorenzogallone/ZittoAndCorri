@@ -5,6 +5,7 @@
 import type { NextRequest } from "next/server";
 import { resolveImportAuth } from "@/lib/ingest/api-auth";
 import { ingestActivity } from "@/lib/ingest/ingest";
+import { enqueueActivityEvaluationSafely } from "@/lib/ai/evaluate-activity";
 
 export async function POST(req: NextRequest) {
   const ctx = await resolveImportAuth(req);
@@ -21,10 +22,16 @@ export async function POST(req: NextRequest) {
 
   try {
     const ids: string[] = [];
+    const evaluationJobIds: string[] = [];
     for (const inp of inputs) {
-      ids.push(await ingestActivity(inp, ctx));
+      const id = await ingestActivity(inp, ctx);
+      ids.push(id);
+      const jobId = await enqueueActivityEvaluationSafely(ctx.userId, id);
+      if (jobId) evaluationJobIds.push(jobId);
     }
-    return Response.json(ids.length === 1 ? { id: ids[0] } : { ids });
+    return Response.json(ids.length === 1
+      ? { id: ids[0], evaluationJobId: evaluationJobIds[0] ?? null }
+      : { ids, evaluationJobIds });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Errore durante l'import.";
     return Response.json({ error: msg }, { status: 422 });

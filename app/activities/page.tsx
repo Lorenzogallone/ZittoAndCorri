@@ -29,30 +29,34 @@ export default async function ActivitiesPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: activities } = await supabase
-    .from("activities")
-    .select(
-      "id, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km, avg_hr, elevation_gain_m, rpe",
-    )
-    .order("started_at", { ascending: false })
-    .returns<
-      Pick<
-        Activity,
-        | "id"
-        | "started_at"
-        | "type"
-        | "sport"
-        | "distance_m"
-        | "duration_s"
-        | "moving_time_s"
-        | "avg_pace_s_km"
-        | "avg_hr"
-        | "elevation_gain_m"
-        | "rpe"
-      >[]
-    >();
+  const [{ data: activities }, { data: pendingEvaluationJobs }] = await Promise.all([
+    supabase
+      .from("activities")
+      .select(
+        "id, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km, avg_hr, elevation_gain_m, rpe",
+      )
+      .order("started_at", { ascending: false })
+      .returns<
+        Pick<
+          Activity,
+          | "id"
+          | "started_at"
+          | "type"
+          | "sport"
+          | "distance_m"
+          | "duration_s"
+          | "moving_time_s"
+          | "avg_pace_s_km"
+          | "avg_hr"
+          | "elevation_gain_m"
+          | "rpe"
+        >[]
+      >(),
+    supabase.from("ai_jobs").select("ref_id").eq("user_id", user.id).eq("kind", "evaluation").eq("status", "pending").returns<Array<{ ref_id: string | null }>>(),
+  ]);
 
   const list = activities ?? [];
+  const pendingActivityIds = new Set((pendingEvaluationJobs ?? []).flatMap((job) => job.ref_id ? [job.ref_id] : []));
 
   // Compute 30-day stats and trends — solo corsa: gli altri sport non
   // contano nel volume km.
@@ -192,6 +196,9 @@ export default async function ActivitiesPage() {
                     <span className="text-xs text-muted-foreground font-medium">
                       {formatDate(a.started_at)}
                     </span>
+                    {pendingActivityIds.has(a.id) && (
+                      <span className="inline-flex items-center rounded-lg bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Analisi AI…</span>
+                    )}
                   </div>
                   <span className="text-xl font-bold tabular-nums tracking-tight text-foreground">
                     {a.distance_m > 0

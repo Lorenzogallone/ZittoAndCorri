@@ -1,36 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Zitto e Corri
 
-## Getting Started
+PWA multiutente per pianificazione running, import FIT/GPX e coaching conversazionale con Gemini.
 
-First, run the development server:
+## Configurazione
+
+1. Copia `.env.example` in `.env.local` e configura le tre variabili Supabase.
+2. Applica in ordine le migrazioni nella cartella `supabase/migrations`; la `0008` abilita Vault, onboarding e coach conversazionale.
+3. In Supabase Auth abilita Google come provider OAuth.
+4. Avvia l'app con `npm run dev`.
+
+La chiave Gemini non è una variabile dell'app: ogni utente la inserisce dalle impostazioni e viene conservata cifrata in Supabase Vault. La secret key Supabase è esclusivamente server-side.
+
+## Flussi principali
+
+- `/` — riepilogo e chat con il coach; le modifiche al piano richiedono conferma.
+- `/activities` — attività manuali o importate da FIT/GPX, con feedback automatico non bloccante.
+- `/plan` — calendario mobile di 14 giorni.
+- `/settings` — profilo, memoria del coach, chiavi e integrazioni.
+- `/onboarding` — configurazione guidata del nuovo utente.
+
+Gli endpoint `/api/import`, `/api/import/gpx` e `/api/import/file` accettano la sessione browser oppure `Authorization: Bearer <chiave import personale>` generata nelle impostazioni.
+
+## Verifiche
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run test:core
+npm run typecheck
+npm run lint
+npm run build
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

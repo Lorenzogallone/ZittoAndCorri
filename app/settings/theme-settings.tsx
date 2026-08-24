@@ -8,7 +8,6 @@ import {
   Monitor,
   Check,
   ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 import {
   ACCENTS,
@@ -55,30 +54,28 @@ export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
   }
 
   return (
-    <div className="rounded-2xl bg-card border border-white/[0.06] overflow-hidden transition-all duration-200 mb-4">
+    <div className="overflow-hidden rounded-2xl border border-border bg-card transition-all duration-200">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-5 hover:bg-white/[0.02] active:bg-white/[0.04] transition-colors text-left"
+        aria-expanded={isOpen}
+        aria-controls="theme-settings-content"
+        className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-muted/20"
       >
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xl bg-primary/10 text-primary">
             <Palette size={18} />
           </div>
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Aspetto</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Modalità, colore principale e stile dell&apos;app.
-            </p>
-          </div>
+          <h2 className="text-sm font-semibold text-foreground">Aspetto</h2>
         </div>
-        <div className="text-muted-foreground/60">
-          {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-        </div>
+        <ChevronDown
+          size={18}
+          className={`text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`}
+        />
       </button>
 
       {isOpen && (
-        <div className="px-5 pb-5 pt-3 border-t border-white/[0.04] bg-white/[0.01] space-y-6">
+        <div id="theme-settings-content" className="space-y-6 border-t border-border/60 px-5 pb-5 pt-4">
           {/* Modalità */}
           <div className="space-y-2.5">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

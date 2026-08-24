@@ -22,7 +22,9 @@ export const ActivityInput = z
     max_hr: z.number().int().positive().optional(),
     elevation_gain_m: z.number().int().nonnegative().optional(),
     rpe: z.number().int().min(1).max(10).optional(),
+    rpe_source: z.enum(["fit", "user", "api"]).optional(),
     calories: z.number().int().positive().optional(),
+    source_title: z.string().optional(),
     notes: z.string().optional(),
     // stream opzionali (solo da import ricchi; il form manuale non li ha)
     hr_series: z.array(z.object({ t: z.number(), bpm: z.number() })).optional(),

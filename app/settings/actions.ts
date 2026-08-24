@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizePrefs, type ThemePrefs } from "@/lib/theme";
 import crypto from "crypto";
+import { verifyGeminiApiKey } from "@/lib/ai/gemini";
+import { removeGeminiApiKey, storeGeminiApiKey } from "@/lib/ai/credentials";
 
 export interface ProfileFormState {
   error?: string;
@@ -28,7 +30,6 @@ export async function updateProfile(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const display_name = String(formData.get("display_name") ?? "").trim() || null;
   const max_hr = optInt(formData, "max_hr");
   const resting_hr = optInt(formData, "resting_hr");
   const birthdateRaw = String(formData.get("birthdate") ?? "").trim();
@@ -41,13 +42,14 @@ export async function updateProfile(
   const { error } = await supabase
     .from("profiles")
     .upsert(
-      { id: user.id, display_name, max_hr, resting_hr, birthdate },
+      { id: user.id, max_hr, resting_hr, birthdate },
       { onConflict: "id" },
     );
 
   if (error) return { error: error.message };
 
   revalidatePath("/settings");
+  revalidatePath("/profile");
   return { ok: true };
 }
 
@@ -110,4 +112,41 @@ export async function regenerateApiKey(): Promise<{ error?: string; ok?: boolean
 
   revalidatePath("/settings");
   return { ok: true, key: newKey };
+}
+
+export async function saveGeminiApiKey(
+  apiKey: string,
+): Promise<{ error?: string; ok?: boolean }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const key = apiKey.trim();
+  if (key.length < 16) return { error: "La chiave Gemini non sembra valida." };
+
+  try {
+    await verifyGeminiApiKey(key);
+    await storeGeminiApiKey(user.id, key);
+  } catch (error) {
+    console.error("saveGeminiApiKey:", error instanceof Error ? error.message : error);
+    return { error: "Chiave non valida o non autorizzata per Gemini." };
+  }
+  revalidatePath("/settings");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function deleteGeminiApiKey(): Promise<{ error?: string; ok?: boolean }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  try {
+    await removeGeminiApiKey(user.id);
+  } catch (error) {
+    console.error("deleteGeminiApiKey:", error instanceof Error ? error.message : error);
+    return { error: "Impossibile rimuovere la chiave. Riprova." };
+  }
+  revalidatePath("/settings");
+  revalidatePath("/");
+  return { ok: true };
 }

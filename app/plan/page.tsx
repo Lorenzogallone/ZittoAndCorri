@@ -6,7 +6,6 @@ import { PlanCalendar } from "@/components/plan-calendar";
 import { computeAdherence } from "@/lib/metrics/adherence";
 import { formatDistance, daysUntil } from "@/lib/format";
 import { isoDaysFromNow } from "@/lib/dates";
-import { PlanGenerator } from "@/components/plan-generator";
 import type { PlannedWorkout, Goal, Activity, PlanReview } from "@/lib/types";
 
 function todayISO(): string {
@@ -154,10 +153,13 @@ export default async function PlanPage({ searchParams }: Props) {
         adherence={adherence}
       />
 
-      {/* 3. Card coach AI (transizione tra calendario e review) */}
-      <div className="mt-4">
-        <PlanGenerator />
-      </div>
+      {/* Il piano si modifica conversando: nessun secondo flusso AI separato. */}
+      <Link
+        href="/?prompt=Rivedi%20il%20mio%20piano%20per%20i%20prossimi%2014%20giorni"
+        className="mt-4 block rounded-2xl border border-primary/20 bg-primary/[0.06] p-4 text-center text-sm font-semibold text-primary"
+      >
+        Chiedi al coach di adattare il piano
+      </Link>
 
       {/* 4. Ultima review del coach */}
       {latestReview?.summary && (

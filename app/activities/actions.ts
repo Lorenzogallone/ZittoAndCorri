@@ -10,11 +10,13 @@ import type { Activity, Profile } from "@/lib/types";
 import { avgPace } from "@/lib/metrics/pace";
 import { timeInZoneFromAverage, timeInZoneFromSeries } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
+import { enqueueActivityEvaluationSafely } from "@/lib/ai/evaluate-activity";
 
 export interface ActivityFormState {
   error?: string;
   /** Id della corsa creata: il client naviga al dettaglio (vedi navigateAfterMutation). */
   id?: string;
+  evaluationJobId?: string;
 }
 
 /** Legge un campo numero opzionale dal form; "" → undefined. */
@@ -81,12 +83,13 @@ export async function createActivity(
         max_hr: optInt(formData, "max_hr"),
         elevation_gain_m: optInt(formData, "elevation_gain_m"),
         rpe: optInt(formData, "rpe"),
+        rpe_source: optInt(formData, "rpe") != null ? "user" : undefined,
         notes: notes || undefined,
       },
       {
         supabase,
         userId: user.id,
-        profile: profile ?? { max_hr: null, resting_hr: 50 },
+        profile: profile ?? { max_hr: null, resting_hr: null },
       },
     );
   } catch (e) {
@@ -106,9 +109,10 @@ export async function createActivity(
   }
 
   revalidatePath("/activities");
+  const evaluationJobId = await enqueueActivityEvaluationSafely(user.id, activityId);
   // Niente redirect lato server: torniamo l'id e il client naviga (soft da
   // browser, full load in PWA standalone, dove la soft-navigation si impalla).
-  return { id: activityId };
+  return { id: activityId, evaluationJobId: evaluationJobId ?? undefined };
 }
 
 export interface GpxImportFormState {
@@ -144,7 +148,7 @@ export async function importGpxActivity(
   const ctx = {
     supabase,
     userId: user.id,
-    profile: profile ?? { max_hr: null, resting_hr: 50 },
+    profile: profile ?? { max_hr: null, resting_hr: null },
   };
 
   let activityId: string;
@@ -157,6 +161,7 @@ export async function importGpxActivity(
   }
 
   revalidatePath("/activities");
+  await enqueueActivityEvaluationSafely(user.id, activityId);
   redirect(`/activities/${activityId}`, RedirectType.replace);
 }
 
@@ -260,7 +265,7 @@ export async function updateActivity(
     .eq("id", user.id)
     .single<Pick<Profile, "max_hr" | "resting_hr">>();
 
-  const profileCtx = profile ?? { max_hr: null, resting_hr: 50 };
+  const profileCtx = profile ?? { max_hr: null, resting_hr: null };
 
   // Load streams if they exist
   const { data: streams } = await supabase
@@ -290,6 +295,7 @@ export async function updateActivity(
       sport,
       notes: notes || null,
       rpe: rpe ?? null,
+      rpe_source: rpe != null ? "user" : null,
       started_at: startedAt.toISOString(),
       distance_m,
       duration_s,
@@ -347,7 +353,7 @@ export async function updateActivity(
 export async function saveParsedActivity(
   input: unknown,
   plannedWorkoutId?: string,
-): Promise<{ error?: string; id?: string }> {
+): Promise<{ error?: string; id?: string; evaluationJobId?: string }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -364,7 +370,7 @@ export async function saveParsedActivity(
     const activityId = await ingestActivity(input, {
       supabase,
       userId: user.id,
-      profile: profile ?? { max_hr: null, resting_hr: 50 },
+      profile: profile ?? { max_hr: null, resting_hr: null },
     });
 
     if (plannedWorkoutId) {
@@ -377,7 +383,8 @@ export async function saveParsedActivity(
     }
 
     revalidatePath("/activities");
-    return { id: activityId };
+    const evaluationJobId = await enqueueActivityEvaluationSafely(user.id, activityId);
+    return { id: activityId, evaluationJobId: evaluationJobId ?? undefined };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Errore durante il salvataggio." };
   }

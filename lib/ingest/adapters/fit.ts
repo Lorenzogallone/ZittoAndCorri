@@ -5,6 +5,7 @@
 
 import type { ActivityInput } from "@/lib/ingest/schema";
 import type { Sport } from "@/lib/types";
+import { extractFitSessionMetadata } from "./fit-metadata";
 
 /** Semicircles (Sint32 FIT) → gradi decimali. */
 const SEMICIRCLES_TO_DEG = 180 / 2 ** 31;
@@ -164,6 +165,14 @@ export async function parseFit(buf: ArrayBuffer): Promise<ActivityInput> {
       ? Math.round(session.totalCalories)
       : undefined;
 
+  // FIT workoutRpe usa Borg CR10 moltiplicato per 10 (es. 40 = RPE 4).
+  const metadata = extractFitSessionMetadata({
+    workoutRpe: session.workoutRpe,
+    perceivedExertion: (session as { perceivedExertion?: number }).perceivedExertion,
+    sportProfileName: session.sportProfileName,
+    workoutName: messages.workoutMesgs?.[0]?.wktName,
+  });
+
   return {
     source: "file",
     type: sport === "running" ? "easy" : "cross",
@@ -176,7 +185,9 @@ export async function parseFit(buf: ArrayBuffer): Promise<ActivityInput> {
     max_hr: maxHr,
     elevation_gain_m: elevationGain,
     calories,
-    notes: fitSportLabel(session.sport, session.subSport),
+    rpe: metadata.rpe,
+    rpe_source: metadata.rpe_source,
+    source_title: metadata.source_title || fitSportLabel(session.sport, session.subSport),
     gps_series: gpsSeries.length >= 2 ? gpsSeries : undefined,
     hr_series: hrSeries.length > 0 ? hrSeries : undefined,
     cadence_series: cadenceSeries.length > 0 ? cadenceSeries : undefined,
