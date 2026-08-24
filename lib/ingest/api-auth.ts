@@ -7,7 +7,7 @@ import "server-only";
 import type { NextRequest } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Profile } from "@/lib/types";
 import type { ingestActivity } from "@/lib/ingest/ingest";
 
@@ -30,9 +30,7 @@ export async function resolveImportAuth(
   if (token) {
     // Autenticazione Bearer: cerca il profilo con questa api_key
     // (service role per bypassare RLS).
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    supabase = createServiceClient(url, serviceKey);
+    supabase = createAdminClient();
 
     const { data: profile, error: dbError } = await supabase
       .from("profiles")
@@ -40,18 +38,8 @@ export async function resolveImportAuth(
       .eq("api_key", token)
       .maybeSingle();
 
-    if (dbError || !profile) {
-      // Fallback sul token statico in .env.local per retrocompatibilità.
-      const ingestToken = process.env.INGEST_TOKEN;
-      const ingestUserId = process.env.INGEST_USER_ID;
-      if (ingestToken && token === ingestToken && ingestUserId) {
-        userId = ingestUserId;
-      } else {
-        return null;
-      }
-    } else {
-      userId = profile.id;
-    }
+    if (dbError || !profile) return null;
+    userId = profile.id;
   } else {
     // Autenticazione sessione cookie (browser).
     supabase = await createClient();
@@ -72,6 +60,6 @@ export async function resolveImportAuth(
   return {
     supabase,
     userId,
-    profile: profile ?? { max_hr: null, resting_hr: 50 },
+    profile: profile ?? { max_hr: null, resting_hr: null },
   };
 }

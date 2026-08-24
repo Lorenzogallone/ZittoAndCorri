@@ -111,7 +111,7 @@ export function parseGpx(xml: string): ActivityInput {
     avg_hr: hrCount > 0 ? Math.round(hrSum / hrCount) : undefined,
     max_hr: hrMax > 0 ? hrMax : undefined,
     elevation_gain_m: Math.round(totalEleGain) || undefined,
-    notes: trackName !== "Corsa" ? trackName : undefined,
+    source_title: trackName !== "Corsa" ? trackName : undefined,
     gps_series: gpsSeries,
     hr_series: hrSeries.length > 0 ? hrSeries : undefined,
   };

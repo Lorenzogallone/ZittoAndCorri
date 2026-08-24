@@ -12,6 +12,7 @@ import { ingestActivity } from "@/lib/ingest/ingest";
 import { parseGpx } from "@/lib/ingest/adapters/gpx";
 import { parseFit } from "@/lib/ingest/adapters/fit";
 import type { ActivityInput } from "@/lib/ingest/schema";
+import { enqueueActivityEvaluationSafely } from "@/lib/ai/evaluate-activity";
 
 /** True se i byte hanno l'header FIT (".FIT" agli offset 8–11). */
 function looksLikeFit(bytes: Uint8Array): boolean {
@@ -56,7 +57,8 @@ export async function POST(req: NextRequest) {
     if (notes && notes.trim()) input.notes = notes.trim();
 
     const id = await ingestActivity(input, ctx);
-    return Response.json({ success: true, id });
+    const evaluationJobId = await enqueueActivityEvaluationSafely(ctx.userId, id);
+    return Response.json({ success: true, id, evaluationJobId });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Errore durante l'import del file.";
     return Response.json({ error: msg }, { status: 422 });

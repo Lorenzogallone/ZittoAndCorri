@@ -231,11 +231,14 @@ export function useAiJob(persistKey?: string) {
     if (!persistKey) return;
     const saved = readPersisted(persistKey);
     if (!saved) return;
-    const runId = ++runIdRef.current;
-    setError(null);
-    setDone(false);
-    setPending(true);
-    runPoll(saved.jobId, saved.deadline, runId);
+    const timer = window.setTimeout(() => {
+      const runId = ++runIdRef.current;
+      setError(null);
+      setDone(false);
+      setPending(true);
+      runPoll(saved.jobId, saved.deadline, runId);
+    }, 0);
+    return () => window.clearTimeout(timer);
     // Eseguito una sola volta al montaggio: persistKey/runPoll sono stabili.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

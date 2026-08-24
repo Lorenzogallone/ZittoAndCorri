@@ -64,6 +64,7 @@ export interface Profile {
   theme_mode: string | null;
   theme_accent: string | null;
   theme_style: string | null;
+  onboarding_completed_at: string | null;
   created_at: string;
 }
 
@@ -103,6 +104,10 @@ export interface Activity {
   max_hr: number | null;
   elevation_gain_m: number | null;
   rpe: number | null;
+  /** Origine dello sforzo: file FIT, utente o API esterna. */
+  rpe_source: "fit" | "user" | "api" | null;
+  /** Titolo originale della sessione, separato dalle note dell'atleta. */
+  source_title: string | null;
   calories: number | null;
   /** Cadenza media in passi/minuto, derivata dagli stream in ingest. */
   avg_cadence_spm: number | null;
@@ -180,6 +185,8 @@ export interface PlannedWorkout {
   status: PlannedStatus;
   activity_id: string | null;
   created_at: string;
+  updated_at: string;
+  origin: "user" | "ai";
 }
 
 export interface AdherenceResult {
@@ -240,4 +247,62 @@ export interface PlanGenerationResult {
   /** Memoria di fase del coach, persistita in athlete_snapshot.narrative. */
   coach_memory?: string;
   workouts: ProposedWorkout[];
+}
+
+export type CoachMemoryCategory =
+  | "availability"
+  | "vacation"
+  | "weather"
+  | "preference"
+  | "fatigue"
+  | "limitation"
+  | "pace_hr"
+  | "long_term";
+
+export interface CoachMessage {
+  id: string;
+  user_id: string;
+  role: "user" | "assistant" | "system";
+  kind: "chat" | "activity_feedback" | "plan_proposal" | "status";
+  content: string;
+  activity_id: string | null;
+  job_id: string | null;
+  plan_proposal_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface CoachMemory {
+  id: string;
+  user_id: string;
+  category: CoachMemoryCategory;
+  content: string;
+  valid_from: string | null;
+  valid_until: string | null;
+  source: "chat" | "activity_feedback" | "migration";
+  confidence: number;
+  source_message_id: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlanProposal {
+  id: string;
+  user_id: string;
+  source_message_id: string | null;
+  summary: string;
+  range_start: string;
+  range_end: string;
+  workouts: ProposedWorkout[];
+  status: "pending" | "applied" | "rejected" | "stale";
+  created_at: string;
+  applied_at: string | null;
+}
+
+export interface AiCredentialMetadata {
+  provider: "gemini";
+  last_four: string;
+  verified_at: string;
+  updated_at: string;
 }

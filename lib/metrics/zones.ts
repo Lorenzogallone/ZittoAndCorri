@@ -26,12 +26,12 @@ type HrConfig = Pick<Profile, "max_hr" | "resting_hr">;
 
 /**
  * Calcola le soglie inferiori (bpm) delle 5 zone via HRR/Karvonen.
- * Ritorna null se manca max_hr (zone non calcolabili).
+ * Ritorna null se manca una delle due misure (niente default fisiologici).
  */
 export function hrZones(profile: HrConfig): HrZones | null {
   const max_hr = profile.max_hr;
-  if (max_hr == null) return null;
-  const resting_hr = profile.resting_hr ?? 50;
+  const resting_hr = profile.resting_hr;
+  if (max_hr == null || resting_hr == null) return null;
   const reserve = max_hr - resting_hr;
   if (reserve <= 0) return null;
 

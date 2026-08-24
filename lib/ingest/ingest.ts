@@ -97,7 +97,9 @@ export async function ingestActivity(
       max_hr: data.max_hr ?? null,
       elevation_gain_m: data.elevation_gain_m ?? null,
       rpe: data.rpe ?? null,
+      rpe_source: data.rpe_source ?? null,
       calories: data.calories ?? null,
+      source_title: data.source_title ?? null,
       // Colonne della migration 0007: incluse solo se valorizzate, così
       // l'ingest senza stream continua a funzionare anche su DB non migrato.
       ...(avg_cadence_spm != null ? { avg_cadence_spm } : {}),
@@ -141,6 +143,9 @@ type ExistingActivity = Pick<
   | "max_hr"
   | "elevation_gain_m"
   | "calories"
+  | "rpe"
+  | "rpe_source"
+  | "source_title"
   | "notes"
 >;
 
@@ -159,7 +164,7 @@ async function findNearbyActivity(
   const { data: existing } = await ctx.supabase
     .from("activities")
     .select(
-      "id, distance_m, duration_s, moving_time_s, avg_pace_s_km, avg_hr, max_hr, elevation_gain_m, calories, notes",
+      "id, distance_m, duration_s, moving_time_s, avg_pace_s_km, avg_hr, max_hr, elevation_gain_m, calories, rpe, rpe_source, source_title, notes",
     )
     .eq("user_id", ctx.userId)
     .eq("sport", data.sport)
@@ -218,6 +223,9 @@ async function enrichActivity(
     max_hr: existing.max_hr ?? data.max_hr ?? null,
     elevation_gain_m: existing.elevation_gain_m ?? data.elevation_gain_m ?? null,
     calories: existing.calories ?? data.calories ?? null,
+    rpe: existing.rpe ?? data.rpe ?? null,
+    rpe_source: existing.rpe_source ?? data.rpe_source ?? null,
+    source_title: existing.source_title ?? data.source_title ?? null,
     notes: existing.notes ?? data.notes ?? null,
   };
 

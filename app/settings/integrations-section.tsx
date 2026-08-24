@@ -1,137 +1,76 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ChevronDown, Key } from "lucide-react";
 import { ApiKeySection } from "./api-key-section";
-import { ChevronDown, ChevronUp, BookOpen, Key, Smartphone, HelpCircle } from "lucide-react";
+import { GeminiKeySection } from "./gemini-key-section";
+import type { AiCredentialMetadata } from "@/lib/types";
 
 interface IntegrationsSectionProps {
   apiKey: string | null;
+  geminiCredential: AiCredentialMetadata | null;
+  focusGemini?: boolean;
 }
 
-export function IntegrationsSection({ apiKey }: IntegrationsSectionProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [showInstructions, setShowInstructions] = useState(false);
+export function IntegrationsSection({ apiKey, geminiCredential, focusGemini = false }: IntegrationsSectionProps) {
+  const [isOpen, setIsOpen] = useState(focusGemini);
+
+  useEffect(() => {
+    const storedFocus = window.sessionStorage.getItem("settings-focus") === "gemini";
+    const hashFocus = window.location.hash === "#gemini-integration";
+    if (!focusGemini && !storedFocus && !hashFocus) return;
+    window.sessionStorage.removeItem("settings-focus");
+
+    // Il timeout separa l'apertura dal calcolo della posizione: la card Gemini
+    // deve essere già montata prima di misurare il contenitore scrollabile.
+    const openTimer = window.setTimeout(() => setIsOpen(true), 0);
+    const scrollTimer = window.setTimeout(() => {
+      const target = document.getElementById("gemini-key")
+        ?? document.getElementById("gemini-integration");
+      if (!target) return;
+      const scrollContainer = target.closest("main");
+      if (scrollContainer instanceof HTMLElement) {
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const top = scrollContainer.scrollTop
+          + targetRect.top
+          - containerRect.top
+          - Math.max(20, (scrollContainer.clientHeight - targetRect.height) / 2);
+        scrollContainer.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+      } else {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 180);
+    return () => {
+      window.clearTimeout(openTimer);
+      window.clearTimeout(scrollTimer);
+    };
+  }, [focusGemini]);
 
   return (
-    <div className="rounded-2xl bg-card border border-white/[0.06] overflow-hidden transition-all duration-200 mb-6">
-      {/* Header / Pulsante Collassabile */}
+    <section id="integrations" className="overflow-hidden rounded-2xl border border-border bg-card">
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-5 hover:bg-white/[0.02] active:bg-white/[0.04] transition-colors text-left"
+        aria-expanded={isOpen}
+        aria-controls="integrations-content"
+        onClick={() => setIsOpen((value) => !value)}
+        className="flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-muted/20"
       >
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-primary/10 text-primary">
-            <Key size={18} />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Integrazioni & API</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Configura chiavi API personali e Comandi Rapidi per il tuo iPhone.
-            </p>
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="rounded-xl bg-primary/10 p-2 text-primary"><Key size={18} /></div>
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-foreground">Integrazioni e chiavi</h2>
           </div>
         </div>
-        <div className="text-muted-foreground/60">
-          {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-        </div>
+        <ChevronDown size={18} className={`shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
-      {/* Contenuto Collassabile principale */}
       {isOpen && (
-        <div className="px-5 pb-5 pt-3 border-t border-white/[0.04] bg-white/[0.01] space-y-6">
+        <div id="integrations-content" className="space-y-3 border-t border-border/60 bg-muted/10 p-3">
+          <GeminiKeySection credential={geminiCredential} focusRequested={focusGemini} />
           <ApiKeySection initialApiKey={apiKey} />
-
-          {/* Contenuto Collassabile per la Guida Istruzioni */}
-          <div className="border-t border-white/[0.04] pt-4">
-            <button
-              type="button"
-              onClick={() => setShowInstructions(!showInstructions)}
-              className="flex items-center gap-2 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
-            >
-              <HelpCircle size={14} />
-              {showInstructions ? "Nascondi guida di configurazione" : "Mostra istruzioni di configurazione iPhone"}
-            </button>
-
-            {showInstructions && (
-              <div className="mt-4 space-y-4 text-xs animate-in fade-in slide-in-from-top-1 duration-200">
-                <div className="rounded-xl bg-muted/20 border border-white/[0.03] p-4 space-y-2">
-                  <h3 className="font-semibold text-foreground flex items-center gap-1.5 text-sm">
-                    <Smartphone size={14} className="text-primary" />
-                    1. Importazione Apple Health (Solo metriche)
-                  </h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Importa automaticamente la distanza, durata e frequenza cardiaca media dall&apos;ultimo allenamento registrato in Apple Health tramite un Comando Rapido (Shortcuts). Non include la mappa GPS.
-                  </p>
-                  <div className="bg-black/20 rounded-lg p-3 border border-white/[0.02] space-y-2">
-                    <p className="font-medium text-foreground">Parametri di configurazione:</p>
-                    <ul className="list-disc list-inside space-y-1.5 text-muted-foreground/90 pl-1">
-                      <li>URL: <code className="bg-muted px-1.5 py-0.5 rounded text-primary font-mono text-[10px]">https://zitto-and-corri.vercel.app/api/import</code></li>
-                      <li>Metodo: <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono text-[10px]">POST</code></li>
-                      <li>Header: <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono text-[10px]">Authorization: Bearer [tua_chiave_api]</code></li>
-                      <li>Payload JSON: <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono text-[10px]">started_at, distance_m, duration_s, avg_hr</code></li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="rounded-xl bg-muted/20 border border-white/[0.03] p-4 space-y-2">
-                  <h3 className="font-semibold text-foreground flex items-center gap-1.5 text-sm">
-                    <BookOpen size={14} className="text-primary" />
-                    2. Importazione File GPX (Mappa, Cardio & Altitudine)
-                  </h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Consente di importare il file GPX completo (con coordinate GPS e mappa) condividendolo tramite il foglio di condivisione di iOS dopo l&apos;esportazione da app come <strong className="text-foreground">WorkoutGPX</strong> o <strong className="text-foreground">WorkOutDoors</strong>.
-                  </p>
-                  <div className="bg-black/20 rounded-lg p-3 border border-white/[0.02] space-y-2">
-                    <p className="font-medium text-foreground">Parametri di configurazione:</p>
-                    <ul className="list-disc list-inside space-y-1.5 text-muted-foreground/90 pl-1">
-                      <li>URL: <code className="bg-muted px-1.5 py-0.5 rounded text-primary font-mono text-[10px]">https://zitto-and-corri.vercel.app/api/import/gpx</code></li>
-                      <li>Metodo: <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono text-[10px]">POST</code></li>
-                      <li>Header: <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono text-[10px]">Authorization: Bearer [tua_chiave_api]</code></li>
-                      <li>Payload JSON: <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono text-[10px]">{"{ \"gpx\": \"[contenuto_xml_gpx]\", \"notes\": \"Importato da iPhone\" }"}</code></li>
-                    </ul>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground/80 mt-2 font-medium">
-                    💡 Per le istruzioni dettagliate sulla creazione dei flussi di automazione in Comandi Rapidi, consulta il file <code className="bg-muted px-1 py-0.5 rounded font-mono text-foreground">INSTRUCTIONS.md</code> nella cartella radice del progetto.
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-muted/20 border border-white/[0.03] p-4 space-y-2">
-                  <h3 className="font-semibold text-foreground flex items-center gap-1.5 text-sm">
-                    <Smartphone size={14} className="text-primary" />
-                    3. Amazfit / Zepp — import in un tap (FIT o GPX)
-                  </h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Zepp non ha un&apos;API pubblica gratuita, ma puoi evitare tutti i passaggi manuali con un
-                    Comando Rapido nel foglio di condivisione: in Zepp apri l&apos;allenamento →{" "}
-                    <strong className="text-foreground">Condividi → Esporta dati (GPX)</strong> → scegli il tuo
-                    Comando Rapido. Il comando manda il file così com&apos;è al nuovo endpoint, che riconosce da solo
-                    se è un .fit o un .gpx: niente più download + upload a mano.
-                  </p>
-                  <div className="bg-black/20 rounded-lg p-3 border border-white/[0.02] space-y-2">
-                    <p className="font-medium text-foreground">Comando Rapido (una volta sola):</p>
-                    <ul className="list-disc list-inside space-y-1.5 text-muted-foreground/90 pl-1">
-                      <li>Attiva &quot;Mostra nel foglio di condivisione&quot; (tipi: file)</li>
-                      <li>Azione &quot;Ottieni contenuto di URL&quot;:</li>
-                      <li>URL: <code className="bg-muted px-1.5 py-0.5 rounded text-primary font-mono text-[10px]">https://zitto-and-corri.vercel.app/api/import/file</code></li>
-                      <li>Metodo: <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono text-[10px]">POST</code></li>
-                      <li>Header: <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono text-[10px]">Authorization: Bearer [tua_chiave_api]</code></li>
-                      <li>Corpo della richiesta: <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono text-[10px]">File</code> → l&apos;input del foglio di condivisione</li>
-                    </ul>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground/80 mt-2 font-medium">
-                    💡 Il file .fit (con cadenza e tutte le serie complete) si ottiene dall&apos;export
-                    dati dell&apos;account Zepp o dalla sincronizzazione con Strava; per l&apos;uso quotidiano il GPX
-                    condiviso dall&apos;app (GPS + battito) è già sufficiente. Se poi importi anche il .fit della
-                    stessa corsa (subito o giorni dopo), l&apos;attività viene <strong className="text-foreground">arricchita,
-                    non duplicata</strong>: stessi ±10 minuti di inizio = stessa attività. Zone HR, deriva
-                    cardiaca, cadenza e split vengono ricalcolate in automatico.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

@@ -72,12 +72,14 @@ function DebugOverlay() {
   const [open, setOpen] = useState(true);
 
   // isDebugEnabled legge localStorage: solo dopo il mount (evita mismatch SSR).
+  // Lettura client-only intenzionale: il pannello non fa parte dell'UI normale.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setEnabled(isDebugEnabled()), []);
 
   if (!enabled) return null;
 
   const recent = logs.slice(-25).reverse();
-  const t0 = logs.length > 0 ? logs[0].t : Date.now();
+  const t0 = logs.length > 0 ? logs[0].t : 0;
 
   const copyAll = () => {
     const text = logs

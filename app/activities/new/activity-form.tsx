@@ -276,6 +276,9 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
       max_hr: maxHr,
       elevation_gain_m: elevationGain,
       rpe,
+      rpe_source: rpe != null
+        ? (rpe === initialData.rpe ? initialData.rpe_source : "user")
+        : undefined,
     };
 
     const res = await saveParsedActivity(activityInput, plannedWorkoutId);
@@ -298,14 +301,18 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
       </div>
 
       <div className="grid gap-2.5">
-        <Label htmlFor="notes">Nome / Note attività</Label>
+        <Label htmlFor="notes">Note per il coach</Label>
+        {initialData.source_title && (
+          <p className="rounded-lg bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            Titolo dal file: <span className="font-medium text-foreground">{initialData.source_title}</span>
+          </p>
+        )}
         <Input
           id="notes"
           name="notes"
           type="text"
-          defaultValue={initialData.notes ?? "Attività importata"}
-          placeholder="Nome o note dell'attività"
-          required
+          defaultValue={initialData.notes ?? ""}
+          placeholder="Es. gambe pesanti, caldo, respirazione facile…"
         />
       </div>
 

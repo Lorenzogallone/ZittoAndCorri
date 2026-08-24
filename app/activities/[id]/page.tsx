@@ -118,7 +118,7 @@ export default async function ActivityDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: activity }, { data: streams }, { data: profile }, { data: evaluation }] =
+  const [{ data: activity }, { data: streams }, { data: profile }, { data: evaluation }, { data: evaluationJob }, { data: credential }] =
     await Promise.all([
       supabase
         .from("activities")
@@ -143,6 +143,20 @@ export default async function ActivityDetailPage({
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle<Pick<Evaluation, "summary" | "flags" | "created_at">>(),
+      supabase
+        .from("ai_jobs")
+        .select("status, error")
+        .eq("user_id", user.id)
+        .eq("kind", "evaluation")
+        .eq("ref_id", id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<{ status: "pending" | "done" | "error"; error: string | null }>(),
+      supabase
+        .from("user_ai_credentials")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle<{ user_id: string }>(),
     ]);
 
   if (!activity) notFound();
@@ -155,7 +169,7 @@ export default async function ActivityDetailPage({
     timeStyle: "short",
   });
 
-  const profileCtx = profile ?? { max_hr: null, resting_hr: 50 };
+  const profileCtx = profile ?? { max_hr: null, resting_hr: null };
 
   // Zone HR: se abbiamo la serie reale la usiamo (più precisa), altrimenti quella salvata
   const computedZones: TimeInZone | null =
@@ -233,6 +247,7 @@ export default async function ActivityDetailPage({
             ? formatDistance(activity.distance_m)
             : formatDuration(activeDuration(activity))}
         </h1>
+        {activity.source_title && <p className="text-sm font-medium">{activity.source_title}</p>}
         <p className="text-muted-foreground text-sm capitalize">{dateLabel}</p>
       </div>
 
@@ -305,6 +320,9 @@ export default async function ActivityDetailPage({
         activityId={activity.id}
         initialNotes={activity.notes}
         evaluation={evaluation ?? null}
+        initialAnalyzing={evaluationJob?.status === "pending"}
+        initialFailed={evaluationJob?.status === "error"}
+        keyConfigured={Boolean(credential)}
       />
 
     </AppShell>

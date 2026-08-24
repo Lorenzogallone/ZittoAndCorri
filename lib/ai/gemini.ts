@@ -41,15 +41,14 @@ export function aiErrorMessage(err: unknown): string {
   return "Richiesta AI non riuscita. Riprova tra poco.";
 }
 
-let client: GoogleGenAI | null = null;
+function getClient(apiKey: string): GoogleGenAI {
+  if (!apiKey.trim()) throw new Error("Chiave Gemini personale non configurata");
+  return new GoogleGenAI({ apiKey });
+}
 
-function getClient(): GoogleGenAI {
-  if (!client) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("GEMINI_API_KEY non configurata");
-    client = new GoogleGenAI({ apiKey });
-  }
-  return client;
+/** Verifica la credenziale senza generare contenuto. */
+export async function verifyGeminiApiKey(apiKey: string): Promise<void> {
+  await getClient(apiKey).models.get({ model: PRIMARY_MODEL });
 }
 
 /** True se l'errore è un rate-limit del free tier (per minuto/giorno). */
@@ -63,11 +62,12 @@ function isRateLimit(err: unknown): boolean {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function callModel(
+  apiKey: string,
   model: string,
   prompt: string,
   schema: Schema,
 ): Promise<string> {
-  const res = await getClient().models.generateContent({
+  const res = await getClient(apiKey).models.generateContent({
     model,
     contents: prompt,
     config: {
@@ -110,7 +110,7 @@ function withDeadline<T>(p: Promise<T>, deadlineAt: number): Promise<T> {
 export async function generateStructured<T>(
   prompt: string,
   schema: Schema,
-  opts?: { model?: string },
+  opts: { apiKey: string; model?: string },
 ): Promise<T> {
   const model = opts?.model ?? PRIMARY_MODEL;
   const deadlineAt = Date.now() + DEADLINE_MS;
@@ -119,7 +119,7 @@ export async function generateStructured<T>(
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     if (Date.now() >= deadlineAt) break;
     try {
-      const text = await withDeadline(callModel(model, prompt, schema), deadlineAt);
+      const text = await withDeadline(callModel(opts.apiKey, model, prompt, schema), deadlineAt);
       return JSON.parse(text) as T;
     } catch (err) {
       lastErr = err;
@@ -135,7 +135,7 @@ export async function generateStructured<T>(
   // Fallback al modello con limiti diversi prima di arrendersi (se c'è tempo).
   try {
     return JSON.parse(
-      await withDeadline(callModel(FALLBACK_MODEL, prompt, schema), deadlineAt),
+      await withDeadline(callModel(opts.apiKey, FALLBACK_MODEL, prompt, schema), deadlineAt),
     ) as T;
   } catch (err) {
     throw lastErr ?? err;

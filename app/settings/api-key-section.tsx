@@ -4,8 +4,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Copy, Check, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, Copy, Check, RefreshCw, UploadCloud } from "lucide-react";
 import { regenerateApiKey } from "./actions";
+import { IntegrationCard, IntegrationHelp } from "./integration-card";
 
 interface ApiKeySectionProps {
   initialApiKey: string | null;
@@ -17,7 +18,6 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const handleCopy = async () => {
     if (!apiKey) return;
     try {
@@ -52,9 +52,15 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
   };
 
   return (
+    <IntegrationCard
+      id="external-import-integration"
+      icon={<UploadCloud size={18} />}
+      title="Import automatici"
+      description="Consente a Comandi Rapidi, Apple Health e altri servizi di caricare attività nel tuo account senza aprire l’app."
+    >
     <div className="flex flex-col gap-4">
       <div className="grid gap-2.5">
-        <Label htmlFor="api_key">La tua chiave API personale</Label>
+        <Label htmlFor="api_key">Chiave personale per gli import</Label>
         <div className="relative flex gap-2">
           <div className="relative flex-1">
             <Input
@@ -110,6 +116,20 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
           {apiKey ? "Rigenera chiave" : "Genera nuova chiave"}
         </Button>
       </div>
+      <IntegrationHelp title="Come usarla per importare attività">
+        <ol className="list-decimal space-y-1.5 pl-4">
+          <li>Genera la chiave, mostrala e copiala.</li>
+          <li>Nel servizio esterno usa l&apos;header <code className="rounded bg-muted px-1 py-0.5 text-foreground">Authorization: Bearer LA_TUA_CHIAVE</code>.</li>
+          <li>Scegli l&apos;endpoint adatto al contenuto da inviare.</li>
+        </ol>
+        <div className="mt-3 space-y-1.5 rounded-lg bg-background/60 p-3 font-mono text-[10px] text-foreground">
+          <p>POST /api/import <span className="font-sans text-muted-foreground">— dati JSON</span></p>
+          <p>POST /api/import/gpx <span className="font-sans text-muted-foreground">— contenuto GPX</span></p>
+          <p>POST /api/import/file <span className="font-sans text-muted-foreground">— file FIT o GPX</span></p>
+        </div>
+        <p className="mt-3">Se rigeneri la chiave, aggiorna tutti i Comandi Rapidi che usavano quella precedente.</p>
+      </IntegrationHelp>
     </div>
+    </IntegrationCard>
   );
 }

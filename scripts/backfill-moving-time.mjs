@@ -7,7 +7,7 @@
  * activities.moving_time_s e ricalcola avg_pace_s_km sul tempo in movimento,
  * così le corse vecchie mostrano il tempo di allenamento come quelle nuove.
  *
- * Usa la service_role key (bypassa RLS): non richiede sessione browser.
+ * Usa la secret key Supabase (bypassa RLS): non richiede sessione browser.
  *
  * Uso:
  *   export PATH="$HOME/.nvm/versions/node/v24.16.0/bin:$PATH"
@@ -34,9 +34,9 @@ function loadEnv(path = ".env.local") {
 loadEnv();
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SERVICE_KEY = process.env.SUPABASE_SECRET_KEY;
 if (!SUPABASE_URL || !SERVICE_KEY) {
-  console.error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local");
+  console.error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SECRET_KEY in .env.local");
   process.exit(1);
 }
 

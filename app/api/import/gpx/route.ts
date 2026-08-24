@@ -7,6 +7,7 @@ import type { NextRequest } from "next/server";
 import { resolveImportAuth } from "@/lib/ingest/api-auth";
 import { ingestActivity } from "@/lib/ingest/ingest";
 import { parseGpx } from "@/lib/ingest/adapters/gpx";
+import { enqueueActivityEvaluationSafely } from "@/lib/ai/evaluate-activity";
 
 export async function POST(req: NextRequest) {
   const ctx = await resolveImportAuth(req);
@@ -33,7 +34,8 @@ export async function POST(req: NextRequest) {
     }
 
     const activityId = await ingestActivity(input, ctx);
-    return Response.json({ success: true, id: activityId });
+    const evaluationJobId = await enqueueActivityEvaluationSafely(ctx.userId, activityId);
+    return Response.json({ success: true, id: activityId, evaluationJobId });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Errore durante l'import del GPX.";
     return Response.json({ error: msg }, { status: 422 });
