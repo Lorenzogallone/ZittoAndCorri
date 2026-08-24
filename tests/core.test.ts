@@ -40,8 +40,10 @@ test("il contesto AI esplicita provenienza e dati mancanti", () => {
 test("la proposta non scrive il piano prima della conferma", () => {
   const source = readFileSync(new URL("../app/coach/actions.ts", import.meta.url), "utf8");
   const sendTurn = source.slice(source.indexOf("async function runCoachTurn"), source.indexOf("export async function applyPlanProposal"));
+  const applyTurn = source.slice(source.indexOf("export async function applyPlanProposal"), source.indexOf("export async function rejectPlanProposal"));
   assert.doesNotMatch(sendTurn, /from\("planned_workouts"\)\.insert/);
   assert.match(source, /rpc\("apply_plan_proposal"/);
+  assert.doesNotMatch(applyTurn, /revalidatePath|router\.refresh|location\.reload/);
 });
 
 test("l'import salva l'attività prima di accodare il feedback", () => {
@@ -85,6 +87,16 @@ test("il coach deduce piano vs svolto dai dati senza forzare un match", () => {
 test("la home mostra la chat senza i feedback automatici delle attività", () => {
   const home = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.match(home, /\.in\("kind", \["chat", "plan_proposal"\]\)/);
+});
+
+test("il piano usa la chat e ogni proposta spiega obiettivo e focus", () => {
+  const plan = readFileSync(new URL("../app/plan/page.tsx", import.meta.url), "utf8");
+  const prompt = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
+  const chat = readFileSync(new URL("../components/coach-chat.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(plan, /plan_reviews|Review del coach|Chiedi al coach di adattare il piano/);
+  assert.match(prompt, /Per ogni workout proposto compila sempre description e focus/);
+  assert.match(chat, /Obiettivo della seduta/);
+  assert.match(chat, /Su cosa concentrarti/);
 });
 
 test("le sezioni del dettaglio attività sono aperte e richiudibili", () => {

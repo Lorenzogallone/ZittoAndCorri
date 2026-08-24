@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { PlanCalendar } from "@/components/plan-calendar";
 import { formatDistance, daysUntil } from "@/lib/format";
-import type { PlannedWorkout, Goal, Activity, PlanReview } from "@/lib/types";
+import type { PlannedWorkout, Goal, Activity } from "@/lib/types";
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -22,12 +22,6 @@ function monthBounds(month: string): { start: string; end: string } {
   const end = new Date(y, m, 0).toISOString().slice(0, 10); // last day of month
   return { start, end };
 }
-
-// La server action `generatePlan` (Coach AI) gira come parte di questa route:
-// le diamo abbastanza tempo per la chiamata a Gemini (vedi DEADLINE_MS in
-// lib/ai/gemini.ts, tenuto sotto questo valore) così la funzione non viene
-// killata dalla piattaforma — causa del "crash"/reload in PWA.
-export const maxDuration = 120;
 
 interface Props {
   searchParams: Promise<{ month?: string }>;
@@ -49,7 +43,6 @@ export default async function PlanPage({ searchParams }: Props) {
     { data: monthWorkouts },
     { data: activeGoal },
     { data: monthActivities },
-    { data: latestReview },
   ] = await Promise.all([
       supabase
         .from("planned_workouts")
@@ -72,13 +65,6 @@ export default async function PlanPage({ searchParams }: Props) {
         .gte("started_at", `${start}T00:00:00`)
         .lte("started_at", `${end}T23:59:59`)
         .returns<Pick<Activity, "id" | "started_at" | "type" | "sport">[]>(),
-      supabase
-        .from("plan_reviews")
-        .select("summary, comments, created_at")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle<Pick<PlanReview, "summary" | "comments" | "created_at">>(),
     ]);
 
   const daysToRace = daysUntil(activeGoal?.race_date);
@@ -130,37 +116,6 @@ export default async function PlanPage({ searchParams }: Props) {
         month={month}
         today={today}
       />
-
-      {/* Il piano si modifica conversando: nessun secondo flusso AI separato. */}
-      <Link
-        href="/?prompt=Rivedi%20il%20mio%20piano%20per%20i%20prossimi%2014%20giorni"
-        className="mt-4 block rounded-2xl border border-primary/20 bg-primary/[0.06] p-4 text-center text-sm font-semibold text-primary"
-      >
-        Chiedi al coach di adattare il piano
-      </Link>
-
-      {/* 4. Ultima review del coach */}
-      {latestReview?.summary && (
-        <div className="mt-4 rounded-2xl bg-card border border-border p-5">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold">Review del coach</h2>
-            <span className="text-xs text-muted-foreground">
-              {new Date(latestReview.created_at).toLocaleDateString("it-IT", {
-                day: "numeric",
-                month: "short",
-              })}
-            </span>
-          </div>
-          <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
-            {latestReview.summary}
-          </p>
-          {latestReview.comments && (
-            <p className="text-xs text-muted-foreground mt-3 border-t border-border/40 pt-2">
-              I tuoi vincoli: {latestReview.comments}
-            </p>
-          )}
-        </div>
-      )}
     </AppShell>
   );
 }
