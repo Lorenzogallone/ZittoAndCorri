@@ -11,23 +11,29 @@ export function PwaSplashLoader() {
     const el = document.getElementById("pwa-splash");
     if (!el) return;
 
+    // Segna subito la sessione: se iOS rilancia il documento mentre la dissolvenza
+    // è ancora in corso, lo script inline non deve mostrare una seconda splash.
+    try {
+      sessionStorage.setItem("pwa-splash-shown", "true");
+    } catch {
+      // sessionStorage non disponibile: la splash resta comunque temporizzata.
+    }
+
     // Tiene lo splash visibile un attimo dopo l'hydration per evitare un
     // flash, poi dissolve (la transition è definita nel CSS inline).
+    let removeTimer: ReturnType<typeof setTimeout> | null = null;
     const fadeTimer = setTimeout(() => {
       el.style.opacity = "0";
       el.style.pointerEvents = "none";
-      const removeTimer = setTimeout(() => {
+      removeTimer = setTimeout(() => {
         el.remove();
-        try {
-          sessionStorage.setItem("pwa-splash-shown", "true");
-        } catch {
-          // sessionStorage non disponibile: lo splash si rimostrerà, pazienza
-        }
       }, 300);
-      return () => clearTimeout(removeTimer);
     }, 350);
 
-    return () => clearTimeout(fadeTimer);
+    return () => {
+      clearTimeout(fadeTimer);
+      if (removeTimer) clearTimeout(removeTimer);
+    };
   }, []);
 
   return null;

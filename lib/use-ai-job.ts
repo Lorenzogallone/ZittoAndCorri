@@ -2,17 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { pollAiJob } from "@/app/actions/ai-jobs";
-import { clientLog, isStandalone } from "@/lib/clientlog";
+import { pollAiJob, type AiJobStatus } from "@/app/actions/ai-jobs";
+import { clientLog } from "@/lib/clientlog";
 
 const POLL_INTERVAL_MS = 2_000;
 // Oltre questo tempo smettiamo di interrogare il job: la chiamata AI ha un
-// deadline interno < 60s, quindi un job ancora 'pending' qui è bloccato.
-const MAX_POLL_MS = 75_000;
-// Finestra entro cui, dopo il reload, proviamo a riportare lo scroll dov'era:
-// il contenuto server-rendered è già nell'HTML, ma layout/font possono spostarsi
-// per qualche istante, quindi ritentiamo finché non ci arriviamo.
-const SCROLL_RESTORE_MS = 3_000;
+// Il deadline AI è di 90s; lasciamo altri 30s per accodamento, persistenza del
+// risultato e ritardi di rete mobile prima di considerare il job bloccato.
+const MAX_POLL_MS = 120_000;
 
 interface StartResult {
   jobId?: string;
@@ -74,73 +71,13 @@ function clearPersisted(key: string): void {
   }
 }
 
-/** Chiave sessionStorage per la posizione di scroll da ripristinare dopo il
- *  reload PWA. sessionStorage sopravvive al reload nella stessa sessione e si
- *  svuota alla chiusura: se l'app riparte a freddo, semplicemente non ripristina. */
-function scrollKeyFor(key: string): string {
-  return `ai-job-scroll:${key}`;
-}
-
-/** L'elemento realmente scrollabile è il <main> dell'AppShell (overflow-y-auto),
- *  non la finestra: lo scroll va letto/scritto lì. */
-function scrollContainer(): HTMLElement | null {
-  if (typeof document === "undefined") return null;
-  return document.querySelector("main");
-}
-
-/** Salva la posizione di scroll corrente PRIMA del reload completo. */
-function saveScroll(key: string): void {
-  try {
-    const el = scrollContainer();
-    const y = el ? el.scrollTop : window.scrollY;
-    window.sessionStorage.setItem(scrollKeyFor(key), String(y));
-  } catch {
-    // sessionStorage assente: si perde solo il ripristino dello scroll
-  }
-}
-
-/** Dopo il reload riporta lo scroll dov'era, così lo stacco si sente meno.
- *  Ritenta per qualche istante perché il contenuto può assestarsi (font, immagini)
- *  dopo il primo paint. Consuma il valore salvato una sola volta. */
-function restoreScroll(key: string): void {
-  let raw: string | null;
-  try {
-    raw = window.sessionStorage.getItem(scrollKeyFor(key));
-  } catch {
-    return;
-  }
-  if (raw == null) return;
-  try {
-    window.sessionStorage.removeItem(scrollKeyFor(key));
-  } catch {
-    // ignora
-  }
-  const y = Number(raw);
-  if (!Number.isFinite(y) || y <= 0) return;
-
-  const deadline = Date.now() + SCROLL_RESTORE_MS;
-  const apply = () => {
-    const el = scrollContainer();
-    if (el) {
-      el.scrollTop = y;
-      // Se il contenuto non è ancora abbastanza alto (RSC/layout in assestamento)
-      // ritenta finché non raggiungiamo la posizione o scade la finestra.
-      if (el.scrollTop < y - 2 && Date.now() < deadline) {
-        requestAnimationFrame(apply);
-      }
-    } else if (Date.now() < deadline) {
-      requestAnimationFrame(apply);
-    }
-  };
-  requestAnimationFrame(apply);
-}
-
 /**
  * Gestisce il ciclo di una richiesta AI asincrona: lancia la server action di
  * avvio (che ritorna subito un `jobId`) e poi fa polling di `ai_jobs` finché il
  * job non è 'done' o 'error'. `pending` resta true per tutta l'attesa, così
  * l'overlay di "pensiero" del coach copre i ~50s medi. Su 'done' fa
- * `router.refresh()` per mostrare il risultato server-rendered.
+ * `router.refresh()` per mostrare il risultato server-rendered, oppure consegna
+ * il risultato al callback `onDone` senza alcun refresh della pagina.
  *
  * `persistKey` (opzionale) abilita la ripresa del polling dopo un reload: il
  * job in volo viene salvato in localStorage e, al rimontaggio del componente,
@@ -148,13 +85,15 @@ function restoreScroll(key: string): void {
  * rilanciare l'app (tornando allo splash) durante l'attesa: senza ripresa il
  * job finirebbe lato server ma l'UI resterebbe bloccata.
  *
- * In PWA standalone, su 'done', ricarichiamo la pagina (`window.location.reload`):
- * il refresh soft RSC su iOS può restare appeso lasciando l'UI senza risultato.
- * Prima del reload salviamo la posizione di scroll e la ripristiniamo al
- * rimontaggio, così lo stacco visivo del reload si sente molto meno.
+ * Non viene mai eseguito un reload completo: in PWA farebbe riapparire la splash
+ * e interromperebbe la continuità dell'interfaccia.
  */
-export function useAiJob(persistKey?: string) {
+export function useAiJob(
+  persistKey?: string,
+  options?: { onDone?: (status: AiJobStatus) => void | Promise<void> },
+) {
   const router = useRouter();
+  const onDone = options?.onDone;
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -164,11 +103,6 @@ export function useAiJob(persistKey?: string) {
   useEffect(() => () => {
     runIdRef.current += 1;
   }, []);
-
-  // Al montaggio, se veniamo da un reload post-job, riporta lo scroll dov'era.
-  useEffect(() => {
-    if (persistKey) restoreScroll(persistKey);
-  }, [persistKey]);
 
   // Ciclo di polling riusato sia all'avvio sia alla ripresa post-reload.
   const runPoll = useCallback(
@@ -187,18 +121,14 @@ export function useAiJob(persistKey?: string) {
           clientLog("aijob:poll", { key: persistKey, status: status.status });
           if (status.status === "done") {
             if (persistKey) clearPersisted(persistKey);
-            setDone(true);
-            setPending(false);
-            // In PWA standalone iOS, router.refresh() (RSC fetch) può restare
-            // appeso lasciando l'UI senza il risultato: un reload completo è
-            // affidabile. Salviamo lo scroll così, al rimontaggio, torniamo
-            // nella stessa posizione. Da browser usiamo il refresh soft.
-            if (isStandalone()) {
-              clientLog("aijob:done-hard-reload", { key: persistKey });
-              if (persistKey) saveScroll(persistKey);
-              window.location.reload();
-            } else {
-              router.refresh();
+            try {
+              if (onDone) await onDone(status);
+              else router.refresh();
+              setDone(true);
+              setPending(false);
+            } catch {
+              setError("Risposta ricevuta, ma non è stato possibile mostrarla. Riprova.");
+              setPending(false);
             }
             return;
           }
@@ -222,7 +152,7 @@ export function useAiJob(persistKey?: string) {
 
       setTimeout(poll, POLL_INTERVAL_MS);
     },
-    [persistKey, router],
+    [onDone, persistKey, router],
   );
 
   // Ripresa al montaggio: se c'è un job persistito ancora valido (es. dopo un

@@ -14,9 +14,9 @@ import {
   coachResponseSchemaZod,
 } from "@/lib/ai/prompt";
 import { aiErrorMessage, generateStructured } from "@/lib/ai/gemini";
-import { WORKOUT_TYPES, type ProposedWorkout } from "@/lib/types";
+import { WORKOUT_TYPES, type CoachMessage, type ProposedWorkout } from "@/lib/types";
 
-export interface CoachActionResult { jobId?: string; error?: string }
+export interface CoachActionResult { jobId?: string; error?: string; userMessage?: CoachMessage }
 
 function dateShift(iso: string, days: number): string {
   return new Date(new Date(`${iso}T12:00:00Z`).getTime() + days * 86_400_000)
@@ -69,8 +69,8 @@ export async function sendCoachMessage(message: string): Promise<CoachActionResu
   const { data: userMessage, error: messageError } = await supabase
     .from("coach_messages")
     .insert({ user_id: user.id, role: "user", kind: "chat", content: text })
-    .select("id")
-    .single<{ id: string }>();
+    .select("*")
+    .single<CoachMessage>();
   if (messageError || !userMessage) return { error: "Impossibile salvare il messaggio." };
 
   const { data: job, error: jobError } = await supabase
@@ -78,12 +78,11 @@ export async function sendCoachMessage(message: string): Promise<CoachActionResu
     .insert({ user_id: user.id, kind: "chat", ref_id: userMessage.id, status: "pending" })
     .select("id")
     .single<{ id: string }>();
-  if (jobError || !job) return { error: "Impossibile avviare il coach." };
+  if (jobError || !job) return { error: "Impossibile avviare il coach.", userMessage };
 
   const userId = user.id;
   after(() => runCoachTurn(job.id, userId, userMessage.id, text, gemini.apiKey, gemini.model));
-  revalidatePath("/");
-  return { jobId: job.id };
+  return { jobId: job.id, userMessage };
 }
 
 async function runCoachTurn(
@@ -212,7 +211,6 @@ export async function applyPlanProposal(proposalId: string) {
   const { data, error } = await supabase.rpc("apply_plan_proposal", { p_proposal_id: proposalId });
   if (error) return { error: "Impossibile applicare la proposta." };
   if (data === "stale") return { error: "Il piano è cambiato: chiedi al coach una nuova proposta." };
-  revalidatePath("/");
   revalidatePath("/plan");
   return { ok: true };
 }
@@ -223,7 +221,6 @@ export async function rejectPlanProposal(proposalId: string) {
   if (!user) redirect("/login");
   const { error } = await supabase.from("plan_proposals").update({ status: "rejected" }).eq("id", proposalId).eq("user_id", user.id).eq("status", "pending");
   if (error) return { error: "Impossibile annullare la proposta." };
-  revalidatePath("/");
   return { ok: true };
 }
 

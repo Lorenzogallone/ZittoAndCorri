@@ -59,7 +59,7 @@ export function IntegrationsSection({ apiKey, geminiCredential, focusGemini = fa
         <div className="flex min-w-0 items-center gap-3">
           <div className="rounded-xl bg-primary/10 p-2 text-primary"><Key size={18} /></div>
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-foreground">Integrazioni e chiavi</h2>
+            <h2 className="text-sm font-semibold text-foreground">Integrazioni e Coach AI</h2>
           </div>
         </div>
         <ChevronDown size={18} className={`shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
