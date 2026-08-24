@@ -4,8 +4,8 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createActivity, saveParsedActivity, type ActivityFormState } from "../actions";
 import { navigateAfterMutation } from "@/lib/nav";
-import { WORKOUT_TYPES, SPORTS } from "@/lib/types";
-import type { PlannedWorkout, Sport } from "@/lib/types";
+import { ACTIVITY_TYPES, WORKOUT_TYPES, SPORTS } from "@/lib/types";
+import type { Sport } from "@/lib/types";
 import type { ActivityInput } from "@/lib/ingest/schema";
 import { parseGpx } from "@/lib/ingest/adapters/gpx";
 import { parseFit } from "@/lib/ingest/adapters/fit";
@@ -52,19 +52,9 @@ function SportSelect({
   );
 }
 
-type NearbyWorkout = Pick<
-  PlannedWorkout,
-  "id" | "date" | "type" | "target_distance_m" | "description"
->;
-
-interface Props {
-  nearbyWorkouts: NearbyWorkout[];
-  today: string; // YYYY-MM-DD
-}
-
 // ── Sotto-form manuale ──────────────────────────────────────────────────────
 
-function ManualForm({ nearbyWorkouts, today }: Props) {
+function ManualForm() {
   const initialState: ActivityFormState = {};
   const [state, formAction, pending] = useActionState(createActivity, initialState);
   const router = useRouter();
@@ -163,33 +153,6 @@ function ManualForm({ nearbyWorkouts, today }: Props) {
         <Textarea id="notes" name="notes" rows={3} placeholder="Gambe ok, fresco." />
       </div>
 
-      {nearbyWorkouts.length > 0 && (
-        <div className="grid gap-2.5">
-          <Label htmlFor="planned_workout_id">Collega ad allenamento pianificato</Label>
-          <Select name="planned_workout_id" defaultValue="none">
-            <SelectTrigger id="planned_workout_id">
-              <SelectValue placeholder="Nessun collegamento" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Nessun collegamento</SelectItem>
-              {nearbyWorkouts.map((w) => {
-                const label = `${w.date === today ? "Oggi" : w.date} · ${TYPE_LABELS[w.type] ?? w.type}${
-                  w.target_distance_m ? ` · ${(w.target_distance_m / 1000).toFixed(1)} km` : ""
-                }`;
-                return (
-                  <SelectItem key={w.id} value={w.id}>
-                    {label}
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            Segna automaticamente il workout come completato
-          </p>
-        </div>
-      )}
-
       {state.error && (
         <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3">
           <p className="text-destructive text-sm" role="alert">{state.error}</p>
@@ -220,12 +183,10 @@ function formatDateTimeLocal(isoString: string): string {
 
 interface GpxReviewFormProps {
   initialData: ActivityInput;
-  nearbyWorkouts: NearbyWorkout[];
-  today: string;
   onCancel: () => void;
 }
 
-function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxReviewFormProps) {
+function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -247,8 +208,6 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
     const maxHr = optIntClient(formData, "max_hr");
     const elevationGain = optIntClient(formData, "elevation_gain_m");
     const rpe = optIntClient(formData, "rpe");
-    const rawPlannedId = formData.get("planned_workout_id") as string;
-    const plannedWorkoutId = rawPlannedId === "none" ? "" : rawPlannedId;
 
     const duration_s = parseDuration(durationStr);
     if (duration_s == null || duration_s <= 0) {
@@ -281,7 +240,7 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
         : undefined,
     };
 
-    const res = await saveParsedActivity(activityInput, plannedWorkoutId);
+    const res = await saveParsedActivity(activityInput);
     if (res.error) {
       setError(res.error);
       setPending(false);
@@ -321,12 +280,12 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
       {isRunning && (
         <div className="grid gap-2.5">
           <Label htmlFor="type">Tipo (Tag)</Label>
-          <Select name="type" defaultValue={initialData.type ?? "easy"}>
+          <Select name="type" defaultValue={initialData.type ?? "unclassified"}>
             <SelectTrigger id="type">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {WORKOUT_TYPES.map((t) => (
+              {ACTIVITY_TYPES.map((t) => (
                 <SelectItem key={t} value={t}>
                   {TYPE_LABELS[t] ?? t}
                 </SelectItem>
@@ -440,30 +399,6 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
         </div>
       </div>
 
-      {nearbyWorkouts.length > 0 && (
-        <div className="grid gap-2.5">
-          <Label htmlFor="planned_workout_id">Collega ad allenamento pianificato</Label>
-          <Select name="planned_workout_id" defaultValue="none">
-            <SelectTrigger id="planned_workout_id">
-              <SelectValue placeholder="Nessun collegamento" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Nessun collegamento</SelectItem>
-              {nearbyWorkouts.map((w) => {
-                const label = `${w.date === today ? "Oggi" : w.date} · ${TYPE_LABELS[w.type] ?? w.type}${
-                  w.target_distance_m ? ` · ${(w.target_distance_m / 1000).toFixed(1)} km` : ""
-                }`;
-                return (
-                  <SelectItem key={w.id} value={w.id}>
-                    {label}
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
       {error && (
         <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3">
           <p className="text-destructive text-sm" role="alert">{error}</p>
@@ -482,12 +417,7 @@ function GpxReviewForm({ initialData, nearbyWorkouts, today, onCancel }: GpxRevi
   );
 }
 
-interface GpxUploadFormProps {
-  nearbyWorkouts: NearbyWorkout[];
-  today: string;
-}
-
-function GpxUploadForm({ nearbyWorkouts, today }: GpxUploadFormProps) {
+function GpxUploadForm() {
   const [parsedInput, setParsedInput] = useState<ActivityInput | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
@@ -545,8 +475,6 @@ function GpxUploadForm({ nearbyWorkouts, today }: GpxUploadFormProps) {
     return (
       <GpxReviewForm
         initialData={parsedInput}
-        nearbyWorkouts={nearbyWorkouts}
-        today={today}
         onCancel={() => {
           setParsedInput(null);
           setFileName(null);
@@ -600,7 +528,7 @@ function GpxUploadForm({ nearbyWorkouts, today }: GpxUploadFormProps) {
 
 // ── Wrapper con toggle ────────────────────────────────────────────────────
 
-export function ActivityForm({ nearbyWorkouts, today }: Props) {
+export function ActivityForm() {
   const [mode, setMode] = useState<"manual" | "gpx">("manual");
 
   return (
@@ -634,9 +562,9 @@ export function ActivityForm({ nearbyWorkouts, today }: Props) {
       </div>
 
       {mode === "manual" ? (
-        <ManualForm nearbyWorkouts={nearbyWorkouts} today={today} />
+        <ManualForm />
       ) : (
-        <GpxUploadForm nearbyWorkouts={nearbyWorkouts} today={today} />
+        <GpxUploadForm />
       )}
     </div>
   );

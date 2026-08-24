@@ -47,13 +47,14 @@ export const evaluationResponseSchemaZod = z.object({
 export function buildEvaluationPrompt(
   contextMarkdown: string,
   activityDetail: string,
-  plannedWorkoutDetail?: string | null,
+  nearbyPlannedWorkouts?: string | null,
 ): string {
   return [
     "Sei il coach di corsa personale di questo atleta: lo segui da settimane, conosci il suo piano, il suo storico e i feedback che gli hai già dato. Valuti una singola attività con tono diretto, concreto e incoraggiante, come farebbe un vero allenatore.",
     "Regole:",
     "- I numeri (passi, volumi, carico, predizioni) sono già calcolati e te li fornisco — NON inventarne di nuovi, puoi solo commentarli. Produci solo testo qualitativo in italiano.",
-    "- Confronta l'attività con l'allenamento previsto indicato sotto (può essere stato pianificato per un altro giorno e collegato manualmente): era la seduta in programma? È stata eseguita ai target (distanza, passo)? Se differisce, dillo e spiega cosa cambia.",
+    "- Piano e attività NON hanno un collegamento esplicito. Confronta l'attività con le sedute pianificate nei giorni vicini e deduci quale sia la corrispondenza più probabile usando data, distanza, durata, passo, HR, descrizione e note. Non forzare un abbinamento: se è incerto o non c'è, dillo.",
+    "- Il tag 'unclassified' significa soltanto corsa importata e non classificata: NON trattarla automaticamente come easy. Deduci la natura dello sforzo dai dati reali e dall'eventuale seduta pianificata compatibile.",
     "- Inquadra la corsa nella fase di allenamento corrente (vedi memoria coach nel contesto): un easy in settimana di scarico si giudica diversamente da uno in piena fase di carico.",
     "- Giudica lo sforzo REALE, non solo il passo: usa HR media e relativa zona, tempo in zona, deriva cardiaca (decoupling) e cadenza quando presenti. Se una seduta easy/lungo esce sopra Z2 o con deriva alta, dillo esplicitamente (flag easy_too_fast) e spiega la conseguenza: a oggi quel ritmo non è davvero easy e il piano dovrà tenerne conto. Se il workout previsto aveva una HR target, confronta HR reale vs target.",
     "- Se ci sono segnali sullo stile di corsa (cadenza bassa, deriva ricorrente), dai UN consiglio pratico e concreto su cosa curare la prossima volta (es. su cosa pensare, cosa privilegiare o sacrificare), senza trasformare la valutazione in una lezione.",
@@ -64,9 +65,9 @@ export function buildEvaluationPrompt(
     "# Contesto atleta",
     contextMarkdown,
     "",
-    "# Allenamento previsto a piano",
-    plannedWorkoutDetail?.trim() ||
-      "Nessun allenamento collegato a questa attività.",
+    "# Sedute pianificate nei ±3 giorni",
+    nearbyPlannedWorkouts?.trim() ||
+      "Nessuna seduta pianificata nei giorni vicini.",
     "",
     "# Attività da valutare",
     activityDetail,
@@ -157,6 +158,7 @@ export function buildPlanPrompt(
     "- Se il contesto indica un REPLAN, parti dal piano attuale a calendario e dall'aderenza reale (piano vs reale): mantieni ciò che ha senso, correggi dove l'atleta è rimasto indietro o ha cambiato passo. Onora le note dei singoli giorni del piano attuale come vincoli (es. giorni in cui non può correre).",
     "- Se il contesto segnala uno stop prolungato (molti giorni/mesi senza corse), riparti con prudenza: meno volume e intensità, riprogressione graduale; non riprendere dai carichi precedenti allo stop.",
     "- Nella review (review_summary) confronta esplicitamente programmato vs fatto (incluse le attività non di corsa che hanno sostituito allenamenti) e motiva le scelte del nuovo piano.",
+    "- Non esiste un'associazione esplicita tra piano e attività e lo status manuale non prova l'aderenza: deduci programmato vs fatto confrontando date e dati reali. Se una corrispondenza è ambigua, dichiaralo senza forzarla.",
     "- In coach_memory aggiorna la tua memoria di fase: dove siamo nel percorso, cosa è stato consolidato, focus del prossimo blocco. Parti dalla memoria precedente nel contesto, se presente.",
     comments && comments.trim()
       ? `- Vincoli/preferenze aggiuntivi dell'atleta da rispettare: ${comments.trim()}`

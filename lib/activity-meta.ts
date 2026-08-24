@@ -16,11 +16,12 @@ import {
   Waves,
   type LucideIcon,
 } from "lucide-react";
-import type { Sport, WorkoutType } from "@/lib/types";
+import type { ActivityType, Sport } from "@/lib/types";
 
 // ── Tipi workout (corsa) ─────────────────────────────────────────────────────
 
-export const TYPE_LABELS: Record<WorkoutType, string> = {
+export const TYPE_LABELS: Record<ActivityType, string> = {
+  unclassified: "Corsa",
   easy: "Easy",
   tempo: "Tempo",
   interval: "Ripetute",
@@ -30,7 +31,8 @@ export const TYPE_LABELS: Record<WorkoutType, string> = {
   cross: "Cross",
 };
 
-export const TYPE_COLORS: Record<WorkoutType, string> = {
+export const TYPE_COLORS: Record<ActivityType, string> = {
+  unclassified: "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary",
   easy: "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
   tempo: "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400",
   interval: "bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400",

@@ -1,23 +1,11 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import {
-  updateWorkoutStatus,
-  linkActivityToWorkout,
-  unlinkActivityFromWorkout,
-} from "../actions";
+import { updateWorkoutStatus } from "../actions";
 import { DeleteWorkoutButton } from "./delete-workout-button";
-import { formatDistance, formatDuration, formatPace, activeDuration, formatPlannedDistance } from "@/lib/format";
-import type { PlannedWorkout, Activity } from "@/lib/types";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { formatDuration, formatPace, formatPlannedDistance } from "@/lib/format";
+import type { PlannedWorkout } from "@/lib/types";
 import { TYPE_LABELS } from "@/lib/activity-meta";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -54,26 +42,6 @@ export default async function PlannedWorkoutPage({ params }: Props) {
     .maybeSingle<PlannedWorkout>();
 
   if (!workout) notFound();
-
-  // Corse nei ±3 giorni dalla data del workout (copre il caso "l'ho fatta il
-  // giorno dopo"). Escluse le corse già collegate ad altri workout.
-  const workoutDate = new Date(workout.date + "T00:00:00");
-  const fromDate = new Date(workoutDate);
-  fromDate.setDate(fromDate.getDate() - 1);
-  const toDate = new Date(workoutDate);
-  toDate.setDate(toDate.getDate() + 3);
-  const { data: nearbyActivities } = await supabase
-    .from("activities")
-    .select("id, started_at, type, distance_m, duration_s, moving_time_s")
-    .eq("user_id", user.id)
-    .gte("started_at", fromDate.toISOString().slice(0, 10) + "T00:00:00")
-    .lte("started_at", toDate.toISOString().slice(0, 10) + "T23:59:59")
-    .order("started_at", { ascending: false })
-    .returns<Pick<Activity, "id" | "started_at" | "type" | "distance_m" | "duration_s" | "moving_time_s">[]>();
-
-  const linkedActivity = workout.activity_id
-    ? { id: workout.activity_id }
-    : null;
 
   return (
     <AppShell title="Allenamento pianificato" backHref="/plan" backLabel="Piano" hideTabBar>
@@ -124,63 +92,6 @@ export default async function PlannedWorkoutPage({ params }: Props) {
           </div>
         )}
       </div>
-
-      {/* Link corsa completata */}
-      {linkedActivity && (
-        <div className="rounded-2xl bg-green-500/5 border border-green-500/20 p-4 mb-4">
-          <p className="text-xs text-muted-foreground mb-2">Corsa collegata</p>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/activities/${linkedActivity.id}`}>
-                Vai al dettaglio corsa →
-              </Link>
-            </Button>
-            <form action={unlinkActivityFromWorkout}>
-              <input type="hidden" name="workout_id" value={workout.id} />
-              <Button
-                type="submit"
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground hover:text-destructive"
-              >
-                Scollega
-              </Button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Collega attività (solo se planned e nessuna attività linkata) */}
-      {workout.status === "planned" && !workout.activity_id && nearbyActivities && nearbyActivities.length > 0 && (
-        <div className="rounded-2xl bg-card border border-white/[0.06] p-4 mb-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">
-            Collega una corsa
-          </p>
-          <p className="text-xs text-muted-foreground mb-3">
-            Corse nel periodo vicino alla data pianificata (±3 giorni).
-          </p>
-          <form action={linkActivityToWorkout} className="flex flex-col gap-3">
-            <input type="hidden" name="workout_id" value={workout.id} />
-            <Select name="activity_id">
-              <SelectTrigger>
-                <SelectValue placeholder="Seleziona corsa…" />
-              </SelectTrigger>
-              <SelectContent>
-                {nearbyActivities.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {new Date(a.started_at).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" })}
-                    {" — "}
-                    {TYPE_LABELS[a.type] ?? a.type} — {formatDistance(a.distance_m)} — {formatDuration(activeDuration(a))}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button type="submit" size="sm">
-              Collega e segna completato
-            </Button>
-          </form>
-        </div>
-      )}
 
       {/* Aggiorna status manuale */}
       <div className="rounded-2xl bg-card border border-white/[0.06] p-4 mb-4">

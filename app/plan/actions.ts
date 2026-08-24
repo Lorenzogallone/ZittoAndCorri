@@ -67,29 +67,6 @@ export async function updateWorkoutStatus(formData: FormData): Promise<void> {
   revalidatePath("/plan");
 }
 
-export async function linkActivityToWorkout(formData: FormData): Promise<void> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  const workoutId = String(formData.get("workout_id") ?? "");
-  const activityId = String(formData.get("activity_id") ?? "");
-  if (!workoutId || !activityId) return;
-  await supabase.from("planned_workouts").update({ activity_id: activityId, status: "completed" }).eq("id", workoutId).eq("user_id", user.id);
-  revalidatePath("/plan");
-  revalidatePath("/activities");
-}
-
-export async function unlinkActivityFromWorkout(formData: FormData): Promise<void> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  const workoutId = String(formData.get("workout_id") ?? "");
-  if (!workoutId) return;
-  await supabase.from("planned_workouts").update({ activity_id: null, status: "planned" }).eq("id", workoutId).eq("user_id", user.id);
-  revalidatePath("/plan");
-  revalidatePath("/activities");
-}
-
 export async function deletePlannedWorkout(formData: FormData): Promise<void> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

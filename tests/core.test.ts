@@ -55,3 +55,33 @@ test("le nuove tabelle coach sono protette da RLS per user_id", () => {
   }
   assert.ok((sql.match(/auth\.uid\(\) = user_id/g) ?? []).length >= 6);
 });
+
+test("gli import di corsa usano un tipo neutro, non easy", () => {
+  const gpx = readFileSync(new URL("../lib/ingest/adapters/gpx.ts", import.meta.url), "utf8");
+  const fit = readFileSync(new URL("../lib/ingest/adapters/fit.ts", import.meta.url), "utf8");
+  assert.match(gpx, /type: "unclassified"/);
+  assert.match(fit, /sport === "running" \? "unclassified" : "cross"/);
+});
+
+test("piano e attività non hanno più un'associazione esplicita", () => {
+  const migration = readFileSync(new URL("../supabase/migrations/0010_decouple_plan_and_activities.sql", import.meta.url), "utf8");
+  const activityForm = readFileSync(new URL("../app/activities/new/activity-form.tsx", import.meta.url), "utf8");
+  const actions = readFileSync(new URL("../app/activities/actions.ts", import.meta.url), "utf8");
+  assert.match(migration, /drop column if exists activity_id/);
+  assert.doesNotMatch(activityForm, /planned_workout_id/);
+  assert.doesNotMatch(actions, /planned_workout_id/);
+});
+
+test("il coach deduce piano vs svolto dai dati senza forzare un match", () => {
+  const prompt = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
+  const evaluation = readFileSync(new URL("../lib/ai/evaluate-activity.ts", import.meta.url), "utf8");
+  assert.match(prompt, /NON hanno un collegamento esplicito/);
+  assert.match(prompt, /Non forzare un abbinamento/);
+  assert.match(evaluation, /isoDateShift\(activityDay, -3\)/);
+  assert.match(evaluation, /isoDateShift\(activityDay, 3\)/);
+});
+
+test("la home mostra la chat senza i feedback automatici delle attività", () => {
+  const home = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(home, /\.in\("kind", \["chat", "plan_proposal"\]\)/);
+});

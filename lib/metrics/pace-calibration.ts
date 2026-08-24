@@ -5,7 +5,7 @@
 // così se le easy escono in Z3/Z4 il piano successivo se lo ricorda.
 
 import { zoneForHr } from "@/lib/metrics/zones";
-import type { Profile, WorkoutType, ZoneKey } from "@/lib/types";
+import type { ActivityType, Profile, WorkoutType, ZoneKey } from "@/lib/types";
 
 /** Zona HR massima attesa per ciascun tipo di seduta di corsa. */
 const EXPECTED_MAX_ZONE: Partial<Record<WorkoutType, ZoneKey>> = {
@@ -38,7 +38,7 @@ export interface PaceCalibrationEntry {
 }
 
 interface CalibrationRun {
-  type: WorkoutType;
+  type: ActivityType;
   sport?: string | null;
   avg_pace_s_km: number | null;
   avg_hr: number | null;
@@ -63,6 +63,9 @@ export function calibratePaces(
   for (const r of runs) {
     if ((r.sport ?? "running") !== "running") continue;
     if (r.avg_pace_s_km == null || r.avg_hr == null) continue;
+    // Una corsa importata senza classificazione non può alimentare la
+    // calibrazione specifica di easy/tempo/lungo finché non viene interpretata.
+    if (r.type === "unclassified") continue;
     const expected = EXPECTED_MAX_ZONE[r.type];
     if (!expected) continue;
     const e = byType.get(r.type) ?? { pace: 0, hr: 0, n: 0, drift: 0, nDrift: 0 };

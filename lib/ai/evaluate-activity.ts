@@ -7,6 +7,7 @@ import { buildAiContext, serializeAiContext } from "@/lib/ai/context-envelope";
 import { activityDetailLine } from "@/lib/ai/context";
 import { buildEvaluationPrompt, evaluationResponseSchemaZod, evaluationSchema } from "@/lib/ai/prompt";
 import { aiErrorMessage, generateStructured, PRIMARY_MODEL } from "@/lib/ai/gemini";
+import { isoDateShift } from "@/lib/dates";
 import type { Activity, EvaluationResult, PlannedWorkout, Profile } from "@/lib/types";
 
 type EvalActivity = Pick<Activity,
@@ -47,18 +48,27 @@ export async function enqueueActivityEvaluationSafely(
 async function runActivityEvaluation(jobId: string, userId: string, activityId: string, apiKey: string) {
   const admin = createAdminClient();
   try {
-    const [activityResult, profileResult, linkedResult, context] = await Promise.all([
+    const [activityResult, profileResult, context] = await Promise.all([
       admin.from("activities").select("id, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km, avg_hr, max_hr, rpe, rpe_source, source_title, elevation_gain_m, hr_drift_pct, avg_cadence_spm, time_in_zone, splits, notes").eq("id", activityId).eq("user_id", userId).maybeSingle<EvalActivity>(),
       admin.from("profiles").select("max_hr, resting_hr").eq("id", userId).maybeSingle<Pick<Profile, "max_hr" | "resting_hr">>(),
-      admin.from("planned_workouts").select("date, type, target_distance_m, target_pace_s_km, target_duration_s, target_hr_bpm, description, focus").eq("user_id", userId).eq("activity_id", activityId).limit(1).maybeSingle<Pick<PlannedWorkout, "date" | "type" | "target_distance_m" | "target_pace_s_km" | "target_duration_s" | "target_hr_bpm" | "description" | "focus">>(),
       buildAiContext(admin, userId, "evaluation", { activityId }),
     ]);
     const { data: activity, error: activityError } = activityResult;
     const { data: profile, error: profileError } = profileResult;
-    const { data: linked, error: linkedError } = linkedResult;
-    const inputError = activityError ?? profileError ?? linkedError;
+    const inputError = activityError ?? profileError;
     if (inputError) throw inputError;
     if (!activity) throw new Error("Attività non trovata");
+
+    const activityDay = activity.started_at.slice(0, 10);
+    const { data: nearbyPlan, error: nearbyPlanError } = await admin
+      .from("planned_workouts")
+      .select("date, type, target_distance_m, target_pace_s_km, target_duration_s, target_hr_bpm, description, focus")
+      .eq("user_id", userId)
+      .gte("date", isoDateShift(activityDay, -3))
+      .lte("date", isoDateShift(activityDay, 3))
+      .order("date")
+      .returns<Array<Pick<PlannedWorkout, "date" | "type" | "target_distance_m" | "target_pace_s_km" | "target_duration_s" | "target_hr_bpm" | "description" | "focus">>>();
+    if (nearbyPlanError) throw nearbyPlanError;
     const detail = [
       activity.source_title ? `Titolo dal file: ${activity.source_title}.` : "",
       activityDetailLine(activity, profile),
@@ -69,7 +79,7 @@ async function runActivityEvaluation(jobId: string, userId: string, activityId: 
       buildEvaluationPrompt(
         serializeAiContext(context),
         detail,
-        linked ? JSON.stringify(linked) : null,
+        nearbyPlan?.length ? JSON.stringify(nearbyPlan) : null,
       ),
       evaluationSchema,
       { apiKey },

@@ -97,7 +97,7 @@ export function parseGpx(xml: string): ActivityInput {
 
   return {
     source: "file",
-    type: "easy",
+    type: "unclassified",
     sport: "running",
     started_at: points[0].time,
     distance_m: Math.round(distance_m),
