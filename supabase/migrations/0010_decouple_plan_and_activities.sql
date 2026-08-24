@@ -1,3 +1,4 @@
+-- Prerequisito: 0009_unclassified_activity_type.sql già eseguita e committata.
 -- Gli import futuri senza un tag esplicito partono come corsa non classificata.
 alter table public.activities alter column type set default 'unclassified';
 

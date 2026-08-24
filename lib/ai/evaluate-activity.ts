@@ -60,20 +60,37 @@ async function runActivityEvaluation(jobId: string, userId: string, activityId: 
     if (!activity) throw new Error("Attività non trovata");
 
     const activityDay = activity.started_at.slice(0, 10);
-    const { data: nearbyPlan, error: nearbyPlanError } = await admin
-      .from("planned_workouts")
-      .select("date, type, target_distance_m, target_pace_s_km, target_duration_s, target_hr_bpm, description, focus")
-      .eq("user_id", userId)
-      .gte("date", isoDateShift(activityDay, -3))
-      .lte("date", isoDateShift(activityDay, 3))
-      .order("date")
-      .returns<Array<Pick<PlannedWorkout, "date" | "type" | "target_distance_m" | "target_pace_s_km" | "target_duration_s" | "target_hr_bpm" | "description" | "focus">>>();
-    if (nearbyPlanError) throw nearbyPlanError;
+    const [nearbyPlanResult, existingEvaluationResult] = await Promise.all([
+      admin
+        .from("planned_workouts")
+        .select("date, type, target_distance_m, target_pace_s_km, target_duration_s, target_hr_bpm, description, focus")
+        .eq("user_id", userId)
+        .gte("date", isoDateShift(activityDay, -3))
+        .lte("date", isoDateShift(activityDay, 3))
+        .order("date")
+        .returns<Array<Pick<PlannedWorkout, "date" | "type" | "target_distance_m" | "target_pace_s_km" | "target_duration_s" | "target_hr_bpm" | "description" | "focus">>>(),
+      admin
+        .from("evaluations")
+        .select("id, details")
+        .eq("activity_id", activityId)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<{ id: string; details: string[] | null }>(),
+    ]);
+    const { data: nearbyPlan, error: nearbyPlanError } = nearbyPlanResult;
+    const { data: existingEvaluation, error: existingEvaluationError } = existingEvaluationResult;
+    if (nearbyPlanError ?? existingEvaluationError) {
+      throw nearbyPlanError ?? existingEvaluationError;
+    }
     const detail = [
       activity.source_title ? `Titolo dal file: ${activity.source_title}.` : "",
       activityDetailLine(activity, profile),
       activity.rpe != null ? `Origine RPE: ${activity.rpe_source ?? "non specificata"}.` : "RPE non disponibile.",
       activity.splits?.length ? `Split per km: ${JSON.stringify(activity.splits)}.` : "",
+      existingEvaluation?.details?.length
+        ? `Dettagli già catalogati da conservare e consolidare: ${JSON.stringify(existingEvaluation.details)}.`
+        : "",
     ].filter(Boolean).join("\n");
     const rawResult = await generateStructured<unknown>(
       buildEvaluationPrompt(
@@ -86,17 +103,10 @@ async function runActivityEvaluation(jobId: string, userId: string, activityId: 
     );
     const result: EvaluationResult = evaluationResponseSchemaZod.parse(rawResult);
 
-    const { data: existingEvaluation, error: existingEvaluationError } = await admin.from("evaluations")
-      .select("id")
-      .eq("activity_id", activityId)
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle<{ id: string }>();
-    if (existingEvaluationError) throw existingEvaluationError;
     const evaluationPayload = {
       model: PRIMARY_MODEL,
       summary: result.summary,
+      details: result.details,
       flags: result.flags ?? {},
     };
     const { error: evaluationError } = existingEvaluation
@@ -107,6 +117,18 @@ async function runActivityEvaluation(jobId: string, userId: string, activityId: 
           ...evaluationPayload,
         });
     if (evaluationError) throw evaluationError;
+
+    // Il commento libero è solo materiale di ingresso: una volta trasformato
+    // con successo in punti strutturati non deve restare visibile né essere
+    // ripetuto nelle valutazioni successive.
+    if (activity.notes && result.details.length > 0) {
+      const { error: clearNotesError } = await admin
+        .from("activities")
+        .update({ notes: null })
+        .eq("id", activityId)
+        .eq("user_id", userId);
+      if (clearNotesError) throw clearNotesError;
+    }
     const { data: existingMessage, error: existingMessageError } = await admin.from("coach_messages")
       .select("id")
       .eq("user_id", userId)
@@ -119,7 +141,7 @@ async function runActivityEvaluation(jobId: string, userId: string, activityId: 
     const messagePayload = {
       content: result.summary,
       job_id: jobId,
-      metadata: { flags: result.flags ?? {} },
+      metadata: { flags: result.flags ?? {}, details: result.details },
     };
     const messageQuery = existingMessage
       ? admin.from("coach_messages").update(messagePayload).eq("id", existingMessage.id).select("id").single<{ id: string }>()

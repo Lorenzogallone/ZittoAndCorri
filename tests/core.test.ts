@@ -85,3 +85,23 @@ test("la home mostra la chat senza i feedback automatici delle attività", () =>
   const home = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.match(home, /\.in\("kind", \["chat", "plan_proposal"\]\)/);
 });
+
+test("le sezioni del dettaglio attività sono aperte e richiudibili", () => {
+  const section = readFileSync(new URL("../components/collapsible-section.tsx", import.meta.url), "utf8");
+  const page = readFileSync(new URL("../app/activities/[id]/page.tsx", import.meta.url), "utf8");
+  assert.match(section, /<details[\s\S]*open/);
+  assert.match(section, /ChevronDown/);
+  for (const title of ["Dati attività", "Percorso GPS", "Frequenza cardiaca", "Passo per km", "Profilo altimetrico", "Zone HR"]) {
+    assert.match(page, new RegExp(`title="${title}"`));
+  }
+});
+
+test("le note del coach diventano dettagli strutturati senza chip diagnostici", () => {
+  const prompt = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
+  const evaluation = readFileSync(new URL("../components/activity-evaluation.tsx", import.meta.url), "utf8");
+  const migration = readFileSync(new URL("../supabase/migrations/0011_evaluation_details.sql", import.meta.url), "utf8");
+  assert.match(prompt, /Trasforma le note libere.*campo details/);
+  assert.match(evaluation, /Dettagli aggiuntivi/);
+  assert.doesNotMatch(evaluation, /Sovraccarico|Easy troppo veloce|FLAG_META/);
+  assert.match(migration, /add column if not exists details jsonb/);
+});
