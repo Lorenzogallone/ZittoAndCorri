@@ -11,6 +11,7 @@ import { Clock, Gauge, Heart, HeartPulse, Mountain, Flame, Footprints, TrendingU
 import { HrChart, PaceChart, ElevationChart } from "./activity-charts";
 import { ActivityEvaluation } from "@/components/activity-evaluation";
 import ActivityMap from "@/components/activity-map";
+import { CollapsibleSection } from "@/components/collapsible-section";
 import {
   TYPE_LABELS,
   TYPE_COLORS,
@@ -69,9 +70,7 @@ function ZoneBar({ zoneEntries }: { zoneEntries: [string, number][] }) {
       : 0;
 
   return (
-    <div className="rounded-2xl bg-card border border-border p-5 mb-4">
-      <h2 className="text-sm font-semibold mb-4">Zone HR</h2>
-      <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
         {zoneEntries.map(([zone, seconds]) => {
           const pct = maxZoneTime > 0 ? (seconds / maxZoneTime) * 100 : 0;
           return (
@@ -95,7 +94,6 @@ function ZoneBar({ zoneEntries }: { zoneEntries: [string, number][] }) {
             </div>
           );
         })}
-      </div>
     </div>
   );
 }
@@ -137,12 +135,12 @@ export default async function ActivityDetailPage({
         .maybeSingle<Pick<Profile, "max_hr" | "resting_hr">>(),
       supabase
         .from("evaluations")
-        .select("summary, flags, created_at")
+        .select("summary, details, created_at")
         .eq("activity_id", id)
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1)
-        .maybeSingle<Pick<Evaluation, "summary" | "flags" | "created_at">>(),
+        .maybeSingle<Pick<Evaluation, "summary" | "details" | "created_at">>(),
       supabase
         .from("ai_jobs")
         .select("status, error")
@@ -251,69 +249,71 @@ export default async function ActivityDetailPage({
         <p className="text-muted-foreground text-sm capitalize">{dateLabel}</p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-2.5 mb-6">
-        <StatCard icon={Clock} label="Durata" value={formatDuration(activeDuration(activity))} />
-        {isRun && activity.avg_pace_s_km != null && (
-          <StatCard icon={Gauge} label="Passo" value={formatPace(activity.avg_pace_s_km)} />
-        )}
-        {activity.avg_hr != null && (
-          <StatCard icon={Heart} label="HR media" value={`${activity.avg_hr} bpm`} />
-        )}
-        {activity.max_hr != null && (
-          <StatCard icon={HeartPulse} label="HR max" value={`${activity.max_hr} bpm`} />
-        )}
-        {activity.elevation_gain_m != null && (
-          <StatCard icon={Mountain} label="Dislivello +" value={`${activity.elevation_gain_m} m`} />
-        )}
-        {activity.avg_cadence_spm != null && (
-          <StatCard icon={Footprints} label="Cadenza" value={`${activity.avg_cadence_spm} spm`} />
-        )}
-        {activity.hr_drift_pct != null && (
-          <StatCard
-            icon={TrendingUp}
-            label="Deriva cardiaca"
-            value={`${activity.hr_drift_pct > 0 ? "+" : ""}${activity.hr_drift_pct}%`}
-          />
-        )}
-        {activity.rpe != null && (
-          <StatCard icon={Flame} label="RPE" value={`${activity.rpe}/10`} />
-        )}
-      </div>
+      <CollapsibleSection title="Dati attività">
+        <div className="grid grid-cols-2 gap-2.5">
+          <StatCard icon={Clock} label="Durata" value={formatDuration(activeDuration(activity))} />
+          {isRun && activity.avg_pace_s_km != null && (
+            <StatCard icon={Gauge} label="Passo" value={formatPace(activity.avg_pace_s_km)} />
+          )}
+          {activity.avg_hr != null && (
+            <StatCard icon={Heart} label="HR media" value={`${activity.avg_hr} bpm`} />
+          )}
+          {activity.max_hr != null && (
+            <StatCard icon={HeartPulse} label="HR max" value={`${activity.max_hr} bpm`} />
+          )}
+          {activity.elevation_gain_m != null && (
+            <StatCard icon={Mountain} label="Dislivello +" value={`${activity.elevation_gain_m} m`} />
+          )}
+          {activity.avg_cadence_spm != null && (
+            <StatCard icon={Footprints} label="Cadenza" value={`${activity.avg_cadence_spm} spm`} />
+          )}
+          {activity.hr_drift_pct != null && (
+            <StatCard
+              icon={TrendingUp}
+              label="Deriva cardiaca"
+              value={`${activity.hr_drift_pct > 0 ? "+" : ""}${activity.hr_drift_pct}%`}
+            />
+          )}
+          {activity.rpe != null && (
+            <StatCard icon={Flame} label="RPE" value={`${activity.rpe}/10`} />
+          )}
+        </div>
+      </CollapsibleSection>
 
       {/* Percorso GPS (Mappa) */}
       {mapGps && (
-        <div className="mb-4">
+        <CollapsibleSection title="Percorso GPS">
           <ActivityMap gpsSeries={mapGps} />
-        </div>
+        </CollapsibleSection>
       )}
 
       {/* HR nel tempo */}
       {hrChartData && hrChartData.length >= 2 && (
-        <div className="rounded-2xl bg-card border border-border p-5 mb-4">
-          <h2 className="text-sm font-semibold mb-4">Frequenza cardiaca</h2>
+        <CollapsibleSection title="Frequenza cardiaca">
           <HrChart data={hrChartData} />
-        </div>
+        </CollapsibleSection>
       )}
 
       {/* Passo per km */}
       {computedSplits && computedSplits.length > 0 && (
-        <div className="rounded-2xl bg-card border border-border p-5 mb-4">
-          <h2 className="text-sm font-semibold mb-4">Passo per km</h2>
+        <CollapsibleSection title="Passo per km">
           <PaceChart splits={computedSplits} />
-        </div>
+        </CollapsibleSection>
       )}
 
       {/* Profilo altimetrico */}
       {eleChartData && eleChartData.length >= 2 && (
-        <div className="rounded-2xl bg-card border border-border p-5 mb-4">
-          <h2 className="text-sm font-semibold mb-4">Profilo altimetrico</h2>
+        <CollapsibleSection title="Profilo altimetrico">
           <ElevationChart data={eleChartData} />
-        </div>
+        </CollapsibleSection>
       )}
 
       {/* HR Zones */}
-      {zoneEntries.length > 0 && <ZoneBar zoneEntries={zoneEntries} />}
+      {zoneEntries.length > 0 && (
+        <CollapsibleSection title="Zone HR">
+          <ZoneBar zoneEntries={zoneEntries} />
+        </CollapsibleSection>
+      )}
 
       {/* Coach AI: note + valutazione */}
       <ActivityEvaluation

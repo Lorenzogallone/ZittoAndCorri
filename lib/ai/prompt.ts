@@ -13,6 +13,12 @@ export const evaluationSchema: Schema = {
       description:
         "Valutazione discorsiva della corsa in italiano (3-5 frasi): qualità dell'esecuzione, sforzo, segnali, contesto rispetto allo storico. Solo testo qualitativo, niente numeri inventati.",
     },
+    details: {
+      type: Type.ARRAY,
+      description:
+        "Elenco di 0-8 dettagli brevi in italiano estratti dalle note libere dell'atleta e dagli eventuali dettagli già catalogati. Riscrivi in modo chiaro e professionale, un fatto per punto, senza citare la frase originale e senza inventare informazioni.",
+      items: { type: Type.STRING },
+    },
     flags: {
       type: Type.OBJECT,
       properties: {
@@ -24,11 +30,12 @@ export const evaluationSchema: Schema = {
       },
     },
   },
-  required: ["summary", "flags"],
+  required: ["summary", "details", "flags"],
 };
 
 export const evaluationResponseSchemaZod = z.object({
   summary: z.string().min(1).max(4000),
+  details: z.array(z.string().trim().min(1).max(240)).max(8).default([]),
   flags: z.object({
     good_progress: z.boolean().nullish(),
     overreaching: z.boolean().nullish(),
@@ -55,6 +62,7 @@ export function buildEvaluationPrompt(
     "- I numeri (passi, volumi, carico, predizioni) sono già calcolati e te li fornisco — NON inventarne di nuovi, puoi solo commentarli. Produci solo testo qualitativo in italiano.",
     "- Piano e attività NON hanno un collegamento esplicito. Confronta l'attività con le sedute pianificate nei giorni vicini e deduci quale sia la corrispondenza più probabile usando data, distanza, durata, passo, HR, descrizione e note. Non forzare un abbinamento: se è incerto o non c'è, dillo.",
     "- Il tag 'unclassified' significa soltanto corsa importata e non classificata: NON trattarla automaticamente come easy. Deduci la natura dello sforzo dai dati reali e dall'eventuale seduta pianificata compatibile.",
+    "- Trasforma le note libere dell'atleta nel campo details: punti brevi, chiari e neutrali, un'informazione per punto. Consolida anche gli eventuali dettagli già catalogati, elimina duplicati, non riportare la frase originale e non inventare nulla. Se non ci sono informazioni personali aggiuntive, restituisci un array vuoto.",
     "- Inquadra la corsa nella fase di allenamento corrente (vedi memoria coach nel contesto): un easy in settimana di scarico si giudica diversamente da uno in piena fase di carico.",
     "- Giudica lo sforzo REALE, non solo il passo: usa HR media e relativa zona, tempo in zona, deriva cardiaca (decoupling) e cadenza quando presenti. Se una seduta easy/lungo esce sopra Z2 o con deriva alta, dillo esplicitamente (flag easy_too_fast) e spiega la conseguenza: a oggi quel ritmo non è davvero easy e il piano dovrà tenerne conto. Se il workout previsto aveva una HR target, confronta HR reale vs target.",
     "- Se ci sono segnali sullo stile di corsa (cadenza bassa, deriva ricorrente), dai UN consiglio pratico e concreto su cosa curare la prossima volta (es. su cosa pensare, cosa privilegiare o sacrificare), senza trasformare la valutazione in una lezione.",
@@ -72,7 +80,7 @@ export function buildEvaluationPrompt(
     "# Attività da valutare",
     activityDetail,
     "",
-    "Restituisci una valutazione discorsiva (campo summary, 3-5 frasi) e i flag pertinenti (true solo se davvero applicabili, altrimenti ometti/false).",
+    "Restituisci una valutazione discorsiva (summary, 3-5 frasi), i dettagli catalogati e i flag pertinenti (true solo se davvero applicabili, altrimenti ometti/false).",
   ].join("\n");
 }
 

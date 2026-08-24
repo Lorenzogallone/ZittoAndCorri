@@ -131,7 +131,7 @@ export interface AiContextEnvelope {
     summary: string | null;
     recent_messages: Array<Pick<CoachMessage, "id" | "role" | "kind" | "content" | "created_at">>;
   };
-  evaluations: Array<{ summary: string; created_at: string; activity_id: string; origin: "derived" }>;
+  evaluations: Array<{ summary: string; details: string[]; created_at: string; activity_id: string; origin: "derived" }>;
   focus_activity: ContextActivityForAi | null;
   missing_data: string[];
 }
@@ -272,7 +272,7 @@ export async function buildAiContext(
     supabase.from("coach_memories").select("id, category, content, valid_from, valid_until, source, source_message_id, confidence").eq("user_id", userId).eq("is_active", true).or(`valid_until.is.null,valid_until.gte.${today}`).order("created_at").returns<Array<Pick<CoachMemory, "id" | "category" | "content" | "valid_from" | "valid_until" | "source" | "source_message_id" | "confidence">>>(),
     supabase.from("coach_messages").select("id, role, kind, content, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(24).returns<Array<Pick<CoachMessage, "id" | "role" | "kind" | "content" | "created_at">>>(),
     supabase.from("coach_state").select("conversation_summary").eq("user_id", userId).maybeSingle<{ conversation_summary: string | null }>(),
-    supabase.from("evaluations").select("summary, created_at, activity_id").eq("user_id", userId).order("created_at", { ascending: false }).limit(5).returns<Array<{ summary: string | null; created_at: string; activity_id: string }>>(),
+    supabase.from("evaluations").select("summary, details, created_at, activity_id").eq("user_id", userId).order("created_at", { ascending: false }).limit(5).returns<Array<{ summary: string | null; details: string[] | null; created_at: string; activity_id: string }>>(),
   ]);
 
   const queryErrors = [
@@ -391,7 +391,7 @@ export async function buildAiContext(
     current_plan: { recent_14d: recent, upcoming_14d: upcoming },
     memories: memories ?? [],
     conversation: { summary: state?.conversation_summary ?? null, recent_messages: [...(messages ?? [])].reverse() },
-    evaluations: (evaluations ?? []).flatMap((e) => e.summary ? [{ summary: e.summary, created_at: e.created_at, activity_id: e.activity_id, origin: "derived" as const }] : []),
+    evaluations: (evaluations ?? []).flatMap((e) => e.summary ? [{ summary: e.summary, details: e.details ?? [], created_at: e.created_at, activity_id: e.activity_id, origin: "derived" as const }] : []),
     focus_activity: focusActivity ? activityForAi(focusActivity) : null,
     missing_data: missing,
   };

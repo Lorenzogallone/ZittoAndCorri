@@ -212,6 +212,8 @@ export interface Evaluation {
   activity_id: string;
   model: string | null;
   summary: string | null;
+  /** Punti puliti estratti dal commento libero dell'atleta. */
+  details: string[] | null;
   /** Flag qualitativi, es. {"overreaching":true,"good_progress":true}. */
   flags: Record<string, boolean> | null;
   created_at: string;
@@ -233,6 +235,7 @@ export interface PlanReview {
 /** Output strutturato della valutazione di una corsa (responseSchema Gemini). */
 export interface EvaluationResult {
   summary: string;
+  details: string[];
   flags: Record<string, boolean>;
 }
 
