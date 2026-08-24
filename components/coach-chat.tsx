@@ -206,7 +206,7 @@ export function CoachChat({ messages, proposals, keyConfigured, analyzingActivit
       <form
         onSubmit={submit}
         className="border-t border-border/60 bg-card p-3"
-        style={isExpanded ? { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)" } : undefined}
+        style={isExpanded ? { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 2rem)" } : undefined}
       >
         {!keyConfigured ? <Link href="/settings?focus=gemini#gemini-integration" onClick={() => window.sessionStorage.setItem("settings-focus", "gemini")} className="block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">Configura la chiave Gemini per parlare con il coach</Link> : <div className="flex items-end gap-2"><Textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={2} disabled={pending} placeholder="Es. Sono in vacanza 2 giorni..." className="max-h-32 min-h-12 resize-none" /><Button type="submit" size="icon" disabled={pending || !message.trim()} aria-label="Invia"><Send size={17} /></Button></div>}
         {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
