@@ -3,9 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { PlanCalendar } from "@/components/plan-calendar";
-import { computeAdherence } from "@/lib/metrics/adherence";
 import { formatDistance, daysUntil } from "@/lib/format";
-import { isoDaysFromNow } from "@/lib/dates";
 import type { PlannedWorkout, Goal, Activity, PlanReview } from "@/lib/types";
 
 function todayISO(): string {
@@ -47,13 +45,9 @@ export default async function PlanPage({ searchParams }: Props) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Fetch parallelo: workout mese + goal attivo + workout ultimi 14gg per aderenza
-  const fourteenAgo = isoDaysFromNow(-14);
-
   const [
     { data: monthWorkouts },
     { data: activeGoal },
-    { data: recentWorkouts },
     { data: monthActivities },
     { data: latestReview },
   ] = await Promise.all([
@@ -72,13 +66,6 @@ export default async function PlanPage({ searchParams }: Props) {
         .eq("is_active", true)
         .maybeSingle<Pick<Goal, "race_name" | "race_date" | "distance_m">>(),
       supabase
-        .from("planned_workouts")
-        .select("status, date")
-        .eq("user_id", user.id)
-        .gte("date", fourteenAgo)
-        .lte("date", today)
-        .returns<Array<{ status: string; date: string }>>(),
-      supabase
         .from("activities")
         .select("id, started_at, type, sport")
         .eq("user_id", user.id)
@@ -93,14 +80,6 @@ export default async function PlanPage({ searchParams }: Props) {
         .limit(1)
         .maybeSingle<Pick<PlanReview, "summary" | "comments" | "created_at">>(),
     ]);
-
-  const adherence =
-    recentWorkouts && recentWorkouts.length > 0
-      ? computeAdherence(
-          recentWorkouts as Parameters<typeof computeAdherence>[0],
-          today,
-        )
-      : null;
 
   const daysToRace = daysUntil(activeGoal?.race_date);
   const weeksLeft = daysToRace != null ? Math.ceil(daysToRace / 7) : null;
@@ -150,7 +129,6 @@ export default async function PlanPage({ searchParams }: Props) {
         goal={activeGoal ?? null}
         month={month}
         today={today}
-        adherence={adherence}
       />
 
       {/* Il piano si modifica conversando: nessun secondo flusso AI separato. */}

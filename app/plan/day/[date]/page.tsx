@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { formatDistance, formatDuration, formatPace, activeDuration, formatPlannedDistance } from "@/lib/format";
-import type { PlannedWorkout, Activity, WorkoutType, Sport } from "@/lib/types";
+import type { ActivityType, PlannedWorkout, Activity, Sport } from "@/lib/types";
 import { Plus } from "lucide-react";
 import {
   TYPE_LABELS,
@@ -27,7 +27,7 @@ function formatLongDate(iso: string): string {
   });
 }
 
-function TypeBadge({ type }: { type: WorkoutType }) {
+function TypeBadge({ type }: { type: ActivityType }) {
   return (
     <span
       className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${

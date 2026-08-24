@@ -10,6 +10,13 @@ export type WorkoutType =
   | "recovery"
   | "cross";
 
+/**
+ * Le attività importate non ricevono automaticamente un'intenzione di
+ * allenamento: il tipo neutro evita di confondere una corsa reale con una
+ * seduta easy pianificata.
+ */
+export type ActivityType = WorkoutType | "unclassified";
+
 export type ActivitySource =
   | "manual"
   | "json_import"
@@ -26,6 +33,8 @@ export const WORKOUT_TYPES: WorkoutType[] = [
   "recovery",
   "cross",
 ];
+
+export const ACTIVITY_TYPES: ActivityType[] = ["unclassified", ...WORKOUT_TYPES];
 
 // Sport dell'attività. "running" è il default storico; gli altri servono per
 // le attività extra (importate da .fit o manuali) che alimentano il carico ma
@@ -93,7 +102,7 @@ export interface Activity {
   id: string;
   user_id: string;
   source: ActivitySource;
-  type: WorkoutType;
+  type: ActivityType;
   sport: Sport;
   started_at: string;
   distance_m: number;
@@ -152,9 +161,8 @@ export interface RacePredict {
 
 // ── Fase 3 ──────────────────────────────────────────────────────────────────
 
-// Modello semplificato: un workout è solo "planned" finché non viene collegata
-// una corsa reale, che lo porta a "completed". "missed" non è uno stato salvato
-// ma un concetto calcolato in fase di aderenza (planned con data passata).
+// Lo stato del workout pianificato è gestibile manualmente. Le attività reali
+// restano indipendenti: il coach confronta piano e svolto dai dati e dalle date.
 export type PlannedStatus = "planned" | "completed";
 
 export interface Goal {
@@ -183,7 +191,6 @@ export interface PlannedWorkout {
   /** Indicazioni del coach: cosa pensare, cosa privilegiare/sacrificare. */
   focus: string | null;
   status: PlannedStatus;
-  activity_id: string | null;
   created_at: string;
   updated_at: string;
   origin: "user" | "ai";

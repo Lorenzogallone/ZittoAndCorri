@@ -9,8 +9,8 @@ export const ActivityInput = z
   .object({
     source: z.enum(["manual", "json_import", "file", "strava", "healthkit"]),
     type: z
-      .enum(["easy", "tempo", "interval", "long", "race", "recovery", "cross"])
-      .default("easy"),
+      .enum(["unclassified", "easy", "tempo", "interval", "long", "race", "recovery", "cross"])
+      .default("unclassified"),
     sport: z.enum(SPORTS).default("running"),
     started_at: z.iso.datetime({ offset: true }),
     // Per gli sport senza distanza (palestra, yoga, calcio…) è ammesso 0;

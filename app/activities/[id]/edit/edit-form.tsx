@@ -4,8 +4,8 @@ import { useActionState, useEffect, useRef, useState, useTransition } from "reac
 import { useRouter } from "next/navigation";
 import { updateActivity, deleteActivity, type EditActivityFormState } from "../../actions";
 import { navigateAfterMutation } from "@/lib/nav";
-import { WORKOUT_TYPES, SPORTS } from "@/lib/types";
-import type { Activity, PlannedWorkout, Sport } from "@/lib/types";
+import { ACTIVITY_TYPES, SPORTS } from "@/lib/types";
+import type { Activity, Sport } from "@/lib/types";
 import { formatDuration } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,19 +26,11 @@ function formatDateTimeLocal(isoString: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-type PlannedOption = Pick<
-  PlannedWorkout,
-  "id" | "date" | "type" | "target_distance_m" | "description"
->;
-
 interface Props {
   activity: Activity;
-  /** Workout pianificati intorno alla data dell'attività + quello collegato. */
-  plannedOptions: PlannedOption[];
-  linkedWorkoutId: string | null;
 }
 
-export function EditActivityForm({ activity, plannedOptions, linkedWorkoutId }: Props) {
+export function EditActivityForm({ activity }: Props) {
   const initialState: EditActivityFormState = {};
   const [state, formAction, pending] = useActionState(updateActivity, initialState);
   const router = useRouter();
@@ -101,7 +93,7 @@ export function EditActivityForm({ activity, plannedOptions, linkedWorkoutId }: 
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {WORKOUT_TYPES.map((t) => (
+                {ACTIVITY_TYPES.map((t) => (
                   <SelectItem key={t} value={t}>
                     {TYPE_LABELS[t] ?? t}
                   </SelectItem>
@@ -218,34 +210,6 @@ export function EditActivityForm({ activity, plannedOptions, linkedWorkoutId }: 
             placeholder="Come è andata?"
           />
         </div>
-
-        {plannedOptions.length > 0 && (
-          <div className="grid gap-2.5">
-            <Label htmlFor="planned_workout_id">Collega ad allenamento pianificato</Label>
-            <Select name="planned_workout_id" defaultValue={linkedWorkoutId ?? "none"}>
-              <SelectTrigger id="planned_workout_id">
-                <SelectValue placeholder="Nessun collegamento" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Nessun collegamento</SelectItem>
-                {plannedOptions.map((w) => {
-                  const label = `${w.date} · ${TYPE_LABELS[w.type] ?? w.type}${
-                    w.target_distance_m ? ` · ${(w.target_distance_m / 1000).toFixed(1)} km` : ""
-                  }${w.id === linkedWorkoutId ? " (collegato)" : ""}`;
-                  return (
-                    <SelectItem key={w.id} value={w.id}>
-                      {label}
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Mostra i workout pianificati entro 3 giorni dalla data dell&apos;attività.
-              Il workout collegato viene segnato come completato.
-            </p>
-          </div>
-        )}
 
         {state.error && (
           <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3">

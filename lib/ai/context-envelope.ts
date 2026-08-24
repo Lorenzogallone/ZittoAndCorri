@@ -2,7 +2,6 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { computeATLCTL } from "@/lib/metrics/load";
-import { computeAdherence } from "@/lib/metrics/adherence";
 import { calibratePaces, type PaceCalibrationEntry } from "@/lib/metrics/pace-calibration";
 import { hrZones } from "@/lib/metrics/zones";
 import { predictRaces } from "@/lib/metrics/predict";
@@ -104,7 +103,10 @@ export interface AiContextEnvelope {
       activities: number;
       origin: "derived";
     }>;
-    adherence_14d: ReturnType<typeof computeAdherence> & { origin: "derived" };
+    plan_comparison: {
+      method: "infer_from_dates_and_activity_data";
+      note: string;
+    };
     predictions: (RacePredict & { origin: "derived"; reference_activity_id: string }) | null;
   };
   history: {
@@ -375,7 +377,10 @@ export async function buildAiContext(
         "28d": windowStats(acts, shiftDate(today, -27)),
         "42d": windowStats(acts, shiftDate(today, -41)),
       },
-      adherence_14d: { ...computeAdherence(recent, today), origin: "derived" },
+      plan_comparison: {
+        method: "infer_from_dates_and_activity_data",
+        note: "Piano e attività non hanno collegamenti espliciti: deduci quanto è stato svolto confrontando date, distanza, durata, passo, HR e note; non usare lo status come prova di aderenza.",
+      },
       predictions,
     },
     history: {

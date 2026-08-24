@@ -97,17 +97,6 @@ export async function createActivity(
     return { error: msg };
   }
 
-  // Collega il planned_workout se selezionato
-  const plannedId = formData.get("planned_workout_id");
-  if (typeof plannedId === "string" && plannedId.trim()) {
-    await supabase
-      .from("planned_workouts")
-      .update({ activity_id: activityId, status: "completed" })
-      .eq("id", plannedId)
-      .eq("user_id", user.id);
-    revalidatePath("/plan");
-  }
-
   revalidatePath("/activities");
   const evaluationJobId = await enqueueActivityEvaluationSafely(user.id, activityId);
   // Niente redirect lato server: torniamo l'id e il client naviga (soft da
@@ -175,18 +164,9 @@ export async function deleteActivity(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
-  // Reset del planned_workout collegato prima di cancellare la corsa, così non
-  // resta un link rotto con status "completed" e activity_id inesistente.
-  await supabase
-    .from("planned_workouts")
-    .update({ activity_id: null, status: "planned" })
-    .eq("activity_id", id)
-    .eq("user_id", user.id);
-
   // RLS + filtro esplicito su user_id: l'utente cancella solo le proprie corse.
   await supabase.from("activities").delete().eq("id", id).eq("user_id", user.id);
 
-  revalidatePath("/plan");
   revalidatePath("/activities");
   // La navigazione la fa il client (navigateAfterMutation): niente redirect lato
   // server, che in PWA standalone lascia la pagina appesa in loading.
@@ -244,7 +224,7 @@ export async function updateActivity(
   }
 
   // Vincolo DB: le attività non running hanno sempre type 'cross'.
-  const type = isRunning ? String(formData.get("type") ?? "easy") : "cross";
+  const type = isRunning ? String(formData.get("type") ?? activity.type) : "cross";
   const notes = String(formData.get("notes") ?? "").trim();
   const rpe = optInt(formData, "rpe");
   const avg_hr = optInt(formData, "avg_hr");
@@ -313,38 +293,6 @@ export async function updateActivity(
     return { error: error.message };
   }
 
-  // Collegamento al workout pianificato: il campo è presente solo se il form
-  // lo mostra. "none" scollega; un id diverso sposta il collegamento.
-  const plannedRaw = formData.get("planned_workout_id");
-  if (plannedRaw !== null) {
-    const desiredId = String(plannedRaw) === "none" ? null : String(plannedRaw);
-    const { data: current } = await supabase
-      .from("planned_workouts")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("activity_id", id)
-      .limit(1)
-      .maybeSingle<{ id: string }>();
-
-    if ((current?.id ?? null) !== desiredId) {
-      if (current) {
-        await supabase
-          .from("planned_workouts")
-          .update({ activity_id: null, status: "planned" })
-          .eq("id", current.id)
-          .eq("user_id", user.id);
-      }
-      if (desiredId) {
-        await supabase
-          .from("planned_workouts")
-          .update({ activity_id: id, status: "completed" })
-          .eq("id", desiredId)
-          .eq("user_id", user.id);
-      }
-      revalidatePath("/plan");
-    }
-  }
-
   revalidatePath(`/activities/${id}`);
   revalidatePath("/activities");
   return { id };
@@ -352,7 +300,6 @@ export async function updateActivity(
 
 export async function saveParsedActivity(
   input: unknown,
-  plannedWorkoutId?: string,
 ): Promise<{ error?: string; id?: string; evaluationJobId?: string }> {
   const supabase = await createClient();
   const {
@@ -372,15 +319,6 @@ export async function saveParsedActivity(
       userId: user.id,
       profile: profile ?? { max_hr: null, resting_hr: null },
     });
-
-    if (plannedWorkoutId) {
-      await supabase
-        .from("planned_workouts")
-        .update({ activity_id: activityId, status: "completed" })
-        .eq("id", plannedWorkoutId)
-        .eq("user_id", user.id);
-      revalidatePath("/plan");
-    }
 
     revalidatePath("/activities");
     const evaluationJobId = await enqueueActivityEvaluationSafely(user.id, activityId);

@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import type { PlannedWorkout, AdherenceResult, WorkoutType, Sport } from "@/lib/types";
+import type { ActivityType, PlannedWorkout, Sport } from "@/lib/types";
 import { TYPE_COLORS, SPORT_COLORS, SPORT_LABELS } from "@/lib/activity-meta";
 
 const TYPE_SHORT: Record<string, string> = {
+  unclassified: "Corsa",
   easy: "Easy",
   tempo: "Tempo",
   interval: "Int.",
@@ -41,7 +42,7 @@ function monthLabel(month: string): string {
 interface CompletedActivity {
   id: string;
   started_at: string;
-  type: WorkoutType;
+  type: ActivityType;
   sport?: Sport;
 }
 
@@ -57,10 +58,9 @@ interface Props {
   goal: ActiveGoal | null;
   month: string;        // "YYYY-MM"
   today: string;        // "YYYY-MM-DD"
-  adherence: AdherenceResult | null;
 }
 
-export function PlanCalendar({ workouts, activities, goal, month, today, adherence }: Props) {
+export function PlanCalendar({ workouts, activities, goal, month, today }: Props) {
   const [year, mon] = month.split("-").map(Number);
   const firstDay = new Date(year, mon - 1, 1);
   const lastDay = new Date(year, mon, 0);
@@ -211,31 +211,6 @@ export function PlanCalendar({ workouts, activities, goal, month, today, adheren
         </p>
       )}
 
-      {/* Badge aderenza */}
-      {adherence && adherence.total > 0 && (
-        <div className="rounded-xl bg-card border border-white/[0.06] px-4 py-3 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">
-              Aderenza 14 gg
-            </p>
-            <p className="text-sm font-medium">
-              {adherence.completed}/{adherence.total} completati
-              {adherence.missed > 0 && ` · ${adherence.missed} saltati`}
-            </p>
-          </div>
-          <span
-            className={`text-2xl font-bold tabular-nums ${
-              adherence.pct >= 75
-                ? "text-green-400"
-                : adherence.pct >= 50
-                ? "text-yellow-400"
-                : "text-red-400"
-            }`}
-          >
-            {adherence.pct}%
-          </span>
-        </div>
-      )}
     </div>
   );
 }

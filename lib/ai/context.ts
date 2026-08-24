@@ -5,7 +5,6 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { predictRaces } from "@/lib/metrics/predict";
 import { computeATLCTL } from "@/lib/metrics/load";
-import { computeAdherence } from "@/lib/metrics/adherence";
 import { buildPlanVsActual } from "@/lib/metrics/plan-vs-actual";
 import { calibratePaces } from "@/lib/metrics/pace-calibration";
 import { zoneForHr } from "@/lib/metrics/zones";
@@ -15,6 +14,7 @@ import type {
   Goal,
   PlannedWorkout,
   Profile,
+  ActivityType,
   WorkoutType,
 } from "@/lib/types";
 import { TYPE_LABELS, SPORT_LABELS } from "@/lib/activity-meta";
@@ -98,6 +98,7 @@ function pacePerType(acts: CtxActivity[]): Partial<Record<WorkoutType, number>> 
   const sum: Partial<Record<WorkoutType, { p: number; n: number }>> = {};
   for (const a of acts) {
     if (a.avg_pace_s_km == null) continue;
+    if (a.type === "unclassified") continue;
     const e = (sum[a.type] ??= { p: 0, n: 0 });
     e.p += a.avg_pace_s_km;
     e.n += 1;
@@ -343,14 +344,6 @@ export async function buildAthleteContext(
     }
   }
 
-  // Aderenza 14gg
-  if (recentPlanned && recentPlanned.length > 0) {
-    const a = computeAdherence(recentPlanned, today);
-    lines.push(
-      `Aderenza (14gg): ${a.completed}/${a.total} completati, ${a.missed} saltati (${a.pct}%).`,
-    );
-  }
-
   // Profilo HR
   if (profile?.max_hr || profile?.resting_hr) {
     lines.push(
@@ -419,7 +412,7 @@ export async function buildAthleteContext(
           ? d.planned
               .map(
                 (p) =>
-                  `${TYPE_LABELS[p.type]}${p.status === "completed" ? "✓" : ""}`,
+                  TYPE_LABELS[p.type],
               )
               .join(", ")
           : "—";
@@ -510,7 +503,7 @@ export async function buildAthleteContext(
 export function activityDetailLine(
   a: {
     started_at: string;
-    type: WorkoutType;
+    type: ActivityType;
     sport?: Activity["sport"] | null;
     distance_m: number;
     duration_s: number;

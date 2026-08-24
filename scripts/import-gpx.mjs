@@ -173,7 +173,7 @@ async function main() {
   const [actRow] = await supabaseInsert("activities", {
     user_id: userId,
     source: "file",
-    type: "easy",
+    type: "unclassified",
     started_at: parsed.started_at,
     distance_m: parsed.distance_m,
     duration_s: parsed.duration_s,

@@ -175,7 +175,7 @@ export async function parseFit(buf: ArrayBuffer): Promise<ActivityInput> {
 
   return {
     source: "file",
-    type: sport === "running" ? "easy" : "cross",
+    type: sport === "running" ? "unclassified" : "cross",
     sport,
     started_at: startTime.toISOString(),
     distance_m,

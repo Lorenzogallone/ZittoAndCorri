@@ -153,7 +153,6 @@ async function runCoachTurn(
         .select("id, updated_at")
         .eq("user_id", userId)
         .eq("status", "planned")
-        .is("activity_id", null)
         .gte("date", start)
         .lte("date", end)
         .order("id")
