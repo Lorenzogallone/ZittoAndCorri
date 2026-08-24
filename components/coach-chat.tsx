@@ -24,10 +24,15 @@ function ProposalCard({ proposal, onStatusChange }: { proposal: PlanProposal; on
   async function decide(apply: boolean) {
     setPending(true);
     setError(null);
-    const result = apply ? await applyPlanProposal(proposal.id) : await rejectPlanProposal(proposal.id);
-    if (result?.error) setError(result.error);
-    else onStatusChange(apply ? "applied" : "rejected");
-    setPending(false);
+    try {
+      const result = apply ? await applyPlanProposal(proposal.id) : await rejectPlanProposal(proposal.id);
+      if (result?.error) setError(result.error);
+      else onStatusChange(apply ? "applied" : "rejected");
+    } catch {
+      setError("Connessione interrotta. Verifica il piano prima di riprovare.");
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -49,7 +54,18 @@ function ProposalCard({ proposal, onStatusChange }: { proposal: PlanProposal; on
               workout.target_pace_s_km ? formatPace(workout.target_pace_s_km) : null,
               workout.target_hr_bpm ? `HR ≤ ${workout.target_hr_bpm}` : null,
             ].filter(Boolean).join(" · ")}</p>
-            {workout.description && <p className="mt-1">{workout.description}</p>}
+            {workout.description && (
+              <div className="mt-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Obiettivo della seduta</p>
+                <p className="mt-0.5 leading-relaxed">{workout.description}</p>
+              </div>
+            )}
+            {workout.focus && (
+              <div className="mt-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Su cosa concentrarti</p>
+                <p className="mt-0.5 leading-relaxed">{workout.focus}</p>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -190,7 +206,7 @@ export function CoachChat({ messages, proposals, keyConfigured, analyzingActivit
       <form
         onSubmit={submit}
         className="border-t border-border/60 bg-card p-3"
-        style={isExpanded ? { paddingBottom: "max(env(safe-area-inset-bottom, 0px), 0.75rem)" } : undefined}
+        style={isExpanded ? { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)" } : undefined}
       >
         {!keyConfigured ? <Link href="/settings?focus=gemini#gemini-integration" onClick={() => window.sessionStorage.setItem("settings-focus", "gemini")} className="block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">Configura la chiave Gemini per parlare con il coach</Link> : <div className="flex items-end gap-2"><Textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={2} disabled={pending} placeholder="Es. Sono in vacanza 2 giorni..." className="max-h-32 min-h-12 resize-none" /><Button type="submit" size="icon" disabled={pending || !message.trim()} aria-label="Invia"><Send size={17} /></Button></div>}
         {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}

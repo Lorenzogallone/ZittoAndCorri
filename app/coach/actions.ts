@@ -211,7 +211,6 @@ export async function applyPlanProposal(proposalId: string) {
   const { data, error } = await supabase.rpc("apply_plan_proposal", { p_proposal_id: proposalId });
   if (error) return { error: "Impossibile applicare la proposta." };
   if (data === "stale") return { error: "Il piano è cambiato: chiedi al coach una nuova proposta." };
-  revalidatePath("/plan");
   return { ok: true };
 }
 

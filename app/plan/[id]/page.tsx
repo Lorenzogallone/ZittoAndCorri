@@ -80,13 +80,18 @@ export default async function PlannedWorkoutPage({ params }: Props) {
         </div>
 
         {workout.description && (
-          <p className="mt-3 text-sm text-muted-foreground">{workout.description}</p>
+          <div className="mt-3 rounded-xl bg-muted/40 px-3.5 py-2.5">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Obiettivo della seduta
+            </p>
+            <p className="text-sm leading-relaxed text-foreground/90">{workout.description}</p>
+          </div>
         )}
 
         {workout.focus && (
           <div className="mt-3 rounded-xl bg-primary/[0.06] border border-primary/15 px-3.5 py-2.5">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-1">
-              Focus del coach
+              Su cosa concentrarti
             </p>
             <p className="text-sm leading-relaxed text-foreground/90">{workout.focus}</p>
           </div>
