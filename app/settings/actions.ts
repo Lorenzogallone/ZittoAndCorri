@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sanitizePrefs, type ThemePrefs } from "@/lib/theme";
 import crypto from "crypto";
 import { verifyGeminiApiKey } from "@/lib/ai/gemini";
-import { getGeminiApiKey, removeGeminiApiKey, setGeminiModel, storeGeminiApiKey } from "@/lib/ai/credentials";
+import { removeGeminiApiKey, setGeminiModel, storeGeminiApiKey } from "@/lib/ai/credentials";
 import { isGeminiModelId } from "@/lib/ai/models";
 
 export interface ProfileFormState {
@@ -132,8 +132,6 @@ export async function saveGeminiApiKey(
     console.error("saveGeminiApiKey:", error instanceof Error ? error.message : error);
     return { error: "Chiave non valida o non autorizzata per Gemini." };
   }
-  revalidatePath("/settings");
-  revalidatePath("/");
   return { ok: true };
 }
 
@@ -147,8 +145,6 @@ export async function deleteGeminiApiKey(): Promise<{ error?: string; ok?: boole
     console.error("deleteGeminiApiKey:", error instanceof Error ? error.message : error);
     return { error: "Impossibile rimuovere la chiave. Riprova." };
   }
-  revalidatePath("/settings");
-  revalidatePath("/");
   return { ok: true };
 }
 
@@ -160,15 +156,18 @@ export async function saveGeminiModel(model: string): Promise<{ error?: string; 
   if (!user) redirect("/login");
 
   try {
-    const apiKey = await getGeminiApiKey(user.id);
-    if (!apiKey) return { error: "Configura prima la chiave Gemini." };
-    await verifyGeminiApiKey(apiKey, model);
+    const { data: credential, error } = await supabase
+      .from("user_ai_credentials")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle<{ user_id: string }>();
+    if (error) throw error;
+    if (!credential) return { error: "Configura prima la chiave Gemini." };
     await setGeminiModel(user.id, model);
   } catch (error) {
     console.error("saveGeminiModel:", error instanceof Error ? error.message : error);
-    return { error: "Il modello non risulta accessibile con questa chiave Gemini." };
+    return { error: "Impossibile salvare il modello. Riprova." };
   }
 
-  revalidatePath("/settings");
   return { ok: true };
 }

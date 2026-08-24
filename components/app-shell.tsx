@@ -60,7 +60,7 @@ export function AppShell({
             : undefined
         }
       >
-        <div className="mx-auto w-full max-w-lg px-5 py-6">
+        <div className="mx-auto h-full w-full max-w-lg px-5 py-6">
           {children}
         </div>
       </main>
@@ -70,4 +70,3 @@ export function AppShell({
     </div>
   );
 }
-

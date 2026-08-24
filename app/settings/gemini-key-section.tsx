@@ -167,7 +167,7 @@ export function GeminiKeySection({
             </SelectContent>
           </Select>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            {modelPending ? "Verifico accesso e salvo…" : (
+            {modelPending ? "Salvo…" : (
               <>
                 Limite indicativo free tier: {selectedModelInfo.rpm}/min e {selectedModelInfo.rpd}/giorno.
                 {selectedModel === "gemini-3.5-flash-lite" && " Consigliato per l'uso quotidiano."}

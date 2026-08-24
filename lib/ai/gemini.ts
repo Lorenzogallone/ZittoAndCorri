@@ -17,7 +17,7 @@ const MAX_RETRIES = 3;
 // vede come un "crash" che riporta allo splash iniziale. Con questo deadline la
 // chiamata fallisce in modo pulito (stato d'errore mostrato in UI) e la PWA non
 // si ricarica mai. */
-const DEADLINE_MS = 45_000;
+const DEADLINE_MS = 90_000;
 
 class AiTimeoutError extends Error {
   constructor() {
