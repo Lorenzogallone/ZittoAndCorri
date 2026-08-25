@@ -78,7 +78,7 @@ export function collectHealthPayload(trigger = "manual") {
       osVersion: system.osVersion,
       firmwareVersion: system.firmwareVersion,
       apiLevel: system.minAPI,
-      appVersion: "1.0.0",
+      appVersion: "1.0.1",
       batteryPercent: battery ? safe(() => battery.getCurrent()) : null,
     },
     data: {

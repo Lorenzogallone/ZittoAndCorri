@@ -17,6 +17,11 @@ export async function POST(request: Request): Promise<Response> {
     const body = await readJsonWithLimit(request, ZEPP_MAX_BODY_BYTES);
     const parsed = ZeppSyncBatchSchema.safeParse(body);
     if (!parsed.success) {
+      console.warn("Zepp payload rejected:", parsed.error.issues.slice(0, 10).map((issue) => ({
+        path: issue.path.join("."),
+        code: issue.code,
+        message: issue.message,
+      })));
       return Response.json({ error: "Payload Zepp non valido.", details: parsed.error.issues.slice(0, 5) }, { status: 422 });
     }
     const payloads = Array.isArray(parsed.data) ? parsed.data : [parsed.data];
