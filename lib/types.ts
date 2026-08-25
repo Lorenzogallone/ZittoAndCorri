@@ -152,10 +152,33 @@ export interface LoadPoint {
 
 /** Output di computeATLCTL. PLAN.md §7. */
 export interface ATLCTLResult {
+  /** Somma del carico interno delle ultime 7 giornate, confrontabile nel concetto (non nella scala) con Zepp. */
+  load7: number;
   atl: number;
   ctl: number;
   tsb: number;
-  series: Array<{ date: string; atl: number; ctl: number; tsb: number }>;
+  /** Carico 7gg medio del periodo precedente, personalizzato sullo storico disponibile. */
+  baseline7: number | null;
+  /** Rapporto tra carico 7gg corrente e baseline personale. */
+  load_ratio: number | null;
+  status: "calibrating" | "fresh" | "balanced" | "strained" | "fatigued";
+  confidence: "low" | "medium" | "high";
+  history_days: number;
+  sources: {
+    heart_rate: number;
+    rpe: number;
+    estimated: number;
+  };
+  series: Array<{
+    date: string;
+    daily_load: number;
+    load7: number;
+    atl: number;
+    ctl: number;
+    tsb: number;
+    baseline7: number | null;
+    load_ratio: number | null;
+  }>;
 }
 
 /** Predizioni Riegel per le distanze canoniche. PLAN.md §7. */

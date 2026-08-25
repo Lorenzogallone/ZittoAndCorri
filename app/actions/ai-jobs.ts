@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import type { CoachMessage, PlanProposal } from "@/lib/types";
+import type { CoachMessage, Evaluation, PlanProposal } from "@/lib/types";
 
 export type AiJobState = "pending" | "done" | "error" | "missing";
 
@@ -12,6 +12,7 @@ export interface AiJobStatus {
     message: CoachMessage;
     proposal: PlanProposal | null;
   };
+  evaluationResult?: Pick<Evaluation, "summary" | "details" | "created_at">;
 }
 
 /**
@@ -31,13 +32,14 @@ export async function pollAiJob(jobId: string): Promise<AiJobStatus> {
 
   const { data } = await supabase
     .from("ai_jobs")
-    .select("status, error, kind, output_message_id")
+    .select("status, error, kind, ref_id, output_message_id")
     .eq("id", jobId)
     .eq("user_id", user.id)
     .maybeSingle<{
       status: AiJobState;
       error: string | null;
       kind: string;
+      ref_id: string | null;
       output_message_id: string | null;
     }>();
 
@@ -62,6 +64,23 @@ export async function pollAiJob(jobId: string): Promise<AiJobStatus> {
         status: data.status,
         error: data.error,
         coachResult: { message, proposal: proposal ?? null },
+      };
+    }
+  }
+  if (data.status === "done" && data.kind === "evaluation" && data.ref_id) {
+    const { data: evaluation } = await supabase
+      .from("evaluations")
+      .select("summary, details, created_at")
+      .eq("activity_id", data.ref_id)
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<Pick<Evaluation, "summary" | "details" | "created_at">>();
+    if (evaluation) {
+      return {
+        status: data.status,
+        error: data.error,
+        evaluationResult: evaluation,
       };
     }
   }

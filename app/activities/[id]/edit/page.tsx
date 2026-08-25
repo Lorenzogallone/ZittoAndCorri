@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { EditActivityForm } from "./edit-form";
 import type { Activity } from "@/lib/types";
 
+export const maxDuration = 240;
+
 export default async function EditActivityPage({
   params,
 }: {
