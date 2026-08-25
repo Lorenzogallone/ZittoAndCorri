@@ -75,21 +75,29 @@ export default async function SettingsPage({
       backLabel="Profilo"
       hideTabBar
     >
-      <section className="mb-7">
-        <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Profilo e aspetto
+      <section className="mb-9">
+        <h2 className="mb-2 text-base font-semibold tracking-tight">
+          Profilo
         </h2>
-        <div className="space-y-3">
+        <div className="border-y border-border/70">
           <ProfileForm profile={profile ?? null} effectiveHr={effectiveHr} />
+        </div>
+      </section>
+
+      <section className="mb-9">
+        <h2 className="mb-2 text-base font-semibold tracking-tight">
+          Applicazione
+        </h2>
+        <div className="border-y border-border/70">
           <ThemeSettings initial={initialTheme} />
         </div>
       </section>
 
-      <section className="mb-7">
-        <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Coach
+      <section className="mb-9">
+        <h2 className="mb-2 text-base font-semibold tracking-tight">
+          Coach AI
         </h2>
-        <div className="space-y-3">
+        <div className="divide-y divide-border/70 border-y border-border/70">
           <GeminiKeySection
             credential={credentialRes.data ?? null}
             focusRequested={focus === "gemini"}
@@ -98,11 +106,11 @@ export default async function SettingsPage({
         </div>
       </section>
 
-      <section className="mb-7">
-        <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Integrazioni e importazioni
+      <section className="mb-9">
+        <h2 className="mb-2 text-base font-semibold tracking-tight">
+          Integrazioni
         </h2>
-        <div className="space-y-3">
+        <div className="divide-y divide-border/70 border-y border-border/70">
           <ZeppIntegrationSection
             initialConnection={zeppConnectionRes.data ?? null}
           />
@@ -111,10 +119,10 @@ export default async function SettingsPage({
       </section>
 
       <section>
-        <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <h2 className="mb-2 text-base font-semibold tracking-tight">
           Account
         </h2>
-        <form action={signOut}>
+        <form action={signOut} className="border-y border-border/70 py-2">
           <Button
             type="submit"
             variant="ghost"

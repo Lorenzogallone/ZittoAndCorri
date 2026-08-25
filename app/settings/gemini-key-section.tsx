@@ -99,7 +99,7 @@ export function GeminiKeySection({
     <IntegrationCard
       id="gemini-integration"
       icon={<Sparkles size={18} />}
-      title="Coach AI"
+      title="Gemini"
       description="Collega Gemini per usare chat, adattamento del piano e feedback sulle attività."
     >
       <div className="space-y-4">
