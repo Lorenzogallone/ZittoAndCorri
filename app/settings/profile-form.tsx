@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, HeartPulse, Pencil } from "lucide-react";
+import { Check, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { updateProfile, type ProfileFormState } from "./actions";
 import type { Profile } from "@/lib/types";
@@ -55,55 +55,48 @@ export function ProfileForm({
 
   return (
     <section className="py-5">
-      <div className="flex items-start gap-3">
-        <span className="rounded-xl bg-primary/10 p-2 text-primary">
-          <HeartPulse size={18} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-foreground">Dati atleta</h2>
-            {!editing && (
-              <Button type="button" variant="ghost" size="sm" onClick={() => { setState(initialState); setEditing(true); }}>
-                <Pencil size={14} /> Modifica
-              </Button>
-            )}
-          </div>
-          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            FC e zone Zepp hanno priorità; i valori manuali restano disponibili come fallback.
-          </p>
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-sm font-normal text-foreground">Dati atleta</h2>
+        {!editing && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => { setState(initialState); setEditing(true); }}>
+            <Pencil size={14} /> Modifica
+          </Button>
+        )}
       </div>
 
       {!editing ? (
         <div className="mt-4 border-t border-border/60 pt-4">
           <dl className="grid grid-cols-3 gap-3">
             <div>
-              <dt className="text-[11px] text-muted-foreground">FC massima</dt>
-              <dd className="mt-1 text-base font-semibold tabular-nums">
+              <dt className="text-xs text-muted-foreground">FC massima</dt>
+              <dd className="mt-1 text-sm font-medium tabular-nums">
                 {effectiveHr.max_hr == null ? "—" : `${effectiveHr.max_hr} bpm`}
               </dd>
-              <p className={`mt-0.5 text-[10px] ${effectiveHr.max_hr_source === "zepp" ? "text-primary" : "text-muted-foreground"}`}>
+              <p className={`mt-0.5 text-xs ${effectiveHr.max_hr_source === "zepp" ? "text-primary" : "text-muted-foreground"}`}>
                 {sourceLabel(effectiveHr.max_hr_source)}
               </p>
             </div>
             <div>
-              <dt className="text-[11px] text-muted-foreground">FC a riposo</dt>
-              <dd className="mt-1 text-base font-semibold tabular-nums">
+              <dt className="text-xs text-muted-foreground">FC a riposo</dt>
+              <dd className="mt-1 text-sm font-medium tabular-nums">
                 {effectiveHr.resting_hr == null ? "—" : `${effectiveHr.resting_hr} bpm`}
               </dd>
-              <p className={`mt-0.5 text-[10px] ${effectiveHr.resting_hr_source === "zepp" ? "text-primary" : "text-muted-foreground"}`}>
+              <p className={`mt-0.5 text-xs ${effectiveHr.resting_hr_source === "zepp" ? "text-primary" : "text-muted-foreground"}`}>
                 {sourceLabel(effectiveHr.resting_hr_source)}
               </p>
             </div>
             <div>
-              <dt className="text-[11px] text-muted-foreground">Data di nascita</dt>
-              <dd className="mt-1 text-sm font-medium leading-6">{birthdate}</dd>
+              <dt className="text-xs text-muted-foreground">Data di nascita</dt>
+              <dd className="mt-1 text-sm font-medium">{birthdate}</dd>
             </div>
           </dl>
           {effectiveHr.hr_zone_ranges && (
-            <p className="mt-3 text-[11px] text-muted-foreground">
-              Zone Zepp · {effectiveHr.hr_zone_ranges.slice(0, 5).map((value, index) => `Z${index + 1} ${value}`).join(" · ")} bpm
-            </p>
+            <details className="mt-4 border-t border-border/60 pt-3">
+              <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Zone cardiache Zepp</summary>
+              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                {effectiveHr.hr_zone_ranges.slice(0, 5).map((value, index) => `Z${index + 1} ${value}`).join(" · ")} bpm
+              </p>
+            </details>
           )}
           {state.ok && (
             <p className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400" aria-live="polite">

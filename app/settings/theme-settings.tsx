@@ -2,7 +2,6 @@
 
 import { useState, useSyncExternalStore } from "react";
 import {
-  Palette,
   Sun,
   Moon,
   Monitor,
@@ -52,22 +51,10 @@ export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
   }
 
   return (
-    <section className="py-5">
-      <div className="flex items-start gap-3">
-          <div className="rounded-xl bg-primary/10 p-2 text-primary">
-            <Palette size={18} />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Aspetto</h2>
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-              Scegli modalità, colore e stile dell&apos;app.
-            </p>
-          </div>
-        </div>
-        <div id="theme-settings-content" className="mt-4 space-y-6 border-t border-border/60 pt-4">
+    <div id="theme-settings-content" className="space-y-6 pb-5 pt-2">
           {/* Modalità */}
           <div className="space-y-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               Modalità
             </p>
             <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted/30 p-1">
@@ -91,14 +78,14 @@ export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
                 );
               })}
             </div>
-            <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
+            <p className="text-xs leading-relaxed text-muted-foreground">
               In automatico l&apos;app segue chiaro/scuro del tuo dispositivo.
             </p>
           </div>
 
           {/* Colore principale */}
           <div className="space-y-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               Colore principale
             </p>
             <div className="flex flex-wrap gap-3">
@@ -133,7 +120,7 @@ export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
 
           {/* Stile (preset di tema) */}
           <div className="space-y-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               Stile
             </p>
             <div className="grid grid-cols-2 gap-2.5">
@@ -166,7 +153,7 @@ export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
                       <span className="block text-sm font-medium text-foreground">
                         {s.label}
                       </span>
-                      <span className="block text-[11px] text-muted-foreground truncate">
+                      <span className="block truncate text-xs text-muted-foreground">
                         {s.description}
                       </span>
                     </span>
@@ -175,7 +162,6 @@ export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
               })}
             </div>
           </div>
-        </div>
-    </section>
+    </div>
   );
 }

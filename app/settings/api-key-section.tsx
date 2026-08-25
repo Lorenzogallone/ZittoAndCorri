@@ -122,7 +122,7 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
           <li>Nel servizio esterno usa l&apos;header <code className="rounded bg-muted px-1 py-0.5 text-foreground">Authorization: Bearer LA_TUA_CHIAVE</code>.</li>
           <li>Scegli l&apos;endpoint adatto al contenuto da inviare.</li>
         </ol>
-        <div className="mt-3 space-y-1.5 rounded-lg bg-background/60 p-3 font-mono text-[10px] text-foreground">
+        <div className="mt-3 space-y-1.5 rounded-lg bg-background/60 p-3 font-mono text-xs text-foreground">
           <p>POST /api/import <span className="font-sans text-muted-foreground">— dati JSON</span></p>
           <p>POST /api/import/gpx <span className="font-sans text-muted-foreground">— contenuto GPX</span></p>
           <p>POST /api/import/file <span className="font-sans text-muted-foreground">— file FIT o GPX</span></p>

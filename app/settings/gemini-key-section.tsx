@@ -101,6 +101,7 @@ export function GeminiKeySection({
       icon={<Sparkles size={18} />}
       title="Gemini"
       description="Collega Gemini per usare chat, adattamento del piano e feedback sulle attività."
+      defaultOpen={focusRequested}
     >
       <div className="space-y-4">
       {configured && !editing ? (
