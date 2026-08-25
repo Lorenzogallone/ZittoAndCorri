@@ -167,6 +167,15 @@ test("la home mostra la chat senza i feedback automatici delle attività", () =>
   assert.match(home, /\.in\("kind", \["chat", "plan_proposal"\]\)/);
 });
 
+test("le risposte del coach supportano Markdown senza renderizzare HTML arbitrario", () => {
+  const chat = readFileSync(new URL("../components/coach-chat.tsx", import.meta.url), "utf8");
+  const markdown = readFileSync(new URL("../components/markdown-message.tsx", import.meta.url), "utf8");
+  assert.match(chat, /item\.role === "assistant"[\s\S]*<MarkdownMessage>/);
+  assert.match(markdown, /react-markdown/);
+  assert.match(markdown, /remark-gfm/);
+  assert.doesNotMatch(markdown, /dangerouslySetInnerHTML|rehypeRaw/);
+});
+
 test("il piano usa la chat e ogni proposta spiega obiettivo e focus", () => {
   const plan = readFileSync(new URL("../app/plan/page.tsx", import.meta.url), "utf8");
   const prompt = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");

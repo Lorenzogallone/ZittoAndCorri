@@ -63,12 +63,6 @@ export default async function SettingsPage({
       backLabel="Profilo"
       hideTabBar
     >
-      <div className="mb-6 rounded-xl bg-muted/25 px-4 py-3">
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Gestisci il tuo profilo, il coach e i collegamenti dell&apos;app da un unico posto.
-        </p>
-      </div>
-
       <section className="mb-7">
         <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           Profilo e aspetto

@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Check, LoaderCircle, Maximize2, Minimize2, Send, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { MarkdownMessage } from "@/components/markdown-message";
 import { cn } from "@/lib/utils";
 import { useAiJob } from "@/lib/use-ai-job";
 import type { AiJobStatus } from "@/app/actions/ai-jobs";
@@ -188,7 +189,10 @@ export function CoachChat({ messages, proposals, keyConfigured, analyzingActivit
           return (
             <div key={item.id} className={item.role === "user" ? "ml-10" : "mr-3"}>
               <div className={item.role === "user" ? "rounded-2xl rounded-br-md bg-primary px-4 py-3 text-sm text-primary-foreground" : "rounded-2xl rounded-bl-md bg-muted/55 px-4 py-3 text-sm leading-relaxed"}>
-                <p className="whitespace-pre-wrap">{item.content}</p>{proposal && (
+                {item.role === "assistant"
+                  ? <MarkdownMessage>{item.content}</MarkdownMessage>
+                  : <p className="whitespace-pre-wrap break-words">{item.content}</p>}
+                {proposal && (
                   <ProposalCard
                     proposal={proposal}
                     onStatusChange={(status) => setDisplayProposals((current) => current.map((candidate) =>
