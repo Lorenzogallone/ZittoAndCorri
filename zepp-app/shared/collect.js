@@ -34,8 +34,13 @@ function localDate(now) {
 }
 
 function normalizeTemperatureCurrent(value) {
-  if (!value) return null
+  if (!value || typeof value.current !== "number" || !Number.isFinite(value.current)) return null
   return { value: value.current, time: value.time }
+}
+
+function heightInCentimeters(value) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null
+  return value > 0 && value < 3 ? value * 100 : value
 }
 
 function normalizeSpo2Samples(values) {
@@ -78,7 +83,7 @@ export function collectHealthPayload(trigger = "manual") {
       osVersion: system.osVersion,
       firmwareVersion: system.firmwareVersion,
       apiLevel: system.minAPI,
-      appVersion: "1.0.1",
+      appVersion: "1.0.3",
       batteryPercent: battery ? safe(() => battery.getCurrent()) : null,
     },
     data: {
@@ -133,7 +138,7 @@ export function collectHealthPayload(trigger = "manual") {
       },
       userProfile: profile ? {
         age: profile.age,
-        heightCm: profile.height,
+        heightCm: heightInCentimeters(profile.height),
         weightKg: profile.weight,
         gender: profile.gender,
         nickName: profile.nickName,

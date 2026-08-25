@@ -30,6 +30,11 @@ Il token non deve essere inserito: il Side Service lo riceve dopo il pairing e
 lo conserva nel `SettingsStorage` privato del Mini Program. La coda locale sul
 watch conserva al massimo 14 invii non confermati.
 
+La Settings App include un pannello **Diagnostica sincronizzazione**. Attivando
+“Mostra dettagli tecnici” si vedono payload JSON, dimensione, endpoint, stato
+HTTP e risposta del server dell'ultimo tentativo. Il token non viene mai incluso
+nel log; il payload può invece contenere dati salute e va condiviso con cautela.
+
 ## Note di collaudo reale
 
 - `fullRecoveryTime` resta salvato anche come valore grezzo: prima dell'uso

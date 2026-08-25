@@ -140,12 +140,12 @@ test("un singolo valore sensore malformato non blocca tutto il payload", () => {
       },
       heartRate: { resting: 52, today: [null, 0, 52, "bad", 60] },
       sleep: { score: 85, stages: [null, { model: 1, start: 10, stop: 20 }] },
-      stress: null,
+      stress: { lastWeekByHour: [11, 17, 0, 48] },
       spo2: null,
-      bodyTemperature: null,
+      bodyTemperature: { current: { time: 55 }, today: [34.2, -1000] },
       pai: null,
       activity: null,
-      userProfile: null,
+      userProfile: { heightCm: 1.75 },
     },
   });
   const normalized = normalizeZeppPayload(parsed, "user-1", "connection-1");
@@ -153,7 +153,8 @@ test("un singolo valore sensore malformato non blocca tutto il payload", () => {
   assert.deepEqual(normalized.hr_series, [52, 60]);
   assert.equal(normalized.hr_zone_type, undefined);
   assert.deepEqual(normalized.sleep_stages, [{ model: 1, start: 10, stop: 20 }]);
-  assert.equal(normalized.device_profile, undefined);
+  assert.equal(normalized.skin_temp_avg_c, 34.2);
+  assert.deepEqual(normalized.device_profile, { height_cm: 175 });
 });
 
 test("la migrazione Zepp applica isolamento utente, idempotenza e cascade", () => {
