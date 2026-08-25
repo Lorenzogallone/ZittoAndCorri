@@ -11,6 +11,20 @@ PWA multiutente per pianificazione running, import FIT/GPX e coaching conversazi
 
 La chiave Gemini non è una variabile dell'app: ogni utente la inserisce dalle impostazioni e viene conservata cifrata in Supabase Vault. La secret key Supabase è esclusivamente server-side.
 
+### Zepp OS (opzionale)
+
+1. Applica anche `supabase/migrations/0014_zepp_os.sql`.
+2. Compila e installa il progetto separato seguendo
+   [`zepp-app/README.md`](zepp-app/README.md).
+
+Non servono variabili d'ambiente Zepp: la funzionalità è sempre disponibile nel
+codice, ma ogni account parte con lo switch disattivato e usa integralmente il
+calcolo interno. L'utente la abilita da **Impostazioni → Zepp OS** e, nella
+Settings App di Zepp, inserisce soltanto URL pubblico e codice monouso. Il token
+dedicato è creato e gestito automaticamente usando la configurazione server
+Supabase già esistente. Spegnere lo switch revoca il token; FIT e GPX restano
+manuali.
+
 ## Flussi principali
 
 - `/` — riepilogo e chat con il coach; le modifiche al piano richiedono conferma.

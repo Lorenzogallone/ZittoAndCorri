@@ -7,10 +7,12 @@ import { ThemeSettings } from "./theme-settings";
 import { CoachMemorySection } from "./coach-memory-section";
 import { GeminiKeySection } from "./gemini-key-section";
 import { ApiKeySection } from "./api-key-section";
+import { ZeppIntegrationSection } from "./zepp-integration-section";
 import { Button } from "@/components/ui/button";
 import { sanitizePrefs } from "@/lib/theme";
 import type { Profile, AiCredentialMetadata, CoachMemory } from "@/lib/types";
 import { LogOut } from "lucide-react";
+import type { ZeppConnectionView } from "@/lib/zepp/types";
 
 export default async function SettingsPage({
   searchParams,
@@ -50,6 +52,11 @@ export default async function SettingsPage({
   ]);
 
   const profile = profileRes.data;
+  const zeppConnectionRes = await supabase
+    .from("zepp_connections")
+    .select("enabled, auto_sync, device_name, device_source, os_version, firmware_version, api_level, paired_at, last_sync_at, last_error")
+    .eq("user_id", user.id)
+    .maybeSingle<ZeppConnectionView>();
   const initialTheme = sanitizePrefs({
     mode: themeRes.data?.theme_mode ?? null,
     accent: themeRes.data?.theme_accent ?? null,
@@ -88,9 +95,14 @@ export default async function SettingsPage({
 
       <section className="mb-7">
         <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Importazioni
+          Integrazioni e importazioni
         </h2>
-        <ApiKeySection initialApiKey={profile?.api_key ?? null} />
+        <div className="space-y-3">
+          <ZeppIntegrationSection
+            initialConnection={zeppConnectionRes.data ?? null}
+          />
+          <ApiKeySection initialApiKey={profile?.api_key ?? null} />
+        </div>
       </section>
 
       <section>

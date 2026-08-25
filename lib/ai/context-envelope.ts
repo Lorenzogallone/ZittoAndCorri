@@ -16,6 +16,7 @@ import type {
   ATLCTLResult,
 } from "@/lib/types";
 import { missingAiContextSections } from "@/lib/ai/context-contract";
+import { getZeppDashboard } from "@/lib/zepp/data";
 
 export type AiContextPurpose = "chat" | "plan" | "evaluation";
 export type DataOrigin = "measured" | "user" | "derived" | "estimated";
@@ -119,6 +120,43 @@ export interface AiContextEnvelope {
       note: string;
     };
     predictions: (RacePredict & { origin: "derived"; reference_activity_id: string }) | null;
+    zepp: {
+      connected: true;
+      last_sync_at: string | null;
+      readiness: {
+        score: number | null;
+        status: string | null;
+        confidence: "low" | "medium" | "high";
+        available: boolean;
+        origin: "zepp_assisted" | "internal";
+      };
+      latest: {
+        date: string;
+        training_load: number | null;
+        vo2_max: number | null;
+        recovery_raw: number | null;
+        sleep_score: number | null;
+        sleep_total_min: number | null;
+        resting_hr: number | null;
+        stress_avg: number | null;
+        spo2_avg: number | null;
+        skin_temp_avg_c: number | null;
+        pai_today: number | null;
+        steps: number | null;
+        calories: number | null;
+        origin: "zepp";
+      } | null;
+      daily_14d: Array<{
+        date: string;
+        training_load: number | null;
+        sleep_score: number | null;
+        sleep_total_min: number | null;
+        resting_hr: number | null;
+        stress_avg: number | null;
+        origin: "zepp";
+      }>;
+      note: string;
+    } | null;
   };
   history: {
     detailed_21d: ContextActivityForAi[];
@@ -320,6 +358,7 @@ export async function buildAiContext(
     today,
     profileConfig,
   );
+  const zepp = await getZeppDashboard(supabase, userId, load);
   const activitiesBeforeFocus = focusActivity
     ? acts.filter((activity) => activity.started_at < focusActivity.started_at)
     : [];
@@ -415,6 +454,43 @@ export async function buildAiContext(
         note: "Piano e attività non hanno collegamenti espliciti: deduci quanto è stato svolto confrontando date, distanza, durata, passo, HR e note; non usare lo status come prova di aderenza.",
       },
       predictions,
+      zepp: zepp?.connection?.enabled ? {
+        connected: true,
+        last_sync_at: zepp.connection.last_sync_at,
+        readiness: {
+          score: zepp.readiness.score,
+          status: zepp.readiness.status,
+          confidence: zepp.readiness.confidence,
+          available: zepp.readiness.available,
+          origin: zepp.readiness.source,
+        },
+        latest: zepp.latest ? {
+          date: zepp.latest.date,
+          training_load: zepp.latest.training_load,
+          vo2_max: zepp.latest.vo2_max,
+          recovery_raw: zepp.latest.recovery_raw,
+          sleep_score: zepp.latest.sleep_score,
+          sleep_total_min: zepp.latest.sleep_total_min,
+          resting_hr: zepp.latest.resting_hr,
+          stress_avg: zepp.latest.stress_avg,
+          spo2_avg: zepp.latest.spo2_avg,
+          skin_temp_avg_c: zepp.latest.skin_temp_avg_c,
+          pai_today: zepp.latest.pai_today,
+          steps: zepp.latest.steps,
+          calories: zepp.latest.calories,
+          origin: "zepp",
+        } : null,
+        daily_14d: zepp.recent.slice(0, 14).map((day) => ({
+          date: day.date,
+          training_load: day.training_load,
+          sleep_score: day.sleep_score,
+          sleep_total_min: day.sleep_total_min,
+          resting_hr: day.resting_hr,
+          stress_avg: day.stress_avg,
+          origin: "zepp" as const,
+        })),
+        note: "Dati salute e recupero dal dispositivo; non sono attività e non vanno sommati una seconda volta al carico interno.",
+      } : null,
     },
     history: {
       detailed_21d: acts.filter((a) => a.started_at.slice(0, 10) >= since21).map(activityForAi),
