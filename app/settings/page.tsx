@@ -3,9 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions/auth";
 import { AppShell } from "@/components/app-shell";
 import { ProfileForm } from "./profile-form";
-import { IntegrationsSection } from "./integrations-section";
 import { ThemeSettings } from "./theme-settings";
 import { CoachMemorySection } from "./coach-memory-section";
+import { GeminiKeySection } from "./gemini-key-section";
+import { ApiKeySection } from "./api-key-section";
 import { Button } from "@/components/ui/button";
 import { sanitizePrefs } from "@/lib/theme";
 import type { Profile, AiCredentialMetadata, CoachMemory } from "@/lib/types";
@@ -62,36 +63,40 @@ export default async function SettingsPage({
       backLabel="Profilo"
       hideTabBar
     >
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold tracking-tight">Impostazioni</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Personalizza l&apos;app e i dati usati dal coach.
+      <div className="mb-6 rounded-xl bg-muted/25 px-4 py-3">
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Gestisci il tuo profilo, il coach e i collegamenti dell&apos;app da un unico posto.
         </p>
       </div>
 
       <section className="mb-7">
         <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Esperienza
+          Profilo e aspetto
         </h2>
         <div className="space-y-3">
+          <ProfileForm profile={profile ?? null} />
           <ThemeSettings initial={initialTheme} />
+        </div>
+      </section>
+
+      <section className="mb-7">
+        <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Coach
+        </h2>
+        <div className="space-y-3">
+          <GeminiKeySection
+            credential={credentialRes.data ?? null}
+            focusRequested={focus === "gemini"}
+          />
           <CoachMemorySection memories={memoriesRes.data ?? []} />
         </div>
       </section>
 
       <section className="mb-7">
         <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Dati e collegamenti
+          Importazioni
         </h2>
-        <div className="space-y-3">
-          <ProfileForm profile={profile ?? null} />
-          <IntegrationsSection
-            key={focus === "gemini" ? "focus-gemini" : "default"}
-            apiKey={profile?.api_key ?? null}
-            geminiCredential={credentialRes.data ?? null}
-            focusGemini={focus === "gemini"}
-          />
-        </div>
+        <ApiKeySection initialApiKey={profile?.api_key ?? null} />
       </section>
 
       <section>
