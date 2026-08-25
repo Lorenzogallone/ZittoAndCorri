@@ -14,6 +14,7 @@ import type { Profile, AiCredentialMetadata, CoachMemory } from "@/lib/types";
 import { LogOut } from "lucide-react";
 import type { ZeppConnectionView } from "@/lib/zepp/types";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
+import { SettingsGroup } from "./settings-group";
 
 export default async function SettingsPage({
   searchParams,
@@ -75,54 +76,31 @@ export default async function SettingsPage({
       backLabel="Profilo"
       hideTabBar
     >
-      <section className="mb-9">
-        <h2 className="mb-2 text-base font-semibold tracking-tight">
-          Profilo
-        </h2>
-        <div className="border-y border-border/70">
+      <div className="border-t border-border/70">
+        <SettingsGroup title="Profilo">
           <ProfileForm profile={profile ?? null} effectiveHr={effectiveHr} />
-        </div>
-      </section>
+        </SettingsGroup>
 
-      <section className="mb-9">
-        <h2 className="mb-2 text-base font-semibold tracking-tight">
-          Applicazione
-        </h2>
-        <div className="border-y border-border/70">
+        <SettingsGroup title="Aspetto">
           <ThemeSettings initial={initialTheme} />
-        </div>
-      </section>
+        </SettingsGroup>
 
-      <section className="mb-9">
-        <h2 className="mb-2 text-base font-semibold tracking-tight">
-          Coach AI
-        </h2>
-        <div className="divide-y divide-border/70 border-y border-border/70">
+        <SettingsGroup title="Coach AI" defaultOpen={focus === "gemini"}>
+          <CoachMemorySection memories={memoriesRes.data ?? []} />
           <GeminiKeySection
             credential={credentialRes.data ?? null}
             focusRequested={focus === "gemini"}
           />
-          <CoachMemorySection memories={memoriesRes.data ?? []} />
-        </div>
-      </section>
+        </SettingsGroup>
 
-      <section className="mb-9">
-        <h2 className="mb-2 text-base font-semibold tracking-tight">
-          Integrazioni
-        </h2>
-        <div className="divide-y divide-border/70 border-y border-border/70">
+        <SettingsGroup title="Integrazioni">
           <ZeppIntegrationSection
             initialConnection={zeppConnectionRes.data ?? null}
           />
           <ApiKeySection initialApiKey={profile?.api_key ?? null} />
-        </div>
-      </section>
+        </SettingsGroup>
 
-      <section>
-        <h2 className="mb-2 text-base font-semibold tracking-tight">
-          Account
-        </h2>
-        <form action={signOut} className="border-y border-border/70 py-2">
+        <form action={signOut} className="border-b border-border/70 py-2">
           <Button
             type="submit"
             variant="ghost"
@@ -132,7 +110,7 @@ export default async function SettingsPage({
             Esci dall&apos;account
           </Button>
         </form>
-      </section>
+      </div>
     </AppShell>
   );
 }
