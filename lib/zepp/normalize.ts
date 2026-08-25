@@ -11,27 +11,24 @@ export interface ZeppDailyMetricWrite {
   sleep_score?: number;
   sleep_total_min?: number;
   sleep_deep_min?: number;
-  sleep_stages?: unknown[];
-  naps?: unknown[];
+  sleep_start_min?: number;
+  sleep_end_min?: number;
+  nap_total_min?: number;
+  nap_count?: number;
   resting_hr?: number;
   max_hr?: number;
-  hr_series?: number[];
   stress_avg?: number;
-  stress_hourly?: number[];
   stress_last_week?: number[];
   spo2_avg?: number;
   spo2_min?: number;
-  spo2_samples?: unknown[];
-  skin_temp_avg_c?: number;
-  skin_temp_min_c?: number;
-  skin_temp_max_c?: number;
-  skin_temp_samples?: number[];
   pai_total?: number;
   pai_today?: number;
-  pai_last_week?: number[];
   steps?: number;
+  step_target?: number;
   calories?: number;
+  calorie_target?: number;
   stand_hours?: number;
+  stand_target?: number;
   hr_zone_type?: number;
   hr_zone_rest?: number;
   hr_zone_ranges?: number[];
@@ -66,14 +63,13 @@ export function normalizeZeppPayload(
   connectionId: string,
 ): ZeppDailyMetricWrite {
   const { data } = payload;
-  const heartRates = validList(data.heartRate?.today, 25, 240);
   const stressHourly = validList(data.stress?.todayByHour, 1, 100);
   const spo2Values = validList(data.spo2?.lastDay, 50, 100);
-  const spo2Samples = (data.spo2?.samples ?? []).filter((sample) => valid(sample.value, 50, 100) != null);
-  const allSpo2 = [...spo2Values, ...spo2Samples.map((sample) => sample.value)];
-  const temperatures = validList(data.bodyTemperature?.today, 20, 45);
-  const currentTemperature = valid(data.bodyTemperature?.current?.value, 20, 45);
-  if (currentTemperature != null) temperatures.push(currentTemperature);
+  const currentSpo2 = valid(data.spo2?.current?.value, 50, 100);
+  if (currentSpo2 != null) spo2Values.push(currentSpo2);
+  const naps = (data.sleep?.naps ?? [])
+    .map((nap) => valid(nap.length, 0, 1_440))
+    .filter((length): length is number => length != null);
 
   const row: ZeppDailyMetricWrite = {
     user_id: userId,
@@ -94,35 +90,33 @@ export function normalizeZeppPayload(
   assign("sleep_score", valid(data.sleep?.score, 0, 100));
   assign("sleep_total_min", valid(data.sleep?.totalTime, 0, 1_440));
   assign("sleep_deep_min", valid(data.sleep?.deepTime, 0, 1_440));
-  if (data.sleep?.stages?.length) row.sleep_stages = data.sleep.stages;
-  if (data.sleep?.naps?.length) row.naps = data.sleep.naps;
+  assign("sleep_start_min", valid(data.sleep?.startTime, 0, 1_439));
+  assign("sleep_end_min", valid(data.sleep?.endTime, 0, 1_439));
+  if (naps.length) {
+    row.nap_total_min = Math.round(naps.reduce((sum, length) => sum + length, 0));
+    row.nap_count = naps.length;
+  }
   assign("resting_hr", valid(data.heartRate?.resting, 25, 220));
   assign("max_hr", valid(data.heartRate?.maximum?.value, 25, 240));
-  if (heartRates.length) row.hr_series = heartRates;
   assign("stress_avg", rounded(average(stressHourly)));
-  if (stressHourly.length) row.stress_hourly = stressHourly;
   const stressWeek = validList(data.stress?.lastWeek, 1, 100);
   if (stressWeek.length) row.stress_last_week = stressWeek;
-  assign("spo2_avg", rounded(average(allSpo2)));
-  assign("spo2_min", allSpo2.length ? Math.min(...allSpo2) : undefined);
-  if (spo2Samples.length) row.spo2_samples = spo2Samples;
-  assign("skin_temp_avg_c", rounded(average(temperatures), 2));
-  assign("skin_temp_min_c", temperatures.length ? Math.min(...temperatures) : undefined);
-  assign("skin_temp_max_c", temperatures.length ? Math.max(...temperatures) : undefined);
-  if (temperatures.length) row.skin_temp_samples = temperatures;
+  assign("spo2_avg", rounded(average(spo2Values)));
+  assign("spo2_min", spo2Values.length ? Math.min(...spo2Values) : undefined);
   assign("pai_total", valid(data.pai?.total, 0, 10_000));
   assign("pai_today", valid(data.pai?.today, 0, 10_000));
-  const paiWeek = validList(data.pai?.lastWeek, 0, 10_000);
-  if (paiWeek.length) row.pai_last_week = paiWeek;
   assign("steps", valid(data.activity?.steps, 0, 500_000));
+  assign("step_target", valid(data.activity?.stepTarget, 0, 500_000));
   assign("calories", valid(data.activity?.calories, 0, 50_000));
+  assign("calorie_target", valid(data.activity?.calorieTarget, 0, 50_000));
   assign("stand_hours", valid(data.activity?.standHours, 0, 24));
+  assign("stand_target", valid(data.activity?.standTarget, 0, 24));
 
   if (data.workout?.hrZones) {
     assign("hr_zone_type", valid(data.workout.hrZones.type, 0, 1));
     assign("hr_zone_rest", valid(data.workout.hrZones.rest, 25, 220));
     const ranges = validList(data.workout.hrZones.range, 25, 240);
-    if (ranges.length >= 5) row.hr_zone_ranges = ranges;
+    if (ranges.length >= 6) row.hr_zone_ranges = ranges;
   }
 
   const profile = data.userProfile;
@@ -138,20 +132,45 @@ export function normalizeZeppPayload(
     if (height != null) deviceProfile.height_cm = height;
     if (weight != null) deviceProfile.weight_kg = weight;
     if (profile.gender != null) deviceProfile.gender = profile.gender;
-    if (profile.region) deviceProfile.region = profile.region;
   }
-  const batteryPercent = valid(payload.device.batteryPercent, 0, 100);
-  if (batteryPercent != null) deviceProfile.battery_percent = batteryPercent;
   if (Object.keys(deviceProfile).length) row.device_profile = deviceProfile;
 
   row.completeness = {
     workout: row.training_load != null || row.recovery_raw != null,
     sleep: row.sleep_score != null || row.sleep_total_min != null,
-    heart_rate: row.resting_hr != null || heartRates.length > 0,
+    heart_rate: row.resting_hr != null || row.max_hr != null || row.hr_zone_ranges != null,
     stress: row.stress_avg != null,
     spo2: row.spo2_avg != null,
-    temperature: row.skin_temp_avg_c != null,
     activity: row.steps != null || row.calories != null,
   };
   return row;
+}
+
+/**
+ * Copia di audit deliberatamente compatta: contiene solo dati utili a diagnosi,
+ * riepiloghi e ricalcolo. Esclude serie minuto-per-minuto, temperatura e PII.
+ */
+export function compactZeppPayloadForAudit(payload: ZeppSyncPayload): Record<string, unknown> {
+  const normalized = normalizeZeppPayload(payload, "audit", "audit");
+  const metrics: Record<string, unknown> = { ...normalized };
+  delete metrics.user_id;
+  delete metrics.connection_id;
+  delete metrics.updated_at;
+  return {
+    schemaVersion: payload.schemaVersion,
+    clientSyncId: payload.clientSyncId,
+    trigger: payload.trigger,
+    capturedAt: payload.capturedAt,
+    localDate: payload.localDate,
+    timezoneOffsetMinutes: payload.timezoneOffsetMinutes,
+    device: {
+      deviceName: payload.device.deviceName ?? null,
+      deviceSource: payload.device.deviceSource ?? null,
+      osVersion: payload.device.osVersion ?? null,
+      firmwareVersion: payload.device.firmwareVersion ?? null,
+      apiLevel: payload.device.apiLevel ?? null,
+      appVersion: payload.device.appVersion ?? null,
+    },
+    metrics,
+  };
 }

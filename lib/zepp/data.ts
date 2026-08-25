@@ -4,11 +4,16 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeATLCTL } from "@/lib/metrics/load";
 import type { Activity, Profile } from "@/lib/types";
-import { normalizeZeppPayload, type ZeppDailyMetricWrite } from "@/lib/zepp/normalize";
+import {
+  compactZeppPayloadForAudit,
+  normalizeZeppPayload,
+  type ZeppDailyMetricWrite,
+} from "@/lib/zepp/normalize";
 import type { ZeppPairRequest, ZeppSyncPayload } from "@/lib/zepp/schema";
 import { computeZeppReadiness } from "@/lib/zepp/readiness";
 import { createPairingCode, createZeppToken, hashZeppCredential } from "@/lib/zepp/security";
 import type { ZeppConnectionView, ZeppDailyMetric, ZeppReadinessResult } from "@/lib/zepp/types";
+import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 
 interface ConnectionRow extends ZeppConnectionView {
   id: string;
@@ -24,15 +29,23 @@ interface ExistingMetricRow extends Record<string, unknown> {
   completeness: Record<string, boolean> | null;
 }
 
-const ARRAY_FIELDS = new Set([
-  "sleep_stages", "naps", "hr_series", "stress_hourly", "stress_last_week",
-  "spo2_samples", "skin_temp_samples", "pai_last_week", "hr_zone_ranges",
-]);
+const ARRAY_FIELDS = new Set(["stress_last_week", "hr_zone_ranges"]);
+const LEGACY_BULK_FIELDS = [
+  "sleep_stages", "naps", "hr_series", "stress_hourly", "spo2_samples",
+  "skin_temp_avg_c", "skin_temp_min_c", "skin_temp_max_c", "skin_temp_samples",
+  "pai_last_week",
+] as const;
 
 function numeric(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) return Number(value);
   return null;
+}
+
+function numericArray(value: unknown): number[] | null {
+  if (!Array.isArray(value)) return null;
+  const values = value.map(numeric).filter((item): item is number => item != null);
+  return values.length ? values : null;
 }
 
 function toDailyMetric(row: Record<string, unknown>): ZeppDailyMetric {
@@ -45,17 +58,30 @@ function toDailyMetric(row: Record<string, unknown>): ZeppDailyMetric {
     sleep_score: numeric(row.sleep_score),
     sleep_total_min: numeric(row.sleep_total_min),
     sleep_deep_min: numeric(row.sleep_deep_min),
+    sleep_start_min: numeric(row.sleep_start_min),
+    sleep_end_min: numeric(row.sleep_end_min),
+    nap_total_min: numeric(row.nap_total_min),
+    nap_count: numeric(row.nap_count),
     resting_hr: numeric(row.resting_hr),
     max_hr: numeric(row.max_hr),
     stress_avg: numeric(row.stress_avg),
+    stress_last_week: numericArray(row.stress_last_week),
     spo2_avg: numeric(row.spo2_avg),
     spo2_min: numeric(row.spo2_min),
-    skin_temp_avg_c: numeric(row.skin_temp_avg_c),
     pai_total: numeric(row.pai_total),
     pai_today: numeric(row.pai_today),
     steps: numeric(row.steps),
+    step_target: numeric(row.step_target),
     calories: numeric(row.calories),
+    calorie_target: numeric(row.calorie_target),
     stand_hours: numeric(row.stand_hours),
+    stand_target: numeric(row.stand_target),
+    hr_zone_type: numeric(row.hr_zone_type),
+    hr_zone_rest: numeric(row.hr_zone_rest),
+    hr_zone_ranges: numericArray(row.hr_zone_ranges),
+    device_profile: row.device_profile && typeof row.device_profile === "object"
+      ? row.device_profile as Record<string, unknown>
+      : null,
     completeness: row.completeness && typeof row.completeness === "object"
       ? row.completeness as Record<string, boolean>
       : null,
@@ -187,6 +213,9 @@ function mergeMetric(existing: ExistingMetricRow | null, incoming: ZeppDailyMetr
     if (incomingIsNewer || existing[key] == null) merged[key] = value;
   }
   merged.updated_at = new Date().toISOString();
+  // Una nuova sync ripulisce anche gli eventuali dati voluminosi salvati da
+  // versioni precedenti per lo stesso giorno.
+  for (const field of LEGACY_BULK_FIELDS) merged[field] = null;
   delete merged.id;
   return merged;
 }
@@ -212,7 +241,7 @@ export async function storeZeppPayload(connection: ConnectionRow, payload: ZeppS
       captured_at: payload.capturedAt,
       local_date: payload.localDate,
       timezone_offset_min: payload.timezoneOffsetMinutes,
-      raw_payload: payload,
+      raw_payload: compactZeppPayloadForAudit(payload),
     });
     if (eventError?.code === "23505") duplicate = true;
     else if (eventError) throw eventError;
@@ -241,6 +270,7 @@ export async function storeZeppPayload(connection: ConnectionRow, payload: ZeppS
     os_version: payload.device.osVersion ?? connection.os_version,
     firmware_version: payload.device.firmwareVersion ?? connection.firmware_version,
     api_level: payload.device.apiLevel ?? connection.api_level,
+    ...(payload.device.appVersion ? { app_version: payload.device.appVersion } : {}),
   }).eq("id", connection.id);
   if (connectionError) throw connectionError;
   return duplicate;
@@ -308,7 +338,7 @@ export async function getZeppDashboard(
       .eq("user_id", userId)
       .maybeSingle<ConnectionRow>(),
     supabase.from("zepp_daily_metrics")
-      .select("date, captured_at, training_load, vo2_max, recovery_raw, sleep_score, sleep_total_min, sleep_deep_min, resting_hr, max_hr, stress_avg, spo2_avg, spo2_min, skin_temp_avg_c, pai_total, pai_today, steps, calories, stand_hours, completeness")
+      .select("date, captured_at, training_load, vo2_max, recovery_raw, sleep_score, sleep_total_min, sleep_deep_min, sleep_start_min, sleep_end_min, nap_total_min, nap_count, resting_hr, max_hr, stress_avg, stress_last_week, spo2_avg, spo2_min, pai_total, pai_today, steps, step_target, calories, calorie_target, stand_hours, stand_target, hr_zone_type, hr_zone_rest, hr_zone_ranges, device_profile, completeness")
       .eq("user_id", userId)
       .order("date", { ascending: false })
       .limit(42)
@@ -340,6 +370,7 @@ export async function computeCurrentZeppReadiness(userId: string): Promise<ZeppR
     admin.from("profiles").select("max_hr, resting_hr").eq("id", userId)
       .maybeSingle<Pick<Profile, "max_hr" | "resting_hr">>(),
   ]);
+  const effectiveHr = await getEffectiveHrConfig(admin, userId, profile ?? null);
   const internal = computeATLCTL((activities ?? []).map((activity) => ({
     started_at: activity.started_at,
     duration_s: activity.moving_time_s ?? activity.duration_s,
@@ -347,6 +378,6 @@ export async function computeCurrentZeppReadiness(userId: string): Promise<ZeppR
     avg_hr: activity.avg_hr,
     time_in_zone: activity.time_in_zone,
     sport: activity.sport,
-  })), today, profile ?? { max_hr: null, resting_hr: null });
+  })), today, effectiveHr);
   return (await getZeppDashboard(admin, userId, internal)).readiness;
 }

@@ -17,6 +17,7 @@ import type {
 } from "@/lib/types";
 import { missingAiContextSections } from "@/lib/ai/context-contract";
 import { getZeppDashboard } from "@/lib/zepp/data";
+import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 
 export type AiContextPurpose = "chat" | "plan" | "evaluation";
 export type DataOrigin = "measured" | "user" | "derived" | "estimated";
@@ -74,9 +75,9 @@ export interface AiContextEnvelope {
   athlete: {
     display_name: string | null;
     birthdate: string | null;
-    max_hr: { value: number | null; origin: "user" };
-    resting_hr: { value: number | null; origin: "user" };
-    hr_zones: { value: ReturnType<typeof hrZones>; origin: "derived" };
+    max_hr: { value: number | null; origin: "zepp" | "user" | null };
+    resting_hr: { value: number | null; origin: "zepp" | "user" | null };
+    hr_zones: { value: ReturnType<typeof hrZones>; origin: "zepp" | "derived" | null };
   };
   goal: (Pick<Goal, "id" | "race_name" | "race_date" | "distance_m" | "target_time_s"> & {
     days_remaining: number | null;
@@ -137,22 +138,46 @@ export interface AiContextEnvelope {
         recovery_raw: number | null;
         sleep_score: number | null;
         sleep_total_min: number | null;
+        sleep_deep_min: number | null;
+        sleep_start_min: number | null;
+        sleep_end_min: number | null;
+        nap_total_min: number | null;
+        nap_count: number | null;
         resting_hr: number | null;
+        daily_max_hr: number | null;
         stress_avg: number | null;
+        stress_last_week: number[] | null;
         spo2_avg: number | null;
-        skin_temp_avg_c: number | null;
+        spo2_min: number | null;
+        pai_total: number | null;
         pai_today: number | null;
         steps: number | null;
+        step_target: number | null;
         calories: number | null;
+        calorie_target: number | null;
+        stand_hours: number | null;
+        stand_target: number | null;
+        hr_zone_ranges: number[] | null;
+        physical_profile: Record<string, unknown> | null;
         origin: "zepp";
       } | null;
       daily_14d: Array<{
         date: string;
         training_load: number | null;
+        vo2_max: number | null;
+        recovery_raw: number | null;
         sleep_score: number | null;
         sleep_total_min: number | null;
+        sleep_deep_min: number | null;
+        nap_total_min: number | null;
         resting_hr: number | null;
+        daily_max_hr: number | null;
         stress_avg: number | null;
+        spo2_avg: number | null;
+        pai_today: number | null;
+        steps: number | null;
+        calories: number | null;
+        stand_hours: number | null;
         origin: "zepp";
       }>;
       note: string;
@@ -335,10 +360,7 @@ export async function buildAiContext(
   const acts = activities ?? [];
   const recent = recentPlan ?? [];
   const upcoming = upcomingPlan ?? [];
-  const profileConfig = {
-    max_hr: profile?.max_hr ?? null,
-    resting_hr: profile?.resting_hr ?? null,
-  };
+  const profileConfig = await getEffectiveHrConfig(supabase, userId, profile ?? null);
   const best = bestReference(acts);
   const focusActivity = options?.activityId
     ? acts.find((candidate) => candidate.id === options.activityId) ?? null
@@ -381,8 +403,8 @@ export async function buildAiContext(
     origin: "derived" as const,
   })) ?? null;
   const missing: string[] = [];
-  if (!profile?.max_hr) missing.push("max_hr");
-  if (!profile?.resting_hr) missing.push("resting_hr");
+  if (!profileConfig.max_hr) missing.push("max_hr");
+  if (!profileConfig.resting_hr) missing.push("resting_hr");
   if (!goal) missing.push("active_goal");
   if (acts.length === 0) missing.push("training_history");
   if (acts.some((a) => a.rpe == null)) missing.push("rpe_on_some_activities");
@@ -414,9 +436,9 @@ export async function buildAiContext(
           ? authUserData.user.user_metadata.name
           : null,
       birthdate: profile?.birthdate ?? null,
-      max_hr: { value: profileConfig.max_hr, origin: "user" },
-      resting_hr: { value: profileConfig.resting_hr, origin: "user" },
-      hr_zones: { value: hrZones(profileConfig), origin: "derived" },
+      max_hr: { value: profileConfig.max_hr, origin: profileConfig.max_hr_source },
+      resting_hr: { value: profileConfig.resting_hr, origin: profileConfig.resting_hr_source },
+      hr_zones: { value: hrZones(profileConfig), origin: profileConfig.zones_source },
     },
     goal: goal ? { ...goal, days_remaining: daysRemaining, weeks_remaining: daysRemaining == null ? null : Math.ceil(daysRemaining / 7), origin: "user" } : null,
     training_state: {
@@ -471,22 +493,46 @@ export async function buildAiContext(
           recovery_raw: zepp.latest.recovery_raw,
           sleep_score: zepp.latest.sleep_score,
           sleep_total_min: zepp.latest.sleep_total_min,
+          sleep_deep_min: zepp.latest.sleep_deep_min,
+          sleep_start_min: zepp.latest.sleep_start_min,
+          sleep_end_min: zepp.latest.sleep_end_min,
+          nap_total_min: zepp.latest.nap_total_min,
+          nap_count: zepp.latest.nap_count,
           resting_hr: zepp.latest.resting_hr,
+          daily_max_hr: zepp.latest.max_hr,
           stress_avg: zepp.latest.stress_avg,
+          stress_last_week: zepp.latest.stress_last_week,
           spo2_avg: zepp.latest.spo2_avg,
-          skin_temp_avg_c: zepp.latest.skin_temp_avg_c,
+          spo2_min: zepp.latest.spo2_min,
+          pai_total: zepp.latest.pai_total,
           pai_today: zepp.latest.pai_today,
           steps: zepp.latest.steps,
+          step_target: zepp.latest.step_target,
           calories: zepp.latest.calories,
+          calorie_target: zepp.latest.calorie_target,
+          stand_hours: zepp.latest.stand_hours,
+          stand_target: zepp.latest.stand_target,
+          hr_zone_ranges: zepp.latest.hr_zone_ranges,
+          physical_profile: zepp.latest.device_profile,
           origin: "zepp",
         } : null,
         daily_14d: zepp.recent.slice(0, 14).map((day) => ({
           date: day.date,
           training_load: day.training_load,
+          vo2_max: day.vo2_max,
+          recovery_raw: day.recovery_raw,
           sleep_score: day.sleep_score,
           sleep_total_min: day.sleep_total_min,
+          sleep_deep_min: day.sleep_deep_min,
+          nap_total_min: day.nap_total_min,
           resting_hr: day.resting_hr,
+          daily_max_hr: day.max_hr,
           stress_avg: day.stress_avg,
+          spo2_avg: day.spo2_avg,
+          pai_today: day.pai_today,
+          steps: day.steps,
+          calories: day.calories,
+          stand_hours: day.stand_hours,
           origin: "zepp" as const,
         })),
         note: "Dati salute e recupero dal dispositivo; non sono attività e non vanno sommati una seconda volta al carico interno.",

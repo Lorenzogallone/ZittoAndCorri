@@ -10,6 +10,7 @@ import { aiErrorMessage, generateStructured } from "@/lib/ai/gemini";
 import type { GeminiModelId } from "@/lib/ai/models";
 import { isoDateShift } from "@/lib/dates";
 import type { Activity, EvaluationResult, PlannedWorkout, Profile } from "@/lib/types";
+import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 
 type EvalActivity = Pick<Activity,
   "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" |
@@ -65,6 +66,7 @@ async function runActivityEvaluation(
     const inputError = activityError ?? profileError;
     if (inputError) throw inputError;
     if (!activity) throw new Error("Attività non trovata");
+    const effectiveHr = await getEffectiveHrConfig(admin, userId, profile ?? null);
 
     const activityDay = activity.started_at.slice(0, 10);
     const [nearbyPlanResult, existingEvaluationResult] = await Promise.all([
@@ -92,7 +94,7 @@ async function runActivityEvaluation(
     }
     const detail = [
       activity.source_title ? `Titolo dal file: ${activity.source_title}.` : "",
-      activityDetailLine(activity, profile),
+      activityDetailLine(activity, effectiveHr),
       activity.rpe != null ? `Origine RPE: ${activity.rpe_source ?? "non specificata"}.` : "RPE non disponibile.",
       activity.splits?.length ? `Split per km: ${JSON.stringify(activity.splits)}.` : "",
       existingEvaluation?.details?.length

@@ -11,6 +11,7 @@ import { avgPace } from "@/lib/metrics/pace";
 import { timeInZoneFromAverage, timeInZoneFromSeries } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
 import { enqueueActivityEvaluationSafely } from "@/lib/ai/evaluate-activity";
+import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 
 export interface ActivityFormState {
   error?: string;
@@ -67,6 +68,7 @@ export async function createActivity(
     .select("max_hr, resting_hr")
     .eq("id", user.id)
     .single<Pick<Profile, "max_hr" | "resting_hr">>();
+  const effectiveHr = await getEffectiveHrConfig(supabase, user.id, profile ?? null);
 
   // --- ingest unificato ---
   let activityId: string;
@@ -89,7 +91,7 @@ export async function createActivity(
       {
         supabase,
         userId: user.id,
-        profile: profile ?? { max_hr: null, resting_hr: null },
+        profile: effectiveHr,
       },
     );
   } catch (e) {
@@ -133,11 +135,12 @@ export async function importGpxActivity(
     .select("max_hr, resting_hr")
     .eq("id", user.id)
     .single<Pick<Profile, "max_hr" | "resting_hr">>();
+  const effectiveHr = await getEffectiveHrConfig(supabase, user.id, profile ?? null);
 
   const ctx = {
     supabase,
     userId: user.id,
-    profile: profile ?? { max_hr: null, resting_hr: null },
+    profile: effectiveHr,
   };
 
   let activityId: string;
@@ -245,7 +248,7 @@ export async function updateActivity(
     .eq("id", user.id)
     .single<Pick<Profile, "max_hr" | "resting_hr">>();
 
-  const profileCtx = profile ?? { max_hr: null, resting_hr: null };
+  const profileCtx = await getEffectiveHrConfig(supabase, user.id, profile ?? null);
 
   // Load streams if they exist
   const { data: streams } = await supabase
@@ -312,12 +315,13 @@ export async function saveParsedActivity(
     .select("max_hr, resting_hr")
     .eq("id", user.id)
     .single<Pick<Profile, "max_hr" | "resting_hr">>();
+  const effectiveHr = await getEffectiveHrConfig(supabase, user.id, profile ?? null);
 
   try {
     const activityId = await ingestActivity(input, {
       supabase,
       userId: user.id,
-      profile: profile ?? { max_hr: null, resting_hr: null },
+      profile: effectiveHr,
     });
 
     revalidatePath("/activities");

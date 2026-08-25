@@ -1,47 +1,95 @@
-# Mini Program Zepp OS
+# Zitto e Corri for Zepp OS
 
-Questa cartella è un progetto Zeus separato dall'app Next.js. Non va copiata
-dentro `app/`: viene compilata e installata sull'orologio tramite Zepp Developer.
+This directory contains the Zepp OS companion for Zitto e Corri. It runs on an
+Amazfit Active 3 Premium and sends health summaries to the main PWA through the
+Zepp phone app.
 
-## Prima installazione
+It is a standalone Zeus project and is built separately from the Next.js app.
 
-1. Nel portale Zepp Developer crea un Mini Program per **Active 3 Premium** e
-   sostituisci l'`appId` provvisorio in `app.json`.
-2. Da questa cartella esegui `npm install`, poi
-   `NODE_PATH=./node_modules/@zeppos/zeus-cli/private-modules npx zeus login`.
-   Il `NODE_PATH` aggira un problema di risoluzione presente in Zeus CLI 1.9.3
-   ed è già incluso negli script npm.
-3. Per installare direttamente sull'orologio esegui `npm run preview`, scegli
-   **Amazfit Active 3 Premium** e scansiona il QR da Zepp → modalità
-   sviluppatore. `npm run dev` serve invece esclusivamente per il simulatore
-   desktop: prima di usarlo devi installare e avviare Zepp OS Simulator, scaricare
-   al suo interno il Device Simulator Active 3 Premium e lasciarlo in ascolto
-   sulla porta locale 7650.
-4. Apri una volta il Mini Program sull'orologio: questo registra le sync locali
-   delle 08:00 e 23:00.
-5. In ZittoAndCorri apri **Impostazioni → Zepp OS** e porta lo switch su ON: il
-   codice di collegamento viene generato nell'app.
-6. Nell'app Zepp sul telefono apri **Active 3 Premium → App → Zitto e Corri →
-   Impostazioni**. Inserisci l'URL HTTPS pubblico di ZittoAndCorri e il codice a
-   sei cifre, quindi premi **Collega**.
-7. Apri il Mini Program sull'orologio e premi **Sincronizza ora**.
+## What it syncs
 
-Il token non deve essere inserito: il Side Service lo riceve dopo il pairing e
-lo conserva nel `SettingsStorage` privato del Mini Program. La coda locale sul
-watch conserva al massimo 14 invii non confermati.
+When available on the watch, the companion sends:
 
-La Settings App include un pannello **Diagnostica sincronizzazione**. Attivando
-“Mostra dettagli tecnici” si vedono payload JSON, dimensione, endpoint, stato
-HTTP e risposta del server dell'ultimo tentativo. Il token non viene mai incluso
-nel log; il payload può invece contenere dati salute e va condiviso con cautela.
+- training load, VO₂ max, recovery time, and heart-rate zones;
+- resting, latest, and maximum heart rate;
+- sleep and naps;
+- stress, blood oxygen, and PAI;
+- steps, calories, standing time, and their targets;
+- basic device and user-profile information.
 
-## Note di collaudo reale
+These summaries support readiness and training insights in Zitto e Corri. The
+companion does not record workouts, use GPS, or turn Zepp workout history into
+activities. FIT and GPX imports remain separate.
 
-- `fullRecoveryTime` resta salvato anche come valore grezzo: prima dell'uso
-  quotidiano va confrontata sul dispositivo l'unità restituita con il valore
-  mostrato da Zepp.
-- L'App Service programmato usa il canale ZML verso il Side Service. Va provato
-  sul firmware reale: il simulatore non riproduce in modo affidabile le
-  sospensioni Bluetooth e i limiti dei servizi in background.
-- GPS, accelerometro, AFib e registrazione workout non sono richiesti né usati.
-- Lo storico workout inviato è solo diagnostico e non genera attività.
+## Requirements
+
+- Amazfit Active 3 Premium with Zepp OS 4.2 or later
+- Zepp on the paired phone with Developer Mode enabled
+- A Zepp Developer account
+- Node.js and npm
+- A public HTTPS deployment of the Zitto e Corri PWA
+
+## Install on a watch
+
+From this directory, install the dependencies and sign in to Zepp Developer:
+
+```bash
+npm install
+NODE_PATH=./node_modules/@zeppos/zeus-cli/private-modules npx zeus login
+```
+
+Build and install the preview:
+
+```bash
+npm run preview
+```
+
+Select **Amazfit Active 3 Premium**, then scan the QR code from the Zepp phone
+app while Developer Mode is active.
+
+## Connect to Zitto e Corri
+
+1. In the PWA, open **Settings → Zepp OS**, enable the integration, and generate
+   a six-digit pairing code.
+2. In the Zepp phone app, open the watch's app list and select **Zitto e Corri →
+   Settings**.
+3. Enter the public HTTPS URL of the PWA and the pairing code, then select
+   **Connect**.
+4. Open Zitto e Corri on the watch and select **Sync now**.
+
+The access token is created and stored automatically; it never needs to be
+copied by the user. Pairing codes expire after ten minutes and can be used only
+once.
+
+## Synchronization
+
+The watch schedules synchronization at 08:00 and 23:00 local time after the
+connection is active. **Sync now** is available both on the watch and in the
+Zepp phone settings.
+
+If the phone or network is unavailable, the watch keeps up to 14 pending
+summaries and retries them later. Disconnecting the integration revokes its
+token and clears the local queue.
+
+## Development
+
+| Command | Purpose |
+| --- | --- |
+| `npm run build` | Create the Zepp OS package |
+| `npm run preview` | Install a preview build on a physical watch |
+| `npm run dev` | Run against Zepp OS Simulator |
+
+`npm run dev` requires Zepp OS Simulator with the Active 3 Premium device
+simulator running on its default local port. The physical watch is the reliable
+environment for testing background synchronization and Bluetooth interruptions.
+
+## Privacy and troubleshooting
+
+The dedicated access token stays in the Mini Program's private settings
+storage. Diagnostic logs never include it, but they can contain health data.
+
+If synchronization fails, open **Zitto e Corri → Settings** in the Zepp phone
+app and enable **Show technical details** under synchronization diagnostics.
+The panel shows the last endpoint, payload size, HTTP status, and server
+response. Share its contents only after reviewing the health information it may
+contain.

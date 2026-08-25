@@ -10,7 +10,22 @@ import { Label } from "@/components/ui/label";
 
 const initialState: ProfileFormState = {};
 
-export function ProfileForm({ profile }: { profile: Partial<Profile> | null }) {
+interface EffectiveHrView {
+  max_hr: number | null;
+  resting_hr: number | null;
+  hr_zone_ranges: number[] | null;
+  max_hr_source: "zepp" | "user" | null;
+  resting_hr_source: "zepp" | "user" | null;
+  zones_source: "zepp" | "derived" | null;
+}
+
+export function ProfileForm({
+  profile,
+  effectiveHr,
+}: {
+  profile: Partial<Profile> | null;
+  effectiveHr: EffectiveHrView;
+}) {
   const [state, formAction, pending] = useActionState(updateProfile, initialState);
 
   return (
@@ -28,6 +43,16 @@ export function ProfileForm({ profile }: { profile: Partial<Profile> | null }) {
       </div>
 
       <form action={formAction} className="space-y-4 border-t border-border/60 pt-4">
+        {(effectiveHr.max_hr_source === "zepp" || effectiveHr.resting_hr_source === "zepp") && (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs leading-relaxed">
+            <p className="font-medium text-primary">Valori attivi da Zepp</p>
+            <p className="mt-1 text-muted-foreground">
+              FC max {effectiveHr.max_hr ?? "—"} bpm · FC a riposo {effectiveHr.resting_hr ?? "—"} bpm
+              {effectiveHr.hr_zone_ranges ? ` · zone ${effectiveHr.hr_zone_ranges.slice(0, 5).join("/")} bpm` : ""}.
+              I valori sotto restano salvati solo come fallback.
+            </p>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div className="grid gap-2">
             <Label htmlFor="max_hr">Frequenza massima</Label>

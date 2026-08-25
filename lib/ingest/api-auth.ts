@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Profile } from "@/lib/types";
 import type { ingestActivity } from "@/lib/ingest/ingest";
+import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 
 type IngestContext = Parameters<typeof ingestActivity>[1];
 
@@ -56,10 +57,11 @@ export async function resolveImportAuth(
     .select("max_hr, resting_hr")
     .eq("id", userId)
     .single<Pick<Profile, "max_hr" | "resting_hr">>();
+  const effectiveHr = await getEffectiveHrConfig(supabase, userId, profile ?? null);
 
   return {
     supabase,
     userId,
-    profile: profile ?? { max_hr: null, resting_hr: null },
+    profile: effectiveHr,
   };
 }

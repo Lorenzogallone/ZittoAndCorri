@@ -109,11 +109,6 @@ export function TechInfoCard({ load, hasData, zepp }: TechInfoCardProps) {
                 <span className="text-xl font-bold tabular-nums">{zepp.readiness.score}</span>
               )}
             </div>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {assisted
-                ? `Valutazione Zepp assistita · confidenza ${zepp!.readiness.confidence}.`
-                : state.description}
-            </p>
           </div>
 
           {latest && (
@@ -121,15 +116,20 @@ export function TechInfoCard({ load, hasData, zepp }: TechInfoCardProps) {
               <div><p className="text-muted-foreground">Carico Zepp</p><p className="mt-1 text-lg font-semibold tabular-nums">{latest.training_load ?? "—"}</p></div>
               <div><p className="text-muted-foreground">VO₂max</p><p className="mt-1 text-lg font-semibold tabular-nums">{latest.vo2_max ?? "—"}</p></div>
               <div><p className="text-muted-foreground">Recupero Zepp</p><p className="mt-1 font-semibold tabular-nums">{latest.recovery_raw == null ? "—" : assisted ? `${latest.recovery_raw} h` : `${latest.recovery_raw} (grezzo)`}</p></div>
-              <div><p className="text-muted-foreground">Sonno</p><p className="mt-1 font-semibold tabular-nums">{latest.sleep_score == null ? "—" : `${latest.sleep_score}/100`}</p></div>
+              <div><p className="text-muted-foreground">Sonno</p><p className="mt-1 font-semibold tabular-nums">{latest.sleep_score == null ? "—" : `${latest.sleep_score}/100`}{latest.sleep_total_min == null ? "" : ` · ${Math.floor(latest.sleep_total_min / 60)}h ${latest.sleep_total_min % 60}m`}</p></div>
               <div><p className="text-muted-foreground">HR riposo</p><p className="mt-1 font-semibold tabular-nums">{latest.resting_hr == null ? "—" : `${latest.resting_hr} bpm`}</p></div>
+              <div><p className="text-muted-foreground">FC max configurata</p><p className="mt-1 font-semibold tabular-nums">{latest.hr_zone_ranges?.at(-1) == null ? "—" : `${latest.hr_zone_ranges.at(-1)} bpm`}</p></div>
               <div><p className="text-muted-foreground">Stress medio</p><p className="mt-1 font-semibold tabular-nums">{latest.stress_avg ?? "—"}</p></div>
               <div><p className="text-muted-foreground">SpO₂ media</p><p className="mt-1 font-semibold tabular-nums">{latest.spo2_avg == null ? "—" : `${latest.spo2_avg}%`}</p></div>
-              <div><p className="text-muted-foreground">Temperatura cute</p><p className="mt-1 font-semibold tabular-nums">{latest.skin_temp_avg_c == null ? "—" : `${latest.skin_temp_avg_c} °C`}</p></div>
               <div><p className="text-muted-foreground">PAI oggi</p><p className="mt-1 font-semibold tabular-nums">{latest.pai_today ?? "—"}</p></div>
               <div><p className="text-muted-foreground">Passi</p><p className="mt-1 font-semibold tabular-nums">{latest.steps?.toLocaleString("it-IT") ?? "—"}</p></div>
               <div><p className="text-muted-foreground">Calorie</p><p className="mt-1 font-semibold tabular-nums">{latest.calories == null ? "—" : `${latest.calories} kcal`}</p></div>
               <div><p className="text-muted-foreground">Ore in piedi</p><p className="mt-1 font-semibold tabular-nums">{latest.stand_hours ?? "—"}</p></div>
+              {latest.hr_zone_ranges && (
+                <p className="col-span-2 text-[11px] text-muted-foreground sm:col-span-3">
+                  Zone Zepp: {latest.hr_zone_ranges.slice(0, 5).map((value, index) => `Z${index + 1} ${value}`).join(" · ")} bpm
+                </p>
+              )}
               <p className="col-span-2 border-t border-border/60 pt-2 text-[11px] text-muted-foreground sm:col-span-3">
                 Aggiornato {new Date(latest.captured_at).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })}
               </p>

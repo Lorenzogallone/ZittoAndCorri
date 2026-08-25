@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { TechInfoCard } from "@/app/settings/tech-info-card";
 import { computeATLCTL } from "@/lib/metrics/load";
 import { getZeppDashboard } from "@/lib/zepp/data";
+import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import type { Goal, Activity, Profile } from "@/lib/types";
 import { formatDistance, formatDuration, daysUntil, activeDuration } from "@/lib/format";
 
@@ -36,6 +37,7 @@ export default async function ProfilePage() {
       .returns<Pick<Activity, "started_at" | "duration_s" | "moving_time_s" | "rpe" | "avg_hr" | "time_in_zone" | "sport">[]>(),
   ]);
 
+  const effectiveHr = await getEffectiveHrConfig(supabase, user.id, profile ?? null);
   const load = computeATLCTL(
     (activities ?? []).map((activity) => ({
       started_at: activity.started_at,
@@ -46,7 +48,7 @@ export default async function ProfilePage() {
       sport: activity.sport,
     })),
     undefined,
-    profile ?? { max_hr: null, resting_hr: null },
+    effectiveHr,
   );
   const zepp = await getZeppDashboard(supabase, user.id, load);
 
