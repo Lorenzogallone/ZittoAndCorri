@@ -21,8 +21,8 @@ export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="flex items-start gap-3 p-4">
+    <section className="py-5">
+      <div className="flex items-start gap-3">
         <span className="rounded-xl bg-primary/10 p-2 text-primary">
           <Brain size={18} />
         </span>
@@ -39,7 +39,7 @@ export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
         </div>
       </div>
 
-      <div className="border-t border-border/60 px-4">
+      <div className="mt-4 border-t border-border/60">
         {memories.length ? (
           <div className="divide-y divide-border/60">
             {memories.map((memory) => (
@@ -63,7 +63,7 @@ export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2 border-t border-border/60 p-4">
+      <div className="flex flex-wrap gap-2 border-t border-border/60 pt-4">
         <Button
           type="button"
           variant="outline"

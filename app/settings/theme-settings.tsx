@@ -52,8 +52,8 @@ export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card transition-all duration-200">
-      <div className="flex items-start gap-3 p-4">
+    <section className="py-5">
+      <div className="flex items-start gap-3">
           <div className="rounded-xl bg-primary/10 p-2 text-primary">
             <Palette size={18} />
           </div>
@@ -64,7 +64,7 @@ export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
             </p>
           </div>
         </div>
-        <div id="theme-settings-content" className="space-y-6 border-t border-border/60 px-5 pb-5 pt-4">
+        <div id="theme-settings-content" className="mt-4 space-y-6 border-t border-border/60 pt-4">
           {/* Modalità */}
           <div className="space-y-2.5">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -176,6 +176,6 @@ export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
             </div>
           </div>
         </div>
-    </div>
+    </section>
   );
 }

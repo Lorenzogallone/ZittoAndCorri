@@ -19,8 +19,8 @@ export function IntegrationCard({
   const contentId = id ? `${id}-content` : undefined;
 
   return (
-    <section id={id} className="scroll-mt-6 overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="flex items-start gap-3 p-4">
+    <section id={id} className="scroll-mt-6 py-5">
+      <div className="flex items-start gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
           {icon}
         </span>
@@ -29,7 +29,7 @@ export function IntegrationCard({
           <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
         </div>
       </div>
-      <div id={contentId} className="border-t border-border/60 p-4">
+      <div id={contentId} className="mt-4 border-t border-border/60 pt-4">
         {children}
       </div>
     </section>

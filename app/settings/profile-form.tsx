@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
-import { Check, HeartPulse } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Check, HeartPulse, Pencil } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { updateProfile, type ProfileFormState } from "./actions";
 import type { Profile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -26,85 +27,153 @@ export function ProfileForm({
   profile: Partial<Profile> | null;
   effectiveHr: EffectiveHrView;
 }) {
-  const [state, formAction, pending] = useActionState(updateProfile, initialState);
+  const [state, setState] = useState<ProfileFormState>(initialState);
+  const [pending, startTransition] = useTransition();
+  const [editing, setEditing] = useState(false);
+  const router = useRouter();
+  const zeppActive = effectiveHr.max_hr_source === "zepp" || effectiveHr.resting_hr_source === "zepp";
+
+  const save = (formData: FormData) => startTransition(async () => {
+    const result = await updateProfile(initialState, formData);
+    setState(result);
+    if (result.ok) {
+      setEditing(false);
+      router.refresh();
+    }
+  });
+
+  const birthdate = profile?.birthdate
+    ? new Date(`${profile.birthdate}T12:00:00`).toLocaleDateString("it-IT", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "Non impostata";
+
+  const sourceLabel = (source: EffectiveHrView["max_hr_source"]) =>
+    source === "zepp" ? "Zepp" : source === "user" ? "Manuale" : "Non impostata";
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-4">
-      <div className="mb-4 flex items-start gap-3">
+    <section className="py-5">
+      <div className="flex items-start gap-3">
         <span className="rounded-xl bg-primary/10 p-2 text-primary">
           <HeartPulse size={18} />
         </span>
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">Dati atleta</h2>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-foreground">Dati atleta</h2>
+            {!editing && (
+              <Button type="button" variant="ghost" size="sm" onClick={() => { setState(initialState); setEditing(true); }}>
+                <Pencil size={14} /> Modifica
+              </Button>
+            )}
+          </div>
           <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            Mantieni aggiornati i dati che aiutano il coach a personalizzare le indicazioni.
+            FC e zone Zepp hanno priorità; i valori manuali restano disponibili come fallback.
           </p>
         </div>
       </div>
 
-      <form action={formAction} className="space-y-4 border-t border-border/60 pt-4">
-        {(effectiveHr.max_hr_source === "zepp" || effectiveHr.resting_hr_source === "zepp") && (
-          <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs leading-relaxed">
-            <p className="font-medium text-primary">Valori attivi da Zepp</p>
-            <p className="mt-1 text-muted-foreground">
-              FC max {effectiveHr.max_hr ?? "—"} bpm · FC a riposo {effectiveHr.resting_hr ?? "—"} bpm
-              {effectiveHr.hr_zone_ranges ? ` · zone ${effectiveHr.hr_zone_ranges.slice(0, 5).join("/")} bpm` : ""}.
-              I valori sotto restano salvati solo come fallback.
+      {!editing ? (
+        <div className="mt-4 border-t border-border/60 pt-4">
+          <dl className="grid grid-cols-3 gap-3">
+            <div>
+              <dt className="text-[11px] text-muted-foreground">FC massima</dt>
+              <dd className="mt-1 text-base font-semibold tabular-nums">
+                {effectiveHr.max_hr == null ? "—" : `${effectiveHr.max_hr} bpm`}
+              </dd>
+              <p className={`mt-0.5 text-[10px] ${effectiveHr.max_hr_source === "zepp" ? "text-primary" : "text-muted-foreground"}`}>
+                {sourceLabel(effectiveHr.max_hr_source)}
+              </p>
+            </div>
+            <div>
+              <dt className="text-[11px] text-muted-foreground">FC a riposo</dt>
+              <dd className="mt-1 text-base font-semibold tabular-nums">
+                {effectiveHr.resting_hr == null ? "—" : `${effectiveHr.resting_hr} bpm`}
+              </dd>
+              <p className={`mt-0.5 text-[10px] ${effectiveHr.resting_hr_source === "zepp" ? "text-primary" : "text-muted-foreground"}`}>
+                {sourceLabel(effectiveHr.resting_hr_source)}
+              </p>
+            </div>
+            <div>
+              <dt className="text-[11px] text-muted-foreground">Data di nascita</dt>
+              <dd className="mt-1 text-sm font-medium leading-6">{birthdate}</dd>
+            </div>
+          </dl>
+          {effectiveHr.hr_zone_ranges && (
+            <p className="mt-3 text-[11px] text-muted-foreground">
+              Zone Zepp · {effectiveHr.hr_zone_ranges.slice(0, 5).map((value, index) => `Z${index + 1} ${value}`).join(" · ")} bpm
             </p>
+          )}
+          {state.ok && (
+            <p className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400" aria-live="polite">
+              <Check size={14} /> Dati salvati
+            </p>
+          )}
+        </div>
+      ) : (
+        <form action={save} className="mt-4 space-y-4 border-t border-border/60 pt-4">
+          {zeppActive && (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Stai modificando i valori manuali di fallback. Finché Zepp resta collegato, l&apos;app continuerà a usare i valori provenienti dall&apos;orologio.
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-2">
+              <Label htmlFor="max_hr">FC massima manuale</Label>
+              <Input
+                id="max_hr"
+                name="max_hr"
+                type="number"
+                min="0"
+                inputMode="numeric"
+                placeholder="190 bpm"
+                defaultValue={profile?.max_hr ?? ""}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="resting_hr">FC a riposo manuale</Label>
+              <Input
+                id="resting_hr"
+                name="resting_hr"
+                type="number"
+                min="0"
+                inputMode="numeric"
+                placeholder="50 bpm"
+                defaultValue={profile?.resting_hr ?? ""}
+              />
+            </div>
           </div>
-        )}
-        <div className="grid grid-cols-2 gap-3">
+
           <div className="grid gap-2">
-            <Label htmlFor="max_hr">Frequenza massima</Label>
+            <Label htmlFor="birthdate">Data di nascita</Label>
             <Input
-              id="max_hr"
-              name="max_hr"
-              type="number"
-              min="0"
-              inputMode="numeric"
-              placeholder="190 bpm"
-              defaultValue={profile?.max_hr ?? ""}
+              id="birthdate"
+              name="birthdate"
+              type="date"
+              defaultValue={profile?.birthdate ?? ""}
             />
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="resting_hr">A riposo</Label>
-            <Input
-              id="resting_hr"
-              name="resting_hr"
-              type="number"
-              min="0"
-              inputMode="numeric"
-              placeholder="50 bpm"
-              defaultValue={profile?.resting_hr ?? ""}
-            />
+
+          {state.error && (
+            <p className="rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+              {state.error}
+            </p>
+          )}
+
+          <div className="flex items-center justify-between gap-3">
+            <span />
+            <div className="flex gap-2">
+              <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => { setState(initialState); setEditing(false); }}>
+                Annulla
+              </Button>
+              <Button type="submit" size="sm" disabled={pending}>
+                {pending ? "Salvataggio…" : "Salva"}
+              </Button>
+            </div>
           </div>
-        </div>
-
-        <div className="grid gap-2">
-          <Label htmlFor="birthdate">Data di nascita</Label>
-          <Input
-            id="birthdate"
-            name="birthdate"
-            type="date"
-            defaultValue={profile?.birthdate ?? ""}
-          />
-        </div>
-
-        {state.error && (
-          <p className="rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
-            {state.error}
-          </p>
-        )}
-
-        <div className="flex items-center justify-between gap-3">
-          <span aria-live="polite" className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-            {state.ok && <><Check size={14} /> Dati salvati</>}
-          </span>
-          <Button type="submit" size="sm" disabled={pending}>
-            {pending ? "Salvataggio…" : "Salva dati"}
-          </Button>
-        </div>
-      </form>
+        </form>
+      )}
     </section>
   );
 }

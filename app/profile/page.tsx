@@ -93,9 +93,9 @@ export default async function ProfilePage() {
       />
 
       <Link href="/goals" className="block">
-        <div className="rounded-2xl border border-border bg-card p-5 transition-colors hover:border-primary/25 active:scale-[0.98]">
+        <section className="border-y border-border/70 py-5 transition-colors hover:bg-muted/15 active:bg-muted/25">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Obiettivo attivo</h2>
+            <h2 className="text-base font-semibold tracking-tight">Obiettivo attivo</h2>
             <span className="text-xl leading-none text-muted-foreground/60">›</span>
           </div>
           {activeGoal ? (
@@ -129,7 +129,7 @@ export default async function ProfilePage() {
               Nessun obiettivo impostato — tocca per aggiungerne uno.
             </p>
           )}
-        </div>
+        </section>
       </Link>
     </AppShell>
   );
