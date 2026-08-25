@@ -5,7 +5,7 @@ import {
   storeZeppPayload,
 } from "@/lib/zepp/data";
 import { bearerToken, readJsonWithLimit, ZEPP_MAX_BODY_BYTES } from "@/lib/zepp/http";
-import { ZeppSyncBatchSchema } from "@/lib/zepp/schema";
+import { ZeppSyncBatchSchema, ZeppSyncPayloadSchema } from "@/lib/zepp/schema";
 
 export async function POST(request: Request): Promise<Response> {
   try {
@@ -15,7 +15,9 @@ export async function POST(request: Request): Promise<Response> {
     if (!connection) return Response.json({ error: "Token non valido o revocato." }, { status: 401 });
 
     const body = await readJsonWithLimit(request, ZEPP_MAX_BODY_BYTES);
-    const parsed = ZeppSyncBatchSchema.safeParse(body);
+    const parsed = Array.isArray(body)
+      ? ZeppSyncBatchSchema.safeParse(body)
+      : ZeppSyncPayloadSchema.safeParse(body);
     if (!parsed.success) {
       console.warn("Zepp payload rejected:", parsed.error.issues.slice(0, 10).map((issue) => ({
         path: issue.path.join("."),

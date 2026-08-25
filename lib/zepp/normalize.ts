@@ -129,7 +129,10 @@ export function normalizeZeppPayload(
   const deviceProfile: Record<string, unknown> = {};
   if (profile) {
     const age = valid(profile.age, 1, 120);
-    const height = valid(profile.heightCm, 50, 260);
+    const rawHeight = profile.heightCm != null && profile.heightCm > 0 && profile.heightCm < 3
+      ? profile.heightCm * 100
+      : profile.heightCm;
+    const height = valid(rawHeight, 50, 260);
     const weight = valid(profile.weightKg, 20, 400);
     if (age != null) deviceProfile.age = age;
     if (height != null) deviceProfile.height_cm = height;

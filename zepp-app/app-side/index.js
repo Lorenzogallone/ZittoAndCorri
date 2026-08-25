@@ -1,6 +1,21 @@
 import { BaseSideService } from "@zeppos/zml/base-side"
 
 const STORAGE = () => settings.settingsStorage
+const DIAGNOSTIC_LIMIT = 60000
+
+function diagnosticJson(value) {
+  try {
+    const text = JSON.stringify(value, null, 2)
+    if (text.length <= DIAGNOSTIC_LIMIT) return text
+    return `${text.slice(0, DIAGNOSTIC_LIMIT)}\n… [tagliato: ${text.length} caratteri totali]`
+  } catch (error) {
+    return `Impossibile serializzare: ${error.message || String(error)}`
+  }
+}
+
+function setDiagnostic(key, value) {
+  STORAGE().setItem(`diagnostic_${key}`, String(value ?? ""))
+}
 
 function parseBody(response) {
   if (typeof response.body === "string") {
@@ -30,6 +45,12 @@ function clientId() {
 async function request(path, options = {}) {
   const origin = normalizedOrigin()
   if (!origin) throw new Error("Inserisci l'URL di ZittoAndCorri")
+  if (options.diagnostic) {
+    setDiagnostic("attempt_at", new Date().toISOString())
+    setDiagnostic("endpoint", `${origin}${path}`)
+    setDiagnostic("http_status", "In attesa…")
+    setDiagnostic("response", "Richiesta in corso…")
+  }
   const response = await fetch({
     url: `${origin}${path}`,
     method: "POST",
@@ -40,6 +61,10 @@ async function request(path, options = {}) {
     body: JSON.stringify(options.body || {}),
   })
   const body = parseBody(response)
+  if (options.diagnostic) {
+    setDiagnostic("http_status", response.status)
+    setDiagnostic("response", diagnosticJson(body))
+  }
   if (response.status < 200 || response.status >= 300) {
     const detail = Array.isArray(body.details) && body.details.length
       ? body.details.map((item) => `${(item.path || []).join(".")}: ${item.message || item.code}`).join("; ")
@@ -69,12 +94,19 @@ async function pair() {
 async function postPayload(payload) {
   const token = STORAGE().getItem("access_token")
   if (!token) throw new Error("Zepp OS non collegato")
+  const serializedPayload = diagnosticJson(payload)
+  setDiagnostic("payload", serializedPayload)
+  setDiagnostic("payload_size", JSON.stringify(payload).length)
   try {
-    const result = await request("/api/zepp/sync", { token, body: payload })
+    const result = await request("/api/zepp/sync", { token, body: payload, diagnostic: true })
     STORAGE().setItem("last_sync", result.serverTime || new Date().toISOString())
     STORAGE().setItem("connection_status", "Sincronizzazione completata")
     return result
   } catch (error) {
+    if (!STORAGE().getItem("diagnostic_response") || STORAGE().getItem("diagnostic_response") === "Richiesta in corso…") {
+      setDiagnostic("http_status", error.status || "Errore di rete")
+      setDiagnostic("response", error.message || String(error))
+    }
     STORAGE().setItem("connection_status", error.message || String(error))
     if (error.status === 401) {
       STORAGE().removeItem("access_token")

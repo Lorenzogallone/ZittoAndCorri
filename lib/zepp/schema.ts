@@ -53,7 +53,9 @@ const WorkoutSchema = z.object({
 const HeartRateSchema = z.object({
   resting: optionalNumber,
   last: optionalNumber,
-  maximum: z.object({ value: finite, time: finite.nullish() }).nullish(),
+  maximum: z.object({ value: optionalNumber, time: optionalNumber })
+    .transform((measurement) => measurement.value == null ? null : measurement)
+    .nullish(),
   today: finiteArray(1_440).nullish(),
 }).nullish();
 
@@ -82,7 +84,9 @@ const SleepSchema = z.object({
 const StressHourSchema = z.object({ second: finite, stress: finite });
 
 const StressSchema = z.object({
-  current: z.object({ value: finite, time: finite.nullish() }).nullish(),
+  current: z.object({ value: optionalNumber, time: optionalNumber })
+    .transform((measurement) => measurement.value == null ? null : measurement)
+    .nullish(),
   todayByHour: finiteArray(24).nullish(),
   lastWeek: finiteArray(7).nullish(),
   lastWeekByHour: validObjectArray(StressHourSchema, 168).nullish(),
@@ -91,13 +95,17 @@ const StressSchema = z.object({
 const Spo2SampleSchema = z.object({ value: finite, time: finite });
 
 const Spo2Schema = z.object({
-  current: z.object({ value: finite, time: finite.nullish(), retCode: z.number().int().nullish() }).nullish(),
+  current: z.object({ value: optionalNumber, time: optionalNumber, retCode: z.number().int().nullish() })
+    .transform((measurement) => measurement.value == null ? null : measurement)
+    .nullish(),
   lastDay: finiteArray(24).nullish(),
   samples: validObjectArray(Spo2SampleSchema, 500).nullish(),
 }).nullish();
 
 const BodyTemperatureSchema = z.object({
-  current: z.object({ value: finite, time: finite.nullish() }).nullish(),
+  current: z.object({ value: optionalNumber, time: optionalNumber })
+    .transform((measurement) => measurement.value == null ? null : measurement)
+    .nullish(),
   today: finiteArray(288).nullish(),
 }).nullish();
 
@@ -146,10 +154,7 @@ export const ZeppSyncPayloadSchema = z.object({
   }),
 });
 
-export const ZeppSyncBatchSchema = z.union([
-  ZeppSyncPayloadSchema,
-  z.array(ZeppSyncPayloadSchema).min(1).max(14),
-]);
+export const ZeppSyncBatchSchema = z.array(ZeppSyncPayloadSchema).min(1).max(14);
 
 export const ZeppPairRequestSchema = z.object({
   code: z.string().regex(/^\d{6}$/),
