@@ -1,9 +1,25 @@
 import { z } from "zod";
 
 const finite = z.number().finite();
-const positiveOrZero = finite.min(0);
 const optionalNumber = finite.nullish();
 const shortString = z.string().trim().max(120);
+
+function finiteArray(maximum: number) {
+  return z.array(z.unknown()).max(maximum).transform((values) =>
+    values.filter((value): value is number => typeof value === "number" && Number.isFinite(value)),
+  );
+}
+
+function validObjectArray<T extends z.ZodType>(schema: T, maximum: number) {
+  return z.array(z.unknown()).max(maximum).transform((values): Array<z.output<T>> => {
+    const result: Array<z.output<T>> = [];
+    for (const value of values) {
+      const parsed = schema.safeParse(value);
+      if (parsed.success) result.push(parsed.data);
+    }
+    return result;
+  });
+}
 
 const DeviceSchema = z.object({
   deviceName: shortString.nullish(),
@@ -12,30 +28,46 @@ const DeviceSchema = z.object({
   firmwareVersion: shortString.nullish(),
   apiLevel: shortString.nullish(),
   appVersion: shortString.nullish(),
-  batteryPercent: z.number().int().min(0).max(100).nullish(),
+  batteryPercent: optionalNumber,
+});
+
+const HrZoneSchema = z.object({
+  type: finite,
+  rest: finite,
+  range: finiteArray(8),
+});
+
+const WorkoutHistorySchema = z.object({
+  startTime: finite,
+  duration: finite,
 });
 
 const WorkoutSchema = z.object({
   trainingLoad: optionalNumber,
   vo2Max: optionalNumber,
   fullRecoveryTime: optionalNumber,
-  hrZones: z.object({
-    type: z.number().int().min(0).max(1),
-    rest: z.number().int(),
-    range: z.array(finite).max(8),
-  }).nullish(),
-  history: z.array(z.object({
-    startTime: finite,
-    duration: positiveOrZero,
-  })).max(200).nullish(),
+  hrZones: HrZoneSchema.nullish(),
+  history: validObjectArray(WorkoutHistorySchema, 200).nullish(),
 }).nullish();
 
 const HeartRateSchema = z.object({
   resting: optionalNumber,
   last: optionalNumber,
   maximum: z.object({ value: finite, time: finite.nullish() }).nullish(),
-  today: z.array(finite).max(1_440).nullish(),
+  today: finiteArray(1_440).nullish(),
 }).nullish();
+
+const SleepStageSchema = z.object({
+  model: finite,
+  start: finite,
+  stop: finite,
+});
+
+const NapSchema = z.object({
+  length: finite,
+  start: finite,
+  stop: finite,
+});
 
 const SleepSchema = z.object({
   score: optionalNumber,
@@ -43,40 +75,36 @@ const SleepSchema = z.object({
   startTime: optionalNumber,
   endTime: optionalNumber,
   totalTime: optionalNumber,
-  stages: z.array(z.object({
-    model: z.number().int(),
-    start: finite,
-    stop: finite,
-  })).max(200).nullish(),
-  naps: z.array(z.object({
-    length: positiveOrZero,
-    start: finite,
-    stop: finite,
-  })).max(50).nullish(),
+  stages: validObjectArray(SleepStageSchema, 200).nullish(),
+  naps: validObjectArray(NapSchema, 50).nullish(),
 }).nullish();
+
+const StressHourSchema = z.object({ second: finite, stress: finite });
 
 const StressSchema = z.object({
   current: z.object({ value: finite, time: finite.nullish() }).nullish(),
-  todayByHour: z.array(finite).max(24).nullish(),
-  lastWeek: z.array(finite).max(7).nullish(),
-  lastWeekByHour: z.array(z.object({ second: finite, stress: finite })).max(168).nullish(),
+  todayByHour: finiteArray(24).nullish(),
+  lastWeek: finiteArray(7).nullish(),
+  lastWeekByHour: validObjectArray(StressHourSchema, 168).nullish(),
 }).nullish();
+
+const Spo2SampleSchema = z.object({ value: finite, time: finite });
 
 const Spo2Schema = z.object({
   current: z.object({ value: finite, time: finite.nullish(), retCode: z.number().int().nullish() }).nullish(),
-  lastDay: z.array(finite).max(24).nullish(),
-  samples: z.array(z.object({ value: finite, time: finite })).max(500).nullish(),
+  lastDay: finiteArray(24).nullish(),
+  samples: validObjectArray(Spo2SampleSchema, 500).nullish(),
 }).nullish();
 
 const BodyTemperatureSchema = z.object({
   current: z.object({ value: finite, time: finite.nullish() }).nullish(),
-  today: z.array(finite).max(288).nullish(),
+  today: finiteArray(288).nullish(),
 }).nullish();
 
 const PaiSchema = z.object({
   total: optionalNumber,
   today: optionalNumber,
-  lastWeek: z.array(finite).max(7).nullish(),
+  lastWeek: finiteArray(7).nullish(),
 }).nullish();
 
 const ActivitySummarySchema = z.object({

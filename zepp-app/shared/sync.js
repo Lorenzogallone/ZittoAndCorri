@@ -38,7 +38,7 @@ export async function flushPending(requester) {
       sent += 1
     } catch (error) {
       setLastResult({ ok: false, at: new Date().toISOString(), error: String(error) })
-      break
+      throw error
     }
   }
   return sent

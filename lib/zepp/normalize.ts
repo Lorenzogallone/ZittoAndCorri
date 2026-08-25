@@ -119,7 +119,7 @@ export function normalizeZeppPayload(
   assign("stand_hours", valid(data.activity?.standHours, 0, 24));
 
   if (data.workout?.hrZones) {
-    row.hr_zone_type = data.workout.hrZones.type;
+    assign("hr_zone_type", valid(data.workout.hrZones.type, 0, 1));
     assign("hr_zone_rest", valid(data.workout.hrZones.rest, 25, 220));
     const ranges = validList(data.workout.hrZones.range, 25, 240);
     if (ranges.length >= 5) row.hr_zone_ranges = ranges;
@@ -137,7 +137,8 @@ export function normalizeZeppPayload(
     if (profile.gender != null) deviceProfile.gender = profile.gender;
     if (profile.region) deviceProfile.region = profile.region;
   }
-  if (payload.device.batteryPercent != null) deviceProfile.battery_percent = payload.device.batteryPercent;
+  const batteryPercent = valid(payload.device.batteryPercent, 0, 100);
+  if (batteryPercent != null) deviceProfile.battery_percent = batteryPercent;
   if (Object.keys(deviceProfile).length) row.device_profile = deviceProfile;
 
   row.completeness = {

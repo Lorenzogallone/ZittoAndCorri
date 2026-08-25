@@ -122,6 +122,40 @@ test("il payload V1 filtra sentinelle senza iniziare misurazioni", () => {
   assert.equal(normalized.skin_temp_avg_c, 34.95);
 });
 
+test("un singolo valore sensore malformato non blocca tutto il payload", () => {
+  const parsed = ZeppSyncPayloadSchema.parse({
+    schemaVersion: 1,
+    clientSyncId: "zc:1724572800000:2",
+    trigger: "retry",
+    capturedAt: "2026-08-25T08:00:00.000Z",
+    localDate: "2026-08-25",
+    timezoneOffsetMinutes: 120,
+    device: { deviceName: "Active 3 Premium", batteryPercent: -1 },
+    data: {
+      workout: {
+        trainingLoad: 466,
+        vo2Max: 48,
+        hrZones: { type: -1, rest: 0, range: [null, 120, "bad", 140, 150, 160, 170] },
+        history: [null, { startTime: 1_724_572_800, duration: 3_600 }],
+      },
+      heartRate: { resting: 52, today: [null, 0, 52, "bad", 60] },
+      sleep: { score: 85, stages: [null, { model: 1, start: 10, stop: 20 }] },
+      stress: null,
+      spo2: null,
+      bodyTemperature: null,
+      pai: null,
+      activity: null,
+      userProfile: null,
+    },
+  });
+  const normalized = normalizeZeppPayload(parsed, "user-1", "connection-1");
+  assert.equal(normalized.training_load, 466);
+  assert.deepEqual(normalized.hr_series, [52, 60]);
+  assert.equal(normalized.hr_zone_type, undefined);
+  assert.deepEqual(normalized.sleep_stages, [{ model: 1, start: 10, stop: 20 }]);
+  assert.equal(normalized.device_profile, undefined);
+});
+
 test("la migrazione Zepp applica isolamento utente, idempotenza e cascade", () => {
   const sql = readFileSync("supabase/migrations/0014_zepp_os.sql", "utf8");
   for (const table of [

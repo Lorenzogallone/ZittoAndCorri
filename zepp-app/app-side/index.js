@@ -41,7 +41,10 @@ async function request(path, options = {}) {
   })
   const body = parseBody(response)
   if (response.status < 200 || response.status >= 300) {
-    const error = new Error(body.error || `HTTP ${response.status}`)
+    const detail = Array.isArray(body.details) && body.details.length
+      ? body.details.map((item) => `${(item.path || []).join(".")}: ${item.message || item.code}`).join("; ")
+      : ""
+    const error = new Error(`${body.error || `HTTP ${response.status}`}${detail ? ` ${detail}` : ""}`)
     error.status = response.status
     throw error
   }
