@@ -4,8 +4,8 @@
 // attesa per quel tipo di seduta. Il risultato entra nel prompt del coach:
 // così se le easy escono in Z3/Z4 il piano successivo se lo ricorda.
 
-import { zoneForHr } from "@/lib/metrics/zones";
-import type { ActivityType, Profile, WorkoutType, ZoneKey } from "@/lib/types";
+import { zoneForHr, type HrConfig } from "@/lib/metrics/zones";
+import type { ActivityType, WorkoutType, ZoneKey } from "@/lib/types";
 
 /** Zona HR massima attesa per ciascun tipo di seduta di corsa. */
 const EXPECTED_MAX_ZONE: Partial<Record<WorkoutType, ZoneKey>> = {
@@ -52,7 +52,7 @@ interface CalibrationRun {
  */
 export function calibratePaces(
   runs: CalibrationRun[],
-  profile: Pick<Profile, "max_hr" | "resting_hr">,
+  profile: HrConfig,
 ): PaceCalibrationEntry[] | null {
   if (profile.max_hr == null) return null;
 

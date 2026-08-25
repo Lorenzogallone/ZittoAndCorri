@@ -7,6 +7,7 @@ import { formatDistance, formatDuration, formatPace, activeDuration } from "@/li
 import { timeInZoneFromSeries } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
 import type { Activity, ActivityStream, Evaluation, Profile, TimeInZone } from "@/lib/types";
+import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { Clock, Gauge, Heart, HeartPulse, Mountain, Flame, Footprints, TrendingUp } from "lucide-react";
 import { HrChart, PaceChart, ElevationChart } from "./activity-charts";
 import { ActivityEvaluation } from "@/components/activity-evaluation";
@@ -167,7 +168,7 @@ export default async function ActivityDetailPage({
     timeStyle: "short",
   });
 
-  const profileCtx = profile ?? { max_hr: null, resting_hr: null };
+  const profileCtx = await getEffectiveHrConfig(supabase, user.id, profile ?? null);
 
   // Zone HR: se abbiamo la serie reale la usiamo (più precisa), altrimenti quella salvata
   const computedZones: TimeInZone | null =

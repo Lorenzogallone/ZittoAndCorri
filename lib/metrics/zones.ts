@@ -22,13 +22,39 @@ export interface HrZones {
 }
 
 /** Config HR sufficiente al calcolo zone. */
-type HrConfig = Pick<Profile, "max_hr" | "resting_hr">;
+export type HrConfig = Pick<Profile, "max_hr" | "resting_hr"> & {
+  /** Soglie Zepp: limiti inferiori Z1-Z5 seguiti dalla FC massima configurata. */
+  hr_zone_ranges?: number[] | null;
+};
 
 /**
  * Calcola le soglie inferiori (bpm) delle 5 zone via HRR/Karvonen.
  * Ritorna null se manca una delle due misure (niente default fisiologici).
  */
 export function hrZones(profile: HrConfig): HrZones | null {
+  const configured = profile.hr_zone_ranges;
+  if (configured && configured.length >= 6) {
+    const ranges = configured.slice(0, 6);
+    const valid = ranges.every((value, index) =>
+      Number.isFinite(value)
+      && value >= 25
+      && value <= 240
+      && (index === 0 || value > ranges[index - 1]),
+    );
+    if (valid) {
+      return {
+        lower: {
+          z1: Math.round(ranges[0]),
+          z2: Math.round(ranges[1]),
+          z3: Math.round(ranges[2]),
+          z4: Math.round(ranges[3]),
+          z5: Math.round(ranges[4]),
+        },
+        max_hr: Math.round(ranges[5]),
+        resting_hr: profile.resting_hr ?? 0,
+      };
+    }
+  }
   const max_hr = profile.max_hr;
   const resting_hr = profile.resting_hr;
   if (max_hr == null || resting_hr == null) return null;

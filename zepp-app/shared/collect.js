@@ -1,7 +1,5 @@
 import {
-  Battery,
   BloodOxygen,
-  BodyTemperature,
   Calorie,
   HeartRate,
   Pai,
@@ -33,18 +31,9 @@ function localDate(now) {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
 }
 
-function normalizeTemperatureCurrent(value) {
-  if (!value || typeof value.current !== "number" || !Number.isFinite(value.current)) return null
-  return { value: value.current, time: value.time }
-}
-
 function heightInCentimeters(value) {
   if (typeof value !== "number" || !Number.isFinite(value)) return null
   return value > 0 && value < 3 ? value * 100 : value
-}
-
-function normalizeSpo2Samples(values) {
-  return (values || []).slice(-500).map((item) => ({ value: item.spo2, time: item.time }))
 }
 
 function limited(values, maximum) {
@@ -58,12 +47,10 @@ export function collectHealthPayload(trigger = "manual") {
   const sleep = safe(() => new Sleep())
   const stress = safe(() => new Stress())
   const spo2 = safe(() => new BloodOxygen())
-  const temperature = safe(() => new BodyTemperature())
   const pai = safe(() => new Pai())
   const steps = safe(() => new Step())
   const calories = safe(() => new Calorie())
   const stand = safe(() => new Stand())
-  const battery = safe(() => new Battery())
   const device = safe(() => getDeviceInfo(), {})
   const system = safe(() => getSystemInfo(), {})
   const profile = safe(() => getProfile(), null)
@@ -83,8 +70,7 @@ export function collectHealthPayload(trigger = "manual") {
       osVersion: system.osVersion,
       firmwareVersion: system.firmwareVersion,
       apiLevel: system.minAPI,
-      appVersion: "1.0.3",
-      batteryPercent: battery ? safe(() => battery.getCurrent()) : null,
+      appVersion: "1.0.4",
     },
     data: {
       workout: workout ? {
@@ -92,7 +78,6 @@ export function collectHealthPayload(trigger = "manual") {
         vo2Max: workoutStatus.vo2Max,
         fullRecoveryTime: workoutStatus.fullRecoveryTime,
         hrZones: safe(() => workout.getUserHrZoneSettings()),
-        history: limited(safe(() => workout.getHistory(), []), 200),
       } : null,
       heartRate: heartRate ? {
         resting: safe(() => heartRate.getResting()),
@@ -101,32 +86,23 @@ export function collectHealthPayload(trigger = "manual") {
           value: hrSummary.maximum.hr_value,
           time: hrSummary.maximum.time,
         } : null,
-        today: limited(safe(() => heartRate.getToday(), []), 1440),
       } : null,
       sleep: sleep ? {
         ...safe(() => sleep.getInfo(), {}),
-        stages: limited(safe(() => sleep.getStage(), []), 200),
         naps: limited(safe(() => sleep.getNap(), []), 50),
       } : null,
       stress: stress ? {
         current: safe(() => stress.getCurrent()),
         todayByHour: limited(safe(() => stress.getTodayByHour(), []), 24),
         lastWeek: limited(safe(() => stress.getLastWeek(), []), 7),
-        lastWeekByHour: limited(safe(() => stress.getLastWeekByHour(), []), 168),
       } : null,
       spo2: spo2 ? {
         current: safe(() => spo2.getCurrent()),
         lastDay: limited(safe(() => spo2.getLastDay(), []), 24),
-        samples: normalizeSpo2Samples(safe(() => spo2.getLastFewHour(24), [])),
-      } : null,
-      bodyTemperature: temperature ? {
-        current: normalizeTemperatureCurrent(safe(() => temperature.getCurrent())),
-        today: limited(safe(() => temperature.getToday(), []), 288),
       } : null,
       pai: pai ? {
         total: safe(() => pai.getTotal()),
         today: safe(() => pai.getToday()),
-        lastWeek: limited(safe(() => pai.getLastWeek(), []), 7),
       } : null,
       activity: {
         steps: steps ? safe(() => steps.getCurrent()) : null,
@@ -141,8 +117,6 @@ export function collectHealthPayload(trigger = "manual") {
         heightCm: heightInCentimeters(profile.height),
         weightKg: profile.weight,
         gender: profile.gender,
-        nickName: profile.nickName,
-        region: profile.region,
       } : null,
     },
   }

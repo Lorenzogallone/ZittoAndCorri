@@ -22,17 +22,28 @@ export interface ZeppDailyMetric {
   sleep_score: number | null;
   sleep_total_min: number | null;
   sleep_deep_min: number | null;
+  sleep_start_min: number | null;
+  sleep_end_min: number | null;
+  nap_total_min: number | null;
+  nap_count: number | null;
   resting_hr: number | null;
   max_hr: number | null;
   stress_avg: number | null;
+  stress_last_week: number[] | null;
   spo2_avg: number | null;
   spo2_min: number | null;
-  skin_temp_avg_c: number | null;
   pai_total: number | null;
   pai_today: number | null;
   steps: number | null;
+  step_target: number | null;
   calories: number | null;
+  calorie_target: number | null;
   stand_hours: number | null;
+  stand_target: number | null;
+  hr_zone_type: number | null;
+  hr_zone_rest: number | null;
+  hr_zone_ranges: number[] | null;
+  device_profile: Record<string, unknown> | null;
   completeness?: Record<string, boolean> | null;
 }
 

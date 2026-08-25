@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import type { ATLCTLResult } from "../lib/types.ts";
-import { normalizeZeppPayload } from "../lib/zepp/normalize.ts";
+import { compactZeppPayloadForAudit, normalizeZeppPayload } from "../lib/zepp/normalize.ts";
+import { hrZones } from "../lib/metrics/zones.ts";
 import { computeZeppReadiness } from "../lib/zepp/readiness.ts";
 import { ZeppSyncPayloadSchema } from "../lib/zepp/schema.ts";
 import type { ZeppDailyMetric } from "../lib/zepp/types.ts";
+import { resolveEffectiveHrConfig } from "../lib/zepp/hr-values.ts";
 
 const internal: ATLCTLResult = {
   load7: 200,
@@ -31,17 +33,28 @@ function metric(overrides: Partial<ZeppDailyMetric> = {}): ZeppDailyMetric {
     sleep_score: null,
     sleep_total_min: null,
     sleep_deep_min: null,
+    sleep_start_min: null,
+    sleep_end_min: null,
+    nap_total_min: null,
+    nap_count: null,
     resting_hr: null,
     max_hr: null,
     stress_avg: null,
+    stress_last_week: null,
     spo2_avg: null,
     spo2_min: null,
-    skin_temp_avg_c: null,
     pai_total: null,
     pai_today: null,
     steps: null,
+    step_target: null,
     calories: null,
+    calorie_target: null,
     stand_hours: null,
+    stand_target: null,
+    hr_zone_type: null,
+    hr_zone_rest: null,
+    hr_zone_ranges: null,
+    device_profile: null,
     ...overrides,
   };
 }
@@ -116,10 +129,10 @@ test("il payload V1 filtra sentinelle senza iniziare misurazioni", () => {
   assert.equal(normalized.training_load, 466);
   assert.equal(normalized.vo2_max, 48);
   assert.equal(normalized.resting_hr, undefined);
-  assert.deepEqual(normalized.hr_series, [48, 55]);
+  assert.equal("hr_series" in normalized, false);
   assert.equal(normalized.stress_avg, 30);
   assert.equal(normalized.spo2_avg, 96);
-  assert.equal(normalized.skin_temp_avg_c, 34.95);
+  assert.equal("skin_temp_avg_c" in normalized, false);
 });
 
 test("un singolo valore sensore malformato non blocca tutto il payload", () => {
@@ -150,11 +163,67 @@ test("un singolo valore sensore malformato non blocca tutto il payload", () => {
   });
   const normalized = normalizeZeppPayload(parsed, "user-1", "connection-1");
   assert.equal(normalized.training_load, 466);
-  assert.deepEqual(normalized.hr_series, [52, 60]);
+  assert.equal("hr_series" in normalized, false);
   assert.equal(normalized.hr_zone_type, undefined);
-  assert.deepEqual(normalized.sleep_stages, [{ model: 1, start: 10, stop: 20 }]);
-  assert.equal(normalized.skin_temp_avg_c, 34.2);
+  assert.equal("sleep_stages" in normalized, false);
+  assert.equal("skin_temp_avg_c" in normalized, false);
   assert.deepEqual(normalized.device_profile, { height_cm: 175 });
+});
+
+test("l'audit Zepp non conserva serie grezze, temperatura o dati identificativi", () => {
+  const parsed = ZeppSyncPayloadSchema.parse({
+    schemaVersion: 1,
+    clientSyncId: "zc:1724572800000:3",
+    trigger: "manual",
+    capturedAt: "2026-08-25T08:00:00.000Z",
+    localDate: "2026-08-25",
+    timezoneOffsetMinutes: 120,
+    device: { deviceName: "Active 3 Premium", batteryPercent: 90 },
+    data: {
+      workout: { trainingLoad: 369, history: [{ startTime: 1, duration: 2 }] },
+      heartRate: { resting: 47, today: [47, 80, 120] },
+      sleep: { score: 82, stages: [{ model: 1, start: 1, stop: 2 }] },
+      stress: { todayByHour: [20, 40] },
+      spo2: { samples: [{ value: 98, time: 1 }] },
+      bodyTemperature: { current: { value: 35 }, today: [34.9, 35] },
+      pai: null,
+      activity: null,
+      userProfile: { age: 24, nickName: "Lorenzo", region: "IT" },
+    },
+  });
+  const audit = JSON.stringify(compactZeppPayloadForAudit(parsed));
+  assert.doesNotMatch(audit, /bodyTemperature|skin_temp|Lorenzo|batteryPercent|history|hr_series|sleep_stages|spo2_samples/);
+  assert.match(audit, /training_load/);
+  assert.match(audit, /resting_hr/);
+});
+
+test("le zone Zepp configurate prevalgono sulle zone HRR derivate", () => {
+  const zones = hrZones({
+    max_hr: 180,
+    resting_hr: 47,
+    hr_zone_ranges: [98, 117, 137, 156, 176, 196],
+  });
+  assert.deepEqual(zones?.lower, { z1: 98, z2: 117, z3: 137, z4: 156, z5: 176 });
+  assert.equal(zones?.max_hr, 196);
+});
+
+test("FC riposo, FC massima e zone Zepp prevalgono sui valori manuali", () => {
+  const effective = resolveEffectiveHrConfig(
+    { max_hr: 180, resting_hr: 60 },
+    [{ resting_hr: 47, hr_zone_rest: 0, hr_zone_ranges: [98, 117, 137, 156, 176, 196] }],
+    true,
+  );
+  assert.equal(effective.max_hr, 196);
+  assert.equal(effective.resting_hr, 47);
+  assert.deepEqual(effective.hr_zone_ranges, [98, 117, 137, 156, 176, 196]);
+  assert.equal(effective.max_hr_source, "zepp");
+  assert.equal(effective.resting_hr_source, "zepp");
+  assert.equal(effective.zones_source, "zepp");
+
+  const fallback = resolveEffectiveHrConfig({ max_hr: 180, resting_hr: 60 }, [], false);
+  assert.equal(fallback.max_hr_source, "user");
+  assert.equal(fallback.resting_hr_source, "user");
+  assert.equal(fallback.zones_source, "derived");
 });
 
 test("la migrazione Zepp applica isolamento utente, idempotenza e cascade", () => {
@@ -172,4 +241,13 @@ test("la migrazione Zepp applica isolamento utente, idempotenza e cascade", () =
   assert.match(sql, /references public\.zepp_connections on delete cascade/);
   assert.match(sql, /connection_id\s+uuid not null references public\.zepp_connections on delete cascade/);
   assert.match(sql, /using \(auth\.uid\(\) = user_id\)/);
+});
+
+test("la migrazione compatta aggiunge solo riepiloghi utili", () => {
+  const sql = readFileSync("supabase/migrations/0015_zepp_compact_metrics.sql", "utf8");
+  for (const column of [
+    "sleep_start_min", "sleep_end_min", "nap_total_min", "nap_count",
+    "step_target", "calorie_target", "stand_target",
+  ]) assert.match(sql, new RegExp(`add column if not exists ${column}`));
+  assert.doesNotMatch(sql, /add column if not exists .*temp/);
 });

@@ -3,17 +3,17 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { avgPace } from "@/lib/metrics/pace";
-import { timeInZoneFromAverage, timeInZoneFromSeries } from "@/lib/metrics/zones";
+import { timeInZoneFromAverage, timeInZoneFromSeries, type HrConfig } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
 import { avgCadenceSpm, computeHrDrift, type CadencePoint } from "@/lib/metrics/effort";
-import type { Activity, ActivityStream, Profile } from "@/lib/types";
+import type { Activity, ActivityStream } from "@/lib/types";
 import { ActivityInput } from "./schema";
 
 interface IngestContext {
   supabase: SupabaseClient;
   userId: string;
-  /** Config atleta per il calcolo zone (max_hr/resting_hr). */
-  profile: Pick<Profile, "max_hr" | "resting_hr">;
+  /** Config atleta effettiva: zone Zepp quando disponibili, altrimenti HRR manuale. */
+  profile: HrConfig;
 }
 
 // Import da file della stessa attività (stesso sport, inizio entro questa

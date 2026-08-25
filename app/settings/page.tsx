@@ -13,6 +13,7 @@ import { sanitizePrefs } from "@/lib/theme";
 import type { Profile, AiCredentialMetadata, CoachMemory } from "@/lib/types";
 import { LogOut } from "lucide-react";
 import type { ZeppConnectionView } from "@/lib/zepp/types";
+import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 
 export default async function SettingsPage({
   searchParams,
@@ -57,6 +58,10 @@ export default async function SettingsPage({
     .select("enabled, auto_sync, device_name, device_source, os_version, firmware_version, api_level, paired_at, last_sync_at, last_error")
     .eq("user_id", user.id)
     .maybeSingle<ZeppConnectionView>();
+  const effectiveHr = await getEffectiveHrConfig(supabase, user.id, {
+    max_hr: profile?.max_hr ?? null,
+    resting_hr: profile?.resting_hr ?? null,
+  });
   const initialTheme = sanitizePrefs({
     mode: themeRes.data?.theme_mode ?? null,
     accent: themeRes.data?.theme_accent ?? null,
@@ -75,7 +80,7 @@ export default async function SettingsPage({
           Profilo e aspetto
         </h2>
         <div className="space-y-3">
-          <ProfileForm profile={profile ?? null} />
+          <ProfileForm profile={profile ?? null} effectiveHr={effectiveHr} />
           <ThemeSettings initial={initialTheme} />
         </div>
       </section>
