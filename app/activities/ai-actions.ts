@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { enqueueActivityEvaluation } from "@/lib/ai/evaluate-activity";
@@ -19,7 +18,6 @@ export async function startEvaluation(formData: FormData): Promise<EvaluationAct
   try {
     const jobId = await enqueueActivityEvaluation(user.id, activityId);
     if (!jobId) return { error: "Configura la chiave Gemini nelle impostazioni." };
-    revalidatePath(`/activities/${activityId}`);
     return { jobId };
   } catch {
     return { error: "Impossibile avviare la valutazione." };

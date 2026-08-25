@@ -6,7 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { TechInfoCard } from "@/app/settings/tech-info-card";
 import { computeATLCTL } from "@/lib/metrics/load";
-import type { Goal, Activity } from "@/lib/types";
+import type { Goal, Activity, Profile } from "@/lib/types";
 import { formatDistance, formatDuration, daysUntil, activeDuration } from "@/lib/format";
 
 export default async function ProfilePage() {
@@ -16,7 +16,7 @@ export default async function ProfilePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: activeGoal }, { data: activities }] = await Promise.all([
+  const [{ data: activeGoal }, { data: profile }, { data: activities }] = await Promise.all([
     supabase
       .from("goals")
       .select("race_name, race_date, distance_m, target_time_s")
@@ -24,10 +24,15 @@ export default async function ProfilePage() {
       .eq("is_active", true)
       .maybeSingle<Pick<Goal, "race_name" | "race_date" | "distance_m" | "target_time_s">>(),
     supabase
+      .from("profiles")
+      .select("max_hr, resting_hr")
+      .eq("id", user.id)
+      .maybeSingle<Pick<Profile, "max_hr" | "resting_hr">>(),
+    supabase
       .from("activities")
-      .select("started_at, duration_s, moving_time_s, rpe")
+      .select("started_at, duration_s, moving_time_s, rpe, avg_hr, time_in_zone, sport")
       .eq("user_id", user.id)
-      .returns<Pick<Activity, "started_at" | "duration_s" | "moving_time_s" | "rpe">[]>(),
+      .returns<Pick<Activity, "started_at" | "duration_s" | "moving_time_s" | "rpe" | "avg_hr" | "time_in_zone" | "sport">[]>(),
   ]);
 
   const load = computeATLCTL(
@@ -35,7 +40,12 @@ export default async function ProfilePage() {
       started_at: activity.started_at,
       duration_s: activeDuration(activity),
       rpe: activity.rpe,
+      avg_hr: activity.avg_hr,
+      time_in_zone: activity.time_in_zone,
+      sport: activity.sport,
     })),
+    undefined,
+    profile ?? { max_hr: null, resting_hr: null },
   );
 
   const authName = typeof user.user_metadata?.full_name === "string"
@@ -73,9 +83,7 @@ export default async function ProfilePage() {
       </div>
 
       <TechInfoCard
-        atl={load.atl}
-        ctl={load.ctl}
-        tsb={load.tsb}
+        load={load}
         hasData={(activities?.length ?? 0) > 0}
       />
 

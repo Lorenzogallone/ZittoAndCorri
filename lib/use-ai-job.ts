@@ -7,9 +7,10 @@ import { clientLog } from "@/lib/clientlog";
 
 const POLL_INTERVAL_MS = 2_000;
 // Oltre questo tempo smettiamo di interrogare il job: la chiamata AI ha un
-// Il deadline AI è di 90s; lasciamo altri 30s per accodamento, persistenza del
-// risultato e ritardi di rete mobile prima di considerare il job bloccato.
-const MAX_POLL_MS = 120_000;
+// Il deadline AI è di 180s; lasciamo un altro minuto per accodamento,
+// persistenza del risultato e ritardi di rete mobile prima di considerare il
+// job realmente bloccato.
+const MAX_POLL_MS = 240_000;
 
 interface StartResult {
   jobId?: string;

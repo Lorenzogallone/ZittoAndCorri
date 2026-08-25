@@ -13,6 +13,7 @@ import type {
   PlannedWorkout,
   Profile,
   RacePredict,
+  ATLCTLResult,
 } from "@/lib/types";
 import { missingAiContextSections } from "@/lib/ai/context-contract";
 
@@ -83,16 +84,26 @@ export interface AiContextEnvelope {
   }) | null;
   training_state: {
     load: {
+      load7: number;
       atl: number;
       ctl: number;
       tsb: number;
+      baseline7: number | null;
+      load_ratio: number | null;
+      status: ATLCTLResult["status"];
+      confidence: ATLCTLResult["confidence"];
       origin: "derived";
       rpe_estimates_used: number;
     };
     load_before_focus_activity: {
+      load7: number;
       atl: number;
       ctl: number;
       tsb: number;
+      baseline7: number | null;
+      load_ratio: number | null;
+      status: ATLCTLResult["status"];
+      confidence: ATLCTLResult["confidence"];
       origin: "derived";
       rpe_estimates_used: number;
     } | null;
@@ -298,8 +309,16 @@ export async function buildAiContext(
     ? { ...predictRaces({ distance_m: best.distance_m, duration_s: activeSeconds(best) }, goal?.distance_m), origin: "derived" as const, reference_activity_id: best.id }
     : null;
   const load = computeATLCTL(
-    acts.map((a) => ({ started_at: a.started_at, duration_s: activeSeconds(a), rpe: a.rpe })),
+    acts.map((a) => ({
+      started_at: a.started_at,
+      duration_s: activeSeconds(a),
+      rpe: a.rpe,
+      avg_hr: a.avg_hr,
+      time_in_zone: a.time_in_zone,
+      sport: a.sport,
+    })),
     today,
+    profileConfig,
   );
   const activitiesBeforeFocus = focusActivity
     ? acts.filter((activity) => activity.started_at < focusActivity.started_at)
@@ -310,8 +329,12 @@ export async function buildAiContext(
           started_at: activity.started_at,
           duration_s: activeSeconds(activity),
           rpe: activity.rpe,
+          avg_hr: activity.avg_hr,
+          time_in_zone: activity.time_in_zone,
+          sport: activity.sport,
         })),
         focusActivity.started_at.slice(0, 10),
+        profileConfig,
       )
     : null;
   const calibration = calibratePaces(acts, profileConfig)?.map((entry) => ({
@@ -359,18 +382,28 @@ export async function buildAiContext(
     goal: goal ? { ...goal, days_remaining: daysRemaining, weeks_remaining: daysRemaining == null ? null : Math.ceil(daysRemaining / 7), origin: "user" } : null,
     training_state: {
       load: {
+        load7: load.load7,
         atl: load.atl,
         ctl: load.ctl,
         tsb: load.tsb,
+        baseline7: load.baseline7,
+        load_ratio: load.load_ratio,
+        status: load.status,
+        confidence: load.confidence,
         origin: "derived",
-        rpe_estimates_used: acts.filter((activity) => activity.rpe == null).length,
+        rpe_estimates_used: load.sources.estimated,
       },
       load_before_focus_activity: loadBeforeFocus ? {
+        load7: loadBeforeFocus.load7,
         atl: loadBeforeFocus.atl,
         ctl: loadBeforeFocus.ctl,
         tsb: loadBeforeFocus.tsb,
+        baseline7: loadBeforeFocus.baseline7,
+        load_ratio: loadBeforeFocus.load_ratio,
+        status: loadBeforeFocus.status,
+        confidence: loadBeforeFocus.confidence,
         origin: "derived",
-        rpe_estimates_used: activitiesBeforeFocus.filter((activity) => activity.rpe == null).length,
+        rpe_estimates_used: loadBeforeFocus.sources.estimated,
       } : null,
       windows: {
         "7d": windowStats(acts, shiftDate(today, -6)),

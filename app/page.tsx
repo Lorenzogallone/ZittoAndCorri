@@ -10,7 +10,7 @@ import { formatDistance, formatPlannedDistance } from "@/lib/format";
 import { TYPE_LABELS } from "@/lib/activity-meta";
 import { isFootDistanceSport, type Activity, type CoachMessage, type Goal, type PlanProposal, type PlannedWorkout } from "@/lib/types";
 
-export const maxDuration = 120;
+export const maxDuration = 240;
 
 export default async function Home() {
   const supabase = await createClient();

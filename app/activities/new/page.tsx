@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { ActivityForm } from "./activity-form";
 
+export const maxDuration = 240;
+
 export default async function NewActivityPage() {
   const supabase = await createClient();
   const {

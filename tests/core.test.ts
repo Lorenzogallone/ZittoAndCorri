@@ -4,6 +4,84 @@ import test from "node:test";
 import { extractFitSessionMetadata } from "../lib/ingest/adapters/fit-metadata.ts";
 import { AI_CONTEXT_SECTIONS, missingAiContextSections } from "../lib/ai/context-contract.ts";
 import { isFootDistanceSport } from "../lib/types.ts";
+import { computeATLCTL, sessionLoad } from "../lib/metrics/load.ts";
+
+test("il carico interno privilegia HR, poi RPE e infine la stima per sport", () => {
+  assert.deepEqual(
+    sessionLoad({
+      duration_s: 3600,
+      rpe: 10,
+      time_in_zone: { z1: 1800, z3: 1800 },
+      sport: "running",
+    }),
+    { load: 120, source: "heart_rate" },
+  );
+  assert.deepEqual(
+    sessionLoad({ duration_s: 3600, rpe: 5, sport: "running" }),
+    { load: 150, source: "rpe" },
+  );
+  assert.deepEqual(
+    sessionLoad({ duration_s: 3600, rpe: null, sport: "walking" }),
+    { load: 60, source: "estimated" },
+  );
+});
+
+test("lo storico breve resta neutro invece di dichiarare fatica estrema", () => {
+  const result = computeATLCTL([
+    { started_at: "2026-08-24T08:00:00+02:00", duration_s: 3600, rpe: 5, sport: "running" },
+  ], "2026-08-24");
+  assert.equal(result.load7, 150);
+  assert.equal(result.atl, 21.4);
+  assert.equal(result.ctl, 21.4);
+  assert.equal(result.tsb, 0);
+  assert.equal(result.status, "calibrating");
+  assert.equal(result.confidence, "low");
+});
+
+test("il carico 7gg viene confrontato con una baseline personale", () => {
+  const asOf = "2026-08-24";
+  const dateAtOffset = (days: number) =>
+    new Date(new Date(`${asOf}T12:00:00Z`).getTime() + days * 86_400_000)
+      .toISOString()
+      .slice(0, 10) + "T08:00:00+02:00";
+  const previousWeeks = [-42, -35, -28, -21, -14, -7].map((days) => ({
+    started_at: dateAtOffset(days),
+    duration_s: 3000,
+    rpe: 4,
+    sport: "running" as const,
+  }));
+  const historyStart = {
+    started_at: dateAtOffset(-48),
+    duration_s: 0,
+    rpe: null,
+    sport: "walking" as const,
+  };
+  const balanced = computeATLCTL([
+    historyStart,
+    ...previousWeeks,
+    { started_at: dateAtOffset(0), duration_s: 3000, rpe: 4, sport: "running" },
+  ], asOf);
+  assert.equal(balanced.load7, 100);
+  assert.equal(balanced.baseline7, 100);
+  assert.equal(balanced.load_ratio, 1);
+  assert.equal(balanced.status, "balanced");
+
+  const fatigued = computeATLCTL([
+    historyStart,
+    ...previousWeeks,
+    { started_at: dateAtOffset(0), duration_s: 6000, rpe: 4, sport: "running" },
+  ], asOf);
+  assert.equal(fatigued.load7, 200);
+  assert.equal(fatigued.load_ratio, 2);
+  assert.equal(fatigued.status, "fatigued");
+});
+
+test("le attività vicino a mezzanotte usano la data Europe/Rome", () => {
+  const result = computeATLCTL([
+    { started_at: "2026-08-23T22:30:00Z", duration_s: 1800, rpe: 4, sport: "running" },
+  ], "2026-08-24");
+  assert.equal(result.series[0]?.date, "2026-08-24");
+});
 
 test("normalizza RPE e titolo dalla sessione FIT", () => {
   assert.deepEqual(extractFitSessionMetadata({ workoutRpe: 40, sportProfileName: " Corsa facile " }), {
@@ -123,15 +201,23 @@ test("le note del coach diventano dettagli strutturati senza chip diagnostici", 
 
 test("durante la rivalutazione spariscono subito review e form", () => {
   const evaluation = readFileSync(new URL("../components/activity-evaluation.tsx", import.meta.url), "utf8");
-  assert.match(evaluation, /evaluation\?\.summary && !isAnalyzing/);
+  assert.match(evaluation, /displayedEvaluation\?\.summary && !isAnalyzing/);
   assert.match(evaluation, /!isAnalyzing && \(/);
   assert.match(evaluation, /form\.reset\(\)/);
+});
+
+test("la valutazione AI aggiorna la sezione senza ricaricare la pagina", () => {
+  const action = readFileSync(new URL("../app/activities/ai-actions.ts", import.meta.url), "utf8");
+  const component = readFileSync(new URL("../components/activity-evaluation.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(action, /revalidatePath|router\.refresh|location\.reload/);
+  assert.match(component, /onDone: showEvaluationResult/);
+  assert.match(component, /setDisplayedEvaluation\(status\.evaluationResult\)/);
 });
 
 test("l'errore quota interrompe il caricamento e resta leggibile", () => {
   const evaluation = readFileSync(new URL("../components/activity-evaluation.tsx", import.meta.url), "utf8");
   const gemini = readFileSync(new URL("../lib/ai/gemini.ts", import.meta.url), "utf8");
-  assert.match(evaluation, /initialAnalyzing && !displayedError/);
+  assert.match(evaluation, /initialAnalyzing && !done && !displayedError/);
   assert.match(evaluation, /initialError/);
   assert.match(gemini, /Quota del modello Gemini esaurita\. Scegli un altro modello nelle impostazioni oppure attendi il ripristino\./);
   assert.match(gemini, /if \(isQuotaExhausted\(err\)\) throw err/);

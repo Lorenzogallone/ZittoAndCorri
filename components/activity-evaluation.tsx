@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useCallback, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { startEvaluation } from "@/app/activities/ai-actions";
+import type { AiJobStatus } from "@/app/actions/ai-jobs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AiThinkingOverlay } from "@/components/ai-thinking-overlay";
@@ -13,7 +15,7 @@ import type { Evaluation } from "@/lib/types";
 interface Props {
   activityId: string;
   initialNotes: string | null;
-  evaluation: Pick<Evaluation, "summary" | "created_at"> | null;
+  evaluation: Pick<Evaluation, "summary" | "details" | "created_at"> | null;
   initialAnalyzing?: boolean;
   initialFailed?: boolean;
   initialError?: string | null;
@@ -29,13 +31,20 @@ export function ActivityEvaluation({
   initialError = null,
   keyConfigured = true,
 }: Props) {
-  // Chiave per-corsa: riprende il polling se la PWA si ricarica durante
-  // l'attesa e, dopo il reload post-analisi, riporta lo scroll dov'era.
-  const { pending, error, start } = useAiJob(`eval:${activityId}`);
+  const [displayedEvaluation, setDisplayedEvaluation] = useState(evaluation);
+  const showEvaluationResult = useCallback((status: AiJobStatus) => {
+    if (!status.evaluationResult) throw new Error("Risultato valutazione mancante");
+    setDisplayedEvaluation(status.evaluationResult);
+  }, []);
+  // La chiave per-corsa permette di riprendere il polling se iOS sospende la
+  // PWA, mentre onDone aggiorna questa sezione senza ricaricare la pagina.
+  const { pending, done, error, start } = useAiJob(`eval:${activityId}`, {
+    onDone: showEvaluationResult,
+  });
   const displayedError = error ?? initialError;
   // Un errore terminale ricevuto dal polling deve prevalere sul valore server
   // iniziale `initialAnalyzing`, che può restare true fino al prossimo refresh.
-  const isAnalyzing = pending || (initialAnalyzing && !displayedError);
+  const isAnalyzing = pending || (initialAnalyzing && !done && !displayedError);
 
   return (
     <CollapsibleSection
@@ -46,10 +55,10 @@ export function ActivityEvaluation({
         </span>
       )}
     >
-      {evaluation?.summary && !isAnalyzing && (
+      {displayedEvaluation?.summary && !isAnalyzing && (
         <div className="mb-4">
           <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
-            {evaluation.summary}
+            {displayedEvaluation.summary}
           </p>
         </div>
       )}
@@ -93,12 +102,12 @@ export function ActivityEvaluation({
             id="ai-notes"
             name="notes"
             rows={3}
-            defaultValue={evaluation ? "" : initialNotes ?? ""}
+            defaultValue={displayedEvaluation ? "" : initialNotes ?? ""}
             placeholder="Gambe pesanti, poco sonno, fastidio al polpaccio…"
           />
 
           <Button type="submit" disabled={!keyConfigured} variant="outline" className="w-full">
-            {evaluation
+            {displayedEvaluation
               ? "Rivaluta corsa"
               : initialFailed
                 ? "Riprova analisi"

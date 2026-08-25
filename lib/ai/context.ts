@@ -29,13 +29,14 @@ type CtxActivity = Pick<
   | "avg_pace_s_km"
   | "avg_hr"
   | "rpe"
+  | "time_in_zone"
   | "hr_drift_pct"
   | "avg_cadence_spm"
   | "notes"
 >;
 
 const CTX_ACTIVITY_SELECT =
-  "started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr, rpe, hr_drift_pct, avg_cadence_spm, notes";
+  "started_at, type, sport, distance_m, duration_s, avg_pace_s_km, avg_hr, rpe, time_in_zone, hr_drift_pct, avg_cadence_spm, notes";
 
 /** Tronca un testo lungo per il prompt senza spezzare a metà parola. */
 function clip(text: string, max: number): string {
@@ -285,19 +286,30 @@ export async function buildAthleteContext(
     }
   }
 
-  // Carico ATL/CTL/TSB — su TUTTE le attività (sRPE = durata × RPE vale anche
-  // per calcio, bici, palestra…): la fatica non-corsa conta.
+  // Carico ibrido HR/RPE su tutte le attività: la fatica non-corsa conta.
   if (activities.length > 0) {
-    const { atl, ctl, tsb } = computeATLCTL(
+    const load = computeATLCTL(
       activities.map((a) => ({
         started_at: a.started_at,
         duration_s: a.duration_s,
         rpe: a.rpe,
+        avg_hr: a.avg_hr,
+        time_in_zone: a.time_in_zone,
+        sport: a.sport,
       })),
+      today,
+      { max_hr: profile?.max_hr ?? null, resting_hr: profile?.resting_hr ?? null },
     );
-    const fresh = tsb > 5 ? "fresco" : tsb < -10 ? "affaticato" : "in equilibrio";
+    const state = {
+      calibrating: "in calibrazione",
+      fresh: "fresco",
+      balanced: "in equilibrio",
+      strained: "carico sostenuto",
+      fatigued: "affaticato",
+    }[load.status];
     lines.push(
-      `Carico: ATL ${atl} / CTL ${ctl} → TSB ${tsb} (${fresh}).${
+      `Carico interno 7gg ${load.load7}${load.baseline7 == null ? "" : ` / abituale ${load.baseline7}`} → ` +
+      `ATL ${load.atl} / CTL ${load.ctl} / TSB ${load.tsb} (${state}, confidenza ${load.confidence}).${
         otherActivities.length > 0
           ? " Include anche le attività non di corsa."
           : ""

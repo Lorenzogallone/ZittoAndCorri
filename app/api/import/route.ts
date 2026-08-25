@@ -7,6 +7,8 @@ import { resolveImportAuth } from "@/lib/ingest/api-auth";
 import { ingestActivity } from "@/lib/ingest/ingest";
 import { enqueueActivityEvaluationSafely } from "@/lib/ai/evaluate-activity";
 
+export const maxDuration = 240;
+
 export async function POST(req: NextRequest) {
   const ctx = await resolveImportAuth(req);
   if (!ctx) return Response.json({ error: "Non autenticato." }, { status: 401 });

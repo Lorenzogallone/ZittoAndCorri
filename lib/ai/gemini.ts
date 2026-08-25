@@ -11,13 +11,13 @@ const MAX_RETRIES = 3;
 
 // Budget complessivo della chiamata AI. DEVE restare sotto il `maxDuration`
 // della route che invoca la server action (vedi `export const maxDuration` in
-// app/plan/page.tsx e app/activities/[id]/page.tsx): se la funzione superasse
+// app/page.tsx, app/activities/[id]/page.tsx e nelle route di import): se la funzione superasse
 // quel limite, la piattaforma la killa e la POST della server action torna una
 // risposta non valida → Next forza un reload completo, che in PWA standalone si
 // vede come un "crash" che riporta allo splash iniziale. Con questo deadline la
 // chiamata fallisce in modo pulito (stato d'errore mostrato in UI) e la PWA non
 // si ricarica mai. */
-const DEADLINE_MS = 90_000;
+const DEADLINE_MS = 180_000;
 
 class AiTimeoutError extends Error {
   constructor() {

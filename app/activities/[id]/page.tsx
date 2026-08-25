@@ -102,7 +102,7 @@ function ZoneBar({ zoneEntries }: { zoneEntries: [string, number][] }) {
 // route: tempo extra per la chiamata a Gemini così la funzione non viene
 // killata dalla piattaforma (causa del "crash"/reload in PWA). Vedi DEADLINE_MS
 // in lib/ai/gemini.ts.
-export const maxDuration = 120;
+export const maxDuration = 240;
 
 export default async function ActivityDetailPage({
   params,

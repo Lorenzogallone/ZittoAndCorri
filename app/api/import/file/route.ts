@@ -14,6 +14,8 @@ import { parseFit } from "@/lib/ingest/adapters/fit";
 import type { ActivityInput } from "@/lib/ingest/schema";
 import { enqueueActivityEvaluationSafely } from "@/lib/ai/evaluate-activity";
 
+export const maxDuration = 240;
+
 /** True se i byte hanno l'header FIT (".FIT" agli offset 8–11). */
 function looksLikeFit(bytes: Uint8Array): boolean {
   return (
