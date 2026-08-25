@@ -44,8 +44,8 @@ export default async function Home() {
   return (
     <AppShell>
       <div className="flex h-full min-h-0 flex-col">
-        <div className="mb-3 flex items-end justify-between">
-          <div><p className="text-xs text-muted-foreground">Bentornato</p><h1 className="text-2xl font-bold tracking-tight">Ciao {name}</h1></div>
+        <div className="mb-3 flex items-center justify-between">
+          <h1 className="text-2xl font-bold tracking-tight">Ciao {name}</h1>
           <Link href="/activities/new" className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">+ Attività</Link>
         </div>
         <div className="mb-3 grid shrink-0 grid-cols-2 gap-2.5">

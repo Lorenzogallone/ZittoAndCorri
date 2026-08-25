@@ -64,7 +64,7 @@ export function ActivityEvaluation({
       )}
 
       {!keyConfigured && !isAnalyzing && (
-        <Link href="/settings?focus=gemini#gemini-integration" onClick={() => window.sessionStorage.setItem("settings-focus", "gemini")} className="mb-4 block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">
+        <Link href="/settings?focus=gemini#gemini-integration" className="mb-4 block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">
           Configura la chiave Gemini per ricevere il feedback AI
         </Link>
       )}

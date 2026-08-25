@@ -7,7 +7,6 @@ import {
   Moon,
   Monitor,
   Check,
-  ChevronDown,
 } from "lucide-react";
 import {
   ACCENTS,
@@ -32,7 +31,6 @@ const MODES: { key: ThemeMode; label: string; icon: typeof Sun }[] = [
 ];
 
 export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
-  const [isOpen, setIsOpen] = useState(false);
   // Sorgente di verità: il DB (seed iniettato server-side). Qui partiamo dal
   // valore salvato e ottimisticamente applichiamo + persistiamo a ogni cambio.
   const [prefs, setPrefs] = useState<ThemePrefs>(initial);
@@ -55,26 +53,17 @@ export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card transition-all duration-200">
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-expanded={isOpen}
-        aria-controls="theme-settings-content"
-        className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-muted/20"
-      >
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-primary/10 text-primary">
+      <div className="flex items-start gap-3 p-4">
+          <div className="rounded-xl bg-primary/10 p-2 text-primary">
             <Palette size={18} />
           </div>
-          <h2 className="text-sm font-semibold text-foreground">Aspetto</h2>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Aspetto</h2>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              Scegli modalità, colore e stile dell&apos;app.
+            </p>
+          </div>
         </div>
-        <ChevronDown
-          size={18}
-          className={`text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {isOpen && (
         <div id="theme-settings-content" className="space-y-6 border-t border-border/60 px-5 pb-5 pt-4">
           {/* Modalità */}
           <div className="space-y-2.5">
@@ -187,7 +176,6 @@ export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
             </div>
           </div>
         </div>
-      )}
     </div>
   );
 }

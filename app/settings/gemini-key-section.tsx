@@ -86,9 +86,6 @@ export function GeminiKeySection({
     setModelPending(false);
   }
 
-  const selectedModelInfo = GEMINI_MODELS.find((model) => model.id === selectedModel)
-    ?? GEMINI_MODELS[0];
-
   async function remove() {
     if (!window.confirm("Rimuovere la chiave Gemini? Chat e feedback AI verranno disattivati.")) return;
     setPending(true);
@@ -102,9 +99,8 @@ export function GeminiKeySection({
     <IntegrationCard
       id="gemini-integration"
       icon={<Sparkles size={18} />}
-      title="Coach AI con Gemini"
-      description="Abilita chat, adattamento del piano e feedback automatici sulle attività. Usa la tua chiave Google personale."
-      defaultOpen={focusRequested}
+      title="Coach AI"
+      description="Collega Gemini per usare chat, adattamento del piano e feedback sulle attività."
     >
       <div className="space-y-4">
       {configured && !editing ? (
@@ -121,7 +117,6 @@ export function GeminiKeySection({
               </Button>
             </div>
           </div>
-          <p className="mt-1 pl-6 text-[10px] text-muted-foreground">Verificata il {new Date(configured.verified_at).toLocaleString("it-IT", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}. Il valore completo non viene più mostrato.</p>
         </div>
       ) : (
         <div className="space-y-2.5">
@@ -161,21 +156,13 @@ export function GeminiKeySection({
             <SelectContent position="popper" align="start">
               {GEMINI_MODELS.map((model) => (
                 <SelectItem key={model.id} value={model.id}>
-                  {model.label} · {model.rpd}/giorno
+                  {model.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            {modelPending ? "Salvo…" : (
-              <>
-                Limite indicativo free tier: {selectedModelInfo.rpm}/min e {selectedModelInfo.rpd}/giorno.
-                {selectedModel === "gemini-3.5-flash-lite" && " Consigliato per l'uso quotidiano."}
-              </>
-            )}
-          </p>
-          <p className="text-[10px] leading-relaxed text-muted-foreground">
-            Ordinati dal più potente; i limiti possono essere modificati da Google.
+            {modelPending ? "Salvataggio…" : "Il modello selezionato verrà usato per coach e analisi automatiche."}
           </p>
         </div>
       )}
