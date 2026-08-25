@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { TechInfoCard } from "@/app/settings/tech-info-card";
 import { computeATLCTL } from "@/lib/metrics/load";
+import { getZeppDashboard } from "@/lib/zepp/data";
 import type { Goal, Activity, Profile } from "@/lib/types";
 import { formatDistance, formatDuration, daysUntil, activeDuration } from "@/lib/format";
 
@@ -47,6 +48,7 @@ export default async function ProfilePage() {
     undefined,
     profile ?? { max_hr: null, resting_hr: null },
   );
+  const zepp = await getZeppDashboard(supabase, user.id, load);
 
   const authName = typeof user.user_metadata?.full_name === "string"
     ? user.user_metadata.full_name
@@ -84,7 +86,8 @@ export default async function ProfilePage() {
 
       <TechInfoCard
         load={load}
-        hasData={(activities?.length ?? 0) > 0}
+        hasData={(activities?.length ?? 0) > 0 || zepp.latest != null}
+        zepp={zepp}
       />
 
       <Link href="/goals" className="block">

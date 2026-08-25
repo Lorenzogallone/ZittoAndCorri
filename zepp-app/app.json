@@ -1,0 +1,71 @@
+{
+  "configVersion": "v3",
+  "app": {
+    "appId": 1124767,
+    "appName": "Zitto e Corri",
+    "appType": "app",
+    "version": {
+      "code": 1,
+      "name": "1.0.0"
+    },
+    "icon": "icon.png",
+    "vender": "ZittoAndCorri",
+    "description": "Sincronizzazione opzionale dei riepiloghi salute Zepp OS"
+  },
+  "permissions": [
+    "data:os.device.info",
+    "data:user.info",
+    "data:user.hd.workout",
+    "data:user.hd.sleep",
+    "data:user.hd.heart_rate",
+    "data:user.hd.stress",
+    "data:user.hd.spo2",
+    "data:user.hd.body_temp",
+    "data:user.hd.pai",
+    "data:user.hd.step",
+    "data:user.hd.calorie",
+    "data:user.hd.stand",
+    "device:os.local_storage",
+    "device:os.alarm",
+    "device:os.bg_service",
+    "device:os.ble"
+  ],
+  "runtime": {
+    "apiVersion": {
+      "compatible": "4.0",
+      "target": "4.0",
+      "minVersion": "4.2"
+    }
+  },
+  "targets": {
+    "common": {
+      "module": {
+        "page": {
+          "pages": ["page/index"]
+        },
+        "app-side": {
+          "path": "app-side/index"
+        },
+        "setting": {
+          "path": "setting/index"
+        },
+        "app-service": {
+          "services": ["app-service/sync"]
+        }
+      },
+      "platforms": [
+        { "name": "Active 3 Premium", "deviceSource": 10944768, "st": "r", "dw": 466 },
+        { "name": "Active 3 Premium", "deviceSource": 10944769, "st": "r", "dw": 466 },
+        { "name": "Active 3 Premium", "deviceSource": 10944771, "st": "r", "dw": 466 },
+        { "name": "Active 3 Premium", "deviceSource": 10948867, "st": "r", "dw": 466 }
+      ],
+      "designWidth": 466
+    }
+  },
+  "i18n": {
+    "it-IT": { "appName": "Zitto e Corri" },
+    "en-US": { "appName": "Zitto e Corri" }
+  },
+  "defaultLanguage": "it-IT",
+  "debug": false
+}

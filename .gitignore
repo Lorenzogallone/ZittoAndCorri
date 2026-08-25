@@ -2,6 +2,13 @@
 
 # dependencies
 /node_modules
+/zepp-app/node_modules
+/zepp-app/dist
+/zepp-app/.zepp
+/zepp-app/.zpm
+/zepp-app/*.zab
+/zepp-app/*.zpk
+/zepp-app/*.log
 /.pnp
 .pnp.*
 .yarn/*
