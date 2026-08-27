@@ -195,6 +195,26 @@ export interface RacePredict {
 // restano indipendenti: il coach confronta piano e svolto dai dati e dalle date.
 export type PlannedStatus = "planned" | "completed";
 
+export type WorkoutStepKind = "warmup" | "work" | "recovery" | "steady" | "cooldown";
+export type WorkoutStepCompletion = "time" | "distance" | "manual";
+
+/** Fase guidata di un allenamento, consumata anche dalla Workout Extension Zepp. */
+export interface WorkoutStepInput {
+  kind: WorkoutStepKind;
+  label: string;
+  completion_type: WorkoutStepCompletion;
+  completion_value: number | null;
+  pace_min_s_km: number | null;
+  pace_max_s_km: number | null;
+  hr_min_bpm: number | null;
+  hr_max_bpm: number | null;
+}
+
+export interface WorkoutStep extends WorkoutStepInput {
+  id: string;
+  order: number;
+}
+
 export interface Goal {
   id: string;
   user_id: string;
@@ -217,6 +237,7 @@ export interface PlannedWorkout {
   target_duration_s: number | null;
   /** HR media massima indicativa per la seduta (bpm). */
   target_hr_bpm: number | null;
+  workout_steps: WorkoutStep[];
   description: string | null;
   /** Indicazioni del coach: cosa pensare, cosa privilegiare/sacrificare. */
   focus: string | null;
@@ -277,6 +298,7 @@ export interface ProposedWorkout {
   target_pace_s_km: number | null;
   target_duration_s: number | null;
   target_hr_bpm: number | null;
+  workout_steps: WorkoutStepInput[];
   description: string | null;
   focus: string | null;
 }

@@ -5,6 +5,7 @@ import { redirect, RedirectType } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { parseDuration } from "@/lib/format";
 import type { PlannedStatus } from "@/lib/types";
+import { legacyWorkoutStep } from "@/lib/workout-steps";
 
 export interface WorkoutFormState { error?: string }
 
@@ -37,15 +38,25 @@ export async function createPlannedWorkout(
   const pace = paceRaw ? parseDuration(paceRaw) : null;
   if (paceRaw && pace == null) return { error: "Passo target non valido (usa mm:ss)." };
   const hrRaw = optFloat(formData, "target_hr_bpm");
+  const targetDistance = distanceKm == null ? null : Math.round(distanceKm * 1000);
+  const targetDuration = optDuration(formData, "target_duration");
+  const targetHr = hrRaw != null && hrRaw >= 80 && hrRaw <= 220 ? Math.round(hrRaw) : null;
   const { error } = await supabase.from("planned_workouts").insert({
     user_id: user.id,
     date,
     type,
     goal_id: String(formData.get("goal_id") ?? "").trim().replace(/^none$/, "") || null,
-    target_distance_m: distanceKm == null ? null : Math.round(distanceKm * 1000),
+    target_distance_m: targetDistance,
     target_pace_s_km: pace,
-    target_duration_s: optDuration(formData, "target_duration"),
-    target_hr_bpm: hrRaw != null && hrRaw >= 80 && hrRaw <= 220 ? Math.round(hrRaw) : null,
+    target_duration_s: targetDuration,
+    target_hr_bpm: targetHr,
+    workout_steps: legacyWorkoutStep({
+      type,
+      target_distance_m: targetDistance,
+      target_duration_s: targetDuration,
+      target_pace_s_km: pace,
+      target_hr_bpm: targetHr,
+    }),
     description: String(formData.get("description") ?? "").trim() || null,
     focus: String(formData.get("focus") ?? "").trim() || null,
     status: "planned",

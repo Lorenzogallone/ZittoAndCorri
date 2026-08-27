@@ -124,6 +124,32 @@ export const planSchema: Schema = {
             description:
               "HR media massima indicativa per la seduta (bpm), coerente con le zone dell'atleta (max/riposo nel contesto). Obbligatoria per easy/recovery/long; per ripetute/tempo indicala solo se utile.",
           },
+          workout_steps: {
+            type: Type.ARRAY,
+            description:
+              "Sequenza completa e già espansa delle fasi guidate. Espandi ogni ripetizione e recupero: non usare sintassi compatta tipo 6x400.",
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                kind: { type: Type.STRING, enum: ["warmup", "work", "recovery", "steady", "cooldown"] },
+                label: { type: Type.STRING, description: "Etichetta italiana breve, massimo 48 caratteri." },
+                completion_type: { type: Type.STRING, enum: ["time", "distance", "manual"] },
+                completion_value: {
+                  type: Type.INTEGER,
+                  nullable: true,
+                  description: "Secondi per time, metri per distance, null per manual.",
+                },
+                pace_min_s_km: { type: Type.INTEGER, nullable: true },
+                pace_max_s_km: { type: Type.INTEGER, nullable: true },
+                hr_min_bpm: { type: Type.INTEGER, nullable: true },
+                hr_max_bpm: { type: Type.INTEGER, nullable: true },
+              },
+              required: [
+                "kind", "label", "completion_type", "completion_value",
+                "pace_min_s_km", "pace_max_s_km", "hr_min_bpm", "hr_max_bpm",
+              ],
+            },
+          },
           description: {
             type: Type.STRING,
             description:
@@ -135,7 +161,7 @@ export const planSchema: Schema = {
               "Indicazioni da coach per la seduta (2-3 frasi in italiano): su cosa concentrarsi mentre si corre, segnali da controllare, cosa privilegiare e cosa sacrificare se passo, HR o sensazioni divergono. Includi uno spunto tecnico, respiratorio o mentale concreto e pertinente.",
           },
         },
-        required: ["date", "type", "target_distance_m", "target_pace_s_km", "target_duration_s", "target_hr_bpm", "description", "focus"],
+        required: ["date", "type", "target_distance_m", "target_pace_s_km", "target_duration_s", "target_hr_bpm", "workout_steps", "description", "focus"],
       },
     },
   },
@@ -157,6 +183,7 @@ export function buildPlanPrompt(
     "- I passi target devono essere coerenti coi passi medi reali dell'atleta per ciascun tipo.",
     "- Usa la 'Calibrazione ritmi ↔ HR' nel contesto: se per un tipo di seduta la HR esce sopra la zona attesa (es. easy in Z3/Z4) o la deriva cardiaca è alta, quel ritmo OGGI non è sostenibile per quel tipo — rallenta i target di conseguenza e ricordalo nella review. Non riproporre lo stesso passo sperando che vada meglio.",
     "- Per ogni seduta compila sempre description e focus. In description chiarisci l'obiettivo fisiologico o tecnico della corsa, perché è utile in questa fase e quale risultato ricerca. In focus spiega cosa controllare durante la corsa, cosa privilegiare e cosa sacrificare (es. 'se la HR sale oltre il target, sacrifica il passo'), come farebbe un coach presente sul campo. Varia i focus tra tecnica di corsa, cadenza, respirazione e gestione mentale.",
+    "- Per ogni seduta compila workout_steps con la sequenza operativa completa. Espandi ogni ripetuta e ogni recupero come fasi separate; includi riscaldamento e defaticamento quando pertinenti. Usa time con secondi, distance con metri e manual solo quando la fase non può avere un termine automatico. I range passo e HR devono essere realistici e ordinati.",
     "- Se l'atleta ha una cadenza media bassa (<165 spm nel contesto), può valere un focus sulla cadenza in una seduta easy; non ossessionare su questo in ogni seduta.",
     "- Tieni conto dei feedback dell'atleta sulle corse recenti (note e RPE nel contesto, es. 'stanco', 'gambe pesanti', 'rilassato', 'scattante'): se le ultime corse segnalano fatica, fastidi o RPE alti su sedute facili, alleggerisci volume/intensità; se l'atleta è riposato e brillante, puoi progredire con più decisione.",
     "- Scrivi indicazioni operative e sufficientemente dettagliate, senza ripetizioni o introduzioni generiche.",
@@ -208,6 +235,16 @@ export const coachResponseSchemaZod = z.object({
     target_pace_s_km: z.number().int().positive().nullable(),
     target_duration_s: z.number().int().positive().nullable(),
     target_hr_bpm: z.number().int().min(80).max(220).nullable(),
+    workout_steps: z.array(z.object({
+      kind: z.enum(["warmup", "work", "recovery", "steady", "cooldown"]),
+      label: z.string().trim().min(1).max(48),
+      completion_type: z.enum(["time", "distance", "manual"]),
+      completion_value: z.number().int().positive().nullable(),
+      pace_min_s_km: z.number().int().min(120).max(1200).nullable(),
+      pace_max_s_km: z.number().int().min(120).max(1200).nullable(),
+      hr_min_bpm: z.number().int().min(80).max(220).nullable(),
+      hr_max_bpm: z.number().int().min(80).max(220).nullable(),
+    })).min(1).max(40),
     description: z.string().nullable(),
     focus: z.string().nullable(),
   })).default([]),
@@ -254,6 +291,7 @@ export function buildCoachPrompt(contextJson: string, userMessage: string): stri
     "- Se serve adattare o creare il piano, proponi l'intero piano sensato tra meta.today e i successivi 13 giorni. Non applicarlo: l'utente lo confermerà nell'interfaccia.",
     "- Preserva riposo e progressività. Per easy/recovery/long la HR è il vincolo principale; se la calibrazione mostra un passo troppo duro, rallentalo invece di riproporlo.",
     "- Per ogni workout proposto compila sempre description e focus. In description indica chiaramente l'obiettivo fisiologico o tecnico della seduta, perché è utile in questa fase e quale risultato ricerca. In focus indica su cosa concentrarsi durante la corsa, quali segnali osservare e come adattarsi se passo, HR o sensazioni non coincidono.",
+    "- Compila sempre workout_steps come sequenza completa e già espansa: riscaldamento, ogni singola ripetuta, ogni recupero, parte continua e defaticamento. Non lasciare le ripetizioni soltanto nel testo.",
     "- conversation_summary deve aggiornare in poche frasi il riassunto precedente, preservando solo informazioni utili non già coperte dai ricordi strutturati.",
     "",
     "# Contesto affidabile",

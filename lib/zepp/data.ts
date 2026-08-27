@@ -15,10 +15,11 @@ import { createPairingCode, createZeppToken, hashZeppCredential } from "@/lib/ze
 import type { ZeppConnectionView, ZeppDailyMetric, ZeppReadinessResult } from "@/lib/zepp/types";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 
-interface ConnectionRow extends ZeppConnectionView {
+export interface ConnectionRow extends ZeppConnectionView {
   id: string;
   user_id: string;
   token_hash: string | null;
+  client_kind: "health" | "workout";
 }
 
 interface ExistingMetricRow extends Record<string, unknown> {
@@ -157,6 +158,7 @@ export async function pairZeppDevice(input: ZeppPairRequest): Promise<{
     .from("zepp_connections")
     .upsert({
       user_id: pairing.user_id,
+      client_kind: input.clientKind,
       token_hash: hashZeppCredential(token),
       enabled: true,
       auto_sync: true,
@@ -169,7 +171,7 @@ export async function pairZeppDevice(input: ZeppPairRequest): Promise<{
       paired_at: now,
       last_error: null,
       updated_at: now,
-    }, { onConflict: "user_id" })
+    }, { onConflict: "user_id,client_kind" })
     .select("id")
     .single<{ id: string }>();
   if (connectionError) throw connectionError;
@@ -177,17 +179,21 @@ export async function pairZeppDevice(input: ZeppPairRequest): Promise<{
   return { token, connectionId: connection.id };
 }
 
-export async function authorizeZeppToken(token: string): Promise<ConnectionRow | null> {
+export async function authorizeZeppToken(
+  token: string,
+  expectedKind?: "health" | "workout",
+): Promise<ConnectionRow | null> {
   if (!token.startsWith("zep_") || token.length < 60) return null;
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("zepp_connections")
-    .select("id, user_id, token_hash, enabled, auto_sync, device_name, device_source, os_version, firmware_version, api_level, paired_at, last_sync_at, last_error")
+    .select("id, user_id, token_hash, client_kind, enabled, auto_sync, device_name, device_source, os_version, firmware_version, api_level, paired_at, last_sync_at, last_error")
     .eq("token_hash", hashZeppCredential(token))
     .eq("enabled", true)
     .maybeSingle<ConnectionRow>();
   if (error) throw error;
-  return data ?? null;
+  if (!data || (expectedKind && data.client_kind !== expectedKind)) return null;
+  return data;
 }
 
 function mergeMetric(existing: ExistingMetricRow | null, incoming: ZeppDailyMetricWrite): Record<string, unknown> {
@@ -298,13 +304,16 @@ export async function disableConnection(connection: ConnectionRow): Promise<void
   if (error) throw error;
 }
 
-export async function disableZeppForUser(userId: string): Promise<void> {
+export async function disableZeppForUser(
+  userId: string,
+  clientKind: "health" | "workout" = "health",
+): Promise<void> {
   const admin = createAdminClient();
   const { error } = await admin.from("zepp_connections").update({
     enabled: false,
     token_hash: null,
     updated_at: new Date().toISOString(),
-  }).eq("user_id", userId);
+  }).eq("user_id", userId).eq("client_kind", clientKind);
   if (error) throw error;
   const { error: pairingError } = await admin
     .from("zepp_pairing_codes")
@@ -314,9 +323,14 @@ export async function disableZeppForUser(userId: string): Promise<void> {
   if (pairingError) throw pairingError;
 }
 
-export async function deleteZeppForUser(userId: string): Promise<void> {
+export async function deleteZeppForUser(
+  userId: string,
+  clientKind: "health" | "workout" = "health",
+): Promise<void> {
   const admin = createAdminClient();
-  const { error: connectionError } = await admin.from("zepp_connections").delete().eq("user_id", userId);
+  const { error: connectionError } = await admin.from("zepp_connections").delete()
+    .eq("user_id", userId)
+    .eq("client_kind", clientKind);
   if (connectionError) throw connectionError;
   const { error: pairingError } = await admin.from("zepp_pairing_codes").delete().eq("user_id", userId);
   if (pairingError) throw pairingError;
@@ -334,8 +348,9 @@ export async function getZeppDashboard(
 }> {
   const [{ data: connectionData }, { data: metricData }] = await Promise.all([
     supabase.from("zepp_connections")
-      .select("id, user_id, token_hash, enabled, auto_sync, device_name, device_source, os_version, firmware_version, api_level, paired_at, last_sync_at, last_error")
+      .select("id, user_id, token_hash, client_kind, enabled, auto_sync, device_name, device_source, os_version, firmware_version, api_level, paired_at, last_sync_at, last_error")
       .eq("user_id", userId)
+      .eq("client_kind", "health")
       .maybeSingle<ConnectionRow>(),
     supabase.from("zepp_daily_metrics")
       .select("date, captured_at, training_load, vo2_max, recovery_raw, sleep_score, sleep_total_min, sleep_deep_min, sleep_start_min, sleep_end_min, nap_total_min, nap_count, resting_hr, max_hr, stress_avg, stress_last_week, spo2_avg, spo2_min, pai_total, pai_today, steps, step_target, calories, calorie_target, stand_hours, stand_target, hr_zone_type, hr_zone_rest, hr_zone_ranges, device_profile, completeness")

@@ -58,6 +58,7 @@ export default async function SettingsPage({
     .from("zepp_connections")
     .select("enabled, auto_sync, device_name, device_source, os_version, firmware_version, api_level, paired_at, last_sync_at, last_error")
     .eq("user_id", user.id)
+    .eq("client_kind", "health")
     .maybeSingle<ZeppConnectionView>();
   const effectiveHr = await getEffectiveHrConfig(supabase, user.id, {
     max_hr: profile?.max_hr ?? null,

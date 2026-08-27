@@ -159,8 +159,17 @@ export const ZeppSyncBatchSchema = z.array(ZeppSyncPayloadSchema).min(1).max(14)
 export const ZeppPairRequestSchema = z.object({
   code: z.string().regex(/^\d{6}$/),
   clientId: z.string().trim().min(8).max(120).regex(/^[a-zA-Z0-9._:-]+$/),
+  clientKind: z.enum(["health", "workout"]).default("health"),
   device: DeviceSchema,
+});
+
+export const ZeppWorkoutPullRequestSchema = z.object({
+  localDate: z.iso.date(),
+  timezoneOffsetMinutes: z.number().int().min(-840).max(840),
+  knownRevision: z.string().trim().max(128).nullable().default(null),
+  overrideWorkoutId: z.string().uuid().nullable().default(null),
 });
 
 export type ZeppSyncPayload = z.infer<typeof ZeppSyncPayloadSchema>;
 export type ZeppPairRequest = z.infer<typeof ZeppPairRequestSchema>;
+export type ZeppWorkoutPullRequest = z.infer<typeof ZeppWorkoutPullRequestSchema>;

@@ -19,6 +19,7 @@ export async function getEffectiveHrConfig(
     .from("zepp_connections")
     .select("enabled")
     .eq("user_id", userId)
+    .eq("client_kind", "health")
     .maybeSingle<{ enabled: boolean }>();
   if (!connection?.enabled) return resolveEffectiveHrConfig(manual, [], false);
 
