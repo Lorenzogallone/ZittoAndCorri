@@ -132,20 +132,42 @@ export async function pairZeppDevice(input: ZeppPairRequest): Promise<{
   const codeHash = hashZeppCredential(input.code);
   const { data: pairing, error: pairingError } = await admin
     .from("zepp_pairing_codes")
-    .select("id, user_id, attempts, expires_at, used_at")
+    .select("id, user_id, attempts, expires_at, used_at, used_kinds")
     .eq("code_hash", codeHash)
-    .maybeSingle<{ id: string; user_id: string; attempts: number; expires_at: string; used_at: string | null }>();
+    .maybeSingle<{ id: string; user_id: string; attempts: number; expires_at: string; used_at: string | null; used_kinds: string[] }>();
   if (pairingError) throw pairingError;
-  if (!pairing || pairing.used_at || pairing.expires_at <= now || pairing.attempts >= 5) {
+
+  // Il codice è invalido se: non esiste, è scaduto, ha troppi tentativi,
+  // oppure questo client_kind ha già fatto pairing con questo codice.
+  const usedKinds: string[] = pairing?.used_kinds ?? [];
+  if (
+    !pairing ||
+    pairing.expires_at <= now ||
+    pairing.attempts >= 5 ||
+    usedKinds.includes(input.clientKind)
+  ) {
     throw new Error("PAIRING_CODE_INVALID");
   }
 
-  // Claim atomico: due richieste concorrenti non possono consumare lo stesso codice.
+  // Claim atomico per questa kind: usa array_append per aggiungere la kind
+  // e fallisce se la kind è già presente (protezione da race condition).
+  const newUsedKinds = [...usedKinds, input.clientKind];
+  // Il codice è "esaurito" (used_at valorizzato) solo quando entrambe le kind
+  // supportate l'hanno usato, oppure se non ne manca nessun'altra.
+  const allKinds: string[] = ["health", "workout"];
+  const fullyExhausted = allKinds.every((k) => newUsedKinds.includes(k));
+
   const { data: claimed, error: claimError } = await admin
     .from("zepp_pairing_codes")
-    .update({ attempts: pairing.attempts + 1, used_at: now })
+    .update({
+      attempts: pairing.attempts + 1,
+      used_kinds: newUsedKinds,
+      // used_at rimane null finché il codice non è stato usato da tutte le kind.
+      // Solo a quel punto viene marcato come definitivamente esaurito.
+      used_at: fullyExhausted ? now : null,
+    })
     .eq("id", pairing.id)
-    .is("used_at", null)
+    .not("used_kinds", "cs", `{${input.clientKind}}`)  // la kind non deve essere già presente
     .gt("expires_at", now)
     .lt("attempts", 5)
     .select("id")
@@ -178,6 +200,7 @@ export async function pairZeppDevice(input: ZeppPairRequest): Promise<{
 
   return { token, connectionId: connection.id };
 }
+
 
 export async function authorizeZeppToken(
   token: string,

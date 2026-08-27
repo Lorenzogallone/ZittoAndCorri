@@ -141,6 +141,9 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
                 <p className="mt-2 text-xs text-muted-foreground">
                   {copied ? "Copiato" : `Valido fino alle ${expiresAt ? new Date(expiresAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }) : "prossime 10 min"}`}
                 </p>
+                <p className="mt-1 text-xs font-medium text-primary/80">
+                  Usalo per collegare sia l&apos;app Salute che il Coach.
+                </p>
               </div>
             ) : (
               <Button type="button" className="w-full" disabled={pending} onClick={generate}>
@@ -153,15 +156,18 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
 
         {error && <p role="alert" className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
 
-        <IntegrationHelp title="Dove inserire il codice">
+        <IntegrationHelp title="Come collegare le due app con lo stesso codice">
           <ol className="list-decimal space-y-1.5 pl-4">
-            <li>Apri Zepp sul telefono e seleziona Active 3 Premium.</li>
-            <li>Apri la gestione app, quindi Zitto e Corri → Impostazioni.</li>
-            <li>Incolla le sei cifre nel campo “Codice ZittoAndCorri” e premi Collega.</li>
-            <li>Apri il Mini Program sull’orologio e usa “Sincronizza ora” per la prima acquisizione.</li>
+            <li>Genera il codice qui sopra (valido 10 minuti).</li>
+            <li>
+              <strong>App Salute (sync dati):</strong> apri Zepp sul telefono → Active 3 Premium → App → Zitto e Corri → Impostazioni → incolla il codice → <em>Collega</em>.
+            </li>
+            <li>
+              <strong>App Coach (allenamenti):</strong> sempre in Zepp → App → Zitto e Corri Coach → Impostazioni → incolla lo <strong>stesso codice</strong> → <em>Collega</em>.
+            </li>
+            <li>Apri il Mini Program sull&apos;orologio per la prima sincronizzazione.</li>
           </ol>
-          <p className="mt-3">I nomi dei menu Zepp possono variare leggermente in base alla versione dell’app.</p>
-          <p className="mt-2">Il token dedicato viene creato automaticamente: non devi inserire né condividere chiavi segrete.</p>
+          <p className="mt-3 text-muted-foreground">Il codice può essere usato una volta per ciascuna app nello stesso intervallo di validità. Se scade prima di collegare la seconda app, genera un nuovo codice.</p>
         </IntegrationHelp>
       </div>
     </IntegrationCard>

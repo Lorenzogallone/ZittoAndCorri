@@ -34,9 +34,10 @@ import {
   parseSportNumber,
   updateRuntime,
 } from "../../shared/engine"
-import { getPlan, getRuntime, setRuntime, settingsSnapshot } from "../../shared/storage"
+import { getHrZones, getPlan, getRuntime, setRuntime, settingsSnapshot } from "../../shared/storage"
 import { pullPlan, selectedWorkout } from "../../shared/sync"
 
+// ── Colori ──────────────────────────────────────────────────────────────────
 const COLORS = {
   black: 0x000000,
   white: 0xffffff,
@@ -46,6 +47,11 @@ const COLORS = {
   touch: 0x242424,
 }
 
+// Stile Garmin/Amazfit per le 5 zone HR
+const ZONE_COLORS = [0x808080, 0x00bfff, 0x00e000, 0xff8c00, 0xff2020]
+const ZONE_DIMMED = [0x2a2a2a, 0x003844, 0x003800, 0x3a2000, 0x3a0808]
+
+// ── Helper di testo ─────────────────────────────────────────────────────────
 function text(options) {
   return createWidget(widget.TEXT, {
     color: COLORS.white,
@@ -114,6 +120,22 @@ function phaseInstruction(step, complete) {
   return action
 }
 
+// ── Zone HR ─────────────────────────────────────────────────────────────────
+function computeZoneIndex(hr, zones) {
+  if (!hr || hr <= 0 || !zones) return -1
+  if (hr >= zones.z5) return 4
+  if (hr >= zones.z4) return 3
+  if (hr >= zones.z3) return 2
+  if (hr >= zones.z2) return 1
+  return 0
+}
+
+function zoneColor(zoneIndex) {
+  if (zoneIndex < 0 || zoneIndex > 4) return COLORS.white
+  return ZONE_COLORS[zoneIndex]
+}
+
+// ── Sport data reader ───────────────────────────────────────────────────────
 function readSport(type, key, transform = parseSportNumber) {
   return new Promise((resolve) => {
     const accepted = getSportData({ type }, ({ code, data }) => {
@@ -124,6 +146,7 @@ function readSport(type, key, transform = parseSportNumber) {
   })
 }
 
+// ── Widget ──────────────────────────────────────────────────────────────────
 DataWidget(
   BasePage({
     state: {
@@ -144,11 +167,14 @@ DataWidget(
       lastMetrics: null,
       lastResult: null,
       phasePromptTimer: null,
+      hrZones: null,
+      currentZone: -1,
     },
 
     onInit() {
       this.state.plan = getPlan()
       this.state.workout = selectedWorkout(this.state.plan)
+      this.state.hrZones = getHrZones()
       const saved = getRuntime()
       if (saved?.workoutId && saved.workoutId === this.state.workout?.id && !saved.complete) {
         this.state.runtime = saved
@@ -159,10 +185,10 @@ DataWidget(
     },
 
     build() {
-      // Contenuto deliberatamente entro il disco utile: niente metriche negli
-      // angoli che sul display circolare dell'Active 3 Premium verrebbero tagliate.
+      // Sfondo nero pieno per il display circolare 466×466
       createWidget(widget.FILL_RECT, { x: 0, y: 0, w: px(466), h: px(466), radius: px(233), color: COLORS.black })
 
+      // ── PASSO ATTUALE — banner giallo in alto ─────────────────────────
       createWidget(widget.FILL_RECT, { x: px(113), y: px(24), w: px(240), h: px(84), radius: px(22), color: COLORS.yellow })
       text({ x: px(123), y: px(29), w: px(220), h: px(19), text_size: px(14), color: COLORS.black, text: "PASSO ATTUALE" })
       createWidget(widget.SPORT_DATA, {
@@ -173,28 +199,33 @@ DataWidget(
       })
       this.state.refs.paceInfo = text({ x: px(121), y: px(88), w: px(224), h: px(16), text_size: px(12), color: COLORS.black, text: "PASSO LIBERO" })
 
-      // I quattro quadranti seguono il senso orario richiesto: residuo, BPM,
-      // distanza totale e tempo netto. Le linee gialle rendono leggibile la griglia.
+      // ── Griglia quadranti — linee gialle a croce ──────────────────────
       createWidget(widget.FILL_RECT, { x: px(233), y: px(121), w: px(2), h: px(224), color: COLORS.yellow })
       createWidget(widget.FILL_RECT, { x: px(46), y: px(232), w: px(374), h: px(2), color: COLORS.yellow })
 
+      // ── Q1: RESIDUO FASE (alto-sinistra) ──────────────────────────────
       text({ x: px(51), y: px(125), w: px(174), h: px(19), text_size: px(14), color: COLORS.yellow, text: "RESIDUO FASE" })
       this.state.refs.remaining = text({ x: px(51), y: px(143), w: px(174), h: px(53), text_size: px(42), text: "—" })
       this.state.refs.phase = text({ x: px(51), y: px(196), w: px(174), h: px(29), text_size: px(15), color: COLORS.muted, text: "In attesa del piano" })
 
+      // ── Q2: BPM (alto-destra) ─────────────────────────────────────────
       text({ x: px(244), y: px(125), w: px(170), h: px(19), text_size: px(14), color: COLORS.yellow, text: "BPM" })
-      createWidget(widget.SPORT_DATA, {
+      this.state.refs.bpmData = createWidget(widget.SPORT_DATA, {
         x: px(244), y: px(149), w: px(170), h: px(68), edit_id: 2,
         category: edit_widget_group_type.SPORTS, default_type: sport_data.HR,
         text_size: px(46), text_color: COLORS.white, text_x: 0, text_y: 0, text_w: px(170), text_h: px(61),
         mock_data: "148",
       })
 
-      text({ x: px(244), y: px(242), w: px(170), h: px(19), text_size: px(14), color: COLORS.yellow, text: "DISTANZA KM" })
-      this.state.refs.distance = text({ x: px(244), y: px(261), w: px(170), h: px(57), text_size: px(44), text: "—" })
+      // ── Q3: TEMPO NETTO (basso-sinistra) ──────────────────────────────
       text({ x: px(51), y: px(242), w: px(174), h: px(19), text_size: px(14), color: COLORS.yellow, text: "TEMPO NETTO" })
       this.state.refs.duration = text({ x: px(51), y: px(261), w: px(174), h: px(57), text_size: px(42), text: "—" })
 
+      // ── Q4: DISTANZA KM (basso-destra) ────────────────────────────────
+      text({ x: px(244), y: px(242), w: px(170), h: px(19), text_size: px(14), color: COLORS.yellow, text: "DISTANZA KM" })
+      this.state.refs.distance = text({ x: px(244), y: px(261), w: px(170), h: px(57), text_size: px(44), text: "—" })
+
+      // ── Fascia bassa: orologio, stato, bottoni ────────────────────────
       this.state.refs.clock = text({ x: px(156), y: px(342), w: px(154), h: px(27), text_size: px(22), color: COLORS.yellow, text: "--:--" })
       this.state.refs.status = text({ x: px(91), y: px(369), w: px(284), h: px(18), text_size: px(12), color: COLORS.muted, text: "Apri questa pagina per gli avvisi" })
 
@@ -205,8 +236,37 @@ DataWidget(
       for (const target of [previous, previousLabel]) target.addEventListener(event.CLICK, () => this.changeStep(-1))
       for (const target of [next, nextLabel]) target.addEventListener(event.CLICK, () => this.changeStep(1))
 
-      // Overlay che compare ad ogni passaggio: resta leggibile, si chiude al
-      // tocco oppure automaticamente dopo alcuni secondi per non bloccare la corsa.
+      // ── Indicatore 5 zone HR — archi curvi in basso ───────────────────
+      // 5 archi lungo il bordo inferiore del display circolare.
+      // Centrati sul display (233,233), raggio 215, da ~150° a ~390° (30° in basso),
+      // divisi in 5 segmenti con piccoli gap tra loro.
+      const arcCx = 233
+      const arcCy = 233
+      const arcRadius = 218
+      const arcLineWidth = 6
+      const totalArc = 56        // gradi totali dell'arco (da 152° a 208°)
+      const gapDeg = 2            // gap tra segmenti
+      const segDeg = (totalArc - 4 * gapDeg) / 5  // ~9.6° per segmento
+      const startBase = 152       // inizio primo arco (simmetrico in basso)
+
+      this.state.refs.zoneArcs = []
+      for (let i = 0; i < 5; i++) {
+        const startAngle = startBase + i * (segDeg + gapDeg)
+        const endAngle = startAngle + segDeg
+        const arc = createWidget(widget.ARC, {
+          x: px(arcCx - arcRadius),
+          y: px(arcCy - arcRadius),
+          w: px(arcRadius * 2),
+          h: px(arcRadius * 2),
+          start_angle: startAngle,
+          end_angle: endAngle,
+          color: ZONE_DIMMED[i],
+          line_width: px(arcLineWidth),
+        })
+        this.state.refs.zoneArcs.push(arc)
+      }
+
+      // ── Overlay cambio fase ───────────────────────────────────────────
       this.state.refs.promptBorder = createWidget(widget.FILL_RECT, { x: px(24), y: px(58), w: px(418), h: px(328), radius: px(36), color: COLORS.yellow })
       this.state.refs.promptPanel = createWidget(widget.FILL_RECT, { x: px(29), y: px(63), w: px(408), h: px(318), radius: px(32), color: COLORS.black })
       this.state.refs.promptTap = createWidget(widget.FILL_RECT, { x: px(45), y: px(300), w: px(376), h: px(58), radius: px(20), color: COLORS.black })
@@ -296,6 +356,7 @@ DataWidget(
           const saved = getRuntime()
           this.state.runtime = saved?.workoutId === this.state.workout?.id && !saved.complete ? saved : null
         }
+        this.state.hrZones = getHrZones()
         this.render()
       } catch {
         this.state.refs.status?.setProperty(prop.TEXT, this.state.workout ? "Offline · uso piano salvato" : "Telefono non raggiungibile")
@@ -407,6 +468,25 @@ DataWidget(
       this.state.refs.duration?.setProperty(prop.TEXT, metrics ? formatClock(metrics.duration) : "—")
       this.state.refs.clock?.setProperty(prop.TEXT, clockLabel())
       if (this.state.visible) this.state.refs.status?.setProperty(prop.TEXT, this.state.heartRate ? "Guida e avvisi attivi" : "Guida attiva · HR senza avvisi")
+
+      // ── Aggiornamento zone HR ───────────────────────────────────────
+      const newZone = computeZoneIndex(this.state.currentHr, this.state.hrZones)
+      if (newZone !== this.state.currentZone) {
+        this.state.currentZone = newZone
+        // Colore BPM dinamico
+        try {
+          this.state.refs.bpmData?.setProperty(prop.MORE, { text_color: zoneColor(newZone) })
+        } catch {}
+        // Archi zona: attiva pieno, le altre dimmed
+        const arcs = this.state.refs.zoneArcs
+        if (arcs) {
+          for (let i = 0; i < 5; i++) {
+            try {
+              arcs[i].setProperty(prop.COLOR, i === newZone ? ZONE_COLORS[i] : ZONE_DIMMED[i])
+            } catch {}
+          }
+        }
+      }
     },
   }),
 )

@@ -39,3 +39,14 @@ export function setSettingsSnapshot(value) {
     sounds: value?.sounds !== false,
   })
 }
+
+export function getHrZones() {
+  const value = storage.getItem("hr_zones", null)
+  return value && typeof value === "object" ? value : null
+}
+
+export function setHrZones(value) {
+  if (value && typeof value === "object") storage.setItem("hr_zones", value)
+  else storage.removeItem("hr_zones")
+}
+
