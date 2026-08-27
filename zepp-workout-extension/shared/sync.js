@@ -1,4 +1,4 @@
-import { getPlan, setPlan, setSettingsSnapshot } from "./storage"
+import { getPlan, setPlan, setHrZones, setSettingsSnapshot } from "./storage"
 
 function pad(value) {
   return String(value).padStart(2, "0")
@@ -20,6 +20,7 @@ export async function pullPlan(requester, force = false) {
   })
   if (!result?.ok) throw new Error(result?.error || "Sincronizzazione piano fallita")
   setSettingsSnapshot(result.settings)
+  setHrZones(result.hrZones || null)
   if (result.notModified && cached) {
     const updated = {
       ...cached,
