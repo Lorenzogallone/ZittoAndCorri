@@ -81,7 +81,7 @@ async function pair() {
   if (!/^\d{6}$/.test(code)) throw new Error("Il codice deve avere 6 cifre")
   STORAGE().setItem("connection_status", "Collegamento in corso…")
   const result = await request("/api/zepp/pair", {
-    body: { code, clientId: clientId(), device: {} },
+    body: { code, clientId: clientId(), clientKind: "health", device: {} },
   })
   STORAGE().setItem("paired_origin", normalizedOrigin())
   STORAGE().setItem("access_token", result.accessToken)

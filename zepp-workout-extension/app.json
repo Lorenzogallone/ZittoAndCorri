@@ -1,0 +1,55 @@
+{
+  "configVersion": "v3",
+  "app": {
+    "appId": 1125114,
+    "appName": "Zitto e Corri Coach",
+    "appType": "app",
+    "extType": "workout",
+    "version": { "code": 1, "name": "1.0.0" },
+    "icon": "icon.png",
+    "vender": "ZittoAndCorri",
+    "description": "Allenamenti di corsa guidati con fasi, target e avvisi"
+  },
+  "permissions": [
+    "data:user.hd.workout",
+    "data:user.hd.heart_rate",
+    "device:os.local_storage",
+    "device:os.alarm",
+    "device:os.bg_service",
+    "device:os.ble"
+  ],
+  "runtime": {
+    "apiVersion": { "compatible": "4.2", "target": "4.2", "minVersion": "4.2" }
+  },
+  "targets": {
+    "common": {
+      "module": {
+        "data-widget": {
+          "widgets": [{
+            "path": "data-widget/common/index",
+            "name": "Zitto e Corri Coach",
+            "icon": "icon.png",
+            "window": { "isPinned": 1 },
+            "runtime": { "ability": [{ "type": 1, "subType": [1, 2] }] }
+          }]
+        },
+        "app-side": { "path": "app-side/index" },
+        "setting": { "path": "setting/index" },
+        "app-service": { "services": ["app-service/sync"] }
+      },
+      "platforms": [
+        { "name": "Active 3 Premium", "deviceSource": 10944768, "st": "r", "dw": 466 },
+        { "name": "Active 3 Premium", "deviceSource": 10944769, "st": "r", "dw": 466 },
+        { "name": "Active 3 Premium", "deviceSource": 10944771, "st": "r", "dw": 466 },
+        { "name": "Active 3 Premium", "deviceSource": 10948867, "st": "r", "dw": 466 }
+      ],
+      "designWidth": 466
+    }
+  },
+  "i18n": {
+    "it-IT": { "data-widget": { "widgets": [{ "name": "Zitto e Corri Coach" }] } },
+    "en-US": { "data-widget": { "widgets": [{ "name": "Zitto e Corri Coach" }] } }
+  },
+  "defaultLanguage": "it-IT",
+  "debug": false
+}

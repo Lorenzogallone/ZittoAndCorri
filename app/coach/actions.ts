@@ -15,6 +15,7 @@ import {
 } from "@/lib/ai/prompt";
 import { aiErrorMessage, generateStructured } from "@/lib/ai/gemini";
 import { WORKOUT_TYPES, type CoachMessage, type ProposedWorkout } from "@/lib/types";
+import { normalizeWorkoutSteps } from "@/lib/workout-steps";
 
 export interface CoachActionResult { jobId?: string; error?: string; userMessage?: CoachMessage }
 
@@ -41,6 +42,8 @@ function cleanWorkout(
   const positive = (value: number | null) =>
     typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.round(value) : null;
   const hr = positive(workout.target_hr_bpm);
+  const workoutSteps = normalizeWorkoutSteps(workout.workout_steps);
+  if (!workoutSteps.length) return null;
   return {
     goal_id: goalId,
     date,
@@ -49,6 +52,7 @@ function cleanWorkout(
     target_pace_s_km: positive(workout.target_pace_s_km),
     target_duration_s: positive(workout.target_duration_s),
     target_hr_bpm: hr != null && hr >= 80 && hr <= 220 ? hr : null,
+    workout_steps: workoutSteps,
     description: workout.description?.trim() || null,
     focus: workout.focus?.trim() || null,
   };

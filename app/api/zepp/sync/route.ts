@@ -11,7 +11,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const token = bearerToken(request);
     if (!token) return Response.json({ error: "Token mancante." }, { status: 401 });
-    const connection = await authorizeZeppToken(token);
+    const connection = await authorizeZeppToken(token, "health");
     if (!connection) return Response.json({ error: "Token non valido o revocato." }, { status: 401 });
 
     const body = await readJsonWithLimit(request, ZEPP_MAX_BODY_BYTES);

@@ -20,8 +20,10 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json({
         accessToken: result.token,
         connectionId: result.connectionId,
-        schedule: { morning: "08:00", evening: "23:00" },
-        readinessEnabled: true,
+        schedule: parsed.data.clientKind === "workout"
+          ? { morning: "06:00", evening: "18:00" }
+          : { morning: "08:00", evening: "23:00" },
+        readinessEnabled: parsed.data.clientKind === "health",
         serverTime: new Date().toISOString(),
       });
     } catch (error) {
