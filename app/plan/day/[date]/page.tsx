@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { formatDistance, formatDuration, formatPace, activeDuration, formatPlannedDistance } from "@/lib/format";
 import type { ActivityType, PlannedWorkout, Activity, Sport } from "@/lib/types";
 import { Plus } from "lucide-react";
+import { workoutHeadline } from "@/lib/workout-guide";
 import {
   TYPE_LABELS,
   TYPE_COLORS,
@@ -130,6 +131,7 @@ export default async function DayViewPage({ params }: Props) {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
                       {[
+                        workoutHeadline(w.workout_steps ?? []),
                         formatPlannedDistance(w),
                         w.target_pace_s_km && formatPace(w.target_pace_s_km),
                         w.target_duration_s && formatDuration(w.target_duration_s),

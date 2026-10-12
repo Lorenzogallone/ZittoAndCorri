@@ -133,7 +133,11 @@ export const planSchema: Schema = {
               type: Type.OBJECT,
               properties: {
                 kind: { type: Type.STRING, enum: ["warmup", "work", "recovery", "steady", "cooldown"] },
-                label: { type: Type.STRING, description: "Etichetta italiana breve, massimo 48 caratteri." },
+                label: {
+                  type: Type.STRING,
+                  description:
+                    "Istruzione italiana breve e autoesplicativa (max 48 caratteri) che dice COME correre la fase, senza ripetere distanza o durata già in completion_value: es. 'Corsa lenta per scaldarti', 'Veloce, passo gara 5 km', 'Recupero camminando', 'Recupero corsa lentissima', 'Facile, ritmo da chiacchierata'. Niente sigle (Z2, VO2, wu/cd).",
+                },
                 completion_type: { type: Type.STRING, enum: ["time", "distance", "manual"] },
                 completion_value: {
                   type: Type.INTEGER,
@@ -154,7 +158,7 @@ export const planSchema: Schema = {
           description: {
             type: Type.STRING,
             description:
-              "Obiettivo della seduta in italiano (2-3 frasi): spiega perché viene proposta, quale adattamento fisiologico o tecnico ricerca e come contribuisce al percorso dell'atleta. Non limitarti al nome del tipo di corsa.",
+              "Cosa fare e perché, in italiano semplice (3-4 frasi). La PRIMA frase descrive concretamente l'intera seduta dall'inizio alla fine come la spiegheresti a voce a un amico, con numeri reali: es. 'Scaldati con 10 minuti di corsa lenta. Poi corri 400 m veloce (circa 4:25/km) e recupera 90 secondi camminando; ripeti 6 volte. Chiudi con 10 minuti di corsa lenta.' Poi spiega perché è utile in questa fase. Niente gergo o sigle non spiegate (VO2max, soglia, Z2, strides, wu/cd): se usi un termine tecnico spiegalo tra parentesi.",
           },
           focus: {
             type: Type.STRING,
@@ -186,6 +190,7 @@ export function buildPlanPrompt(
     "- I passi target devono essere coerenti coi passi medi reali dell'atleta per ciascun tipo.",
     "- Usa la 'Calibrazione ritmi ↔ HR' nel contesto: se per un tipo di seduta la HR esce sopra la zona attesa (es. easy in Z3/Z4) o la deriva cardiaca è alta, quel ritmo OGGI non è sostenibile per quel tipo — rallenta i target di conseguenza e ricordalo nella review. Non riproporre lo stesso passo sperando che vada meglio.",
     "- Per ogni seduta compila sempre description e focus. In description chiarisci l'obiettivo fisiologico o tecnico della corsa, perché è utile in questa fase e quale risultato ricerca. In focus spiega cosa controllare durante la corsa, cosa privilegiare e cosa sacrificare (es. 'se la HR sale oltre il target, sacrifica il passo'), come farebbe un coach presente sul campo. Varia i focus tra tecnica di corsa, cadenza, respirazione e gestione mentale.",
+    "- Le sedute devono essere comprensibili anche a chi non conosce il gergo: description inizia sempre con la spiegazione pratica dell'intera seduta (riscaldamento, cosa fare in ogni ripetuta, come recuperare e quante volte ripetere, defaticamento) e ogni label degli step dice come correre quella fase.",
     "- Per ogni seduta compila workout_steps con la sequenza operativa completa. Espandi ogni ripetuta e ogni recupero come fasi separate; includi riscaldamento e defaticamento quando pertinenti. Usa time con secondi, distance con metri e manual solo quando la fase non può avere un termine automatico. I range passo e HR devono essere realistici e ordinati.",
     "- Se l'atleta ha una cadenza media bassa (<165 spm nel contesto), può valere un focus sulla cadenza in una seduta easy; non ossessionare su questo in ogni seduta.",
     "- Tieni conto dei feedback dell'atleta sulle corse recenti (note e RPE nel contesto, es. 'stanco', 'gambe pesanti', 'rilassato', 'scattante'): se le ultime corse segnalano fatica, fastidi o RPE alti su sedute facili, alleggerisci volume/intensità; se l'atleta è riposato e brillante, puoi progredire con più decisione.",
@@ -331,7 +336,8 @@ export function buildCoachPrompt(contextJson: string, userMessage: string): stri
     "- Quando crei o adatti il piano segui fortemente la 'Metodologia di riferimento' qui sotto: struttura della settimana, progressione di volume e lungo, rotazione degli stimoli, formato delle sedute e dei recuperi, tono. Scala passi e volumi sui dati reali del contesto.",
     "- Una gara obiettivo NON è necessaria. Se non c'è un obiettivo attivo, o l'obiettivo non ha data (obiettivo generico), allena per migliorare in modo continuativo sulle distanze lunghe (mezza maratona e maratona, o la distanza indicata nell'obiettivo) seguendo i blocchi aperti della metodologia: non chiedere di fissare una gara e non introdurre tapering.",
     "- Preserva riposo e progressività. Per easy/recovery/long la HR è il vincolo principale; se la calibrazione mostra un passo troppo duro, rallentalo invece di riproporlo.",
-    "- Per ogni workout proposto compila sempre description e focus. In description indica chiaramente l'obiettivo fisiologico o tecnico della seduta, perché è utile in questa fase e quale risultato ricerca. In focus indica su cosa concentrarsi durante la corsa, quali segnali osservare e come adattarsi se passo, HR o sensazioni non coincidono.",
+    "- Le sedute devono essere comprensibili anche a chi non conosce il gergo: description inizia sempre con la spiegazione pratica dell'intera seduta, con numeri reali (riscaldamento, cosa fare in ogni ripetuta e a che passo, come recuperare — camminando o corricchiando — e quante volte ripetere, defaticamento). Ogni label degli step dice come correre quella fase. Niente sigle non spiegate. Nella reply, se proponi un piano, descrivi le sedute chiave a parole semplici.",
+    "- Per ogni workout proposto compila sempre description e focus. In description, dopo la spiegazione pratica, indica l'obiettivo fisiologico o tecnico della seduta, perché è utile in questa fase e quale risultato ricerca. In focus indica su cosa concentrarsi durante la corsa, quali segnali osservare e come adattarsi se passo, HR o sensazioni non coincidono.",
     "- Compila sempre workout_steps come sequenza completa e già espansa: riscaldamento, ogni singola ripetuta, ogni recupero, parte continua e defaticamento. Non lasciare le ripetizioni soltanto nel testo.",
     "- conversation_summary deve aggiornare in poche frasi il riassunto precedente, preservando solo informazioni utili non già coperte dai ricordi strutturati.",
     "",

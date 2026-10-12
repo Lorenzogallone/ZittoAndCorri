@@ -14,6 +14,8 @@ import { applyPlanProposal, rejectPlanProposal, sendCoachMessage } from "@/app/c
 import { TYPE_LABELS } from "@/lib/activity-meta";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
 import type { CoachMessage, PlanProposal } from "@/lib/types";
+import { WorkoutSteps } from "@/components/workout-steps";
+import { workoutHeadline } from "@/lib/workout-guide";
 
 function ProposalCard({ proposal, onStatusChange }: { proposal: PlanProposal; onStatusChange: (status: PlanProposal["status"]) => void }) {
   const [pending, setPending] = useState(false);
@@ -50,6 +52,7 @@ function ProposalCard({ proposal, onStatusChange }: { proposal: PlanProposal; on
               <span className="text-primary">{TYPE_LABELS[workout.type]}</span>
             </div>
             <p className="mt-1 text-muted-foreground">{[
+              workoutHeadline(workout.workout_steps ?? []),
               workout.target_distance_m ? formatDistance(workout.target_distance_m) : null,
               workout.target_duration_s ? formatDuration(workout.target_duration_s) : null,
               workout.target_pace_s_km ? formatPace(workout.target_pace_s_km) : null,
@@ -57,9 +60,15 @@ function ProposalCard({ proposal, onStatusChange }: { proposal: PlanProposal; on
             ].filter(Boolean).join(" · ")}</p>
             {workout.description && (
               <div className="mt-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Obiettivo della seduta</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Cosa fare e perché</p>
                 <p className="mt-0.5 leading-relaxed">{workout.description}</p>
               </div>
+            )}
+            {workout.workout_steps?.length > 1 && (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-[10px] font-semibold uppercase tracking-wide text-primary">Come si svolge</summary>
+                <div className="mt-2"><WorkoutSteps steps={workout.workout_steps} compact /></div>
+              </details>
             )}
             {workout.focus && (
               <div className="mt-2">
