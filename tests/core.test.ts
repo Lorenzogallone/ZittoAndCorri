@@ -7,6 +7,7 @@ import { isFootDistanceSport } from "../lib/types.ts";
 import { computeATLCTL, sessionLoad } from "../lib/metrics/load.ts";
 import { generalGoalName, goalKind } from "../lib/goals.ts";
 import { COACH_METHODOLOGY } from "../lib/ai/methodology.ts";
+import { describeStep, groupWorkoutSteps, workoutHeadline } from "../lib/workout-guide.ts";
 
 test("il carico interno privilegia HR, poi RPE e infine la stima per sport", () => {
   assert.deepEqual(
@@ -184,7 +185,8 @@ test("il piano usa la chat e ogni proposta spiega obiettivo e focus", () => {
   const chat = readFileSync(new URL("../components/coach-chat.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(plan, /plan_reviews|Review del coach|Chiedi al coach di adattare il piano/);
   assert.match(prompt, /Per ogni workout proposto compila sempre description e focus/);
-  assert.match(chat, /Obiettivo della seduta/);
+  assert.match(chat, /Cosa fare e perché/);
+  assert.match(chat, /<WorkoutSteps/);
   assert.match(chat, /Su cosa concentrarti/);
 });
 
@@ -305,4 +307,19 @@ test("il coach può cambiare l'obiettivo dalla chat", () => {
   assert.match(prompt, /goal_update/);
   const actions = readFileSync(new URL("../app/coach/actions.ts", import.meta.url), "utf8");
   assert.match(actions, /applyGoalUpdate\(admin, userId, result\.goal_update/);
+});
+
+test("le ripetute vengono raggruppate e descritte a parole", () => {
+  const base = { pace_min_s_km: null, pace_max_s_km: null, hr_min_bpm: null, hr_max_bpm: null };
+  const warmup = { ...base, kind: "warmup" as const, label: "Corsa lenta", completion_type: "time" as const, completion_value: 600 };
+  const work = { ...base, kind: "work" as const, label: "Veloce", completion_type: "distance" as const, completion_value: 400, pace_min_s_km: 260, pace_max_s_km: 270 };
+  const recovery = { ...base, kind: "recovery" as const, label: "Recupero camminando", completion_type: "time" as const, completion_value: 90 };
+  const cooldown = { ...warmup, kind: "cooldown" as const };
+  const steps = [warmup, work, recovery, work, recovery, work, recovery, work, recovery, work, recovery, work, cooldown];
+  const blocks = groupWorkoutSteps(steps);
+  assert.equal(blocks.length, 3);
+  assert.deepEqual(blocks[1], { kind: "repeat", times: 6, steps: [work, recovery] });
+  assert.equal(workoutHeadline(steps), "6 × 400 m");
+  assert.equal(describeStep(work), "400 m a 4:20–4:30/km");
+  assert.equal(describeStep(recovery), '90"');
 });

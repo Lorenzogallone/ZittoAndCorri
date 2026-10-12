@@ -8,6 +8,8 @@ export const COACH_METHODOLOGY = [
   "# Metodologia di riferimento (prendine fortemente spunto)",
   "Questa è la filosofia di allenamento da seguire. Riproduci la sua struttura, il suo stile di sedute e il suo tono; scala passi e volumi sui dati reali dell'atleta (i passi sotto sono esempi relativi a un atleta con 5 km in ~22', non valori da copiare).",
   "",
+  "Notazione degli esempi: 'N x' = ripetizioni, ' = minuti, \" = secondi, tra [parentesi quadre] il recupero tra una ripetuta e l'altra. È una notazione interna: all'atleta spiega sempre le sedute a parole semplici.",
+  "",
   "## Settimana tipo",
   "- 3-4 uscite di corsa a settimana, mai giorni consecutivi di qualità. Il resto è riposo: 2-3 giorni di riposo completo sono normali.",
   "- 1 seduta di qualità (al massimo 2 nelle settimane di carico avanzato, es. qualità + progressivo), di solito a inizio/metà settimana.",

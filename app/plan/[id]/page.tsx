@@ -7,6 +7,8 @@ import { DeleteWorkoutButton } from "./delete-workout-button";
 import { formatDuration, formatPace, formatPlannedDistance } from "@/lib/format";
 import type { PlannedWorkout } from "@/lib/types";
 import { TYPE_LABELS } from "@/lib/activity-meta";
+import { WorkoutSteps } from "@/components/workout-steps";
+import { WORKOUT_TYPE_GUIDE, workoutHeadline } from "@/lib/workout-guide";
 
 const STATUS_LABELS: Record<string, string> = {
   planned: "Pianificato",
@@ -42,6 +44,8 @@ export default async function PlannedWorkoutPage({ params }: Props) {
     .maybeSingle<PlannedWorkout>();
 
   if (!workout) notFound();
+  const steps = workout.workout_steps ?? [];
+  const headline = workoutHeadline(steps);
 
   return (
     <AppShell title="Allenamento pianificato" backHref="/plan" backLabel="Piano" hideTabBar>
@@ -62,6 +66,7 @@ export default async function PlannedWorkoutPage({ params }: Props) {
           </span>
         </div>
         <p className="font-semibold text-lg">{formatDate(workout.date)}</p>
+        {headline && <p className="mt-0.5 text-2xl font-bold tabular-nums">{headline}</p>}
 
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
           {/* Distanza sempre mostrata: esplicita o stimata da durata+passo. */}
@@ -82,7 +87,7 @@ export default async function PlannedWorkoutPage({ params }: Props) {
         {workout.description && (
           <div className="mt-3 rounded-xl bg-muted/40 px-3.5 py-2.5">
             <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Obiettivo della seduta
+              Cosa fare e perché
             </p>
             <p className="text-sm leading-relaxed text-foreground/90">{workout.description}</p>
           </div>
@@ -97,6 +102,25 @@ export default async function PlannedWorkoutPage({ params }: Props) {
           </div>
         )}
       </div>
+
+      {/* Come si svolge: sequenza guidata con ripetute raggruppate */}
+      {steps.length > 0 && (
+        <div className="rounded-2xl bg-card border border-white/[0.06] p-5 mb-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">
+            Come si svolge
+          </p>
+          <WorkoutSteps steps={steps} />
+        </div>
+      )}
+
+      {WORKOUT_TYPE_GUIDE[workout.type] && (
+        <div className="rounded-2xl bg-card border border-white/[0.06] p-4 mb-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5">
+            Che seduta è: {TYPE_LABELS[workout.type] ?? workout.type}
+          </p>
+          <p className="text-sm leading-relaxed text-foreground/90">{WORKOUT_TYPE_GUIDE[workout.type]}</p>
+        </div>
+      )}
 
       {/* Aggiorna status manuale */}
       <div className="rounded-2xl bg-card border border-white/[0.06] p-4 mb-4">
