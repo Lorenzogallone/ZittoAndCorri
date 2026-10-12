@@ -5,6 +5,8 @@ import { extractFitSessionMetadata } from "../lib/ingest/adapters/fit-metadata.t
 import { AI_CONTEXT_SECTIONS, missingAiContextSections } from "../lib/ai/context-contract.ts";
 import { isFootDistanceSport } from "../lib/types.ts";
 import { computeATLCTL, sessionLoad } from "../lib/metrics/load.ts";
+import { generalGoalName, goalKind } from "../lib/goals.ts";
+import { COACH_METHODOLOGY } from "../lib/ai/methodology.ts";
 
 test("il carico interno privilegia HR, poi RPE e infine la stima per sport", () => {
   assert.deepEqual(
@@ -279,4 +281,20 @@ test("Beach volley è disponibile e riconosciuto dai file FIT", () => {
   assert.match(metadata, /beach_volley: "Beach volley"/);
   assert.match(fit, /case "volleyball":\s+return "beach_volley"/);
   assert.match(migration, /'beach_volley'/);
+});
+
+test("un obiettivo senza data è generico e prende un nome dalla distanza", () => {
+  assert.equal(goalKind({ race_date: null }), "general");
+  assert.equal(goalKind({ race_date: "2026-10-18" }), "race");
+  assert.equal(generalGoalName(21097), "Migliorare nella mezza maratona");
+  assert.equal(generalGoalName(42195), "Migliorare nella maratona");
+  assert.equal(generalGoalName(10000), "Migliorare sui 10 km");
+});
+
+test("i prompt di piano includono la metodologia e non richiedono una gara", () => {
+  const source = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
+  assert.equal(source.match(/COACH_METHODOLOGY,/g)?.length, 2);
+  assert.match(source, /Una gara obiettivo NON è necessaria/);
+  assert.match(COACH_METHODOLOGY, /Una gara NON è necessaria/);
+  assert.match(COACH_METHODOLOGY, /Easy significa DAVVERO easy/);
 });

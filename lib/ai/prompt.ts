@@ -2,6 +2,7 @@
 import { Type, type Schema } from "@google/genai";
 import { WORKOUT_TYPES } from "@/lib/types";
 import { z } from "zod";
+import { COACH_METHODOLOGY } from "@/lib/ai/methodology";
 
 // ── Valutazione di una singola corsa ─────────────────────────────────────────
 
@@ -179,7 +180,9 @@ export function buildPlanPrompt(
     "Regole:",
     "- I numeri di forma (passi, volumi, carico TSB, predizioni) sono già calcolati e te li fornisco: usali per dimensionare il piano, ma resta realistico e progressivo.",
     `- Pianifica SOLO date comprese tra ${windowStart} e ${windowEnd} (incluse).`,
+    "- Segui fortemente la 'Metodologia di riferimento' qui sotto: struttura della settimana, progressione di volume e lungo, rotazione degli stimoli, formato delle sedute e dei recuperi, tono.",
     "- Non programmare ogni singolo giorno: includi riposo e alterna intensità e volume in modo sensato verso l'obiettivo.",
+    "- Una gara obiettivo NON è necessaria. Se non c'è un obiettivo attivo, o l'obiettivo non ha data (obiettivo generico), allena per migliorare in modo continuativo sulle distanze lunghe (mezza maratona e maratona, o la distanza indicata nell'obiettivo) seguendo i blocchi aperti della metodologia: non chiedere di fissare una gara e non introdurre tapering.",
     "- I passi target devono essere coerenti coi passi medi reali dell'atleta per ciascun tipo.",
     "- Usa la 'Calibrazione ritmi ↔ HR' nel contesto: se per un tipo di seduta la HR esce sopra la zona attesa (es. easy in Z3/Z4) o la deriva cardiaca è alta, quel ritmo OGGI non è sostenibile per quel tipo — rallenta i target di conseguenza e ricordalo nella review. Non riproporre lo stesso passo sperando che vada meglio.",
     "- Per ogni seduta compila sempre description e focus. In description chiarisci l'obiettivo fisiologico o tecnico della corsa, perché è utile in questa fase e quale risultato ricerca. In focus spiega cosa controllare durante la corsa, cosa privilegiare e cosa sacrificare (es. 'se la HR sale oltre il target, sacrifica il passo'), come farebbe un coach presente sul campo. Varia i focus tra tecnica di corsa, cadenza, respirazione e gestione mentale.",
@@ -197,6 +200,8 @@ export function buildPlanPrompt(
     comments && comments.trim()
       ? `- Vincoli/preferenze aggiuntivi dell'atleta da rispettare: ${comments.trim()}`
       : "",
+    "",
+    COACH_METHODOLOGY,
     "",
     "# Contesto atleta",
     contextMarkdown,
@@ -289,10 +294,14 @@ export function buildCoachPrompt(contextJson: string, userMessage: string): stri
     "- Escursioni e altri sport dichiarati sono vincoli e carico atteso: non inserirli come workout nel calendario.",
     "- Se il messaggio non richiede una modifica del piano, lascia workouts vuoto e plan_summary null.",
     "- Se serve adattare o creare il piano, proponi l'intero piano sensato tra meta.today e i successivi 13 giorni. Non applicarlo: l'utente lo confermerà nell'interfaccia.",
+    "- Quando crei o adatti il piano segui fortemente la 'Metodologia di riferimento' qui sotto: struttura della settimana, progressione di volume e lungo, rotazione degli stimoli, formato delle sedute e dei recuperi, tono. Scala passi e volumi sui dati reali del contesto.",
+    "- Una gara obiettivo NON è necessaria. Se non c'è un obiettivo attivo, o l'obiettivo non ha data (obiettivo generico), allena per migliorare in modo continuativo sulle distanze lunghe (mezza maratona e maratona, o la distanza indicata nell'obiettivo) seguendo i blocchi aperti della metodologia: non chiedere di fissare una gara e non introdurre tapering.",
     "- Preserva riposo e progressività. Per easy/recovery/long la HR è il vincolo principale; se la calibrazione mostra un passo troppo duro, rallentalo invece di riproporlo.",
     "- Per ogni workout proposto compila sempre description e focus. In description indica chiaramente l'obiettivo fisiologico o tecnico della seduta, perché è utile in questa fase e quale risultato ricerca. In focus indica su cosa concentrarsi durante la corsa, quali segnali osservare e come adattarsi se passo, HR o sensazioni non coincidono.",
     "- Compila sempre workout_steps come sequenza completa e già espansa: riscaldamento, ogni singola ripetuta, ogni recupero, parte continua e defaticamento. Non lasciare le ripetizioni soltanto nel testo.",
     "- conversation_summary deve aggiornare in poche frasi il riassunto precedente, preservando solo informazioni utili non già coperte dai ricordi strutturati.",
+    "",
+    COACH_METHODOLOGY,
     "",
     "# Contesto affidabile",
     contextJson,

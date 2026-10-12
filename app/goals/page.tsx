@@ -47,7 +47,7 @@ function GoalCard({ goal, isActive }: GoalCardProps) {
       <h2 className="text-lg font-semibold pr-16">{goal.race_name}</h2>
 
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-        <span>{formatDate(goal.race_date)}</span>
+        <span>{goal.race_date ? formatDate(goal.race_date) : "Obiettivo generico · senza scadenza"}</span>
         <span>{formatDistance(goal.distance_m)}</span>
         {goal.target_time_s && (
           <span>Target {formatDuration(goal.target_time_s)}</span>
@@ -125,7 +125,7 @@ export default async function GoalsPage() {
       {(!goals || goals.length === 0) && (
         <div className="rounded-2xl bg-card border border-white/[0.06] p-8 text-center">
           <p className="text-muted-foreground text-sm mb-4">
-            Nessun obiettivo ancora. Aggiungine uno per pianificare gli allenamenti.
+            Nessun obiettivo ancora. Non serve una gara: puoi puntare a una data o semplicemente migliorare su una distanza (es. mezza maratona).
           </p>
           <Button asChild>
             <Link href="/goals/new">
