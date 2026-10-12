@@ -125,7 +125,7 @@ export default async function GoalsPage() {
       {(!goals || goals.length === 0) && (
         <div className="rounded-2xl bg-card border border-white/[0.06] p-8 text-center">
           <p className="text-muted-foreground text-sm mb-4">
-            Nessun obiettivo ancora. Non serve una gara: puoi puntare a una data o semplicemente migliorare su una distanza (es. mezza maratona).
+            Nessun obiettivo ancora. Non serve una gara: puoi puntare a una data o semplicemente migliorare su una distanza (es. mezza maratona). Puoi anche dirlo al coach in chat.
           </p>
           <Button asChild>
             <Link href="/goals/new">
