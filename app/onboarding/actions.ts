@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { parseDuration } from "@/lib/format";
 import { verifyGeminiApiKey } from "@/lib/ai/gemini";
 import { storeGeminiApiKey } from "@/lib/ai/credentials";
+import { generalGoalName } from "@/lib/goals";
 
 export interface OnboardingState { error?: string }
 
@@ -46,17 +47,19 @@ export async function completeOnboarding(
   const distanceRaw = String(formData.get("distance_km") ?? "").trim();
   if (raceName || distanceRaw) {
     const distanceKm = Number(distanceRaw);
-    if (!raceName || !Number.isFinite(distanceKm) || distanceKm <= 0) {
-      return { error: "Per l'obiettivo inserisci nome e distanza validi." };
+    if (!Number.isFinite(distanceKm) || distanceKm <= 0) {
+      return { error: "Per l'obiettivo inserisci una distanza valida." };
     }
+    const raceDate = String(formData.get("race_date") ?? "").trim() || null;
     const targetRaw = String(formData.get("target_time") ?? "").trim();
     const target_time_s = targetRaw ? parseDuration(targetRaw) : null;
     if (targetRaw && !target_time_s) return { error: "Tempo obiettivo non valido." };
     await supabase.from("goals").update({ is_active: false }).eq("user_id", user.id);
     const { error } = await supabase.from("goals").insert({
       user_id: user.id,
-      race_name: raceName,
-      race_date: String(formData.get("race_date") ?? "").trim() || null,
+      // Senza nome né data è un obiettivo generico (es. migliorare nella mezza).
+      race_name: raceName || generalGoalName(Math.round(distanceKm * 1000)),
+      race_date: raceDate,
       distance_m: Math.round(distanceKm * 1000),
       target_time_s,
       is_active: true,

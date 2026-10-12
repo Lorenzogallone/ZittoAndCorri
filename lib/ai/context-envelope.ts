@@ -65,7 +65,7 @@ export interface AiContextEnvelope {
     timezone: "Europe/Rome";
     locale: "it-IT";
     language: "it";
-    prompt_version: "coach-v2";
+    prompt_version: "coach-v3";
     data_freshness: {
       queried_at: string;
       detailed_history_from: string;
@@ -80,6 +80,8 @@ export interface AiContextEnvelope {
     hr_zones: { value: ReturnType<typeof hrZones>; origin: "zepp" | "derived" | null };
   };
   goal: (Pick<Goal, "id" | "race_name" | "race_date" | "distance_m" | "target_time_s"> & {
+    /** "race" con data di gara, "general" = miglioramento aperto senza data. */
+    kind: "race" | "general";
     days_remaining: number | null;
     weeks_remaining: number | null;
     origin: "user";
@@ -405,7 +407,6 @@ export async function buildAiContext(
   const missing: string[] = [];
   if (!profileConfig.max_hr) missing.push("max_hr");
   if (!profileConfig.resting_hr) missing.push("resting_hr");
-  if (!goal) missing.push("active_goal");
   if (acts.length === 0) missing.push("training_history");
   if (acts.some((a) => a.rpe == null)) missing.push("rpe_on_some_activities");
 
@@ -422,7 +423,7 @@ export async function buildAiContext(
       timezone: "Europe/Rome",
       locale: "it-IT",
       language: "it",
-      prompt_version: "coach-v2",
+      prompt_version: "coach-v3",
       data_freshness: {
         queried_at: now.toISOString(),
         detailed_history_from: since21,
@@ -440,7 +441,7 @@ export async function buildAiContext(
       resting_hr: { value: profileConfig.resting_hr, origin: profileConfig.resting_hr_source },
       hr_zones: { value: hrZones(profileConfig), origin: profileConfig.zones_source },
     },
-    goal: goal ? { ...goal, days_remaining: daysRemaining, weeks_remaining: daysRemaining == null ? null : Math.ceil(daysRemaining / 7), origin: "user" } : null,
+    goal: goal ? { ...goal, kind: goal.race_date ? "race" : "general", days_remaining: daysRemaining, weeks_remaining: daysRemaining == null ? null : Math.ceil(daysRemaining / 7), origin: "user" } : null,
     training_state: {
       load: {
         load7: load.load7,

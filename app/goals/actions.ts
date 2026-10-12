@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { parseDuration } from "@/lib/format";
+import { generalGoalName } from "@/lib/goals";
 
 export interface GoalFormState {
   error?: string;
@@ -13,6 +14,51 @@ function optDuration(formData: FormData, key: string): number | null {
   const raw = formData.get(key);
   if (typeof raw !== "string" || raw.trim() === "") return null;
   return parseDuration(raw);
+}
+
+interface GoalValues {
+  race_name: string;
+  race_date: string | null;
+  distance_m: number;
+  target_time_s: number | null;
+  is_active: boolean;
+}
+
+/**
+ * Valida il form obiettivo. Con goal_kind "general" non serve una gara: la
+ * data viene ignorata e il nome, se vuoto, si genera dalla distanza.
+ */
+function parseGoalForm(formData: FormData): GoalValues | { error: string } {
+  const general = formData.get("goal_kind") === "general";
+
+  const distanceKm = Number(formData.get("distance_km"));
+  if (!Number.isFinite(distanceKm) || distanceKm <= 0)
+    return { error: "Distanza non valida." };
+  const distance_m = Math.round(distanceKm * 1000);
+
+  const nameRaw = String(formData.get("race_name") ?? "").trim();
+  const race_name = nameRaw || (general ? generalGoalName(distance_m) : "");
+  if (!race_name) return { error: "Inserisci il nome della gara." };
+
+  const race_date = general ? null : String(formData.get("race_date") ?? "").trim() || null;
+  if (!general && !race_date)
+    return { error: "Inserisci la data della gara, oppure scegli un obiettivo generico." };
+
+  const targetRaw = String(formData.get("target_time") ?? "").trim();
+  let target_time_s: number | null = null;
+  if (targetRaw) {
+    target_time_s = optDuration(formData, "target_time");
+    if (target_time_s == null || target_time_s <= 0)
+      return { error: "Tempo obiettivo non valido (usa h:mm:ss o mm:ss)." };
+  }
+
+  return {
+    race_name,
+    race_date,
+    distance_m,
+    target_time_s,
+    is_active: formData.get("is_active") === "on",
+  };
 }
 
 export async function createGoal(
@@ -25,25 +71,9 @@ export async function createGoal(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const race_name = String(formData.get("race_name") ?? "").trim();
-  if (!race_name) return { error: "Inserisci il nome della gara." };
-
-  const distanceKm = Number(formData.get("distance_km"));
-  if (!Number.isFinite(distanceKm) || distanceKm <= 0)
-    return { error: "Distanza non valida." };
-
-  const raceDateRaw = String(formData.get("race_date") ?? "").trim();
-  const race_date = raceDateRaw || null;
-
-  const targetRaw = String(formData.get("target_time") ?? "").trim();
-  let target_time_s: number | null = null;
-  if (targetRaw) {
-    target_time_s = optDuration(formData, "target_time");
-    if (target_time_s == null || target_time_s <= 0)
-      return { error: "Tempo obiettivo non valido (usa h:mm:ss o mm:ss)." };
-  }
-
-  const is_active = formData.get("is_active") === "on";
+  const parsed = parseGoalForm(formData);
+  if ("error" in parsed) return parsed;
+  const { race_name, race_date, distance_m, target_time_s, is_active } = parsed;
 
   if (is_active) {
     await supabase
@@ -56,7 +86,7 @@ export async function createGoal(
     user_id: user.id,
     race_name,
     race_date,
-    distance_m: Math.round(distanceKm * 1000),
+    distance_m,
     target_time_s,
     is_active,
   });
@@ -78,25 +108,9 @@ export async function updateGoal(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const race_name = String(formData.get("race_name") ?? "").trim();
-  if (!race_name) return { error: "Inserisci il nome della gara." };
-
-  const distanceKm = Number(formData.get("distance_km"));
-  if (!Number.isFinite(distanceKm) || distanceKm <= 0)
-    return { error: "Distanza non valida." };
-
-  const raceDateRaw = String(formData.get("race_date") ?? "").trim();
-  const race_date = raceDateRaw || null;
-
-  const targetRaw = String(formData.get("target_time") ?? "").trim();
-  let target_time_s: number | null = null;
-  if (targetRaw) {
-    target_time_s = optDuration(formData, "target_time");
-    if (target_time_s == null || target_time_s <= 0)
-      return { error: "Tempo obiettivo non valido (usa h:mm:ss o mm:ss)." };
-  }
-
-  const is_active = formData.get("is_active") === "on";
+  const parsed = parseGoalForm(formData);
+  if ("error" in parsed) return parsed;
+  const { race_name, race_date, distance_m, target_time_s, is_active } = parsed;
 
   if (is_active) {
     await supabase
@@ -111,7 +125,7 @@ export async function updateGoal(
     .update({
       race_name,
       race_date,
-      distance_m: Math.round(distanceKm * 1000),
+      distance_m,
       target_time_s,
       is_active,
     })

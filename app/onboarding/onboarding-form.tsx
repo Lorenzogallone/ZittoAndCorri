@@ -31,11 +31,11 @@ export function OnboardingForm() {
       </div>
 
       <div className={step === 1 ? "space-y-5" : "hidden"}>
-        <div><h1 className="text-2xl font-bold">Il tuo obiettivo</h1><p className="mt-2 text-sm text-muted-foreground">Facoltativo: il coach può iniziare anche senza una gara.</p></div>
-        <div className="space-y-2"><Label htmlFor="race_name">Nome gara</Label><Input id="race_name" name="race_name" placeholder="Mezza maratona di…" /></div>
+        <div><h1 className="text-2xl font-bold">Il tuo obiettivo</h1><p className="mt-2 text-sm text-muted-foreground">Facoltativo: non serve una gara. Puoi indicare solo la distanza su cui vuoi migliorare (es. 21,1 per la mezza, 42,2 per la maratona) oppure una gara con la sua data.</p></div>
+        <div className="space-y-2"><Label htmlFor="race_name">Nome gara (opzionale)</Label><Input id="race_name" name="race_name" placeholder="Vuoto = obiettivo generico" /></div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2"><Label htmlFor="distance_km">Distanza km</Label><Input id="distance_km" name="distance_km" type="number" step="0.001" /></div>
-          <div className="space-y-2"><Label htmlFor="race_date">Data</Label><Input id="race_date" name="race_date" type="date" /></div>
+          <div className="space-y-2"><Label htmlFor="race_date">Data gara</Label><Input id="race_date" name="race_date" type="date" /></div>
         </div>
         <div className="space-y-2"><Label htmlFor="target_time">Tempo target</Label><Input id="target_time" name="target_time" placeholder="1:45:00" /></div>
       </div>

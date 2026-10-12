@@ -248,14 +248,17 @@ export async function buildAthleteContext(
       : null;
     lines.push(
       `## Atleta — agg. ${shortDate(today)}`,
-      `Obiettivo: ${goal.race_name}${
+      `Obiettivo${goal.race_date ? "" : " generico (senza gara)"}: ${goal.race_name}${
         goal.race_date ? `, ${shortDate(goal.race_date)}` : ""
       }${weeksLeft != null ? ` (${weeksLeft} sett.)` : ""}. ${
         goal.distance_m ? formatDistance(goal.distance_m) : ""
       }${goal.target_time_s ? ` · Target ${formatDuration(goal.target_time_s)}` : ""}`,
     );
   } else {
-    lines.push(`## Atleta — agg. ${shortDate(today)}`, `Nessun obiettivo attivo.`);
+    lines.push(
+      `## Atleta — agg. ${shortDate(today)}`,
+      `Nessun obiettivo attivo: miglioramento generico sulle distanze lunghe (mezza/maratona).`,
+    );
   }
 
   // Memoria coach: fase di allenamento mantenuta dall'LLM piano dopo piano.
