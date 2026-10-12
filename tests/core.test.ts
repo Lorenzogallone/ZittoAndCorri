@@ -297,4 +297,12 @@ test("i prompt di piano includono la metodologia e non richiedono una gara", () 
   assert.match(source, /Una gara obiettivo NON è necessaria/);
   assert.match(COACH_METHODOLOGY, /Una gara NON è necessaria/);
   assert.match(COACH_METHODOLOGY, /Easy significa DAVVERO easy/);
+  assert.match(COACH_METHODOLOGY, /Niente sessioni di forza o palestra di default/);
+});
+
+test("il coach può cambiare l'obiettivo dalla chat", () => {
+  const prompt = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
+  assert.match(prompt, /goal_update/);
+  const actions = readFileSync(new URL("../app/coach/actions.ts", import.meta.url), "utf8");
+  assert.match(actions, /applyGoalUpdate\(admin, userId, result\.goal_update/);
 });

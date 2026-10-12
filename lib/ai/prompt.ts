@@ -232,6 +232,13 @@ export const coachResponseSchemaZod = z.object({
     valid_until: isoDate.nullable(),
     confidence: z.number().min(0).max(1),
   })).default([]),
+  goal_update: z.object({
+    action: z.enum(["set", "clear"]),
+    race_name: z.string().trim().max(120).nullable(),
+    race_date: isoDate.nullable(),
+    distance_m: z.number().int().min(1000).max(250_000).nullable(),
+    target_time_s: z.number().int().positive().nullable(),
+  }).nullable().catch(null),
   plan_summary: z.string().nullable(),
   workouts: z.array(z.object({
     date: isoDate,
@@ -277,10 +284,36 @@ export const coachResponseSchema: Schema = {
         required: ["memory_id", "category", "content", "valid_from", "valid_until", "confidence"],
       },
     },
+    goal_update: {
+      type: Type.OBJECT,
+      nullable: true,
+      description:
+        "Cambio dell'obiettivo attivo dichiarato dall'atleta in questo messaggio (nuova gara a cui si è iscritto, nuovo obiettivo generico, nuovo tempo target, rinuncia alla gara). null se l'obiettivo non cambia.",
+      properties: {
+        action: {
+          type: Type.STRING,
+          enum: ["set", "clear"],
+          description: "set = imposta/aggiorna l'obiettivo attivo; clear = nessun obiettivo attivo (miglioramento generico).",
+        },
+        race_name: {
+          type: Type.STRING,
+          nullable: true,
+          description: "Nome della gara, o dell'obiettivo generico (es. 'Migliorare nella maratona'). null per usare un nome automatico.",
+        },
+        race_date: {
+          type: Type.STRING,
+          nullable: true,
+          description: "Data gara YYYY-MM-DD; null per un obiettivo generico senza gara.",
+        },
+        distance_m: { type: Type.INTEGER, nullable: true, description: "Distanza in metri (mezza 21097, maratona 42195)." },
+        target_time_s: { type: Type.INTEGER, nullable: true, description: "Tempo obiettivo in secondi, solo se dichiarato." },
+      },
+      required: ["action", "race_name", "race_date", "distance_m", "target_time_s"],
+    },
     plan_summary: { type: Type.STRING, nullable: true },
     workouts: planSchema.properties!.workouts,
   },
-  required: ["reply", "conversation_summary", "memories", "plan_summary", "workouts"],
+  required: ["reply", "conversation_summary", "memories", "goal_update", "plan_summary", "workouts"],
 };
 
 export function buildCoachPrompt(contextJson: string, userMessage: string): string {
@@ -291,7 +324,8 @@ export function buildCoachPrompt(contextJson: string, userMessage: string): stri
     "- Comprendi disponibilità, vacanze, caldo, fatica, limitazioni, preferenze e feedback passo-HR; estrai solo nuovi ricordi davvero utili.",
     "- Per correggere o prolungare un ricordo già presente usa il suo id in memory_id; per un ricordo nuovo usa null. Non duplicare informazioni equivalenti.",
     "- Usa date YYYY-MM-DD in Europe/Rome. Se una condizione temporanea non ha durata, falla scadere 7 giorni dopo meta.today. Se l'ambiguità cambia molto il piano, chiedi chiarimenti e non proporre workout.",
-    "- Escursioni e altri sport dichiarati sono vincoli e carico atteso: non inserirli come workout nel calendario.",
+    "- Escursioni e altri sport dichiarati sono vincoli e carico atteso: non inserirli come workout nel calendario. Eccezione: se l'atleta chiede di inserire palestra/forza nel piano, salvalo come ricordo 'preference' senza scadenza (con la frequenza richiesta) e mettila a calendario come indicato nella metodologia; se in seguito dice di non volerla più, chiudi quel ricordo (stesso memory_id, valid_until = meta.today) e toglila dal piano.",
+    "- Obiettivo: l'atleta lo imposta parlando con te. Se dichiara un cambio (si è iscritto a una gara, vuole preparare un'altra distanza, cambia tempo target, rinuncia alla gara o vuole solo migliorare in generale) compila goal_update: action 'set' con i dati dichiarati (race_date null per un obiettivo generico senza gara, distance_m sempre valorizzata) oppure 'clear' se non vuole più nessun obiettivo. Non inventare date o tempi: se si è iscritto a una gara ma non conosci la data con certezza, chiedila e lascia goal_update null. Il cambio viene applicato subito: confermalo nella reply e, se cambia la direzione dell'allenamento, proponi nello stesso turno il piano aggiornato in funzione del nuovo obiettivo (il contesto mostra ancora l'obiettivo precedente). Se l'obiettivo non cambia, goal_update = null.",
     "- Se il messaggio non richiede una modifica del piano, lascia workouts vuoto e plan_summary null.",
     "- Se serve adattare o creare il piano, proponi l'intero piano sensato tra meta.today e i successivi 13 giorni. Non applicarlo: l'utente lo confermerà nell'interfaccia.",
     "- Quando crei o adatti il piano segui fortemente la 'Metodologia di riferimento' qui sotto: struttura della settimana, progressione di volume e lungo, rotazione degli stimoli, formato delle sedute e dei recuperi, tono. Scala passi e volumi sui dati reali del contesto.",

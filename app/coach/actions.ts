@@ -12,7 +12,9 @@ import {
   buildCoachPrompt,
   coachResponseSchema,
   coachResponseSchemaZod,
+  type CoachResponse,
 } from "@/lib/ai/prompt";
+import { generalGoalName } from "@/lib/goals";
 import { aiErrorMessage, generateStructured } from "@/lib/ai/gemini";
 import { WORKOUT_TYPES, type CoachMessage, type ProposedWorkout } from "@/lib/types";
 import { normalizeWorkoutSteps } from "@/lib/workout-steps";
@@ -56,6 +58,61 @@ function cleanWorkout(
     description: workout.description?.trim() || null,
     focus: workout.focus?.trim() || null,
   };
+}
+
+type GoalUpdate = NonNullable<CoachResponse["goal_update"]>;
+
+/**
+ * Applica il cambio di obiettivo dichiarato in chat. Ritorna l'id del nuovo
+ * obiettivo attivo, null se l'atleta resta senza obiettivo, undefined se
+ * l'aggiornamento non è valido e va ignorato.
+ */
+async function applyGoalUpdate(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  update: GoalUpdate,
+  today: string,
+): Promise<string | null | undefined> {
+  if (update.action === "clear") {
+    const { error } = await admin.from("goals").update({ is_active: false }).eq("user_id", userId).eq("is_active", true);
+    if (error) throw error;
+    return null;
+  }
+  const distance = update.distance_m;
+  if (!distance) return undefined;
+  const raceDate = update.race_date && isIsoDate(update.race_date) && update.race_date >= today
+    ? update.race_date
+    : null;
+  if (update.race_date && !raceDate) return undefined;
+  const values = {
+    race_name: update.race_name?.trim() || generalGoalName(distance),
+    race_date: raceDate,
+    distance_m: distance,
+    target_time_s: update.target_time_s,
+    is_active: true,
+  };
+  // Stessa gara già attiva (es. nuovo tempo target): aggiorna invece di duplicare.
+  const { data: active } = await admin
+    .from("goals")
+    .select("id, race_name, race_date")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .maybeSingle<{ id: string; race_name: string; race_date: string | null }>();
+  if (active && active.race_date === values.race_date &&
+      (active.race_date || active.race_name.toLowerCase() === values.race_name.toLowerCase())) {
+    const { error } = await admin.from("goals").update(values).eq("id", active.id).eq("user_id", userId);
+    if (error) throw error;
+    return active.id;
+  }
+  const { error: deactivateError } = await admin.from("goals").update({ is_active: false }).eq("user_id", userId).eq("is_active", true);
+  if (deactivateError) throw deactivateError;
+  const { data: goal, error } = await admin
+    .from("goals")
+    .insert({ user_id: userId, ...values })
+    .select("id")
+    .single<{ id: string }>();
+  if (error || !goal) throw error ?? new Error("Obiettivo non salvato");
+  return goal.id;
 }
 
 export async function sendCoachMessage(message: string): Promise<CoachActionResult> {
@@ -110,8 +167,13 @@ async function runCoachTurn(
     const result = coachResponseSchemaZod.parse(raw);
     const start = context.meta.today;
     const end = dateShift(start, 13);
+    let goalId = context.goal?.id ?? null;
+    if (result.goal_update) {
+      const updated = await applyGoalUpdate(admin, userId, result.goal_update, start);
+      if (updated !== undefined) goalId = updated;
+    }
     const workouts = result.workouts
-      .map((workout) => cleanWorkout(workout, start, end, context.goal?.id ?? null))
+      .map((workout) => cleanWorkout(workout, start, end, goalId))
       .filter((workout): workout is NonNullable<typeof workout> => workout !== null);
 
     const { data: assistant, error: assistantError } = await admin
