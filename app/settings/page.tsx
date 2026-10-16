@@ -8,8 +8,6 @@ import { CoachMemorySection } from "./coach-memory-section";
 import { GeminiKeySection } from "./gemini-key-section";
 import { ApiKeySection } from "./api-key-section";
 import { ZeppIntegrationSection } from "./zepp-integration-section";
-import { StravaSection, type StravaConnectionView } from "./strava-section";
-import { isStravaConfigured } from "@/lib/strava/config";
 import { Button } from "@/components/ui/button";
 import { sanitizePrefs } from "@/lib/theme";
 import type { Profile, AiCredentialMetadata, CoachMemory } from "@/lib/types";
@@ -70,14 +68,6 @@ export default async function SettingsPage({
     .select("heat_adjust")
     .eq("id", user.id)
     .maybeSingle<{ heat_adjust: boolean | null }>();
-  const stravaEnabled = isStravaConfigured();
-  const stravaConnectionRes = stravaEnabled
-    ? await supabase
-        .from("strava_connections")
-        .select("athlete_name, last_sync_at, last_error")
-        .eq("user_id", user.id)
-        .maybeSingle<StravaConnectionView>()
-    : null;
   const effectiveHr = await getEffectiveHrConfig(supabase, user.id, {
     max_hr: profile?.max_hr ?? null,
     resting_hr: profile?.resting_hr ?? null,
@@ -119,13 +109,7 @@ export default async function SettingsPage({
           />
         </SettingsGroup>
 
-        <SettingsGroup title="Integrazioni" defaultOpen={focus === "strava"}>
-          {stravaEnabled && (
-            <StravaSection
-              connection={stravaConnectionRes?.data ?? null}
-              focusRequested={focus === "strava"}
-            />
-          )}
+        <SettingsGroup title="Integrazioni">
           <ZeppIntegrationSection
             initialConnection={zeppConnectionRes.data ?? null}
           />

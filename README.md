@@ -20,7 +20,7 @@ The interface is currently in Italian.
   running totals by week, month, year and all time.
 - Provides a conversational coach that can suggest plan changes for approval.
 - Keeps each athlete's coach memory, preferences, and data separate.
-- Supports automatic imports through a personal access key or Strava.
+- Supports automatic imports through a personal access key.
 - Optionally uses health summaries from a compatible Zepp OS watch.
 - Works as an installable PWA on mobile and desktop browsers.
 
@@ -51,7 +51,7 @@ SUPABASE_SECRET_KEY=your-server-side-secret-key
 
 Initialize the Supabase database with the SQL files in
 `supabase/migrations` (in order; on an existing database apply only the new
-ones, e.g. `0018`–`0020`), then enable Google as an authentication provider. Add
+ones, e.g. `0018`–`0019`), then enable Google as an authentication provider. Add
 your application's `/auth/callback` URL to the allowed redirect URLs in
 Supabase.
 
@@ -76,7 +76,7 @@ personal Gemini key under **Settings → Coach**.
 - **Profile** — goal, training status, fitness and fatigue, weekly distance,
   race predictions, personal records and pace trend.
 - **Settings** — athlete data, heat adjustment, appearance, notifications,
-  Gemini, Strava, imports, and Zepp OS.
+  Gemini, imports, and Zepp OS.
 
 ## Activity imports
 
@@ -92,29 +92,6 @@ screen. External services can use the personal import key generated in
 
 Send the key with `Authorization: Bearer <personal-import-key>`. Regenerating
 the key immediately invalidates the previous one.
-
-## Strava
-
-Connected athletes get new Strava activities imported automatically (plus the
-last 14 days on first connection). Duplicates of FIT/GPX imports are merged.
-
-1. Create an API application at
-   [strava.com/settings/api](https://www.strava.com/settings/api) and set the
-   **Authorization Callback Domain** to your app's domain (`localhost` for
-   development).
-2. Add `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET` and a random
-   `STRAVA_VERIFY_TOKEN` to the environment.
-3. Run `supabase/migrations/0020_strava.sql`.
-4. Once deployed, register the webhook (one per Strava app):
-
-```bash
-node scripts/strava-subscribe.mjs https://<domain>/api/strava/webhook
-node scripts/strava-subscribe.mjs --list        # show the subscription
-node scripts/strava-subscribe.mjs --delete <id> # remove it
-```
-
-Users connect from **Settings → Integrations → Strava**. Tokens are stored
-encrypted in Supabase Vault.
 
 ## Zepp OS integration
 
