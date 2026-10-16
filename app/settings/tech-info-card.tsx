@@ -81,11 +81,7 @@ export function TechInfoCard({ load, hasData, zepp }: TechInfoCardProps) {
   const latest = zepp?.latest ?? null;
 
   return (
-    <section className="mb-8">
-      <div className="mb-4">
-        <h2 className="text-base font-semibold tracking-tight">Stato di forma</h2>
-        <p className="mt-0.5 text-xs text-muted-foreground">Una sintesi del tuo momento atletico.</p>
-      </div>
+    <div>
 
       {hasData ? (
         <div className="space-y-4">
@@ -137,7 +133,7 @@ export function TechInfoCard({ load, hasData, zepp }: TechInfoCardProps) {
             </div>
           )}
 
-          <details className="border-t border-border pt-4" open={!assisted}>
+          <details className="border-t border-border pt-4">
             <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Dati tecnici del calcolo interno</summary>
             <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-5">
             {METRICS.map((metric) => (
@@ -159,6 +155,6 @@ export function TechInfoCard({ load, hasData, zepp }: TechInfoCardProps) {
           Registra le prime attività per vedere qui carico, fatica, forma ed equilibrio.
         </p>
       )}
-    </section>
+    </div>
   );
 }

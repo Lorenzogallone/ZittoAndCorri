@@ -4,8 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { formatDistance, formatDuration, formatPace, activeDuration } from "@/lib/format";
-import { nowMs } from "@/lib/dates";
-import { isFootDistanceSport, type Activity } from "@/lib/types";
+import type { Activity } from "@/lib/types";
+import { TotalsCard } from "@/components/totals-card";
+import { periodTotals } from "@/lib/metrics/totals";
+import { romeDay } from "@/lib/local-date";
 import { Plus, Activity as ActivityIcon, Heart, Mountain } from "lucide-react";
 import {
   TYPE_LABELS,
@@ -58,28 +60,7 @@ export default async function ActivitiesPage() {
   const list = activities ?? [];
   const pendingActivityIds = new Set((pendingEvaluationJobs ?? []).flatMap((job) => job.ref_id ? [job.ref_id] : []));
 
-  // Distanza, tempo e trend comprendono le attività a piedi confrontabili:
-  // corsa, camminata ed escursione. Gli altri sport restano fuori dal volume km.
-  const now = nowMs();
-  const thirtyDaysAgoMs = now - 30 * 24 * 3600 * 1000;
-  const sixtyDaysAgoMs = now - 60 * 24 * 3600 * 1000;
-
-  const footDistanceActivities = list.filter((a) => isFootDistanceSport(a.sport));
-  const last30DaysActivities = footDistanceActivities.filter(
-    (a) => new Date(a.started_at).getTime() >= thirtyDaysAgoMs
-  );
-  const prev30DaysActivities = footDistanceActivities.filter((a) => {
-    const time = new Date(a.started_at).getTime();
-    return time >= sixtyDaysAgoMs && time < thirtyDaysAgoMs;
-  });
-
-  const dist30 = last30DaysActivities.reduce((sum, a) => sum + a.distance_m, 0);
-  const time30 = last30DaysActivities.reduce((sum, a) => sum + activeDuration(a), 0);
-  const count30 = last30DaysActivities.length;
-
-  const distPrev30 = prev30DaysActivities.reduce((sum, a) => sum + a.distance_m, 0);
-  const diffKm = (dist30 - distPrev30) / 1000;
-  const isPositiveTrend = diffKm >= 0;
+  const totals = periodTotals(list, romeDay());
 
   return (
     <AppShell
@@ -93,55 +74,7 @@ export default async function ActivitiesPage() {
         </Button>
       }
     >
-      {/* 30 Days Stats & Trend Card */}
-      {list.length > 0 && (
-        <div className="mb-6 rounded-2xl bg-card border border-border p-5 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent pointer-events-none" />
-          
-          <div className="relative">
-            <h2 className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">
-              Ultimi 30 Giorni
-            </h2>
-
-            <div className="grid grid-cols-3 gap-2 text-center py-2.5 bg-muted/20 rounded-xl border border-border/30 mb-3">
-              <div>
-                <p className="text-[10px] text-muted-foreground">Distanza</p>
-                <p className="text-base font-bold tabular-nums text-foreground">
-                  {formatDistance(dist30)}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-muted-foreground">Attività</p>
-                <p className="text-base font-bold tabular-nums text-foreground">
-                  {count30}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-muted-foreground">Tempo</p>
-                <p className="text-base font-bold tabular-nums text-foreground">
-                  {formatDuration(time30)}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 text-xs flex-wrap">
-              <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
-                isPositiveTrend 
-                  ? "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
-                  : "bg-muted text-muted-foreground"
-              }`}>
-                {isPositiveTrend ? "▲ Volume in crescita" : "▼ Volume in calo"}
-              </span>
-              <span className="text-muted-foreground font-medium">
-                {isPositiveTrend 
-                  ? `+${diffKm.toFixed(1)} km rispetto ai 30gg prima`
-                  : `${diffKm.toFixed(1)} km rispetto ai 30gg prima`
-                }
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+      {list.length > 0 && <TotalsCard periods={totals} />}
 
       {list.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">

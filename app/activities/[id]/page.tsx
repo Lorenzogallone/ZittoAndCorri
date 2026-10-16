@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { after } from "next/server";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
@@ -13,6 +14,12 @@ import { HrChart, PaceChart, ElevationChart } from "./activity-charts";
 import { ActivityEvaluation } from "@/components/activity-evaluation";
 import ActivityMap from "@/components/activity-map";
 import { CollapsibleSection } from "@/components/collapsible-section";
+import { PaceCheckCard } from "@/components/pace-check-card";
+import { ShareActivityButton } from "@/components/share-activity-button";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { paceCheckFor, persistDerived } from "@/lib/derived";
+import { personalRecords, EFFORTS } from "@/lib/metrics/best-efforts";
+import { Trophy } from "lucide-react";
 import {
   TYPE_LABELS,
   TYPE_COLORS,
@@ -160,6 +167,31 @@ export default async function ActivityDetailPage({
 
   if (!activity) notFound();
 
+  // Verifica del passo calcolata sul momento (il piano può essere cambiato) e
+  // record personali: se il dato salvato è assente o superato, lo aggiorniamo
+  // in background.
+  const [paceResult, { data: runEfforts }] = await Promise.all([
+    paceCheckFor(supabase, user.id, activity, streams?.gps_series ?? null),
+    activity.sport === "running"
+      ? supabase
+          .from("activities")
+          .select("id, started_at, best_efforts")
+          .eq("user_id", user.id)
+          .eq("sport", "running")
+          .not("best_efforts", "is", null)
+          .returns<Array<Pick<Activity, "id" | "started_at" | "best_efforts">>>()
+      : Promise.resolve({ data: [] as Array<Pick<Activity, "id" | "started_at" | "best_efforts">> }),
+  ]);
+  const heldRecords = personalRecords(runEfforts ?? []).filter((record) => record.activity_id === activity.id);
+  if (
+    activity.sport === "running" &&
+    (activity.best_efforts == null || JSON.stringify(activity.pace_check ?? null) !== JSON.stringify(paceResult?.check ?? null))
+  ) {
+    const userId = user.id;
+    const gps = streams?.gps_series ?? null;
+    after(() => persistDerived(createAdminClient(), userId, activity, gps));
+  }
+
   const isRun = (activity.sport ?? "running") === "running";
   const SportIcon = SPORT_ICONS[activity.sport ?? "other"];
 
@@ -210,13 +242,19 @@ export default async function ActivityDetailPage({
       backLabel="Attività"
       hideTabBar
       headerAction={
-        <Button asChild variant="outline" size="sm">
-          {/* replace: l'editor sostituisce il dettaglio nella history, così
-              dopo il salvataggio "indietro" torna a lista/home, non al form. */}
-          <Link href={`/activities/${activity.id}/edit`} replace>
-            Modifica
-          </Link>
-        </Button>
+        <div className="flex items-center gap-1">
+          <ShareActivityButton
+            activityId={activity.id}
+            title={activity.source_title ?? (isRun ? "La mia corsa" : SPORT_LABELS[activity.sport ?? "other"])}
+          />
+          <Button asChild variant="outline" size="sm">
+            {/* replace: l'editor sostituisce il dettaglio nella history, così
+                dopo il salvataggio "indietro" torna a lista/home, non al form. */}
+            <Link href={`/activities/${activity.id}/edit`} replace>
+              Modifica
+            </Link>
+          </Button>
+        </div>
       }
     >
       {/* Hero */}
@@ -248,7 +286,18 @@ export default async function ActivityDetailPage({
         </h1>
         {activity.source_title && <p className="text-sm font-medium">{activity.source_title}</p>}
         <p className="text-muted-foreground text-sm capitalize">{dateLabel}</p>
+        {heldRecords.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {heldRecords.map((record) => (
+              <span key={record.key} className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                <Trophy size={13} /> Record {EFFORTS.find((effort) => effort.key === record.key)?.label} · {formatDuration(record.time_s)}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
+
+      {paceResult && <PaceCheckCard check={paceResult.check} workoutId={paceResult.workout.id} />}
 
       <CollapsibleSection title="Dati attività">
         <div className="grid grid-cols-2 gap-2.5">

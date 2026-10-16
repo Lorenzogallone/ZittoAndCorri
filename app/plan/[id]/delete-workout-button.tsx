@@ -20,7 +20,7 @@ export function DeleteWorkoutButton({ workoutId }: { workoutId: string }) {
     return (
       <Button
         type="button"
-        variant="outline"
+        variant="ghost"
         size="sm"
         className="w-full text-destructive hover:text-destructive"
         onClick={() => {
@@ -28,7 +28,7 @@ export function DeleteWorkoutButton({ workoutId }: { workoutId: string }) {
           setConfirm(true);
         }}
       >
-        Elimina allenamento
+        Elimina seduta
       </Button>
     );
   }
@@ -36,8 +36,7 @@ export function DeleteWorkoutButton({ workoutId }: { workoutId: string }) {
   return (
     <div className="flex flex-col gap-2">
       <p className="text-sm text-center text-muted-foreground">
-        Sei sicuro di voler eliminare questo allenamento? L&apos;operazione non è
-        reversibile.
+        Eliminare questa seduta? Non si può annullare.
       </p>
       {error && (
         <p className="text-destructive text-sm text-center" role="alert">

@@ -9,6 +9,8 @@ import type { ConnectionRow } from "@/lib/zepp/data";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import type { ZeppWorkoutPullRequest } from "@/lib/zepp/schema";
 import { selectWorkoutForDate } from "@/lib/zepp/workout-selection";
+import { adjustPace, adjustStepsForHeat } from "@/lib/metrics/heat";
+import { heatForDates } from "@/lib/weather";
 
 export interface ZeppWorkoutWire {
   id: string;
@@ -123,7 +125,16 @@ export async function pullZeppWorkoutPlan(
   ]);
   if (workoutResult.error) throw workoutResult.error;
 
-  const workouts = (workoutResult.data ?? []).map(wireWorkout);
+  // Caldo previsto oggi: l'orologio riceve i passi già rallentati, come l'app.
+  const heat = (await heatForDates(admin, connection.user_id, [input.localDate])).get(input.localDate);
+  const workouts = (workoutResult.data ?? []).map(wireWorkout).map((workout) =>
+    heat && heat.pct > 0 && workout.date === input.localDate
+      ? {
+          ...workout,
+          target_pace_s_km: adjustPace(workout.target_pace_s_km, heat.pct),
+          steps: adjustStepsForHeat(workout.steps, heat.pct),
+        }
+      : workout);
   const selection = selectWorkoutForDate(workouts, input.localDate, input.overrideWorkoutId);
   const revision = revisionFor(workouts, selection.source === "override" ? selection.selected?.id ?? null : null);
 

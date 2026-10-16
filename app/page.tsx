@@ -1,28 +1,32 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarDays, Flag, Footprints } from "lucide-react";
+import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { CoachChat } from "@/components/coach-chat";
-import { todayIso, isoDaysFromNow } from "@/lib/dates";
-import { formatDistance, formatPlannedDistance } from "@/lib/format";
-import { TYPE_LABELS } from "@/lib/activity-meta";
-import { isFootDistanceSport, type Activity, type CoachMessage, type Goal, type PlanProposal, type PlannedWorkout } from "@/lib/types";
+import { TodayCard } from "@/components/home/today-card";
+import { addDays, daysBetween, mondayOf, romeDay } from "@/lib/local-date";
+import { buildDays } from "@/lib/plan/day-status";
+import { heatForDates } from "@/lib/weather";
+import type { Activity, CoachMessage, Goal, PlanProposal, PlannedWorkout } from "@/lib/types";
 
 export const maxDuration = 240;
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ prompt?: string }> }) {
+  const { prompt } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const today = todayIso();
-  const weekStart = isoDaysFromNow(-6);
-  const [goalRes, nextRes, activitiesRes, messagesRes, proposalsRes, credentialRes, pendingEvaluationsRes] = await Promise.all([
-    supabase.from("goals").select("race_name, race_date, distance_m").eq("user_id", user.id).eq("is_active", true).maybeSingle<Pick<Goal, "race_name" | "race_date" | "distance_m">>(),
-    supabase.from("planned_workouts").select("id, date, type, target_distance_m").eq("user_id", user.id).eq("status", "planned").gte("date", today).order("date").limit(1).maybeSingle<Pick<PlannedWorkout, "id" | "date" | "type" | "target_distance_m">>(),
-    supabase.from("activities").select("sport, distance_m").eq("user_id", user.id).gte("started_at", `${weekStart}T00:00:00`).returns<Array<Pick<Activity, "sport" | "distance_m">>>(),
+  const today = romeDay();
+  const monday = mondayOf(today);
+  const sunday = addDays(monday, 6);
+  const [goalRes, nextRes, weekPlanRes, weekActivitiesRes, messagesRes, proposalsRes, credentialRes, pendingEvaluationsRes] = await Promise.all([
+    supabase.from("goals").select("race_name, race_date").eq("user_id", user.id).eq("is_active", true).maybeSingle<Pick<Goal, "race_name" | "race_date">>(),
+    supabase.from("planned_workouts").select("*").eq("user_id", user.id).eq("status", "planned").gte("date", today).order("date").order("created_at").limit(1).maybeSingle<PlannedWorkout>(),
+    supabase.from("planned_workouts").select("*").eq("user_id", user.id).gte("date", monday).lte("date", sunday).returns<PlannedWorkout[]>(),
+    supabase.from("activities").select("started_at, sport, distance_m").eq("user_id", user.id).gte("started_at", `${addDays(monday, -1)}T12:00:00`).lte("started_at", `${addDays(sunday, 1)}T12:00:00`).returns<Array<Pick<Activity, "started_at" | "sport" | "distance_m">>>(),
     supabase.from("coach_messages").select("*").eq("user_id", user.id).in("kind", ["chat", "plan_proposal"]).order("created_at", { ascending: false }).limit(60).returns<CoachMessage[]>(),
     supabase.from("plan_proposals").select("id, user_id, source_message_id, summary, range_start, range_end, workouts, status, created_at, applied_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10).returns<PlanProposal[]>(),
     supabase.from("user_ai_credentials").select("user_id").eq("user_id", user.id).maybeSingle<{ user_id: string }>(),
@@ -35,30 +39,36 @@ export default async function Home() {
       ? user.user_metadata.name
       : null;
   const name = authName?.split(" ")[0] ?? user.email?.split("@")[0] ?? "Runner";
-  const weeklyDistance = (activitiesRes.data ?? [])
-    .filter((item) => isFootDistanceSport(item.sport))
-    .reduce((sum, item) => sum + item.distance_m, 0);
   const next = nextRes.data;
   const goal = goalRes.data;
+  const week = buildDays(monday, 7, today, weekPlanRes.data ?? [], weekActivitiesRes.data ?? []);
+  const heat = next && next.type !== "cross" && daysBetween(today, next.date) <= 2
+    ? (await heatForDates(supabase, user.id, [next.date])).get(next.date) ?? null
+    : null;
+  // Gara di oggi o appena passata (entro tre settimane): la scheda cambia.
+  const race = goal?.race_date && goal.race_date <= today && daysBetween(goal.race_date, today) <= 21
+    ? { name: goal.race_name, date: goal.race_date }
+    : null;
 
   return (
     <AppShell>
       <div className="flex h-full min-h-0 flex-col">
         <div className="mb-3 flex items-center justify-between">
           <h1 className="text-2xl font-bold tracking-tight">Ciao {name}</h1>
-          <Link href="/activities/new" className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">+ Attività</Link>
-        </div>
-        <div className="mb-3 grid shrink-0 grid-cols-2 gap-2.5">
-          <Link href="/plan" className="col-span-2 flex items-center gap-3 rounded-2xl border border-border bg-card p-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><CalendarDays size={18} /></div>
-            <div className="min-w-0 flex-1"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Prossimo allenamento</p><p className="mt-1 truncate text-sm font-semibold">{next ? TYPE_LABELS[next.type] : "Riposo"}</p><p className="mt-0.5 text-xs text-muted-foreground">{next ? `${next.date}${formatPlannedDistance(next) ? ` · ${formatPlannedDistance(next)}` : ""}` : "Nessuna seduta in programma"}</p></div>
-            <span className="text-muted-foreground/50">›</span>
+          <Link
+            href="/activities/new"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground"
+            aria-label="Registra un'attività"
+            title="Registra un'attività"
+          >
+            <Plus size={18} />
           </Link>
-          <Link href="/activities" className="rounded-2xl border border-border bg-card p-3"><Footprints size={17} className="mb-2 text-primary" /><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Ultimi 7 giorni</p><p className="mt-0.5 text-sm font-semibold">{formatDistance(weeklyDistance)}</p><p className="mt-0.5 truncate text-[11px] text-muted-foreground">corsa, cammino ed escursioni</p></Link>
-          <Link href="/goals" className="rounded-2xl border border-border bg-card p-3"><Flag size={17} className="mb-2 text-primary" /><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Obiettivo</p><p className="mt-0.5 truncate text-sm font-semibold">{goal?.race_name ?? "Da impostare"}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{goal ? formatDistance(goal.distance_m) : "Parlane al coach"}</p></Link>
+        </div>
+        <div className="mb-3 shrink-0">
+          <TodayCard next={next} today={today} heat={heat} week={week} race={race} />
         </div>
         <Suspense fallback={<div className="min-h-0 flex-1 animate-pulse rounded-[1.75rem] bg-muted" />}>
-          <CoachChat messages={[...(messagesRes.data ?? [])].reverse()} proposals={proposalsRes.data ?? []} keyConfigured={Boolean(credentialRes.data)} analyzingActivities={pendingEvaluationsRes.count ?? 0} />
+          <CoachChat key={prompt ?? ""} messages={[...(messagesRes.data ?? [])].reverse()} proposals={proposalsRes.data ?? []} keyConfigured={Boolean(credentialRes.data)} analyzingActivities={pendingEvaluationsRes.count ?? 0} />
         </Suspense>
       </div>
     </AppShell>

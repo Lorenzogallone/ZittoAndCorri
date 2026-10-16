@@ -171,3 +171,13 @@ export async function saveGeminiModel(model: string): Promise<{ error?: string; 
 
   return { ok: true };
 }
+
+export async function setHeatAdjust(enabled: boolean): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const { error } = await supabase.from("profiles").update({ heat_adjust: Boolean(enabled) }).eq("id", user.id);
+  if (error) return { error: "Impostazione non salvata." };
+  revalidatePath("/", "layout");
+  return {};
+}

@@ -267,11 +267,12 @@ test("i riepiloghi includono corsa, camminata ed escursione", () => {
   assert.equal(isFootDistanceSport("cycling"), false);
   assert.equal(isFootDistanceSport("beach_volley"), false);
 
-  const home = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  // Home e totali contano i km di corsa; camminate ed escursioni restano
+  // visibili come dato a parte nel riepilogo della pagina attività.
   const activities = readFileSync(new URL("../app/activities/page.tsx", import.meta.url), "utf8");
-  assert.match(home, /isFootDistanceSport\(item\.sport\)/);
-  assert.match(activities, /isFootDistanceSport\(a\.sport\)/);
-  assert.match(activities, />Attività<\/p>/);
+  const totals = readFileSync(new URL("../lib/metrics/totals.ts", import.meta.url), "utf8");
+  assert.match(activities, /<TotalsCard periods=\{totals\} \/>/);
+  assert.match(totals, /activity\.sport === "walking" \|\| activity\.sport === "hiking"/);
 });
 
 test("Beach volley è disponibile e riconosciuto dai file FIT", () => {
