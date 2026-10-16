@@ -41,7 +41,7 @@ export function WeekBars({ weeks, current }: { weeks: WeekBar[]; current: string
     <div>
       <div className="mb-2 flex gap-4 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px] bg-primary" />Fatti</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px] bg-muted-foreground/25" />Previsti</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px] bg-muted-foreground/25 dark:bg-muted-foreground/40" />Previsti</span>
       </div>
       <div ref={ref} className="relative" style={{ height: HEIGHT }}>
         {width > 0 && (
@@ -70,7 +70,7 @@ export function WeekBars({ weeks, current }: { weeks: WeekBar[]; current: string
                 >
                   <rect x={PAD.left + slot * index} y={PAD.top} width={slot} height={innerH} fill="transparent" />
                   {week.planned_m > 0 && (
-                    <path d={roundedTopBar(barX(index), y(week.planned_m), barW, PAD.top + innerH - y(week.planned_m))} className="fill-muted-foreground/20" />
+                    <path d={roundedTopBar(barX(index), y(week.planned_m), barW, PAD.top + innerH - y(week.planned_m))} className="fill-muted-foreground/20 dark:fill-muted-foreground/35" />
                   )}
                   {week.done_m > 0 && !isFuture && (
                     <path
@@ -83,7 +83,7 @@ export function WeekBars({ weeks, current }: { weeks: WeekBar[]; current: string
                       {kmLabel(week.done_m)}
                     </text>
                   )}
-                  {(index % labelEvery === 0 || isCurrent) && (
+                  {(isCurrent || (index % labelEvery === 0 && Math.abs(index - currentIndex) > 1)) && (
                     <text x={barX(index) + barW / 2} y={HEIGHT - 6} textAnchor="middle" className={isCurrent ? "fill-foreground text-[10px] font-medium" : "fill-muted-foreground text-[10px]"}>
                       {isCurrent ? "Ora" : weekLabel(week.week_start)}
                     </text>

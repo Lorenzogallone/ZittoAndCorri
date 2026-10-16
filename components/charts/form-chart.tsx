@@ -35,9 +35,10 @@ export function FormChart({ points }: { points: FormPoint[] }) {
   const y = (value: number) => PAD.top + innerH - (value / top) * innerH;
   const path = (key: "form" | "fatigue") =>
     points.map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(p[key]).toFixed(1)}`).join(" ");
+  // Etichetta del mese sul primo punto di ogni nuovo mese.
   const months = points
     .map((p, i) => ({ i, date: p.date }))
-    .filter(({ date }, i) => i > 0 && date.endsWith("-01"));
+    .filter(({ date }, i) => i > 0 && date.slice(0, 7) !== points[i - 1].date.slice(0, 7));
   const last = points[points.length - 1];
   const endGap = Math.abs(y(last.form) - y(last.fatigue));
 

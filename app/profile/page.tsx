@@ -30,6 +30,21 @@ type ProfileActivity = Pick<
 >;
 
 const WEEKS_BACK = 11;
+const BASE_COLUMNS = "id, started_at, duration_s, moving_time_s, rpe, avg_hr, time_in_zone, sport, distance_m";
+
+/** Senza la migrazione 0018 (record e verifica del passo) il profilo resta leggibile. */
+async function profileActivities(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const query = (columns: string) => supabase
+    .from("activities")
+    .select(columns)
+    .eq("user_id", userId)
+    .order("started_at", { ascending: false })
+    .returns<ProfileActivity[]>();
+  const result = await query(`${BASE_COLUMNS}, best_efforts, pace_check`);
+  if (result.error?.code !== "42703") return result;
+  const fallback = await query(BASE_COLUMNS);
+  return { ...fallback, data: fallback.data?.map((activity) => ({ ...activity, best_efforts: null, pace_check: null })) ?? null };
+}
 
 function formTrend(series: Array<{ date: string; ctl: number }>): string | null {
   if (series.length < 42) return null;
@@ -58,12 +73,7 @@ export default async function ProfilePage() {
       .eq("is_active", true)
       .maybeSingle<Pick<Goal, "race_name" | "race_date" | "distance_m" | "target_time_s">>(),
     supabase.from("profiles").select("max_hr, resting_hr").eq("id", user.id).maybeSingle<Pick<Profile, "max_hr" | "resting_hr">>(),
-    supabase
-      .from("activities")
-      .select("id, started_at, duration_s, moving_time_s, rpe, avg_hr, time_in_zone, sport, distance_m, best_efforts, pace_check")
-      .eq("user_id", user.id)
-      .order("started_at", { ascending: false })
-      .returns<ProfileActivity[]>(),
+    profileActivities(supabase, user.id),
     supabase
       .from("planned_workouts")
       .select("date, type, status, target_distance_m, target_duration_s, target_pace_s_km, workout_steps")
@@ -95,7 +105,11 @@ export default async function ProfilePage() {
     after(() => backfillDerived(createAdminClient(), userId));
   }
 
-  const formPoints = load.series.slice(-84).map((point) => ({ date: point.date, form: point.ctl, fatigue: point.atl }));
+  // Un punto a settimana (fino a oggi): linee leggibili invece del dente di sega giornaliero.
+  const recentLoad = load.series.slice(-85);
+  const formPoints = recentLoad
+    .filter((_, index) => (recentLoad.length - 1 - index) % 7 === 0)
+    .map((point) => ({ date: point.date, form: point.ctl, fatigue: point.atl }));
   const weeks = weeklyVolume(list, planned ?? [], firstMonday, WEEKS_BACK + 2);
   const records = personalRecords(list);
   const reference = predictionReference(
@@ -163,7 +177,7 @@ export default async function ProfilePage() {
         <TechInfoCard load={load} hasData={list.length > 0 || zepp.latest != null} zepp={zepp} />
       </Section>
 
-      {formPoints.length >= 14 && (
+      {formPoints.length >= 3 && (
         <Section title="Forma e fatica">
           <FormChart points={formPoints} />
           <p className="mt-2 text-xs text-muted-foreground">

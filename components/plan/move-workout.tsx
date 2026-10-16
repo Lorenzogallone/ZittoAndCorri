@@ -10,7 +10,7 @@ import { addDays } from "@/lib/local-date";
 
 function chipLabel(iso: string, today: string): { top: string; day: string } {
   const date = new Date(`${iso}T12:00:00Z`);
-  const top = iso === today ? "oggi" : iso === addDays(today, 1) ? "dom." : date.toLocaleDateString("it-IT", { weekday: "short", timeZone: "UTC" }).replace(".", "");
+  const top = iso === today ? "oggi" : iso === addDays(today, 1) ? "domani" : date.toLocaleDateString("it-IT", { weekday: "short", timeZone: "UTC" }).replace(".", "");
   return { top, day: String(date.getUTCDate()) };
 }
 
@@ -55,7 +55,7 @@ export function MoveWorkout({ id, date, today }: { id: string; date: string; tod
               disabled={current || pending}
               onClick={() => move(day)}
               className={cn(
-                "flex h-14 w-11 shrink-0 flex-col items-center justify-center rounded-xl border text-sm transition-colors",
+                "flex h-14 w-12 shrink-0 flex-col items-center justify-center rounded-xl border text-sm transition-colors",
                 current ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted/50",
                 pending && "opacity-60",
               )}
