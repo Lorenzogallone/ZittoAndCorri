@@ -38,10 +38,10 @@ function workoutSubtitle(workout: PlannedWorkout): string {
   return parts.filter(Boolean).join(" · ");
 }
 
-function activitySummary(activity: PlanActivity): string {
+function activitySummary(activity: PlanActivity, withSport = true): string {
   const isRun = activity.sport === "running";
   return [
-    !isRun ? SPORT_LABELS[activity.sport] : null,
+    !isRun && withSport ? SPORT_LABELS[activity.sport] : null,
     activity.distance_m > 0 ? formatDistance(activity.distance_m) : formatDuration(activeDuration(activity)),
     isRun && activity.avg_pace_s_km ? formatPace(activity.avg_pace_s_km) : null,
   ].filter(Boolean).join(" · ");
@@ -70,7 +70,7 @@ function DayRow({ day, today }: { day: PlanDay; today: string }) {
     dot = TYPE_DOTS[workout.type];
   } else if (activity) {
     title = activity.sport === "running" ? "Corsa extra" : SPORT_LABELS[activity.sport];
-    subtitle = activitySummary(activity);
+    subtitle = activitySummary(activity, false);
   } else {
     title = "Riposo";
   }

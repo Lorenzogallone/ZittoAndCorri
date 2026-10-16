@@ -23,7 +23,7 @@ export function formatDuration(total_s: number | null | undefined): string {
 /** Metri → "X,XX km". */
 export function formatDistance(distance_m: number | null | undefined): string {
   if (distance_m == null) return "—";
-  return `${(distance_m / 1000).toFixed(2)} km`;
+  return `${(distance_m / 1000).toFixed(2).replace(".", ",")} km`;
 }
 
 /**

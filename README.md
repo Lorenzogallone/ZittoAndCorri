@@ -10,7 +10,14 @@ The interface is currently in Italian.
 
 - Tracks running and other sports through manual entries or FIT/GPX imports.
 - Shows routes, splits, heart-rate data, training load, and activity feedback.
-- Manages race goals and a rolling 14-day training plan.
+- Manages race goals and a rolling 14-day training plan, with training phases,
+  a race-day pacing plan and a recovery proposal after the race.
+- Adapts the plan when you don't feel 100% (lighter, shorter or paused
+  sessions, reversible in one tap) and slows target paces in hot, humid weather
+  using the Open-Meteo forecast (no API key needed).
+- Tracks progress: fitness and fatigue over time, weekly distance against the
+  plan, race predictions, personal records, pace checks on quality sessions and
+  running totals by week, month, year and all time.
 - Provides a conversational coach that can suggest plan changes for approval.
 - Keeps each athlete's coach memory, preferences, and data separate.
 - Supports automatic imports through a personal access key or Strava.
@@ -43,7 +50,8 @@ SUPABASE_SECRET_KEY=your-server-side-secret-key
 ```
 
 Initialize the Supabase database with the SQL files in
-`supabase/migrations`, then enable Google as an authentication provider. Add
+`supabase/migrations` (in order; on an existing database apply only the new
+ones, e.g. `0018`–`0020`), then enable Google as an authentication provider. Add
 your application's `/auth/callback` URL to the allowed redirect URLs in
 Supabase.
 
@@ -59,11 +67,16 @@ personal Gemini key under **Settings → Coach**.
 
 ## Main areas
 
-- **Coach** — dashboard, upcoming workout, weekly distance, and AI chat.
-- **Activities** — manual entries, FIT/GPX uploads, maps, metrics, and feedback.
-- **Plan** — the next 14 days of planned training.
-- **Profile** — goals, training status, readiness, and account settings.
-- **Settings** — athlete data, appearance, Gemini, imports, and Zepp OS.
+- **Coach** — next workout with its intensity profile, this week at a glance,
+  and the AI chat.
+- **Activities** — running totals, manual entries, FIT/GPX uploads, pace-coloured
+  maps, pace checks, records, shareable images and AI feedback.
+- **Plan** — week-by-week plan with what was done or missed, a month view,
+  training phases, moving sessions and "Non al 100%".
+- **Profile** — goal, training status, fitness and fatigue, weekly distance,
+  race predictions, personal records and pace trend.
+- **Settings** — athlete data, heat adjustment, appearance, notifications,
+  Gemini, Strava, imports, and Zepp OS.
 
 ## Activity imports
 

@@ -318,6 +318,26 @@ function activityForAi(activity: ContextActivity): ContextActivityForAi {
   };
 }
 
+const CONTEXT_ACTIVITY_COLUMNS = "id, source, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km, avg_hr, max_hr, elevation_gain_m, rpe, rpe_source, source_title, notes, time_in_zone, splits, avg_cadence_spm, hr_drift_pct, calories";
+
+/**
+ * Attività recenti per il contesto. Se la migrazione 0018 non è ancora
+ * applicata (colonna pace_check assente) ripiega sulle colonne storiche,
+ * così il coach continua a funzionare.
+ */
+async function contextActivities(supabase: SupabaseClient, userId: string, since: string) {
+  const query = (columns: string) => supabase
+    .from("activities")
+    .select(columns)
+    .eq("user_id", userId)
+    .gte("started_at", `${since}T00:00:00`)
+    .order("started_at")
+    .returns<ContextActivity[]>();
+  const result = await query(`${CONTEXT_ACTIVITY_COLUMNS}, pace_check`);
+  if (result.error?.code === "42703") return query(CONTEXT_ACTIVITY_COLUMNS);
+  return result;
+}
+
 export async function buildAiContext(
   supabase: SupabaseClient,
   userId: string,
@@ -346,7 +366,7 @@ export async function buildAiContext(
     supabase.auth.admin.getUserById(userId),
     supabase.from("profiles").select("birthdate, max_hr, resting_hr").eq("id", userId).maybeSingle<Pick<Profile, "birthdate" | "max_hr" | "resting_hr">>(),
     supabase.from("goals").select("id, race_name, race_date, distance_m, target_time_s").eq("user_id", userId).eq("is_active", true).maybeSingle<Pick<Goal, "id" | "race_name" | "race_date" | "distance_m" | "target_time_s">>(),
-    supabase.from("activities").select("id, source, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km, avg_hr, max_hr, elevation_gain_m, rpe, rpe_source, source_title, notes, time_in_zone, splits, avg_cadence_spm, hr_drift_pct, calories, pace_check").eq("user_id", userId).gte("started_at", `${since90}T00:00:00`).order("started_at").returns<ContextActivity[]>(),
+    contextActivities(supabase, userId, since90),
     supabase.from("planned_workouts").select("*").eq("user_id", userId).gte("date", since14).lt("date", today).order("date").returns<PlannedWorkout[]>(),
     supabase.from("planned_workouts").select("*").eq("user_id", userId).gte("date", today).lte("date", until14).order("date").returns<PlannedWorkout[]>(),
     supabase.from("coach_memories").select("id, category, content, valid_from, valid_until, source, source_message_id, confidence").eq("user_id", userId).eq("is_active", true).or(`valid_until.is.null,valid_until.gte.${today}`).order("created_at").returns<Array<Pick<CoachMemory, "id" | "category" | "content" | "valid_from" | "valid_until" | "source" | "source_message_id" | "confidence">>>(),

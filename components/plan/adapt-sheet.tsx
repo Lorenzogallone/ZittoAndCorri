@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { BatteryLow, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -58,7 +59,9 @@ export function AdaptSheet({ variant = "header" }: { variant?: "header" | "inlin
         </Button>
       )}
 
-      {open && (
+      {/* Portal sul body: l'header ha backdrop-filter, che intrappolerebbe il
+          pannello fisso sotto la tab bar. */}
+      {open && createPortal(
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 backdrop-blur-[2px]" onClick={close}>
           <div
             role="dialog"
@@ -127,7 +130,8 @@ export function AdaptSheet({ variant = "header" }: { variant?: "header" | "inlin
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

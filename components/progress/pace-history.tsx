@@ -51,12 +51,7 @@ export function PaceHistory({ sessions }: { sessions: PaceSession[] }) {
         })}
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Scarto medio dal passo previsto, in secondi al km.{" "}
-        {Object.values(STATUS).map((status) => (
-          <span key={status.label} className="ml-2 inline-flex items-center gap-1">
-            <span className={cn("h-1.5 w-1.5 rounded-full", status.tone)} />{status.label.toLowerCase()}
-          </span>
-        ))}
+        Secondi al km rispetto al passo previsto: − più veloce, + più lento.
       </p>
       {trend && (
         <div className="mt-4 rounded-2xl bg-muted/50 px-4 py-3">
