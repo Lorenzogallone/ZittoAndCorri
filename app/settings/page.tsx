@@ -1,29 +1,17 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { signOut } from "@/app/actions/auth";
-import { AppShell } from "@/components/app-shell";
-import { ProfileForm } from "./profile-form";
-import { ThemeSettings } from "./theme-settings";
-import { CoachMemorySection } from "./coach-memory-section";
-import { GeminiKeySection } from "./gemini-key-section";
-import { ApiKeySection } from "./api-key-section";
-import { ZeppIntegrationSection } from "./zepp-integration-section";
-import { Button } from "@/components/ui/button";
 import { sanitizePrefs } from "@/lib/theme";
 import type { Profile, AiCredentialMetadata, CoachMemory } from "@/lib/types";
-import { LogOut } from "lucide-react";
 import type { ZeppConnectionView } from "@/lib/zepp/types";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
-import { SettingsGroup } from "./settings-group";
-import { NotificationsSection } from "./notifications-section";
-import { HeatSetting } from "./heat-setting";
+import { SettingsView } from "./settings-view";
 
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ focus?: string }>;
+  searchParams: Promise<{ focus?: string; tab?: string }>;
 }) {
-  const { focus } = await searchParams;
+  const { focus, tab: tabParam } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -78,55 +66,20 @@ export default async function SettingsPage({
     style: themeRes.data?.theme_style ?? null,
   });
 
+  const tab = focus === "gemini" ? "coach" : ["athlete", "app", "coach", "links"].includes(tabParam ?? "") ? tabParam! : "athlete";
+
   return (
-    <AppShell
-      title="Impostazioni"
-      backHref="/profile"
-      backLabel="Profilo"
-      hideTabBar
-    >
-      <div className="border-t border-border/70">
-        <SettingsGroup title="Profilo">
-          <ProfileForm profile={profile ?? null} effectiveHr={effectiveHr} />
-          <HeatSetting initial={heatRes.data?.heat_adjust !== false} />
-        </SettingsGroup>
-
-        <SettingsGroup title="Aspetto">
-          <ThemeSettings initial={initialTheme} />
-        </SettingsGroup>
-
-        {process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && (
-          <SettingsGroup title="Notifiche">
-            <NotificationsSection vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />
-          </SettingsGroup>
-        )}
-
-        <SettingsGroup title="Coach AI" defaultOpen={focus === "gemini"}>
-          <CoachMemorySection memories={memoriesRes.data ?? []} />
-          <GeminiKeySection
-            credential={credentialRes.data ?? null}
-            focusRequested={focus === "gemini"}
-          />
-        </SettingsGroup>
-
-        <SettingsGroup title="Integrazioni">
-          <ZeppIntegrationSection
-            initialConnection={zeppConnectionRes.data ?? null}
-          />
-          <ApiKeySection initialApiKey={profile?.api_key ?? null} />
-        </SettingsGroup>
-
-        <form action={signOut} className="border-b border-border/70 py-2">
-          <Button
-            type="submit"
-            variant="ghost"
-            className="w-full justify-start text-destructive hover:text-destructive"
-          >
-            <LogOut size={16} />
-            Esci dall&apos;account
-          </Button>
-        </form>
-      </div>
-    </AppShell>
+    <SettingsView
+      tab={tab}
+      profile={profile ?? null}
+      effectiveHr={effectiveHr}
+      heatAdjust={heatRes.data?.heat_adjust !== false}
+      theme={initialTheme}
+      vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null}
+      credential={credentialRes.data ?? null}
+      focusGemini={focus === "gemini"}
+      memories={memoriesRes.data ?? []}
+      zeppConnection={zeppConnectionRes.data ?? null}
+    />
   );
 }

@@ -9,8 +9,8 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     // Combacia con lo sfondo dello splash scuro (#pwa-splash) così la schermata
     // di avvio nativa di iOS sfuma senza stacchi nello splash dell'app.
-    background_color: "#16161f",
-    theme_color: "#1a1a2e",
+    background_color: "#0d0d0f",
+    theme_color: "#0d0d0f",
     icons: [
       {
         src: "/icon-192x192.png",

@@ -266,3 +266,15 @@ test("i totali per periodo contano la corsa e confrontano con il periodo prima",
   assert.equal(byKey.all.runs, 5);
   assert.equal(byKey.all.previous_m, null);
 });
+
+test("i dati Zepp vecchi vengono ignorati", async () => {
+  const { isZeppFresh, resolveEffectiveHrConfig } = await import("../lib/zepp/hr-values.ts");
+  const now = new Date("2026-10-16T12:00:00Z");
+  assert.equal(isZeppFresh("2026-10-15T08:00:00Z", 3, now), true);
+  assert.equal(isZeppFresh("2026-10-10T08:00:00Z", 3, now), false);
+  assert.equal(isZeppFresh(null, 3, now), false);
+  // Senza metriche fresche si usano i valori manuali.
+  const config = resolveEffectiveHrConfig({ max_hr: 188, resting_hr: 50 }, [], true);
+  assert.equal(config.max_hr_source, "user");
+  assert.equal(config.max_hr, 188);
+});

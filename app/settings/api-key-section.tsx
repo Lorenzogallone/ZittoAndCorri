@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Copy, Check, RefreshCw, UploadCloud } from "lucide-react";
+import { Eye, EyeOff, Copy, Check, RefreshCw } from "lucide-react";
 import { regenerateApiKey } from "./actions";
 import { IntegrationCard, IntegrationHelp } from "./integration-card";
 
@@ -54,13 +54,11 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
   return (
     <IntegrationCard
       id="external-import-integration"
-      icon={<UploadCloud size={18} />}
-      title="Import automatici"
-      description="Consente a Comandi Rapidi, Apple Health e altri servizi di caricare attività nel tuo account senza aprire l’app."
+      description="Per caricare corse da Comandi Rapidi o altri servizi senza aprire l'app."
     >
     <div className="flex flex-col gap-4">
       <div className="grid gap-2.5">
-        <Label htmlFor="api_key">Chiave personale per gli import</Label>
+        <Label htmlFor="api_key">Chiave personale</Label>
         <div className="relative flex gap-2">
           <div className="relative flex-1">
             <Input
@@ -116,7 +114,7 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
           {apiKey ? "Rigenera chiave" : "Genera nuova chiave"}
         </Button>
       </div>
-      <IntegrationHelp title="Come usarla per importare attività">
+      <IntegrationHelp title="Come si usa">
         <ol className="list-decimal space-y-1.5 pl-4">
           <li>Genera la chiave, mostrala e copiala.</li>
           <li>Nel servizio esterno usa l&apos;header <code className="rounded bg-muted px-1 py-0.5 text-foreground">Authorization: Bearer LA_TUA_CHIAVE</code>.</li>

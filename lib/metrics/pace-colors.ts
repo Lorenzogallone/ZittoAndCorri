@@ -54,3 +54,23 @@ export function paceGradientStops(points: TrackPoint[], stops = 40, windowS = 20
   }
   return out;
 }
+
+/** Colore per ogni punto della traccia (stessa scala del gradiente), null se la traccia non basta. */
+export function pointSpeedColors(points: TrackPoint[], windowS = 20): string[] | null {
+  if (points.length < 10) return null;
+  const cum = cumulativeDistance(points);
+  if (cum[cum.length - 1] < 200) return null;
+  const speeds = points.map((point, index) => {
+    let from = index;
+    let to = index;
+    while (from > 0 && point.t - points[from - 1].t <= windowS / 2) from--;
+    while (to < points.length - 1 && points[to + 1].t - point.t <= windowS / 2) to++;
+    const dt = points[to].t - points[from].t;
+    return dt > 0 ? (cum[to] - cum[from]) / dt : 0;
+  });
+  const moving = speeds.filter((speed) => speed > 0.5).sort((a, b) => a - b);
+  if (moving.length < 5) return null;
+  const low = percentile(moving, 0.1);
+  const span = Math.max(0.1, percentile(moving, 0.9) - low);
+  return speeds.map((speed) => speedColor((speed - low) / span));
+}

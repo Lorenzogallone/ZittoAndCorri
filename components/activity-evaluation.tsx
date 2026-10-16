@@ -8,7 +8,6 @@ import type { AiJobStatus } from "@/app/actions/ai-jobs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AiThinkingOverlay } from "@/components/ai-thinking-overlay";
-import { CollapsibleSection } from "@/components/collapsible-section";
 import { useAiJob } from "@/lib/use-ai-job";
 import type { Evaluation } from "@/lib/types";
 
@@ -45,32 +44,35 @@ export function ActivityEvaluation({
   // Un errore terminale ricevuto dal polling deve prevalere sul valore server
   // iniziale `initialAnalyzing`, che può restare true fino al prossimo refresh.
   const isAnalyzing = pending || (initialAnalyzing && !done && !displayedError);
+  // Con un'analisi già presente la nota resta nascosta finché non serve.
+  const [showForm, setShowForm] = useState(false);
+  const formVisible = !displayedEvaluation?.summary || showForm;
 
   return (
-    <CollapsibleSection
-      className="border-primary/10 bg-primary/[0.04]"
-      title={(
-        <span className="flex items-center gap-2 text-primary">
-          <Sparkles size={16} /> Coach AI
-        </span>
-      )}
-    >
+    <section className="surface p-5">
+      <h2 className="mb-3 flex items-center gap-2 text-[15px] font-semibold">
+        <Sparkles size={16} className="text-primary" /> Il commento del coach
+      </h2>
+
       {displayedEvaluation?.summary && !isAnalyzing && (
-        <div className="mb-4">
-          <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
-            {displayedEvaluation.summary}
-          </p>
-        </div>
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{displayedEvaluation.summary}</p>
+      )}
+      {(displayedEvaluation?.details?.length ?? 0) > 0 && !isAnalyzing && (
+        <ul className="mt-3 flex flex-wrap gap-1.5">
+          {displayedEvaluation!.details!.map((detail, index) => (
+            <li key={`${detail}-${index}`} className="rounded-full bg-muted px-2.5 py-1 text-xs">{detail}</li>
+          ))}
+        </ul>
       )}
 
       {!keyConfigured && !isAnalyzing && (
-        <Link href="/settings?focus=gemini#gemini-integration" className="mb-4 block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">
-          Configura la chiave Gemini per ricevere il feedback AI
+        <Link href="/settings?focus=gemini#gemini-integration" className="mt-3 block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">
+          Configura la chiave Gemini per ricevere il commento
         </Link>
       )}
 
       {displayedError && !isAnalyzing && (
-        <div className="mb-3 border-l-2 border-destructive pl-3" role="alert">
+        <div className="mt-3 border-l-2 border-destructive pl-3" role="alert">
           <p className="text-sm font-medium text-destructive">{displayedError}</p>
           {/quota/i.test(displayedError) && (
             <p className="mt-1 text-xs text-muted-foreground">
@@ -80,23 +82,27 @@ export function ActivityEvaluation({
         </div>
       )}
 
-      {!isAnalyzing && (
+      {!isAnalyzing && keyConfigured && !formVisible && (
+        <button type="button" onClick={() => setShowForm(true)} className="mt-4 text-sm font-medium text-primary">
+          Aggiungi una nota e rivaluta
+        </button>
+      )}
+
+      {!isAnalyzing && formVisible && (
         <form
           onSubmit={(e) => {
             e.preventDefault();
             const form = e.currentTarget;
             const fd = new FormData(form);
             form.reset();
+            setShowForm(false);
             start(() => startEvaluation(fd));
           }}
-          className="flex flex-col gap-2.5"
+          className="mt-4 flex flex-col gap-2.5"
         >
           <input type="hidden" name="activity_id" value={activityId} />
-          <label
-            htmlFor="ai-notes"
-            className="text-xs font-medium text-muted-foreground"
-          >
-            Note per il coach
+          <label htmlFor="ai-notes" className="text-xs font-medium text-muted-foreground">
+            Come è andata?
           </label>
           <Textarea
             id="ai-notes"
@@ -105,18 +111,13 @@ export function ActivityEvaluation({
             defaultValue={displayedEvaluation ? "" : initialNotes ?? ""}
             placeholder="Gambe pesanti, poco sonno, fastidio al polpaccio…"
           />
-
           <Button type="submit" disabled={!keyConfigured} variant="outline" className="w-full">
-            {displayedEvaluation
-              ? "Rivaluta corsa"
-              : initialFailed
-                ? "Riprova analisi"
-                : "Valuta corsa"}
+            {displayedEvaluation ? "Rivaluta" : initialFailed ? "Riprova" : "Chiedi al coach"}
           </Button>
         </form>
       )}
 
       <AiThinkingOverlay pending={isAnalyzing} variant="evaluation" />
-    </CollapsibleSection>
+    </section>
   );
 }

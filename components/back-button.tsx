@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
+import { ChevronLeft } from "lucide-react";
 
 interface BackButtonProps {
   /** Fallback href if history is empty or unavailable */
@@ -23,12 +24,12 @@ export function BackButton({ fallbackHref, label = "Indietro" }: BackButtonProps
     router.back();
   }, [router]);
 
-  const className = "text-muted-foreground text-sm hover:text-foreground transition-colors active:scale-95";
+  const className = "-ml-2 inline-flex items-center text-[15px] font-medium text-primary transition-opacity active:opacity-50";
 
   if (fallbackHref) {
     return (
       <Link href={fallbackHref} className={className}>
-        ← {label}
+        <ChevronLeft size={22} strokeWidth={2.2} /> {label}
       </Link>
     );
   }
@@ -39,7 +40,7 @@ export function BackButton({ fallbackHref, label = "Indietro" }: BackButtonProps
       onClick={handleBack}
       className={className}
     >
-      ← {label}
+      <ChevronLeft size={22} strokeWidth={2.2} /> {label}
     </button>
   );
 }

@@ -27,7 +27,7 @@ export function TotalsCard({ periods, initial = "month" }: { periods: PeriodTota
   const period = periods.find((candidate) => candidate.key === active) ?? periods[0];
   const note = comparison(period);
   return (
-    <section className="mb-6 rounded-2xl border border-border bg-card p-4">
+    <section className="surface mb-8 p-4">
       <div className="grid grid-cols-4 rounded-xl bg-muted p-0.5 text-xs font-medium" role="tablist" aria-label="Periodo">
         {periods.map((candidate) => (
           <button

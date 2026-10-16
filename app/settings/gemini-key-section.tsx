@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, ExternalLink, Sparkles, Trash2 } from "lucide-react";
+import { Check, ExternalLink, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -98,14 +98,11 @@ export function GeminiKeySection({
   return (
     <IntegrationCard
       id="gemini-integration"
-      icon={<Sparkles size={18} />}
-      title="Gemini"
-      description="Collega Gemini per usare chat, adattamento del piano e feedback sulle attività."
-      defaultOpen={focusRequested}
+      description="Serve per la chat con il coach, i piani e le analisi delle corse."
     >
       <div className="space-y-4">
       {configured && !editing ? (
-        <div className="rounded-xl bg-muted/30 px-3 py-3">
+        <div className="rounded-xl bg-muted px-3 py-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm">
               <Check size={16} className="text-emerald-500" />
@@ -162,13 +159,11 @@ export function GeminiKeySection({
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            {modelPending ? "Salvataggio…" : "Il modello selezionato verrà usato per coach e analisi automatiche."}
-          </p>
+          {modelPending && <p className="text-xs text-muted-foreground">Salvataggio…</p>}
         </div>
       )}
 
-      <IntegrationHelp title="Come creare la chiave Gemini">
+      <IntegrationHelp title="Come ottenere la chiave">
         <ol className="mt-2 list-decimal space-y-1 pl-4">
           <li>Apri Google AI Studio ed entra con il tuo account Google.</li>
           <li>Seleziona “Create API key” e scegli o crea un progetto.</li>

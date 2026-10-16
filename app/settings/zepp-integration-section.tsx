@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Link2, Trash2, Watch } from "lucide-react";
+import { Check, Link2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { IntegrationCard, IntegrationHelp } from "./integration-card";
 import {
   deleteZeppConnectionData,
@@ -20,6 +21,9 @@ function formatDate(value: string | null): string {
   return new Date(value).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" });
 }
 
+/** Oltre questo limite i dati giornalieri dell'orologio vengono ignorati (vedi lib/zepp/data). */
+const STALE_MS = 3 * 86_400_000;
+
 export function ZeppIntegrationSection({ initialConnection }: Props) {
   const [connection, setConnection] = useState(initialConnection);
   const [enabled, setEnabled] = useState(Boolean(initialConnection?.enabled));
@@ -28,6 +32,8 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [now] = useState(() => Date.now());
+  const stale = Boolean(connection?.last_sync_at) && now - new Date(connection!.last_sync_at!).getTime() > STALE_MS;
 
   const generate = () => startTransition(async () => {
     setError(null);
@@ -82,53 +88,28 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
   return (
     <IntegrationCard
       id="zepp-os-integration"
-      icon={<Watch size={18} />}
-      title="Zepp OS"
-      description="Opzionale: se non la attivi, ZittoAndCorri continua a usare esattamente il calcolo interno precedente."
+      description="Facoltativo: porta sonno, recupero e zone cardiache dall'orologio."
     >
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3">
-          <div>
-            <p className="text-sm font-medium">Usa i dati Zepp OS</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {enabled ? "Attiva per questo account" : "Disattivata: viene usato solo il calcolo interno"}
-            </p>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={enabled}
-            aria-label="Usa i dati Zepp OS"
-            disabled={pending}
-            onClick={toggle}
-            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-50 ${enabled ? "bg-primary" : "bg-muted-foreground/30"}`}
-          >
-            <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${enabled ? "left-6" : "left-1"}`} />
-          </button>
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm font-medium">Usa i dati dell&apos;orologio</p>
+          <Switch checked={enabled} onCheckedChange={toggle} disabled={pending} aria-label="Usa i dati dell'orologio" />
         </div>
 
-        {!enabled ? (
-          <p className="rounded-xl bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-            Nessun dispositivo richiesto. Attiva lo switch solo se vuoi collegare un orologio Zepp OS compatibile.
-          </p>
-        ) : connection?.enabled ? (
+        {!enabled ? null : connection?.enabled ? (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400">
-              <Check size={16} />
+            <div className="flex items-center gap-2 text-sm">
+              <Check size={16} className="text-emerald-500" />
               <span className="font-medium">{connection.device_name ?? "Orologio Zepp"} collegato</span>
             </div>
-            <dl className="grid grid-cols-2 gap-3 text-xs">
-              <div><dt className="text-muted-foreground">Ultima sync</dt><dd className="mt-1 font-medium">{formatDate(connection.last_sync_at)}</dd></div>
-              <div><dt className="text-muted-foreground">API level</dt><dd className="mt-1 font-medium">{connection.api_level ?? "—"}</dd></div>
-              <div><dt className="text-muted-foreground">Zepp OS</dt><dd className="mt-1 font-medium">{connection.os_version ?? "—"}</dd></div>
-              <div><dt className="text-muted-foreground">Automatica</dt><dd className="mt-1 font-medium">08:00 · 23:00</dd></div>
-            </dl>
+            <p className={`text-xs ${stale ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
+              Ultima sincronizzazione: {formatDate(connection.last_sync_at)}
+              {stale && " · i dati vecchi non vengono usati finché non risincronizzi"}
+            </p>
             {connection.last_error && <p className="text-xs text-destructive">Ultimo errore: {connection.last_error}</p>}
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button type="button" variant="destructive" size="sm" disabled={pending} onClick={remove}>
-                <Trash2 size={14} /> Scollega e cancella
-              </Button>
-            </div>
+            <Button type="button" variant="ghost" size="sm" className="-ml-3 text-destructive hover:text-destructive" disabled={pending} onClick={remove}>
+              <Trash2 size={14} /> Scollega e cancella i dati
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">
@@ -156,7 +137,7 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
 
         {error && <p role="alert" className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
 
-        <IntegrationHelp title="Come collegare le due app con lo stesso codice">
+        <IntegrationHelp title="Come collegare l'orologio">
           <ol className="list-decimal space-y-1.5 pl-4">
             <li>Genera il codice qui sopra (valido 10 minuti).</li>
             <li>

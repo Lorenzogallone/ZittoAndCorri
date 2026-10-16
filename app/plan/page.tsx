@@ -115,21 +115,21 @@ export default async function PlanPage({ searchParams }: Props) {
           {phases && <PhaseBar plan={phases} />}
         </Link>
       ) : (
-        <Link href="/?prompt=Vorrei+impostare+un+obiettivo" className="mb-7 flex items-center justify-between rounded-2xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+        <Link href="/?prompt=Vorrei+impostare+un+obiettivo" className="surface mb-7 flex items-center justify-between px-4 py-3 text-sm text-muted-foreground">
           Nessun obiettivo · parlane al coach
           <ChevronRight size={16} />
         </Link>
       )}
 
       <div className="mb-5 flex items-center justify-between gap-3">
-        <div className="inline-flex rounded-xl bg-muted p-0.5 text-xs font-medium" role="tablist">
+        <div className="inline-flex rounded-xl bg-muted p-0.5 text-[13px] font-medium" role="tablist">
           {(["weeks", "month"] as const).map((key) => (
             <Link
               key={key}
               href={key === "month" ? "/plan?view=month" : "/plan"}
               role="tab"
               aria-selected={view === key}
-              className={cn("rounded-[10px] px-3 py-1.5 transition-colors", view === key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
+              className={cn("rounded-[10px] px-3 py-1.5 transition-colors", view === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}
             >
               {key === "weeks" ? "Settimane" : "Mese"}
             </Link>
@@ -154,11 +154,24 @@ export default async function PlanPage({ searchParams }: Props) {
 
       {view === "weeks" ? (
         <>
-          <PlanWeek days={days.slice(0, 7)} today={today} title={firstMonday === thisMonday ? "Questa settimana" : undefined} />
-          <PlanWeek days={days.slice(7, 14)} today={today} title={firstMonday === thisMonday ? "Prossima settimana" : undefined} />
+          {[days.slice(0, 7), days.slice(7, 14)].map((week, index) => {
+            const isCurrent = week[0].date === thisMonday;
+            const isNext = week[0].date === addDays(thisMonday, 7);
+            return (
+              <PlanWeek
+                key={week[0].date}
+                days={week}
+                today={today}
+                highlight={isCurrent}
+                title={isCurrent ? "Questa settimana" : isNext && index > 0 ? "Prossima settimana" : undefined}
+              />
+            );
+          })}
         </>
       ) : (
-        <PlanCalendar days={days} month={month} today={today} raceDate={goal?.race_date ?? null} />
+        <div className="surface p-4">
+          <PlanCalendar days={days} month={month} today={today} raceDate={goal?.race_date ?? null} />
+        </div>
       )}
 
       <Link href="/plan/new" className="mt-2 flex items-center justify-center gap-1.5 py-3 text-sm font-medium text-primary">

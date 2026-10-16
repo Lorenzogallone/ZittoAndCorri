@@ -40,8 +40,8 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#faf8f5" },
-    { media: "(prefers-color-scheme: dark)", color: "#1a1a2e" },
+    { media: "(prefers-color-scheme: light)", color: "#fbfaf9" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d0d0f" },
   ],
 };
 
@@ -56,8 +56,8 @@ const PWA_SPLASH_HTML = `
 <style>
   #pwa-splash{display:none}
   @media (display-mode: standalone){
-    #pwa-splash{display:flex;position:fixed;inset:0;z-index:99999;flex-direction:column;align-items:center;justify-content:center;gap:28px;background:#f8f6f1;transition:opacity .4s ease}
-    @media (prefers-color-scheme: dark){#pwa-splash{background:#16161f}}
+    #pwa-splash{display:flex;position:fixed;inset:0;z-index:99999;flex-direction:column;align-items:center;justify-content:center;gap:28px;background:#fbfaf9;transition:opacity .4s ease}
+    @media (prefers-color-scheme: dark){#pwa-splash{background:#0d0d0f}}
     #pwa-splash .ps-stage{position:relative;display:flex;align-items:center;justify-content:center}
     #pwa-splash .ps-glow{position:absolute;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle, rgba(232,118,90,.30) 0%, rgba(232,118,90,0) 70%);animation:ps-breathe 3s ease-in-out infinite}
     #pwa-splash .ps-icon{position:relative;display:flex;align-items:center;justify-content:center;width:92px;height:92px;border-radius:28px;color:#fff;background:linear-gradient(145deg,#f29078,#e8765a 55%,#d85f44);box-shadow:0 14px 32px -10px rgba(232,118,90,.6);animation:ps-float 3s ease-in-out infinite}

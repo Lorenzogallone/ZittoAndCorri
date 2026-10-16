@@ -54,18 +54,9 @@ export function ProfileForm({
     source === "zepp" ? "Zepp" : source === "user" ? "Manuale" : "Non impostata";
 
   return (
-    <section className="py-5">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-normal text-foreground">Dati atleta</h2>
-        {!editing && (
-          <Button type="button" variant="ghost" size="sm" onClick={() => { setState(initialState); setEditing(true); }}>
-            <Pencil size={14} /> Modifica
-          </Button>
-        )}
-      </div>
-
+    <section className="py-4">
       {!editing ? (
-        <div className="mt-4 border-t border-border/60 pt-4">
+        <div>
           <dl className="grid grid-cols-3 gap-3">
             <div>
               <dt className="text-xs text-muted-foreground">FC massima</dt>
@@ -86,18 +77,18 @@ export function ProfileForm({
               </p>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Data di nascita</dt>
+              <dt className="text-xs text-muted-foreground">Nascita</dt>
               <dd className="mt-1 text-sm font-medium">{birthdate}</dd>
             </div>
           </dl>
           {effectiveHr.hr_zone_ranges && (
-            <details className="mt-4 border-t border-border/60 pt-3">
-              <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Zone cardiache Zepp</summary>
-              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                {effectiveHr.hr_zone_ranges.slice(0, 5).map((value, index) => `Z${index + 1} ${value}`).join(" · ")} bpm
-              </p>
-            </details>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Zone dall&apos;orologio: {effectiveHr.hr_zone_ranges.slice(0, 5).map((value, index) => `Z${index + 1} ${value}`).join(" · ")}
+            </p>
           )}
+          <Button type="button" variant="ghost" size="sm" className="-ml-3 mt-2 text-primary" onClick={() => { setState(initialState); setEditing(true); }}>
+            <Pencil size={14} /> Modifica
+          </Button>
           {state.ok && (
             <p className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400" aria-live="polite">
               <Check size={14} /> Dati salvati
@@ -105,10 +96,10 @@ export function ProfileForm({
           )}
         </div>
       ) : (
-        <form action={save} className="mt-4 space-y-4 border-t border-border/60 pt-4">
+        <form action={save} className="space-y-4">
           {zeppActive && (
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Stai modificando i valori manuali di fallback. Finché Zepp resta collegato, l&apos;app continuerà a usare i valori provenienti dall&apos;orologio.
+              Con l&apos;orologio collegato contano i suoi valori: questi servono quando non sincronizza.
             </p>
           )}
           <div className="grid grid-cols-2 gap-3">

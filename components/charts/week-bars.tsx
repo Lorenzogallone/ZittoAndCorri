@@ -70,12 +70,17 @@ export function WeekBars({ weeks, current }: { weeks: WeekBar[]; current: string
                 >
                   <rect x={PAD.left + slot * index} y={PAD.top} width={slot} height={innerH} fill="transparent" />
                   {week.planned_m > 0 && (
-                    <path d={roundedTopBar(barX(index), y(week.planned_m), barW, PAD.top + innerH - y(week.planned_m))} className="fill-muted-foreground/20 dark:fill-muted-foreground/35" />
+                    <path
+                      d={roundedTopBar(barX(index), y(week.planned_m), barW, PAD.top + innerH - y(week.planned_m))}
+                      className="animate-grow-y fill-muted-foreground/20 dark:fill-muted-foreground/35"
+                      style={{ animationDelay: `${index * 35}ms` }}
+                    />
                   )}
                   {week.done_m > 0 && !isFuture && (
                     <path
                       d={roundedTopBar(barX(index), y(week.done_m), barW, PAD.top + innerH - y(week.done_m))}
-                      className={active === index ? "fill-primary" : "fill-primary/85"}
+                      className={`animate-grow-y ${active === index ? "fill-primary" : "fill-primary/85"}`}
+                      style={{ animationDelay: `${index * 35 + 60}ms` }}
                     />
                   )}
                   {isCurrent && (week.done_m > 0 || week.planned_m > 0) && (

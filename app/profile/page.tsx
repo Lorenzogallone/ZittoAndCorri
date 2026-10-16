@@ -1,18 +1,7 @@
-import Link from "next/link";
 import { after } from "next/server";
 import { redirect } from "next/navigation";
-import { ChevronRight, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { AppShell } from "@/components/app-shell";
-import { Button } from "@/components/ui/button";
-import { Section } from "@/components/section";
-import { FormChart } from "@/components/charts/form-chart";
-import { WeekBars } from "@/components/charts/week-bars";
-import { Predictions } from "@/components/progress/predictions";
-import { Records } from "@/components/progress/records";
-import { PaceHistory } from "@/components/progress/pace-history";
-import { TechInfoCard } from "@/app/settings/tech-info-card";
 import { computeATLCTL } from "@/lib/metrics/load";
 import { personalRecords } from "@/lib/metrics/best-efforts";
 import { predictionReference } from "@/lib/metrics/race-prediction";
@@ -22,7 +11,8 @@ import { backfillDerived } from "@/lib/derived";
 import { getZeppDashboard } from "@/lib/zepp/data";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import type { Goal, Activity, Profile, PlannedWorkout } from "@/lib/types";
-import { formatDistance, formatDuration, activeDuration } from "@/lib/format";
+import { activeDuration } from "@/lib/format";
+import { ProfileView } from "./profile-view";
 
 type ProfileActivity = Pick<
   Activity,
@@ -132,83 +122,21 @@ export default async function ProfilePage() {
   const daysToRace = activeGoal?.race_date ? daysBetween(today, activeGoal.race_date) : null;
 
   return (
-    <AppShell
-      title="Profilo"
-      headerAction={
-        <Button asChild variant="ghost" size="icon-sm">
-          <Link href="/settings" aria-label="Apri impostazioni" title="Impostazioni">
-            <Settings size={18} />
-          </Link>
-        </Button>
-      }
-    >
-      <div className="mb-8 flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 text-base font-bold text-primary">{initials}</div>
-        <div className="min-w-0">
-          <p className="truncate text-lg font-semibold">{displayName}</p>
-          <p className="truncate text-sm text-muted-foreground">{user.email}</p>
-        </div>
-      </div>
-
-      <Link href="/goals" className="mb-8 flex items-center gap-3 rounded-2xl border border-border px-4 py-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-xs text-muted-foreground">Obiettivo</p>
-          {activeGoal ? (
-            <p className="truncate text-sm font-semibold">
-              {activeGoal.race_name}
-              <span className="font-normal text-muted-foreground">
-                {" · "}{formatDistance(activeGoal.distance_m)}
-                {activeGoal.target_time_s ? ` in ${formatDuration(activeGoal.target_time_s)}` : ""}
-              </span>
-            </p>
-          ) : (
-            <p className="text-sm font-semibold">Da impostare</p>
-          )}
-        </div>
-        {daysToRace != null && daysToRace >= 0 && (
-          <span className="shrink-0 text-sm font-semibold tabular-nums text-primary">
-            {daysToRace === 0 ? "Oggi" : daysToRace === 1 ? "Domani" : `${daysToRace} giorni`}
-          </span>
-        )}
-        <ChevronRight size={16} className="shrink-0 text-muted-foreground/60" />
-      </Link>
-
-      <Section title="Stato di forma">
-        <TechInfoCard load={load} hasData={list.length > 0 || zepp.latest != null} zepp={zepp} />
-      </Section>
-
-      {formPoints.length >= 3 && (
-        <Section title="Forma e fatica">
-          <FormChart points={formPoints} />
-          <p className="mt-2 text-xs text-muted-foreground">
-            {formTrend(load.series) ?? "Forma = allenamento accumulato nelle ultime 6 settimane; fatica = quello degli ultimi 7 giorni."}
-          </p>
-        </Section>
-      )}
-
-      {weeks.some((week) => week.done_m > 0 || week.planned_m > 0) && (
-        <Section title="Km a settimana">
-          <WeekBars weeks={weeks} current={mondayOf(today)} />
-        </Section>
-      )}
-
-      {reference && (
-        <Section title="Previsioni gara">
-          <Predictions reference={reference} goal={activeGoal ?? null} />
-        </Section>
-      )}
-
-      {records.length > 0 && (
-        <Section title="Record personali">
-          <Records records={records} />
-        </Section>
-      )}
-
-      {paceSessions.length > 0 && (
-        <Section title="Passo nelle sedute veloci">
-          <PaceHistory sessions={paceSessions} />
-        </Section>
-      )}
-    </AppShell>
+    <ProfileView
+      displayName={displayName}
+      initials={initials}
+      goal={activeGoal ?? null}
+      daysToRace={daysToRace}
+      load={load}
+      zepp={{ latest: zepp.latest, readiness: zepp.readiness, stale: zepp.stale }}
+      hasData={list.length > 0 || zepp.latest != null}
+      formPoints={formPoints}
+      formTrend={formTrend(load.series)}
+      weeks={weeks}
+      currentWeek={mondayOf(today)}
+      reference={reference}
+      records={records}
+      paceSessions={paceSessions}
+    />
   );
 }

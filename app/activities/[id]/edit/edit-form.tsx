@@ -222,7 +222,7 @@ export function EditActivityForm({ activity }: Props) {
         </Button>
       </form>
 
-      <div className="border-b border-white/[0.06] my-1" />
+      <div className="border-b border-border/60 my-1" />
 
       {!confirmDelete ? (
         <Button
