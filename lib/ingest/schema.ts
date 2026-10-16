@@ -26,6 +26,8 @@ export const ActivityInput = z
     calories: z.number().int().positive().optional(),
     source_title: z.string().optional(),
     notes: z.string().optional(),
+    // Id nel servizio di origine (es. Strava): rende idempotenti gli import automatici.
+    external_id: z.string().min(1).max(64).optional(),
     // stream opzionali (solo da import ricchi; il form manuale non li ha)
     hr_series: z.array(z.object({ t: z.number(), bpm: z.number() })).optional(),
     gps_series: z
