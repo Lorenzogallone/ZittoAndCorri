@@ -1,6 +1,8 @@
 // Adattamento dei passi a caldo e umidità. Funzioni pure.
 // Usa la somma temperatura + punto di rugiada in °F (tabella diffusa da Mark
-// Hadley): sotto 100 nessun effetto, poi un rallentamento crescente.
+// Hadley): sotto 100 nessun effetto, poi un rallentamento crescente. La tabella
+// da sola scatta già con 20° molto umidi: corriamo con la sensazione dell'atleta
+// e adattiamo solo quando fa davvero caldo.
 
 import type { WorkoutStepInput } from "@/lib/types";
 
@@ -18,11 +20,16 @@ const TABLE: Array<[number, number]> = [
 
 const toF = (celsius: number) => (celsius * 9) / 5 + 32;
 
+/** Sotto questa temperatura dell'aria non si adatta, anche se è umido. */
+export const HEAT_MIN_TEMP_C = 24;
 /** Sotto questa soglia l'effetto è trascurabile (pochi secondi al km). */
-const MIN_PCT = 1;
+const MIN_PCT = 2;
+/** Da questo punto di rugiada l'aria si percepisce umida. */
+export const HUMID_DEW_POINT_C = 16;
 
 /** Percentuale di rallentamento consigliata (0 = nessun adattamento). */
 export function heatSlowdownPct(tempC: number, dewPointC: number): number {
+  if (!(tempC >= HEAT_MIN_TEMP_C)) return 0;
   const sum = toF(tempC) + toF(dewPointC);
   if (!Number.isFinite(sum) || sum <= TABLE[0][0]) return 0;
   const last = TABLE[TABLE.length - 1];
