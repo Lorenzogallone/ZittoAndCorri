@@ -27,7 +27,7 @@ const DEDUPE_WINDOW_MIN = 10;
  * derivati con le funzioni pure di `lib/metrics`, e lo persiste insieme agli
  * eventuali stream in `activity_streams`.
  *
- * Per gli import da file (source 'file'), se esiste già un'attività dello
+ * Per gli import da file e da Strava, se esiste già un'attività dello
  * stesso sport iniziata entro ±10 minuti NON crea un duplicato: riempie i
  * campi/stream mancanti della riga esistente e ricalcola le metriche derivate.
  * Ritorna l'id della corsa creata (o arricchita).
@@ -39,8 +39,21 @@ export async function ingestActivity(
   // 1. validazione
   const data = ActivityInput.parse(input);
 
-  // 1b. dedupe/arricchimento per gli import da file
-  if (data.source === "file") {
+  // 1a. attività esterna (Strava) già importata: niente duplicati. Cerca su
+  // qualsiasi source perché un import da file arricchito ne eredita l'id.
+  if (data.external_id) {
+    const { data: same } = await ctx.supabase
+      .from("activities")
+      .select("id")
+      .eq("user_id", ctx.userId)
+      .eq("external_id", data.external_id)
+      .limit(1)
+      .maybeSingle<Pick<Activity, "id">>();
+    if (same) return same.id;
+  }
+
+  // 1b. dedupe/arricchimento per gli import da file e da Strava
+  if (data.source === "file" || data.source === "strava") {
     const existing = await findNearbyActivity(data, ctx);
     if (existing) return enrichActivity(existing, data, ctx);
   }
@@ -101,6 +114,7 @@ export async function ingestActivity(
       rpe_source: data.rpe_source ?? null,
       calories: data.calories ?? null,
       source_title: data.source_title ?? null,
+      ...(data.external_id ? { external_id: data.external_id } : {}),
       // Colonne della migration 0007: incluse solo se valorizzate, così
       // l'ingest senza stream continua a funzionare anche su DB non migrato.
       ...(avg_cadence_spm != null ? { avg_cadence_spm } : {}),
@@ -172,7 +186,7 @@ async function findNearbyActivity(
   const from = new Date(t - DEDUPE_WINDOW_MIN * 60_000).toISOString();
   const to = new Date(t + DEDUPE_WINDOW_MIN * 60_000).toISOString();
 
-  const { data: existing } = await ctx.supabase
+  let query = ctx.supabase
     .from("activities")
     .select(
       "id, distance_m, duration_s, moving_time_s, avg_pace_s_km, avg_hr, max_hr, elevation_gain_m, calories, rpe, rpe_source, source_title, notes",
@@ -180,7 +194,10 @@ async function findNearbyActivity(
     .eq("user_id", ctx.userId)
     .eq("sport", data.sport)
     .gte("started_at", from)
-    .lte("started_at", to)
+    .lte("started_at", to);
+  // Un'attività esterna si fonde solo con righe non già legate a un'altra.
+  if (data.external_id) query = query.is("external_id", null);
+  const { data: existing } = await query
     .order("started_at")
     .limit(1)
     .maybeSingle<ExistingActivity>();
@@ -239,6 +256,8 @@ async function enrichActivity(
     source_title: existing.source_title ?? data.source_title ?? null,
     notes: existing.notes ?? data.notes ?? null,
   };
+  // La riga trovata non ha external_id (vedi findNearbyActivity): lo eredita.
+  if (data.external_id) update.external_id = data.external_id;
 
   // Passo: se il moving time è arrivato solo ora, il passo va ricalcolato.
   if (existing.moving_time_s == null && moving_time_s != null && existing.distance_m > 0) {
