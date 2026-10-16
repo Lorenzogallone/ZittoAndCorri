@@ -12,6 +12,7 @@ import { timeInZoneFromAverage, timeInZoneFromSeries } from "@/lib/metrics/zones
 import { computeSplits } from "@/lib/metrics/splits";
 import { enqueueActivityEvaluationSafely } from "@/lib/ai/evaluate-activity";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
+import { persistDerived } from "@/lib/derived";
 
 export interface ActivityFormState {
   error?: string;
@@ -295,6 +296,14 @@ export async function updateActivity(
   if (error) {
     return { error: error.message };
   }
+  await persistDerived(supabase, user.id, {
+    id,
+    sport: sport as Activity["sport"],
+    started_at: startedAt.toISOString(),
+    distance_m,
+    duration_s,
+    moving_time_s: activity.moving_time_s,
+  }, streams?.gps_series ?? null);
 
   revalidatePath(`/activities/${id}`);
   revalidatePath("/activities");

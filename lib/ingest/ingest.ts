@@ -6,6 +6,7 @@ import { avgPace } from "@/lib/metrics/pace";
 import { timeInZoneFromAverage, timeInZoneFromSeries, type HrConfig } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
 import { avgCadenceSpm, computeHrDrift, type CadencePoint } from "@/lib/metrics/effort";
+import { persistDerived } from "@/lib/derived";
 import type { Activity, ActivityStream } from "@/lib/types";
 import { ActivityInput } from "./schema";
 
@@ -126,6 +127,16 @@ export async function ingestActivity(
       });
     if (streamError) throw streamError;
   }
+
+  // 3c. best effort e verifica del passo (mai bloccanti)
+  await persistDerived(ctx.supabase, ctx.userId, {
+    id: row.id,
+    sport: data.sport,
+    started_at: data.started_at,
+    distance_m: data.distance_m,
+    duration_s: data.duration_s,
+    moving_time_s: data.moving_time_s ?? null,
+  }, data.gps_series);
 
   // 4. Fase 4: await recomputeSnapshot(ctx.userId) + valutazione AI
   return row.id;
@@ -264,6 +275,15 @@ async function enrichActivity(
       });
     if (streamError) throw streamError;
   }
+
+  await persistDerived(ctx.supabase, ctx.userId, {
+    id: existing.id,
+    sport: data.sport,
+    started_at: data.started_at,
+    distance_m: existing.distance_m,
+    duration_s: existing.duration_s,
+    moving_time_s,
+  }, gps);
 
   return existing.id;
 }

@@ -130,6 +130,11 @@
   /* Glass colors for light mode */
   --glass-bg: oklch(0.97 0.01 80 / 0.7);
   --glass-strong-bg: oklch(0.97 0.01 80 / 0.85);
+
+  /* Grafici: due serie fisse, indipendenti dal colore principale scelto
+     (validate per daltonismo su superfici chiare e scure). */
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
 }
 
 /* Fallback dark senza JS: si applica SOLO in modalità automatica (nessuna
@@ -185,6 +190,9 @@
     /* Glass colors for dark mode */
     --glass-bg: oklch(0.17 0.012 260 / 0.7);
     --glass-strong-bg: oklch(0.15 0.012 260 / 0.85);
+
+    --viz-1: #3987e5;
+    --viz-2: #d95926;
   }
 }
 
@@ -237,6 +245,9 @@
   /* Glass colors for dark mode class fallback */
   --glass-bg: oklch(0.17 0.012 260 / 0.7);
   --glass-strong-bg: oklch(0.15 0.012 260 / 0.85);
+
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
 }
 
 @layer base {

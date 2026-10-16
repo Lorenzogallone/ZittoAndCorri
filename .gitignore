@@ -53,3 +53,6 @@ next-env.d.ts
 *.gpx
 INSTRUCTIONS.md
 image.png
+
+# worktree temporanei degli agenti
+.claude/worktrees/

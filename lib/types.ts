@@ -1,6 +1,9 @@
 // Tipi riga scritti a mano per le tabelle usate in Fase 1.
 // In futuro si può sostituire con `supabase gen types` (richiede CLI/login).
 
+import type { BestEfforts } from "./metrics/best-efforts.ts";
+import type { PaceCheck } from "./metrics/pace-check.ts";
+
 export type WorkoutType =
   | "easy"
   | "tempo"
@@ -80,6 +83,8 @@ export interface Profile {
   theme_mode: string | null;
   theme_accent: string | null;
   theme_style: string | null;
+  /** Adatta i passi a caldo e umidità previsti. */
+  heat_adjust: boolean;
   onboarding_completed_at: string | null;
   created_at: string;
 }
@@ -131,6 +136,10 @@ export interface Activity {
   hr_drift_pct: number | null;
   time_in_zone: TimeInZone | null;
   splits: Split[] | null;
+  /** Migliori tempi su distanze standard (vedi lib/metrics/best-efforts). */
+  best_efforts: BestEfforts | null;
+  /** Passo reale contro previsto nelle sedute con target (lib/metrics/pace-check). */
+  pace_check: PaceCheck | null;
   notes: string | null;
   raw_payload: unknown | null;
   created_at: string;
@@ -193,7 +202,8 @@ export interface RacePredict {
 
 // Lo stato del workout pianificato è gestibile manualmente. Le attività reali
 // restano indipendenti: il coach confronta piano e svolto dai dati e dalle date.
-export type PlannedStatus = "planned" | "completed";
+// "skipped" = seduta messa in pausa ("Non mi sento al 100%"), ripristinabile.
+export type PlannedStatus = "planned" | "completed" | "skipped";
 
 export type WorkoutStepKind = "warmup" | "work" | "recovery" | "steady" | "cooldown";
 export type WorkoutStepCompletion = "time" | "distance" | "manual";
@@ -242,6 +252,8 @@ export interface PlannedWorkout {
   /** Indicazioni del coach: cosa pensare, cosa privilegiare/sacrificare. */
   focus: string | null;
   status: PlannedStatus;
+  /** Valori originali di una seduta alleggerita: permettono di annullare. */
+  adapted_from: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   origin: "user" | "ai";

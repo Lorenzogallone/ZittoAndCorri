@@ -18,6 +18,7 @@ import { generalGoalName } from "@/lib/goals";
 import { aiErrorMessage, generateStructured } from "@/lib/ai/gemini";
 import { WORKOUT_TYPES, type CoachMessage, type ProposedWorkout } from "@/lib/types";
 import { normalizeWorkoutSteps } from "@/lib/workout-steps";
+import { insertPlanProposal } from "@/lib/plan/proposals";
 
 export interface CoachActionResult { jobId?: string; error?: string; userMessage?: CoachMessage }
 
@@ -213,39 +214,16 @@ async function runCoachTurn(
       }
     }
 
-    let proposalId: string | null = null;
     if (workouts.length && result.plan_summary) {
-      const { data: base } = await admin
-        .from("planned_workouts")
-        .select("id, updated_at")
-        .eq("user_id", userId)
-        .eq("status", "planned")
-        .gte("date", start)
-        .lte("date", end)
-        .order("id")
-        .returns<Array<{ id: string; updated_at: string }>>();
-      const rows = base ?? [];
-      const latest = rows.reduce<string | null>(
-        (value, row) => !value || row.updated_at > value ? row.updated_at : value,
-        null,
-      );
-      const { data: proposal, error } = await admin
-        .from("plan_proposals")
-        .insert({
-          user_id: userId,
-          source_message_id: sourceMessageId,
-          summary: result.plan_summary,
-          range_start: start,
-          range_end: end,
-          workouts,
-          base_workout_ids: rows.map((row) => row.id).sort(),
-          base_latest_updated_at: latest,
-        })
-        .select("id")
-        .single<{ id: string }>();
-      if (error || !proposal) throw error ?? new Error("Proposta non salvata");
-      proposalId = proposal.id;
-      await admin.from("coach_messages").update({ plan_proposal_id: proposal.id }).eq("id", assistant.id);
+      const proposalId = await insertPlanProposal(admin, {
+        userId,
+        summary: result.plan_summary,
+        rangeStart: start,
+        rangeEnd: end,
+        workouts,
+        sourceMessageId,
+      });
+      await admin.from("coach_messages").update({ plan_proposal_id: proposalId }).eq("id", assistant.id);
     }
 
     await admin.from("coach_state").upsert({
@@ -259,7 +237,6 @@ async function runCoachTurn(
       output_message_id: assistant.id,
       updated_at: new Date().toISOString(),
     }).eq("id", jobId);
-    void proposalId;
   } catch (error) {
     console.error("runCoachTurn:", error);
     await admin.from("ai_jobs").update({

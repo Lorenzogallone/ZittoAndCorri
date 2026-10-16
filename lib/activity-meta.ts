@@ -42,6 +42,18 @@ export const TYPE_COLORS: Record<ActivityType, string> = {
   cross: "bg-zinc-500/10 text-zinc-600 dark:bg-zinc-500/20 dark:text-zinc-400",
 };
 
+/** Pallino pieno per tipo di seduta (liste e calendario). */
+export const TYPE_DOTS: Record<ActivityType, string> = {
+  unclassified: "bg-primary",
+  easy: "bg-emerald-500",
+  tempo: "bg-amber-500",
+  interval: "bg-rose-500",
+  long: "bg-violet-500",
+  race: "bg-primary",
+  recovery: "bg-sky-500",
+  cross: "bg-zinc-400",
+};
+
 // ── Sport ────────────────────────────────────────────────────────────────────
 
 export const SPORT_LABELS: Record<Sport, string> = {

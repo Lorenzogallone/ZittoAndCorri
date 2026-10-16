@@ -1,121 +1,169 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { PlanCalendar } from "@/components/plan-calendar";
-import { formatDistance, daysUntil } from "@/lib/format";
-import type { PlannedWorkout, Goal, Activity } from "@/lib/types";
-
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function parseMonth(raw: string | undefined): string {
-  if (!raw) return todayISO().slice(0, 7);
-  if (/^\d{4}-\d{2}$/.test(raw)) return raw;
-  return todayISO().slice(0, 7);
-}
-
-function monthBounds(month: string): { start: string; end: string } {
-  const [y, m] = month.split("-").map(Number);
-  const start = `${month}-01`;
-  const end = new Date(y, m, 0).toISOString().slice(0, 10); // last day of month
-  return { start, end };
-}
+import { PlanWeek, type PlanActivity } from "@/components/plan/week-list";
+import { PhaseBar } from "@/components/plan/phase-bar";
+import { AdaptSheet } from "@/components/plan/adapt-sheet";
+import { AdaptationBanner } from "@/components/plan/adaptation-banner";
+import { cn } from "@/lib/utils";
+import { formatDistance } from "@/lib/format";
+import { addDays, daysBetween, mondayOf, romeDay } from "@/lib/local-date";
+import { buildDays } from "@/lib/plan/day-status";
+import { trainingPhases } from "@/lib/plan/phases";
+import type { Goal, PlannedWorkout } from "@/lib/types";
 
 interface Props {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ view?: string; month?: string; week?: string }>;
+}
+
+const isIsoDate = (value: string | undefined): value is string => !!value && /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+function rangeLabel(start: string, end: string): string {
+  const format = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "UTC" });
+  return `${format(start)} – ${format(end)}`;
 }
 
 export default async function PlanPage({ searchParams }: Props) {
-  const { month: rawMonth } = await searchParams;
-  const month = parseMonth(rawMonth);
-  const today = todayISO();
-  const { start, end } = monthBounds(month);
+  const params = await searchParams;
+  const view = params.view === "month" ? "month" : "weeks";
+  const today = romeDay();
+  const thisMonday = mondayOf(today);
+  const firstMonday = isIsoDate(params.week) ? mondayOf(params.week) : thisMonday;
+  const month = /^\d{4}-\d{2}$/.test(params.month ?? "") ? params.month! : today.slice(0, 7);
+
+  const [rangeStart, dayCount] = view === "month"
+    ? [`${month}-01`, daysBetween(`${month}-01`, addDays(`${month}-01`, 31).slice(0, 7) + "-01")]
+    : [firstMonday, 14];
+  const rangeEnd = addDays(rangeStart, dayCount - 1);
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [
-    { data: monthWorkouts },
-    { data: activeGoal },
-    { data: monthActivities },
-  ] = await Promise.all([
-      supabase
-        .from("planned_workouts")
-        .select("*")
-        .eq("user_id", user.id)
-        .gte("date", start)
-        .lte("date", end)
-        .order("date")
-        .returns<PlannedWorkout[]>(),
-      supabase
-        .from("goals")
-        .select("race_name, race_date, distance_m")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .maybeSingle<Pick<Goal, "race_name" | "race_date" | "distance_m">>(),
-      supabase
-        .from("activities")
-        .select("id, started_at, type, sport")
-        .eq("user_id", user.id)
-        .gte("started_at", `${start}T00:00:00`)
-        .lte("started_at", `${end}T23:59:59`)
-        .returns<Pick<Activity, "id" | "started_at" | "type" | "sport">[]>(),
-    ]);
+  const [{ data: workouts }, { data: activities }, { data: goal }, { data: adapted }] = await Promise.all([
+    supabase
+      .from("planned_workouts")
+      .select("*")
+      .eq("user_id", user.id)
+      .gte("date", rangeStart)
+      .lte("date", rangeEnd)
+      .order("date")
+      .order("created_at")
+      .returns<PlannedWorkout[]>(),
+    supabase
+      .from("activities")
+      .select("id, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km")
+      .eq("user_id", user.id)
+      .gte("started_at", `${addDays(rangeStart, -1)}T00:00:00`)
+      .lte("started_at", `${addDays(rangeEnd, 1)}T23:59:59`)
+      .order("started_at")
+      .returns<PlanActivity[]>(),
+    supabase
+      .from("goals")
+      .select("race_name, race_date, distance_m, created_at")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle<Pick<Goal, "race_name" | "race_date" | "distance_m" | "created_at">>(),
+    supabase
+      .from("planned_workouts")
+      .select("adapted_from, status")
+      .eq("user_id", user.id)
+      .not("adapted_from", "is", null)
+      .gte("date", today)
+      .returns<Array<Pick<PlannedWorkout, "adapted_from" | "status">>>(),
+  ]);
 
-  const daysToRace = daysUntil(activeGoal?.race_date);
-  const weeksLeft = daysToRace != null ? Math.ceil(daysToRace / 7) : null;
+  const days = buildDays(rangeStart, dayCount, today, workouts ?? [], activities ?? []);
+  const adaptationUntil = (adapted ?? [])
+    .map((row) => String(row.adapted_from?.until ?? ""))
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+  const phases = goal ? trainingPhases({
+    race_date: goal.race_date,
+    distance_m: goal.distance_m,
+    start_date: romeDay(goal.created_at),
+    today,
+  }) : null;
+  const daysToRace = goal?.race_date ? daysBetween(today, goal.race_date) : null;
 
   return (
-    <AppShell title="Piano">
-      {/* 1. Countdown all'obiettivo */}
-      {activeGoal && (
-        <Link href="/goals" className="block mb-4">
-          <div className="relative overflow-hidden rounded-2xl bg-card border border-primary/20 glow-coral-sm p-5">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.06] to-transparent pointer-events-none" />
-            <div className="relative flex items-center justify-between">
-              <div>
-                <p className="text-xs text-primary font-medium uppercase tracking-wider mb-1">
-                  Obiettivo
-                </p>
-                <p className="font-semibold">{activeGoal.race_name}</p>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {activeGoal.distance_m ? formatDistance(activeGoal.distance_m) : ""}
-                  {activeGoal.race_date &&
-                    ` · ${new Date(activeGoal.race_date).toLocaleDateString("it-IT", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}`}
-                </p>
-              </div>
-              {weeksLeft !== null && (
-                <div className="text-right shrink-0 ml-4">
-                  <p className="text-3xl font-bold tabular-nums text-primary">
-                    {weeksLeft}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {weeksLeft === 1 ? "settimana" : "settimane"}
-                  </p>
-                </div>
-              )}
-            </div>
+    <AppShell title="Piano" headerAction={<AdaptSheet />}>
+      {adaptationUntil && (
+        <AdaptationBanner until={adaptationUntil} paused={(adapted ?? []).some((row) => row.status === "skipped")} />
+      )}
+
+      {goal ? (
+        <Link href="/goals" className="mb-7 block">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="truncate text-base font-semibold">{goal.race_name}</p>
+            {daysToRace != null && daysToRace >= 0 && (
+              <p className="shrink-0 text-sm font-semibold tabular-nums text-primary">
+                {daysToRace === 0 ? "Oggi" : daysToRace < 14 ? `tra ${daysToRace} giorni` : `${Math.ceil(daysToRace / 7)} settimane`}
+              </p>
+            )}
           </div>
+          <p className="mb-3 mt-0.5 text-xs text-muted-foreground">
+            {formatDistance(goal.distance_m)}
+            {goal.race_date
+              ? ` · ${new Date(`${goal.race_date}T12:00:00Z`).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}`
+              : " · obiettivo senza data"}
+          </p>
+          {phases && <PhaseBar plan={phases} />}
+        </Link>
+      ) : (
+        <Link href="/?prompt=Vorrei+impostare+un+obiettivo" className="mb-7 flex items-center justify-between rounded-2xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+          Nessun obiettivo · parlane al coach
+          <ChevronRight size={16} />
         </Link>
       )}
 
-      {/* 2. Calendario */}
-      <PlanCalendar
-        workouts={monthWorkouts ?? []}
-        activities={monthActivities ?? []}
-        goal={activeGoal ?? null}
-        month={month}
-        today={today}
-      />
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <div className="inline-flex rounded-xl bg-muted p-0.5 text-xs font-medium" role="tablist">
+          {(["weeks", "month"] as const).map((key) => (
+            <Link
+              key={key}
+              href={key === "month" ? "/plan?view=month" : "/plan"}
+              role="tab"
+              aria-selected={view === key}
+              className={cn("rounded-[10px] px-3 py-1.5 transition-colors", view === key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
+            >
+              {key === "weeks" ? "Settimane" : "Mese"}
+            </Link>
+          ))}
+        </div>
+        {view === "weeks" && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Link href={`/plan?week=${addDays(firstMonday, -14)}`} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted" aria-label="Settimane precedenti">
+              <ChevronLeft size={17} />
+            </Link>
+            {firstMonday === thisMonday ? (
+              <span className="tabular-nums">{rangeLabel(rangeStart, rangeEnd)}</span>
+            ) : (
+              <Link href="/plan" className="font-medium text-primary">Torna a oggi</Link>
+            )}
+            <Link href={`/plan?week=${addDays(firstMonday, 14)}`} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted" aria-label="Settimane successive">
+              <ChevronRight size={17} />
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {view === "weeks" ? (
+        <>
+          <PlanWeek days={days.slice(0, 7)} today={today} title={firstMonday === thisMonday ? "Questa settimana" : undefined} />
+          <PlanWeek days={days.slice(7, 14)} today={today} title={firstMonday === thisMonday ? "Prossima settimana" : undefined} />
+        </>
+      ) : (
+        <PlanCalendar days={days} month={month} today={today} raceDate={goal?.race_date ?? null} />
+      )}
+
+      <Link href="/plan/new" className="mt-2 flex items-center justify-center gap-1.5 py-3 text-sm font-medium text-primary">
+        <Plus size={16} /> Aggiungi una seduta
+      </Link>
     </AppShell>
   );
 }
