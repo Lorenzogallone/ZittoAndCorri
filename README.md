@@ -13,7 +13,7 @@ The interface is currently in Italian.
 - Manages race goals and a rolling 14-day training plan.
 - Provides a conversational coach that can suggest plan changes for approval.
 - Keeps each athlete's coach memory, preferences, and data separate.
-- Supports automatic imports through a personal access key.
+- Supports automatic imports through a personal access key or Strava.
 - Optionally uses health summaries from a compatible Zepp OS watch.
 - Works as an installable PWA on mobile and desktop browsers.
 
@@ -79,6 +79,29 @@ screen. External services can use the personal import key generated in
 
 Send the key with `Authorization: Bearer <personal-import-key>`. Regenerating
 the key immediately invalidates the previous one.
+
+## Strava
+
+Connected athletes get new Strava activities imported automatically (plus the
+last 14 days on first connection). Duplicates of FIT/GPX imports are merged.
+
+1. Create an API application at
+   [strava.com/settings/api](https://www.strava.com/settings/api) and set the
+   **Authorization Callback Domain** to your app's domain (`localhost` for
+   development).
+2. Add `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET` and a random
+   `STRAVA_VERIFY_TOKEN` to the environment.
+3. Run `supabase/migrations/0020_strava.sql`.
+4. Once deployed, register the webhook (one per Strava app):
+
+```bash
+node scripts/strava-subscribe.mjs https://<domain>/api/strava/webhook
+node scripts/strava-subscribe.mjs --list        # show the subscription
+node scripts/strava-subscribe.mjs --delete <id> # remove it
+```
+
+Users connect from **Settings → Integrations → Strava**. Tokens are stored
+encrypted in Supabase Vault.
 
 ## Zepp OS integration
 
