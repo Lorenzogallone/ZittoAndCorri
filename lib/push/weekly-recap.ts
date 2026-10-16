@@ -111,6 +111,7 @@ export async function runWeeklyRecap(
       .from("planned_workouts")
       .select("date, type")
       .eq("user_id", userId)
+      .neq("status", "skipped")
       .gte("date", week.start)
       .lte("date", week.end)
       .returns<WeeklyPlanned[]>(),
