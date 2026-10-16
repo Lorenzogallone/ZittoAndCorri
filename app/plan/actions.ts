@@ -81,8 +81,7 @@ export async function updateWorkoutStatus(formData: FormData): Promise<void> {
   const status = String(formData.get("status") ?? "") as PlannedStatus;
   if (!id || !(["planned", "completed"] as PlannedStatus[]).includes(status)) return;
   await supabase.from("planned_workouts").update({ status }).eq("id", id).eq("user_id", user.id);
-  revalidatePath("/plan");
-  revalidatePath("/");
+  revalidatePlan();
 }
 
 export async function deletePlannedWorkout(formData: FormData): Promise<void> {
@@ -98,7 +97,7 @@ export async function deletePlannedWorkout(formData: FormData): Promise<void> {
 }
 
 function revalidatePlan() {
-  revalidatePath("/plan");
+  revalidatePath("/plan", "layout");
   revalidatePath("/");
 }
 

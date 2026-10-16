@@ -236,3 +236,33 @@ test("la stima della seduta somma tempi e distanze delle fasi", () => {
   assert.equal(Math.round(estimate.seconds), 840);
   assert.equal(Math.round(estimate.meters), 2_667);
 });
+
+test("i totali per periodo contano la corsa e confrontano con il periodo prima", async () => {
+  const { periodTotals } = await import("../lib/metrics/totals.ts");
+  const run = (day: string, km: number, extra: Partial<{ sport: string; elevation_gain_m: number }> = {}) => ({
+    started_at: `${day}T07:00:00Z`,
+    sport: "running",
+    distance_m: km * 1000,
+    duration_s: km * 330,
+    elevation_gain_m: 10,
+    ...extra,
+  });
+  const totals = periodTotals([
+    run("2026-10-14", 10),
+    run("2026-10-02", 8),
+    run("2026-09-10", 12),
+    run("2026-09-25", 30), // oltre il 16 settembre: fuori dal confronto mensile
+    run("2025-06-01", 21),
+    run("2026-10-15", 6, { sport: "hiking" }),
+  ], "2026-10-16");
+  const byKey = Object.fromEntries(totals.map((t) => [t.key, t]));
+  assert.equal(byKey.week.running_m, 10_000);
+  assert.equal(byKey.month.running_m, 18_000);
+  assert.equal(byKey.month.previous_m, 12_000);
+  assert.equal(byKey.month.walking_m, 6_000);
+  assert.equal(byKey.year.running_m, 60_000);
+  assert.equal(byKey.year.longest_m, 30_000);
+  assert.equal(byKey.year.previous_m, 21_000);
+  assert.equal(byKey.all.runs, 5);
+  assert.equal(byKey.all.previous_m, null);
+});

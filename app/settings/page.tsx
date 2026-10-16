@@ -18,6 +18,7 @@ import type { ZeppConnectionView } from "@/lib/zepp/types";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { SettingsGroup } from "./settings-group";
 import { NotificationsSection } from "./notifications-section";
+import { HeatSetting } from "./heat-setting";
 
 export default async function SettingsPage({
   searchParams,
@@ -63,6 +64,12 @@ export default async function SettingsPage({
     .eq("user_id", user.id)
     .eq("client_kind", "health")
     .maybeSingle<ZeppConnectionView>();
+  // Query separata: senza la migrazione 0018 il resto del profilo resta leggibile.
+  const heatRes = await supabase
+    .from("profiles")
+    .select("heat_adjust")
+    .eq("id", user.id)
+    .maybeSingle<{ heat_adjust: boolean | null }>();
   const stravaEnabled = isStravaConfigured();
   const stravaConnectionRes = stravaEnabled
     ? await supabase
@@ -91,6 +98,7 @@ export default async function SettingsPage({
       <div className="border-t border-border/70">
         <SettingsGroup title="Profilo">
           <ProfileForm profile={profile ?? null} effectiveHr={effectiveHr} />
+          <HeatSetting initial={heatRes.data?.heat_adjust !== false} />
         </SettingsGroup>
 
         <SettingsGroup title="Aspetto">

@@ -5,6 +5,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { GpsPoint } from "@/lib/types";
 import { Loader2 } from "lucide-react";
+import { PACE_SCALE, paceGradientStops } from "@/lib/metrics/pace-colors";
 
 interface ActivityMapClientProps {
   gpsSeries: GpsPoint[];
@@ -14,6 +15,7 @@ export default function ActivityMapClient({ gpsSeries }: ActivityMapClientProps)
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [colored, setColored] = useState(false);
 
   useEffect(() => {
     if (!mapContainerRef.current || gpsSeries.length < 2) return;
@@ -58,9 +60,12 @@ export default function ActivityMapClient({ gpsSeries }: ActivityMapClientProps)
         animate: false,
       });
 
-      // Add the route coordinate source
+      // Percorso colorato per velocità (giallo = lento, rosso = veloce) quando
+      // la traccia ha tempi sufficienti, altrimenti tinta unica.
+      const stops = paceGradientStops(gpsSeries);
       map.addSource("route", {
         type: "geojson",
+        lineMetrics: true,
         data: {
           type: "Feature",
           properties: {},
@@ -71,7 +76,6 @@ export default function ActivityMapClient({ gpsSeries }: ActivityMapClientProps)
         },
       });
 
-      // Style and add the route track line (Coral/Orange color)
       map.addLayer({
         id: "route-line",
         type: "line",
@@ -80,12 +84,19 @@ export default function ActivityMapClient({ gpsSeries }: ActivityMapClientProps)
           "line-join": "round",
           "line-cap": "round",
         },
-        paint: {
-          "line-color": "#f06292", // Beautiful warm coral/pink tone matching the logo
-          "line-width": 5,
-          "line-opacity": 0.9,
-        },
+        paint: stops
+          ? {
+              "line-width": 5,
+              "line-opacity": 0.95,
+              "line-gradient": ["interpolate", ["linear"], ["line-progress"], ...stops.flat()] as maplibregl.ExpressionSpecification,
+            }
+          : {
+              "line-color": PACE_SCALE.mid,
+              "line-width": 5,
+              "line-opacity": 0.9,
+            },
       });
+      setColored(Boolean(stops));
 
       // Create Custom Start Marker (Green circle)
       const startPoint = coordinates[0];
@@ -122,6 +133,13 @@ export default function ActivityMapClient({ gpsSeries }: ActivityMapClientProps)
         </div>
       )}
       <div ref={mapContainerRef} className="w-full h-full" />
+      {colored && (
+        <div className="pointer-events-none absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full bg-background/85 px-2.5 py-1 text-[10px] font-medium text-muted-foreground backdrop-blur">
+          lento
+          <span className="h-1.5 w-12 rounded-full" style={{ background: `linear-gradient(90deg, ${PACE_SCALE.slow}, ${PACE_SCALE.mid}, ${PACE_SCALE.fast})` }} />
+          veloce
+        </div>
+      )}
     </div>
   );
 }
