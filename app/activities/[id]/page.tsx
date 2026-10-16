@@ -1,109 +1,20 @@
-import Link from "next/link";
 import { after } from "next/server";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { AppShell } from "@/components/app-shell";
-import { Button } from "@/components/ui/button";
-import { formatDistance, formatDuration, formatPace, activeDuration } from "@/lib/format";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { timeInZoneFromSeries } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
-import type { Activity, ActivityStream, Evaluation, Profile, TimeInZone } from "@/lib/types";
-import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
-import { Clock, Gauge, Heart, HeartPulse, Mountain, Flame, Footprints, TrendingUp } from "lucide-react";
-import { HrChart, PaceChart, ElevationChart } from "./activity-charts";
-import { ActivityEvaluation } from "@/components/activity-evaluation";
-import ActivityMap from "@/components/activity-map";
-import { CollapsibleSection } from "@/components/collapsible-section";
-import { PaceCheckCard } from "@/components/pace-check-card";
-import { ShareActivityButton } from "@/components/share-activity-button";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { personalRecords } from "@/lib/metrics/best-efforts";
 import { paceCheckFor, persistDerived } from "@/lib/derived";
-import { personalRecords, EFFORTS } from "@/lib/metrics/best-efforts";
-import { Trophy } from "lucide-react";
-import {
-  TYPE_LABELS,
-  TYPE_COLORS,
-  SPORT_LABELS,
-  SPORT_COLORS,
-  SPORT_ICONS,
-} from "@/lib/activity-meta";
-
-const ZONE_LABELS: Record<string, string> = {
-  z1: "Z1 · Recupero",
-  z2: "Z2 · Fondo",
-  z3: "Z3 · Medio",
-  z4: "Z4 · Soglia",
-  z5: "Z5 · VO₂max",
-};
-
-const ZONE_COLORS: Record<string, string> = {
-  z1: "bg-sky-400",
-  z2: "bg-emerald-400",
-  z3: "bg-amber-400",
-  z4: "bg-orange-400",
-  z5: "bg-red-400",
-};
+import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
+import type { Activity, ActivityStream, Evaluation, Profile, TimeInZone } from "@/lib/types";
+import { ActivityView } from "./activity-view";
 
 /** Downsample a series to at most maxPoints by skipping evenly. */
 function downsample<T>(arr: T[], maxPoints = 300): T[] {
   if (arr.length <= maxPoints) return arr;
   const step = Math.ceil(arr.length / maxPoints);
   return arr.filter((_, i) => i % step === 0);
-}
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex flex-col gap-1 rounded-xl bg-muted/50 p-3">
-      <div className="flex items-center gap-1.5 text-muted-foreground">
-        <Icon size={14} />
-        <span className="text-xs">{label}</span>
-      </div>
-      <span className="text-lg font-bold tabular-nums">{value}</span>
-    </div>
-  );
-}
-
-function ZoneBar({ zoneEntries }: { zoneEntries: [string, number][] }) {
-  const maxZoneTime =
-    zoneEntries.length > 0
-      ? Math.max(...zoneEntries.map(([, s]) => s))
-      : 0;
-
-  return (
-    <div className="flex flex-col gap-3">
-        {zoneEntries.map(([zone, seconds]) => {
-          const pct = maxZoneTime > 0 ? (seconds / maxZoneTime) * 100 : 0;
-          return (
-            <div key={zone} className="flex flex-col gap-1">
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">
-                  {ZONE_LABELS[zone] ?? zone}
-                </span>
-                <span className="tabular-nums text-foreground">
-                  {formatDuration(seconds)}
-                </span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    ZONE_COLORS[zone] ?? "bg-primary"
-                  }`}
-                  style={{ width: `${Math.max(pct, 2)}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-    </div>
-  );
 }
 
 // La server action `evaluateActivity` (Coach AI) gira come parte di questa
@@ -192,202 +103,36 @@ export default async function ActivityDetailPage({
     after(() => persistDerived(createAdminClient(), userId, activity, gps));
   }
 
-  const isRun = (activity.sport ?? "running") === "running";
-  const SportIcon = SPORT_ICONS[activity.sport ?? "other"];
-
-  const dateLabel = new Date(activity.started_at).toLocaleString("it-IT", {
-    dateStyle: "full",
-    timeStyle: "short",
-  });
-
   const profileCtx = await getEffectiveHrConfig(supabase, user.id, profile ?? null);
 
-  // Zone HR: se abbiamo la serie reale la usiamo (più precisa), altrimenti quella salvata
-  const computedZones: TimeInZone | null =
+  // Zone HR: dalla serie reale se c'è (più precisa), altrimenti quelle salvate.
+  const zones: TimeInZone | null =
     streams?.hr_series && streams.hr_series.length >= 2
       ? timeInZoneFromSeries(streams.hr_series, profileCtx)
       : activity.time_in_zone;
-
-  // Splits: se la corsa non li ha (es. importata prima di Fase 2) li calcoliamo dagli stream
-  const computedSplits =
+  // Split: le corse importate prima della Fase 2 li calcolano dagli stream.
+  const splits =
     activity.splits ??
     (streams?.gps_series && streams.gps_series.length >= 2
       ? computeSplits(streams.gps_series, streams.hr_series ?? undefined)
       : null);
-
-  const zoneEntries = computedZones
-    ? (Object.entries(computedZones) as [string, number][])
-    : [];
-
-  // Downsample per il client
-  const hrChartData = streams?.hr_series
-    ? downsample(streams.hr_series, 300)
-    : null;
-  // La mappa riceve la traccia downsamplata: la serie GPS grezza può avere
-  // migliaia di punti e, serializzata intera nel payload RSC, rende lentissima
-  // la navigazione su rete mobile (la pagina resta "in loading"). ~500 punti
-  // bastano per disegnare un percorso fedele.
-  const mapGps =
-    streams?.gps_series && streams.gps_series.length >= 2
-      ? downsample(streams.gps_series, 500)
-      : null;
-  const eleChartData =
-    streams?.gps_series && streams.gps_series.some((p) => p.ele != null)
-      ? downsample(streams.gps_series, 300)
-      : null;
+  // Serie ridotte per il client: migliaia di punti nel payload RSC rendono
+  // lentissima la navigazione su rete mobile.
+  const gps = streams?.gps_series && streams.gps_series.length >= 2 ? downsample(streams.gps_series, 500) : null;
 
   return (
-    <AppShell
-      backHref="/activities"
-      backLabel="Attività"
-      hideTabBar
-      headerAction={
-        <div className="flex items-center gap-1">
-          <ShareActivityButton
-            activityId={activity.id}
-            title={activity.source_title ?? (isRun ? "La mia corsa" : SPORT_LABELS[activity.sport ?? "other"])}
-          />
-          <Button asChild variant="outline" size="sm">
-            {/* replace: l'editor sostituisce il dettaglio nella history, così
-                dopo il salvataggio "indietro" torna a lista/home, non al form. */}
-            <Link href={`/activities/${activity.id}/edit`} replace>
-              Modifica
-            </Link>
-          </Button>
-        </div>
-      }
-    >
-      {/* Hero */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-2">
-          {isRun ? (
-            <span
-              className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-medium ${
-                TYPE_COLORS[activity.type] ?? "bg-muted text-muted-foreground"
-              }`}
-            >
-              {TYPE_LABELS[activity.type] ?? activity.type}
-            </span>
-          ) : (
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium ${
-                SPORT_COLORS[activity.sport ?? "other"]
-              }`}
-            >
-              <SportIcon size={13} />
-              {SPORT_LABELS[activity.sport ?? "other"]}
-            </span>
-          )}
-        </div>
-        <h1 className="text-3xl font-bold tracking-tight mb-1">
-          {activity.distance_m > 0
-            ? formatDistance(activity.distance_m)
-            : formatDuration(activeDuration(activity))}
-        </h1>
-        {activity.source_title && <p className="text-sm font-medium">{activity.source_title}</p>}
-        <p className="text-muted-foreground text-sm capitalize">{dateLabel}</p>
-        {heldRecords.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {heldRecords.map((record) => (
-              <span key={record.key} className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300">
-                <Trophy size={13} /> Record {EFFORTS.find((effort) => effort.key === record.key)?.label} · {formatDuration(record.time_s)}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {paceResult && <PaceCheckCard check={paceResult.check} workoutId={paceResult.workout.id} />}
-
-      <CollapsibleSection title="Dati attività">
-        <div className="grid grid-cols-2 gap-2.5">
-          <StatCard icon={Clock} label="Durata" value={formatDuration(activeDuration(activity))} />
-          {isRun && activity.avg_pace_s_km != null && (
-            <StatCard icon={Gauge} label="Passo" value={formatPace(activity.avg_pace_s_km)} />
-          )}
-          {activity.avg_hr != null && (
-            <StatCard icon={Heart} label="HR media" value={`${activity.avg_hr} bpm`} />
-          )}
-          {activity.max_hr != null && (
-            <StatCard icon={HeartPulse} label="HR max" value={`${activity.max_hr} bpm`} />
-          )}
-          {activity.elevation_gain_m != null && (
-            <StatCard icon={Mountain} label="Dislivello +" value={`${activity.elevation_gain_m} m`} />
-          )}
-          {activity.avg_cadence_spm != null && (
-            <StatCard icon={Footprints} label="Cadenza" value={`${activity.avg_cadence_spm} spm`} />
-          )}
-          {activity.hr_drift_pct != null && (
-            <StatCard
-              icon={TrendingUp}
-              label="Deriva cardiaca"
-              value={`${activity.hr_drift_pct > 0 ? "+" : ""}${activity.hr_drift_pct}%`}
-            />
-          )}
-          {activity.rpe != null && (
-            <StatCard icon={Flame} label="RPE" value={`${activity.rpe}/10`} />
-          )}
-          {(evaluation?.details?.length ?? 0) > 0 && (
-            <div className="col-span-2 border-t border-border/60 pt-3">
-              <p className="mb-2 text-xs font-medium text-muted-foreground">
-                Dettagli
-              </p>
-              <ul className="flex list-disc flex-col gap-1 pl-4 text-sm text-foreground/90 marker:text-primary">
-                {evaluation!.details!.map((detail, index) => (
-                  <li key={`${detail}-${index}`}>{detail}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      </CollapsibleSection>
-
-      {/* Percorso GPS (Mappa) */}
-      {mapGps && (
-        <CollapsibleSection title="Percorso GPS">
-          <ActivityMap gpsSeries={mapGps} />
-        </CollapsibleSection>
-      )}
-
-      {/* HR nel tempo */}
-      {hrChartData && hrChartData.length >= 2 && (
-        <CollapsibleSection title="Frequenza cardiaca">
-          <HrChart data={hrChartData} />
-        </CollapsibleSection>
-      )}
-
-      {/* Passo per km */}
-      {computedSplits && computedSplits.length > 0 && (
-        <CollapsibleSection title="Passo per km">
-          <PaceChart splits={computedSplits} />
-        </CollapsibleSection>
-      )}
-
-      {/* Profilo altimetrico */}
-      {eleChartData && eleChartData.length >= 2 && (
-        <CollapsibleSection title="Profilo altimetrico">
-          <ElevationChart data={eleChartData} />
-        </CollapsibleSection>
-      )}
-
-      {/* HR Zones */}
-      {zoneEntries.length > 0 && (
-        <CollapsibleSection title="Zone HR">
-          <ZoneBar zoneEntries={zoneEntries} />
-        </CollapsibleSection>
-      )}
-
-      {/* Coach AI: note + valutazione */}
-      <ActivityEvaluation
-        activityId={activity.id}
-        initialNotes={activity.notes}
-        evaluation={evaluation ?? null}
-        initialAnalyzing={evaluationJob?.status === "pending"}
-        initialFailed={evaluationJob?.status === "error"}
-        initialError={evaluationJob?.status === "error" ? evaluationJob.error : null}
-        keyConfigured={Boolean(credential)}
-      />
-
-    </AppShell>
+    <ActivityView
+      activity={activity}
+      gps={gps}
+      hr={streams?.hr_series ? downsample(streams.hr_series, 300) : null}
+      elevation={streams?.gps_series?.some((p) => p.ele != null) ? downsample(streams.gps_series, 300) : null}
+      splits={splits}
+      zones={zones}
+      records={heldRecords}
+      pace={paceResult ? { check: paceResult.check, workoutId: paceResult.workout.id } : null}
+      evaluation={evaluation ?? null}
+      evaluationJob={evaluationJob ?? null}
+      keyConfigured={Boolean(credential)}
+    />
   );
 }

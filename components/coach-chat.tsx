@@ -164,15 +164,15 @@ export function CoachChat({ messages, proposals, keyConfigured, analyzingActivit
 
   return (
     <section className={cn(
-      "flex min-h-0 flex-1 basis-0 flex-col overflow-hidden border border-primary/15 bg-card shadow-sm",
-      isExpanded ? "fixed inset-0 z-[70] rounded-none border-0" : "rounded-[1.75rem]",
+      "flex min-h-0 flex-1 basis-0 flex-col overflow-hidden bg-card",
+      isExpanded ? "fixed inset-0 z-[70] rounded-none" : "rounded-[1.5rem] shadow-[var(--surface-shadow)] ring-1 ring-border/60",
     )}>
       <header
-        className="flex items-center gap-3 border-b border-border/60 px-4 py-2.5"
+        className="flex items-center gap-3 border-b border-border/60 px-4 py-2"
         style={isExpanded ? { paddingTop: "max(env(safe-area-inset-top, 0px), 0.625rem)" } : undefined}
       >
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15 text-primary"><Sparkles size={18} /></span>
-        <div className="min-w-0 flex-1"><h2 className="text-sm font-semibold">Il tuo coach</h2><p className="truncate text-xs text-muted-foreground">Conosce piano, storico e feedback</p></div>
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/12 text-primary"><Sparkles size={16} /></span>
+        <h2 className="min-w-0 flex-1 text-[15px] font-semibold">Coach</h2>
         <Button
           type="button"
           variant="ghost"

@@ -10,7 +10,7 @@ export interface FormPoint {
 }
 
 const HEIGHT = 150;
-const PAD = { top: 10, right: 52, bottom: 22, left: 4 };
+const PAD = { top: 10, right: 8, bottom: 22, left: 4 };
 const SERIES = [
   { key: "form", label: "Forma", color: "var(--viz-1)" },
   { key: "fatigue", label: "Fatica", color: "var(--viz-2)" },
@@ -40,7 +40,6 @@ export function FormChart({ points }: { points: FormPoint[] }) {
     .map((p, i) => ({ i, date: p.date }))
     .filter(({ date }, i) => i > 0 && date.slice(0, 7) !== points[i - 1].date.slice(0, 7));
   const last = points[points.length - 1];
-  const endGap = Math.abs(y(last.form) - y(last.fatigue));
 
   const pick = (clientX: number, rect: DOMRect) => {
     const ratio = (clientX - rect.left - PAD.left) / Math.max(1, innerW);
@@ -86,24 +85,29 @@ export function FormChart({ points }: { points: FormPoint[] }) {
                 {new Date(`${date}T12:00:00Z`).toLocaleDateString("it-IT", { month: "short", timeZone: "UTC" })}
               </text>
             ))}
-            {SERIES.map((series) => (
-              <path key={series.key} d={path(series.key)} fill="none" stroke={series.color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+            {SERIES.map((series, index) => (
+              <path
+                // key sulla larghezza: Chromium non ricalcola il tratteggio se cambia solo `d`.
+                key={`${series.key}-${width}`}
+                d={path(series.key)}
+                pathLength={1}
+                className="animate-draw"
+                style={{ animationDelay: `${index * 120}ms` }}
+                fill="none"
+                stroke={series.color}
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
             ))}
             {SERIES.map((series) => (
-              <g key={`end-${series.key}`}>
-                <circle cx={x(points.length - 1)} cy={y(last[series.key])} r={4} fill={series.color} stroke="var(--background)" strokeWidth={2} />
-                {endGap >= 14 && (
-                  <text x={x(points.length - 1) + 8} y={y(last[series.key]) + 3.5} className="fill-foreground text-[11px] font-medium">
-                    {series.label}
-                  </text>
-                )}
-              </g>
+              <circle key={`end-${series.key}`} cx={x(points.length - 1)} cy={y(last[series.key])} r={4} fill={series.color} stroke="var(--card)" strokeWidth={2} />
             ))}
             {active != null && (
               <g>
                 <line x1={x(active)} x2={x(active)} y1={PAD.top} y2={PAD.top + innerH} stroke="var(--muted-foreground)" strokeWidth={1} opacity={0.5} />
                 {SERIES.map((series) => (
-                  <circle key={series.key} cx={x(active)} cy={y(points[active][series.key])} r={4} fill={series.color} stroke="var(--background)" strokeWidth={2} />
+                  <circle key={series.key} cx={x(active)} cy={y(points[active][series.key])} r={4} fill={series.color} stroke="var(--card)" strokeWidth={2} />
                 ))}
               </g>
             )}

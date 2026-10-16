@@ -69,7 +69,7 @@ export function TodayCard({ next, today, heat, week, race }: Props) {
   const planned = week.flatMap((day) => day.workouts).reduce((sum, workout) => sum + (workout.status === "skipped" ? 0 : plannedMeters(workout)), 0);
   const done = week.flatMap((day) => day.activities).filter((activity) => activity.sport === "running").reduce((sum, activity) => sum + activity.distance_m, 0);
   return (
-    <div className="overflow-hidden rounded-[1.5rem] border border-border bg-card">
+    <div className="surface overflow-hidden">
       {race ? (
         race.date === today ? (
           <Link href={next ? `/plan/${next.id}` : "/plan"} className="flex items-center gap-3 px-4 py-4">
@@ -94,7 +94,7 @@ export function TodayCard({ next, today, heat, week, race }: Props) {
         <NextWorkout next={next} today={today} heat={heat} />
       )}
 
-      <Link href="/plan" className="block border-t border-border/70 px-4 py-3">
+      <Link href="/plan" className="block border-t border-border/60 px-4 py-3">
         <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground">Questa settimana</span>
           <span className="font-medium tabular-nums">

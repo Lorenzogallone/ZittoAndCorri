@@ -6,7 +6,7 @@ export default function Loading() {
     <AppShell title="Obiettivi">
       <div className="flex flex-col gap-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-28 w-full rounded-2xl" />
+          <Skeleton key={i} className="h-28 w-full rounded-[1.25rem]" />
         ))}
       </div>
     </AppShell>

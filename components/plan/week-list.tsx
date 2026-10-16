@@ -79,7 +79,7 @@ function DayRow({ day, today }: { day: PlanDay; today: string }) {
     <li>
       <Link
         href={dayHref(day)}
-        className={cn("flex items-center gap-3 py-2.5 transition-colors active:bg-muted/40", isToday && "-mx-2 rounded-xl bg-primary/[0.06] px-2")}
+        className={cn("flex items-center gap-3 py-2.5 transition-colors active:bg-muted/40", isToday && "-mx-2 rounded-xl bg-primary/[0.07] px-2")}
       >
         <div className="w-9 shrink-0 text-center">
           <p className={cn("text-[10px] uppercase tracking-wide", isToday ? "font-semibold text-primary" : "text-muted-foreground")}>{weekday}</p>
@@ -103,15 +103,17 @@ function DayRow({ day, today }: { day: PlanDay; today: string }) {
 }
 
 /** Una settimana del piano: km fatti/previsti e un giorno per riga. */
-export function PlanWeek({ days, today, title }: { days: PlanDay[]; today: string; title?: string }) {
+export function PlanWeek({ days, today, title, highlight = false }: { days: PlanDay[]; today: string; title?: string; highlight?: boolean }) {
   const planned = days.flatMap((day) => day.workouts).reduce((sum, workout) => sum + (workout.status === "skipped" ? 0 : plannedMeters(workout)), 0);
   const done = days.flatMap((day) => day.activities).filter((activity) => activity.sport === "running").reduce((sum, activity) => sum + activity.distance_m, 0);
   const { done: sessionsDone, due } = adherence(days.map((day) => day.state));
   const progress = planned > 0 ? Math.min(1, done / planned) : 0;
   return (
-    <section className="mb-7">
+    <section className={cn("mb-6", highlight ? "surface px-4 pb-1 pt-4" : "px-1 opacity-90")}>
       <div className="mb-1 flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-semibold">{title ?? rangeLabel(days[0].date, days[days.length - 1].date)}</h2>
+        <h2 className={cn("text-[15px] font-semibold", !highlight && "text-muted-foreground")}>
+          {title ?? rangeLabel(days[0].date, days[days.length - 1].date)}
+        </h2>
         <p className="text-xs text-muted-foreground tabular-nums">
           {kmText(done)}{planned > 0 && <span> / {kmText(planned)}</span>}
         </p>

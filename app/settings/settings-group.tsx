@@ -1,25 +1,11 @@
 import type { ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
 
-export function SettingsGroup({
-  title,
-  children,
-  defaultOpen = false,
-}: {
-  title: string;
-  children: ReactNode;
-  defaultOpen?: boolean;
-}) {
+/** Gruppo di impostazioni: titolo piccolo e una superficie con righe separate. */
+export function SettingsGroup({ title, children }: { title?: string; children: ReactNode }) {
   return (
-    <details className="group/settings border-b border-border/70" open={defaultOpen || undefined}>
-      <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-4 text-sm font-semibold text-foreground">
-        <span>{title}</span>
-        <ChevronDown
-          size={16}
-          className="shrink-0 text-muted-foreground transition-transform group-open/settings:rotate-180"
-        />
-      </summary>
-      <div className="divide-y divide-border/60 pb-2">{children}</div>
-    </details>
+    <section className="mb-6">
+      {title && <h2 className="mb-2 px-1 text-[13px] font-medium text-muted-foreground">{title}</h2>}
+      <div className="surface divide-y divide-border/60 px-4">{children}</div>
+    </section>
   );
 }

@@ -15,6 +15,19 @@ export interface ZeppHrMetric {
   resting_hr: number | null;
   hr_zone_rest: number | null;
   hr_zone_ranges: unknown;
+  captured_at?: string | null;
+}
+
+/** Oltre questi giorni senza sincronizzare, i dati giornalieri Zepp non si usano più. */
+export const ZEPP_DAILY_STALE_DAYS = 3;
+/** Zone e FC dall'orologio cambiano di rado: si tengono buone più a lungo. */
+export const ZEPP_HR_STALE_DAYS = 30;
+
+/** True se la rilevazione è più recente di `days` giorni. */
+export function isZeppFresh(capturedAt: string | null | undefined, days: number, now = new Date()): boolean {
+  if (!capturedAt) return false;
+  const time = new Date(capturedAt).getTime();
+  return Number.isFinite(time) && now.getTime() - time <= days * 86_400_000;
 }
 
 function valid(value: unknown, min: number, max: number): number | null {

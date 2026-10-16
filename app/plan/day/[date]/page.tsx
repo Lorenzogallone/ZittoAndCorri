@@ -64,7 +64,7 @@ export default async function DayViewPage({ params }: Props) {
         action={<Link href="/plan/new" className="inline-flex items-center gap-1 text-sm font-medium text-primary"><Plus size={15} /> Aggiungi</Link>}
       >
         {workouts.length ? (
-          <ul className="divide-y divide-border/60">
+          <ul className="surface divide-y divide-border/60 px-4">
             {workouts.map((workout) => {
               const steps = workoutStepsOrLegacy(workout.workout_steps, workout);
               const meters = plannedMeters({ ...workout, workout_steps: steps });
@@ -86,7 +86,7 @@ export default async function DayViewPage({ params }: Props) {
             })}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">Giorno di riposo.</p>
+          <p className="surface px-4 py-3 text-sm text-muted-foreground">Giorno di riposo.</p>
         )}
       </Section>
 
@@ -95,7 +95,7 @@ export default async function DayViewPage({ params }: Props) {
         action={<Link href="/activities/new" className="inline-flex items-center gap-1 text-sm font-medium text-primary"><Plus size={15} /> Registra</Link>}
       >
         {dayActivities.length ? (
-          <ul className="divide-y divide-border/60">
+          <ul className="surface divide-y divide-border/60 px-4">
             {dayActivities.map((activity) => (
               <li key={activity.id}>
                 <Link href={`/activities/${activity.id}`} className="flex items-center gap-3 py-3">
@@ -119,7 +119,7 @@ export default async function DayViewPage({ params }: Props) {
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">Nessuna attività registrata.</p>
+          <p className="surface px-4 py-3 text-sm text-muted-foreground">Nessuna attività registrata.</p>
         )}
       </Section>
     </AppShell>

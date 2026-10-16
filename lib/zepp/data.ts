@@ -14,6 +14,7 @@ import { computeZeppReadiness } from "@/lib/zepp/readiness";
 import { createPairingCode, createZeppToken, hashZeppCredential } from "@/lib/zepp/security";
 import type { ZeppConnectionView, ZeppDailyMetric, ZeppReadinessResult } from "@/lib/zepp/types";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
+import { isZeppFresh, ZEPP_DAILY_STALE_DAYS } from "@/lib/zepp/hr-values";
 
 export interface ConnectionRow extends ZeppConnectionView {
   id: string;
@@ -368,6 +369,8 @@ export async function getZeppDashboard(
   latest: ZeppDailyMetric | null;
   recent: ZeppDailyMetric[];
   readiness: ZeppReadinessResult;
+  /** True se Zepp è attivo ma non sincronizza da più di ZEPP_DAILY_STALE_DAYS. */
+  stale: boolean;
 }> {
   const [{ data: connectionData }, { data: metricData }] = await Promise.all([
     supabase.from("zepp_connections")
@@ -383,13 +386,18 @@ export async function getZeppDashboard(
       .returns<Record<string, unknown>[]>(),
   ]);
   const connection = publicConnection(connectionData ?? null);
-  const metrics = (metricData ?? []).map(toDailyMetric);
+  const all = (metricData ?? []).map(toDailyMetric);
+  // Se l'orologio non sincronizza da qualche giorno i suoi dati non descrivono
+  // più l'atleta: si ignorano e si torna al solo calcolo interno.
+  const stale = all.length > 0 && !isZeppFresh(all[0].captured_at, ZEPP_DAILY_STALE_DAYS);
+  const metrics = stale ? [] : all;
   const enabled = Boolean(connection?.enabled);
   return {
     connection,
     latest: enabled ? metrics[0] ?? null : null,
     recent: enabled ? metrics : [],
     readiness: computeZeppReadiness(metrics, internal, new Date(), enabled),
+    stale: enabled && stale,
   };
 }
 

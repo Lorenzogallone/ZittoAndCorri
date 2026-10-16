@@ -53,8 +53,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   return (
     <AppShell>
       <div className="flex h-full min-h-0 flex-col">
-        <div className="mb-3 flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Ciao {name}</h1>
+        <div className="mb-4 flex items-center justify-between pt-2">
+          <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight">Ciao {name}</h1>
           <Link
             href="/activities/new"
             className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground"
@@ -67,7 +67,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
         <div className="mb-3 shrink-0">
           <TodayCard next={next} today={today} heat={heat} week={week} race={race} />
         </div>
-        <Suspense fallback={<div className="min-h-0 flex-1 animate-pulse rounded-[1.75rem] bg-muted" />}>
+        <Suspense fallback={<div className="skeleton min-h-0 flex-1 rounded-[1.5rem]" />}>
           <CoachChat key={prompt ?? ""} messages={[...(messagesRes.data ?? [])].reverse()} proposals={proposalsRes.data ?? []} keyConfigured={Boolean(credentialRes.data)} analyzingActivities={pendingEvaluationsRes.count ?? 0} />
         </Suspense>
       </div>

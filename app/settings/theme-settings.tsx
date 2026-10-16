@@ -51,117 +51,84 @@ export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
   }
 
   return (
-    <div id="theme-settings-content" className="space-y-6 pb-5 pt-2">
-          {/* Modalità */}
-          <div className="space-y-2.5">
-            <p className="text-xs font-medium text-muted-foreground">
-              Modalità
-            </p>
-            <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted/30 p-1">
-              {MODES.map(({ key, label, icon: Icon }) => {
-                const active = prefs.mode === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => update({ mode: key })}
-                    aria-pressed={active}
-                    className={`flex flex-col items-center justify-center gap-1 rounded-lg py-2.5 text-xs font-medium transition-all ${
-                      active
-                        ? "bg-card text-foreground shadow-sm ring-1 ring-border"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <Icon size={16} />
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              In automatico l&apos;app segue chiaro/scuro del tuo dispositivo.
-            </p>
-          </div>
+    <div id="theme-settings-content" className="divide-y divide-border/60">
+      <div className="space-y-2.5 py-4">
+        <p className="text-sm font-medium">Tema</p>
+        <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-0.5">
+          {MODES.map(({ key, label, icon: Icon }) => {
+            const active = prefs.mode === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => update({ mode: key })}
+                aria-pressed={active}
+                className={`flex items-center justify-center gap-1.5 rounded-[10px] py-1.5 text-[13px] font-medium transition-all ${
+                  active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                }`}
+              >
+                <Icon size={14} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-          {/* Colore principale */}
-          <div className="space-y-2.5">
-            <p className="text-xs font-medium text-muted-foreground">
-              Colore principale
-            </p>
-            <div className="flex flex-wrap gap-3">
-              {ACCENT_ORDER.map((key) => {
-                const active = prefs.accent === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => update({ accent: key as AccentKey })}
-                    title={ACCENTS[key].label}
-                    aria-label={ACCENTS[key].label}
-                    aria-pressed={active}
-                    className={`relative flex h-10 w-10 items-center justify-center rounded-full transition-transform active:scale-90 ${
-                      active
-                        ? "ring-2 ring-offset-2 ring-offset-card"
-                        : "ring-1 ring-black/10 dark:ring-white/10"
-                    }`}
-                    style={{
-                      background: ACCENTS[key].brand,
-                      ...(active
-                        ? ({ "--tw-ring-color": ACCENTS[key].brand } as React.CSSProperties)
-                        : {}),
-                    }}
-                  >
-                    {active && <Check size={16} className="text-white drop-shadow" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+      <div className="space-y-3 py-4">
+        <p className="text-sm font-medium">Colore</p>
+        <div className="flex flex-wrap gap-3">
+          {ACCENT_ORDER.map((key) => {
+            const active = prefs.accent === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => update({ accent: key as AccentKey })}
+                title={ACCENTS[key].label}
+                aria-label={ACCENTS[key].label}
+                aria-pressed={active}
+                className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-transform active:scale-90 ${
+                  active ? "ring-2 ring-offset-2 ring-offset-card" : ""
+                }`}
+                style={{
+                  background: ACCENTS[key].brand,
+                  ...(active ? ({ "--tw-ring-color": ACCENTS[key].brand } as React.CSSProperties) : {}),
+                }}
+              >
+                {active && <Check size={15} className="text-white drop-shadow" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-          {/* Stile (preset di tema) */}
-          <div className="space-y-2.5">
-            <p className="text-xs font-medium text-muted-foreground">
-              Stile
-            </p>
-            <div className="grid grid-cols-2 gap-2.5">
-              {STYLE_ORDER.map((key) => {
-                const active = prefs.style === key;
-                const s = STYLES[key];
-                const bg = resolvedDark ? s.preview.dark : s.preview.light;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => update({ style: key as StyleKey })}
-                    aria-pressed={active}
-                    className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all active:scale-[0.98] ${
-                      active
-                        ? "border-primary ring-1 ring-primary"
-                        : "border-border hover:border-border/80"
-                    }`}
-                  >
-                    <span
-                      className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-black/10 dark:border-white/10"
-                      style={{ background: bg }}
-                    >
-                      <span
-                        className="h-3.5 w-3.5 rounded-full"
-                        style={{ background: ACCENTS[prefs.accent].brand }}
-                      />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium text-foreground">
-                        {s.label}
-                      </span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {s.description}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+      <div className="space-y-3 py-4">
+        <p className="text-sm font-medium">Sfondo</p>
+        <div className="grid grid-cols-4 gap-2">
+          {STYLE_ORDER.map((key) => {
+            const active = prefs.style === key;
+            const style = STYLES[key];
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => update({ style: key as StyleKey })}
+                aria-pressed={active}
+                className="flex flex-col items-center gap-1.5 text-xs transition-transform active:scale-95"
+              >
+                <span
+                  className={`flex h-11 w-full items-center justify-center rounded-xl border ${active ? "border-primary ring-1 ring-primary" : "border-border"}`}
+                  style={{ background: resolvedDark ? style.preview.dark : style.preview.light }}
+                >
+                  <span className="h-3 w-3 rounded-full" style={{ background: ACCENTS[prefs.accent].brand }} />
+                </span>
+                <span className={active ? "font-medium text-foreground" : "text-muted-foreground"}>{style.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

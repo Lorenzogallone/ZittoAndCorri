@@ -66,188 +66,108 @@
 }
 
 /* ============================================================
-   Adaptive palette: Warm Light / Navy Dark Mode
+   Palette: neutro minimale (chiaro quasi bianco, scuro quasi nero) con
+   l'accento scelto dall'utente come unico colore forte.
    ============================================================ */
 :root {
-  /* Light Mode (Warm Minimal Cream) */
-  --background: oklch(0.97 0.01 80);
-  --foreground: oklch(0.25 0.01 80);
+  --background: oklch(0.985 0.002 85);
+  --foreground: oklch(0.2 0.005 85);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.005 85);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.005 85);
+  --secondary: oklch(0.96 0.003 85);
+  --secondary-foreground: oklch(0.3 0.005 85);
+  --muted: oklch(0.955 0.003 85);
+  --muted-foreground: oklch(0.52 0.008 85);
+  --accent: oklch(0.955 0.015 30);
+  --accent-foreground: oklch(0.2 0.005 85);
+  --border: oklch(0.915 0.004 85);
+  --input: oklch(0.915 0.004 85);
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.2 0.005 85);
+  --sidebar-accent: oklch(0.96 0.003 85);
+  --sidebar-accent-foreground: oklch(0.2 0.005 85);
+  --sidebar-border: oklch(0.915 0.004 85);
 
-  /* Cards & popovers */
-  --card: oklch(0.95 0.015 80);
-  --card-foreground: oklch(0.25 0.01 80);
-  --popover: oklch(0.95 0.015 80);
-  --popover-foreground: oklch(0.25 0.01 80);
-
-  /* Primary — Coral */
+  /* Primary e brand: sovrascrivibili dall'utente (Impostazioni → App). */
   --primary: oklch(0.68 0.16 30);
-  --primary-foreground: oklch(0.98 0 0);
-
-  /* Secondary */
-  --secondary: oklch(0.92 0.015 80);
-  --secondary-foreground: oklch(0.35 0.01 80);
-
-  /* Muted */
-  --muted: oklch(0.90 0.01 80);
-  --muted-foreground: oklch(0.45 0.02 80);
-
-  /* Accent — very subtle coral tint */
-  --accent: oklch(0.94 0.02 30);
-  --accent-foreground: oklch(0.25 0.01 80);
-
-  /* Destructive */
-  --destructive: oklch(0.60 0.20 25);
-
-  /* Borders & inputs */
-  --border: oklch(0.85 0.01 80);
-  --input: oklch(0.90 0.01 80);
+  --primary-foreground: oklch(0.99 0 0);
+  --destructive: oklch(0.6 0.2 25);
   --ring: oklch(0.68 0.16 30);
-
-  /* Colore brand: usato da glow, progress bar e accenti. Sovrascrivibile
-     dall'utente (Impostazioni → Aspetto). Default = coral. */
   --brand: oklch(0.68 0.16 30);
+  --sidebar-primary: oklch(0.68 0.16 30);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-ring: oklch(0.68 0.16 30);
 
-  /* Radius — rounder for iOS feel */
   --radius: 0.875rem;
 
-  /* Charts — warm palette */
   --chart-1: oklch(0.68 0.16 30);
   --chart-2: oklch(0.72 0.14 60);
   --chart-3: oklch(0.65 0.12 160);
-  --chart-4: oklch(0.60 0.15 280);
-  --chart-5: oklch(0.75 0.10 90);
-
-  /* Sidebar (keeping for shadcn compat) */
-  --sidebar: oklch(0.95 0.015 80);
-  --sidebar-foreground: oklch(0.25 0.01 80);
-  --sidebar-primary: oklch(0.68 0.16 30);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.92 0.015 80);
-  --sidebar-accent-foreground: oklch(0.25 0.01 80);
-  --sidebar-border: oklch(0.85 0.01 80);
-  --sidebar-ring: oklch(0.68 0.16 30);
-
-  /* Glass colors for light mode */
-  --glass-bg: oklch(0.97 0.01 80 / 0.7);
-  --glass-strong-bg: oklch(0.97 0.01 80 / 0.85);
+  --chart-4: oklch(0.6 0.15 280);
+  --chart-5: oklch(0.75 0.1 90);
 
   /* Grafici: due serie fisse, indipendenti dal colore principale scelto
      (validate per daltonismo su superfici chiare e scure). */
   --viz-1: #2a78d6;
   --viz-2: #eb6834;
+
+  /* Ombra delle superfici: quasi impercettibile in chiaro, assente in scuro. */
+  --surface-shadow: 0 1px 2px oklch(0 0 0 / 0.04), 0 4px 16px -8px oklch(0 0 0 / 0.08);
 }
 
-/* Fallback dark senza JS: si applica SOLO in modalità automatica (nessuna
-   classe .light/.dark forzata dall'utente), così "forza chiaro" / "forza scuro"
-   vincono sempre sulla preferenza di sistema. */
+/* Fallback scuro senza JS: vale solo in automatico (nessuna classe forzata). */
 @media (prefers-color-scheme: dark) {
   :root:not(.light):not(.dark) {
-    /* Dark Mode (Navy Dark Blue, matching #1a1a2e background) */
-    --background: oklch(0.15 0.022 263);
-    --foreground: oklch(0.93 0.01 80);
-
-    /* Cards & popovers */
-    --card: oklch(0.18 0.022 263);
-    --card-foreground: oklch(0.93 0.01 80);
-    --popover: oklch(0.18 0.022 263);
-    --popover-foreground: oklch(0.93 0.01 80);
-
-    /* Primary — Coral */
-    --primary: oklch(0.68 0.16 30);
-    --primary-foreground: oklch(0.98 0 0);
-
-    /* Secondary */
-    --secondary: oklch(0.22 0.022 263);
-    --secondary-foreground: oklch(0.88 0.01 80);
-
-    /* Muted */
-    --muted: oklch(0.20 0.022 263);
-    --muted-foreground: oklch(0.55 0.02 80);
-
-    /* Accent — very subtle coral tint */
-    --accent: oklch(0.22 0.025 30);
-    --accent-foreground: oklch(0.93 0.01 80);
-
-    /* Destructive */
-    --destructive: oklch(0.60 0.20 25);
-
-    /* Borders & inputs */
-    --border: oklch(0.25 0.022 263);
-    --input: oklch(0.22 0.022 263);
-    --ring: oklch(0.68 0.16 30);
-    --brand: oklch(0.68 0.16 30);
-
-    /* Sidebar (keeping for shadcn compat) */
-    --sidebar: oklch(0.16 0.022 263);
-    --sidebar-foreground: oklch(0.93 0.01 80);
-    --sidebar-primary: oklch(0.68 0.16 30);
-    --sidebar-primary-foreground: oklch(0.98 0 0);
-    --sidebar-accent: oklch(0.22 0.022 263);
-    --sidebar-accent-foreground: oklch(0.93 0.01 80);
-    --sidebar-border: oklch(0.25 0.022 263);
-    --sidebar-ring: oklch(0.68 0.16 30);
-
-    /* Glass colors for dark mode */
-    --glass-bg: oklch(0.17 0.012 260 / 0.7);
-    --glass-strong-bg: oklch(0.15 0.012 260 / 0.85);
-
+    --background: oklch(0.16 0.004 270);
+    --foreground: oklch(0.96 0.002 85);
+    --card: oklch(0.205 0.005 270);
+    --card-foreground: oklch(0.96 0.002 85);
+    --popover: oklch(0.225 0.005 270);
+    --popover-foreground: oklch(0.96 0.002 85);
+    --secondary: oklch(0.24 0.006 270);
+    --secondary-foreground: oklch(0.88 0.004 85);
+    --muted: oklch(0.24 0.006 270);
+    --muted-foreground: oklch(0.68 0.01 270);
+    --accent: oklch(0.26 0.02 30);
+    --accent-foreground: oklch(0.96 0.002 85);
+    --border: oklch(0.285 0.006 270);
+    --input: oklch(0.285 0.006 270);
+    --sidebar: oklch(0.205 0.005 270);
+    --sidebar-foreground: oklch(0.96 0.002 85);
+    --sidebar-accent: oklch(0.24 0.006 270);
+    --sidebar-accent-foreground: oklch(0.96 0.002 85);
+    --sidebar-border: oklch(0.285 0.006 270);
     --viz-1: #3987e5;
     --viz-2: #d95926;
+    --surface-shadow: none;
   }
 }
 
 .dark {
-  /* Class fallback for dark mode */
-  --background: oklch(0.15 0.022 263);
-  --foreground: oklch(0.93 0.01 80);
-
-  /* Cards & popovers */
-  --card: oklch(0.18 0.022 263);
-  --card-foreground: oklch(0.93 0.01 80);
-  --popover: oklch(0.18 0.022 263);
-  --popover-foreground: oklch(0.93 0.01 80);
-
-  /* Primary — Coral */
-  --primary: oklch(0.68 0.16 30);
-  --primary-foreground: oklch(0.98 0 0);
-
-  /* Secondary */
-  --secondary: oklch(0.22 0.022 263);
-  --secondary-foreground: oklch(0.88 0.01 80);
-
-  /* Muted */
-  --muted: oklch(0.20 0.022 263);
-  --muted-foreground: oklch(0.55 0.02 80);
-
-  /* Accent — very subtle coral tint */
-  --accent: oklch(0.22 0.025 30);
-  --accent-foreground: oklch(0.93 0.01 80);
-
-  /* Destructive */
-  --destructive: oklch(0.60 0.20 25);
-
-  /* Borders & inputs */
-  --border: oklch(0.25 0.022 263);
-  --input: oklch(0.22 0.022 263);
-  --ring: oklch(0.68 0.16 30);
-  --brand: oklch(0.68 0.16 30);
-
-  /* Sidebar (keeping for shadcn compat) */
-  --sidebar: oklch(0.16 0.022 263);
-  --sidebar-foreground: oklch(0.93 0.01 80);
-  --sidebar-primary: oklch(0.68 0.16 30);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.22 0.022 263);
-  --sidebar-accent-foreground: oklch(0.93 0.01 80);
-  --sidebar-border: oklch(0.25 0.022 263);
-  --sidebar-ring: oklch(0.68 0.16 30);
-
-  /* Glass colors for dark mode class fallback */
-  --glass-bg: oklch(0.17 0.012 260 / 0.7);
-  --glass-strong-bg: oklch(0.15 0.012 260 / 0.85);
-
+  --background: oklch(0.16 0.004 270);
+  --foreground: oklch(0.96 0.002 85);
+  --card: oklch(0.205 0.005 270);
+  --card-foreground: oklch(0.96 0.002 85);
+  --popover: oklch(0.225 0.005 270);
+  --popover-foreground: oklch(0.96 0.002 85);
+  --secondary: oklch(0.24 0.006 270);
+  --secondary-foreground: oklch(0.88 0.004 85);
+  --muted: oklch(0.24 0.006 270);
+  --muted-foreground: oklch(0.68 0.01 270);
+  --accent: oklch(0.26 0.02 30);
+  --accent-foreground: oklch(0.96 0.002 85);
+  --border: oklch(0.285 0.006 270);
+  --input: oklch(0.285 0.006 270);
+  --sidebar: oklch(0.205 0.005 270);
+  --sidebar-foreground: oklch(0.96 0.002 85);
+  --sidebar-accent: oklch(0.24 0.006 270);
+  --sidebar-accent-foreground: oklch(0.96 0.002 85);
+  --sidebar-border: oklch(0.285 0.006 270);
   --viz-1: #3987e5;
   --viz-2: #d95926;
+  --surface-shadow: none;
 }
 
 @layer base {
@@ -262,6 +182,10 @@
   }
   html {
     @apply font-sans bg-background;
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
   }
 }
 
@@ -287,16 +211,11 @@
                 0 0 15px -4px color-mix(in oklch, var(--brand) 10%, transparent);
   }
 
-  /* Glass surface */
-  .glass {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px) saturate(1.2);
-    -webkit-backdrop-filter: blur(20px) saturate(1.2);
-  }
-  .glass-strong {
-    background: var(--glass-strong-bg);
-    backdrop-filter: blur(40px) saturate(1.3);
-    -webkit-backdrop-filter: blur(40px) saturate(1.3);
+  /* Superficie: card piatta con bordo sottile, ombra solo in chiaro. */
+  .surface {
+    background: var(--card);
+    border-radius: 1.25rem;
+    box-shadow: var(--surface-shadow), inset 0 0 0 1px color-mix(in oklch, var(--border) 70%, transparent);
   }
 
   /* iOS-style thin separator */
@@ -360,7 +279,6 @@ input[type="time"] {
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
-  color-scheme: dark;
   font-size: 16px; /* prevents iOS zoom */
 }
 
@@ -369,6 +287,94 @@ input[type="date"]::-webkit-date-and-time-value,
 input[type="datetime-local"]::-webkit-date-and-time-value {
   text-align: left;
   min-width: 0;
+}
+
+/* ============================================================
+   Animazioni: ingresso pagine e liste, grafici, caricamenti.
+   Brevi e morbide; disattivate con "riduci movimento".
+   ============================================================ */
+@keyframes enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes grow-y {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+@keyframes grow-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes ring-fill {
+  from { stroke-dashoffset: 100; }
+}
+@keyframes shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+
+.animate-enter {
+  animation: enter 0.42s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.stagger > * {
+  animation: enter 0.42s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.stagger > *:nth-child(2) { animation-delay: 40ms; }
+.stagger > *:nth-child(3) { animation-delay: 80ms; }
+.stagger > *:nth-child(4) { animation-delay: 120ms; }
+.stagger > *:nth-child(5) { animation-delay: 160ms; }
+.stagger > *:nth-child(6) { animation-delay: 200ms; }
+.stagger > *:nth-child(7) { animation-delay: 240ms; }
+.stagger > *:nth-child(n + 8) { animation-delay: 280ms; }
+
+.animate-grow-y {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: grow-y 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.animate-grow-x {
+  transform-origin: left;
+  animation: grow-x 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+/* Linee che si disegnano: richiede pathLength="1" sul path. */
+.animate-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 1s cubic-bezier(0.3, 0.6, 0.2, 1) forwards;
+}
+
+.animate-ring {
+  animation: ring-fill 1.1s cubic-bezier(0.3, 0.6, 0.2, 1) both;
+}
+
+.skeleton {
+  border-radius: 0.875rem;
+  background: linear-gradient(
+    100deg,
+    var(--muted) 30%,
+    color-mix(in oklch, var(--muted) 45%, var(--card)) 50%,
+    var(--muted) 70%
+  );
+  background-size: 300% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-enter,
+  .stagger > *,
+  .animate-grow-y,
+  .animate-grow-x,
+  .animate-ring,
+  .skeleton {
+    animation: none !important;
+  }
+  .animate-draw {
+    animation: none !important;
+    stroke-dashoffset: 0;
+  }
 }
 
 /* ============================================================

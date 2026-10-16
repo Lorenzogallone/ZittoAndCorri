@@ -47,8 +47,13 @@ export function WorkoutGraph({
       {blocks.map(({ step, seconds }, index) => (
         <div
           key={index}
-          className={cn("min-w-[3px] rounded-t-[3px] rounded-b-[1px]", intensityTone(step, type).bar)}
-          style={{ flexGrow: seconds / total, flexBasis: 0, height: HEIGHT[stepIntensity(step, type)] ?? "50%" }}
+          className={cn("animate-grow-y min-w-[3px] rounded-t-[3px] rounded-b-[1px]", intensityTone(step, type).bar)}
+          style={{
+            flexGrow: seconds / total,
+            flexBasis: 0,
+            height: HEIGHT[stepIntensity(step, type)] ?? "50%",
+            animationDelay: `${Math.min(index * 25, 400)}ms`,
+          }}
         />
       ))}
     </div>

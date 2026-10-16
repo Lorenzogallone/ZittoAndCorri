@@ -190,23 +190,23 @@ test("il piano usa la chat e ogni proposta spiega obiettivo e focus", () => {
   assert.match(chat, /Su cosa concentrarti/);
 });
 
-test("le sezioni del dettaglio attività sono aperte e richiudibili", () => {
-  const section = readFileSync(new URL("../components/collapsible-section.tsx", import.meta.url), "utf8");
-  const page = readFileSync(new URL("../app/activities/[id]/page.tsx", import.meta.url), "utf8");
-  assert.match(section, /<details[\s\S]*open/);
-  assert.match(section, /ChevronDown/);
-  for (const title of ["Dati attività", "Percorso GPS", "Frequenza cardiaca", "Passo per km", "Profilo altimetrico", "Zone HR"]) {
-    assert.match(page, new RegExp(`title="${title}"`));
-  }
+test("il dettaglio attività è essenziale: grafici a schede e mappa su richiesta", () => {
+  const view = readFileSync(new URL("../app/activities/[id]/activity-view.tsx", import.meta.url), "utf8");
+  const route = readFileSync(new URL("../components/activity/route-preview.tsx", import.meta.url), "utf8");
+  assert.match(view, /<SegmentedTabs tabs=\{charts\} \/>/);
+  for (const label of ["Passo", "Cuore", "Quota"]) assert.match(view, new RegExp(`label: "${label}"`));
+  assert.match(view, /<ZonesBar/);
+  // La mappa WebGL parte solo al tocco: su iOS standalone caricarla subito ricarica la PWA.
+  assert.match(route, /dynamic\(\(\) => import\("@\/components\/activity-map-client"\)/);
+  assert.match(route, /setInteractive\(true\)/);
 });
 
 test("le note del coach diventano dettagli strutturati senza chip diagnostici", () => {
   const prompt = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
   const evaluation = readFileSync(new URL("../components/activity-evaluation.tsx", import.meta.url), "utf8");
-  const activityPage = readFileSync(new URL("../app/activities/[id]/page.tsx", import.meta.url), "utf8");
   const migration = readFileSync(new URL("../supabase/migrations/0011_evaluation_details.sql", import.meta.url), "utf8");
   assert.match(prompt, /Trasforma le note libere.*campo details/);
-  assert.match(activityPage, /evaluation\?\.details/);
+  assert.match(evaluation, /displayedEvaluation\?\.details/);
   assert.doesNotMatch(evaluation, /Dettagli aggiuntivi/);
   assert.doesNotMatch(evaluation, /Sovraccarico|Easy troppo veloce|FLAG_META/);
   assert.match(migration, /add column if not exists details jsonb/);
@@ -252,7 +252,7 @@ test("il modello Gemini scelto viene persistito e usato da tutti i flussi AI", (
 
 test("il tasto Profilo apre sempre la pagina profilo", () => {
   const tabs = readFileSync(new URL("../components/tab-bar.tsx", import.meta.url), "utf8");
-  const settings = readFileSync(new URL("../app/settings/page.tsx", import.meta.url), "utf8");
+  const settings = readFileSync(new URL("../app/settings/settings-view.tsx", import.meta.url), "utf8");
   const backButton = readFileSync(new URL("../components/back-button.tsx", import.meta.url), "utf8");
   assert.match(tabs, /href: "\/profile", label: "Profilo"/);
   assert.match(settings, /backHref="\/profile"/);

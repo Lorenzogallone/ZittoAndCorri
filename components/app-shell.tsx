@@ -3,15 +3,15 @@ import { BackButton } from "@/components/back-button";
 
 interface AppShellProps {
   children: React.ReactNode;
-  /** Optional page title shown at the top */
+  /** Titolo grande in cima al contenuto (scorre con la pagina) */
   title?: string;
-  /** Optional action element rendered on the right side of the header */
+  /** Azione a destra del titolo (o della barra con il pulsante indietro) */
   headerAction?: React.ReactNode;
-  /** Hide tab bar (e.g., for forms or detail views) */
+  /** Nasconde la tab bar (form e dettagli) */
   hideTabBar?: boolean;
-  /** Optional back link (shows ← instead of title) */
+  /** Link "indietro": mostra una barra minimale in alto */
   backHref?: string;
-  /** Label for the back link */
+  /** Etichetta del link indietro */
   backLabel?: string;
 }
 
@@ -23,49 +23,35 @@ export function AppShell({
   backHref,
   backLabel,
 }: AppShellProps) {
-  const hasHeader = !!(title || headerAction || backHref);
-
   return (
-    // Full-height flex column locked to the dynamic viewport. Header and tab
-    // bar stay in normal flow (top / bottom), only the content scrolls. This
-    // keeps the tab bar glued to the very bottom of the screen on every page,
-    // regardless of how much content there is — fixing the "floats up on short
-    // pages" issue on iOS Safari (where `position: fixed` anchors to the large
-    // layout viewport). `h-screen` is the fallback for browsers without dvh;
-    // in standalone `.app-viewport` forza `100vh` (vedi globals.css), così la
-    // tab bar resta incollata in basso senza accorciarsi.
-    <div className="app-viewport flex h-screen flex-col overflow-hidden">
-      {/* Header */}
-      {hasHeader && (
-        <header className="z-40 shrink-0 glass-strong border-b border-border pt-safe">
-          <div className="mx-auto flex h-12 max-w-lg items-center justify-between px-5">
-            {backHref ? (
-              <BackButton fallbackHref={backHref} label={backLabel} />
-            ) : (
-              <h1 className="text-lg font-semibold tracking-tight">
-                {title}
-              </h1>
-            )}
+    // Colonna a tutta altezza: solo il contenuto scorre, tab bar sempre in
+    // fondo. La safe-area in alto è uno spazio pieno (niente vetro sfocato):
+    // su iPhone in PWA la status bar resta pulita, senza sfumature, e il
+    // contenuto non le passa sotto. `.app-viewport` gestisce 100dvh/100vh.
+    <div className="app-viewport flex h-screen flex-col overflow-hidden bg-background">
+      <div className="pt-safe shrink-0 bg-background" />
+
+      {backHref && (
+        <header className="z-40 shrink-0 bg-background">
+          <div className="mx-auto flex h-11 max-w-lg items-center justify-between px-5">
+            <BackButton fallbackHref={backHref} label={backLabel} />
             {headerAction && <div>{headerAction}</div>}
           </div>
         </header>
       )}
 
-      {/* Content (the only scrollable region) */}
-      <main
-        className="min-h-0 flex-1 overflow-y-auto scroll-touch"
-        style={
-          !hasHeader
-            ? { paddingTop: "env(safe-area-inset-top, 0px)" }
-            : undefined
-        }
-      >
-        <div className="mx-auto h-full w-full max-w-lg px-5 py-6">
+      <main className="min-h-0 flex-1 overflow-y-auto scroll-touch">
+        <div className="animate-enter mx-auto h-full w-full max-w-lg px-5 pb-8 pt-3">
+          {title && (
+            <div className="mb-6 flex items-center justify-between gap-3 pt-2">
+              <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight">{title}</h1>
+              {!backHref && headerAction}
+            </div>
+          )}
           {children}
         </div>
       </main>
 
-      {/* Tab Bar — in normal flow, always pinned to the bottom */}
       {!hideTabBar && <TabBar />}
     </div>
   );

@@ -32,11 +32,7 @@ function GoalCard({ goal, isActive }: GoalCardProps) {
   const weeks = weeksLeft(goal.race_date);
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border p-5 ${
-        isActive
-          ? "bg-card border-primary/30 glow-coral-sm"
-          : "bg-card border-white/[0.06]"
-      }`}
+      className={`surface relative overflow-hidden p-5 ${isActive ? "ring-2 ring-primary/30" : ""}`}
     >
       {isActive && (
         <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wider text-primary bg-primary/10 rounded-full px-2 py-0.5">
@@ -123,9 +119,9 @@ export default async function GoalsPage() {
     >
       {/* Nessun goal */}
       {(!goals || goals.length === 0) && (
-        <div className="rounded-2xl bg-card border border-white/[0.06] p-8 text-center">
-          <p className="text-muted-foreground text-sm mb-4">
-            Nessun obiettivo ancora. Non serve una gara: puoi puntare a una data o semplicemente migliorare su una distanza (es. mezza maratona). Puoi anche dirlo al coach in chat.
+        <div className="surface p-8 text-center">
+          <p className="mb-4 text-sm text-muted-foreground">
+            Nessun obiettivo. Non serve una gara: puoi anche solo voler migliorare su una distanza, o dirlo al coach in chat.
           </p>
           <Button asChild>
             <Link href="/goals/new">
@@ -139,9 +135,7 @@ export default async function GoalsPage() {
       {/* Goal attivo in evidenza */}
       {activeGoal && (
         <div className="mb-6">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
-            Obiettivo attivo
-          </p>
+          <p className="mb-2 px-1 text-[13px] font-medium text-muted-foreground">Attivo</p>
           <GoalCard goal={activeGoal} isActive />
         </div>
       )}
@@ -150,9 +144,7 @@ export default async function GoalsPage() {
       {otherGoals.length > 0 && (
         <div className="flex flex-col gap-3">
           {activeGoal && (
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">
-              Altri obiettivi
-            </p>
+            <p className="px-1 text-[13px] font-medium text-muted-foreground">Altri obiettivi</p>
           )}
           {otherGoals.map((g) => (
             <GoalCard key={g.id} goal={g} isActive={false} />
