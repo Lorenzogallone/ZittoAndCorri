@@ -92,6 +92,7 @@ export default async function RootLayout({
         {/* Theme init: imposta classe (dark/light) e variabili colore inline
             dal seed DB, PRIMA del primo paint (anti-FOUC + sync cross-device). */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript(themeSeed) }} />
+        <div aria-hidden className="status-bar-backdrop" />
         <PwaSplash />
         <PwaRegister />
         <PwaDiagnostics />

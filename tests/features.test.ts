@@ -112,6 +112,12 @@ test("la verifica del passo è in linea su un tempo corso al ritmo giusto", () =
 test("il caldo rallenta i passi solo oltre la soglia", () => {
   assert.equal(heatSlowdownPct(18, 8), 0);
   assert.equal(heatSlowdownPct(20, 10), 0);
+  // 21° e afoso la sera non è caldo: niente passi rallentati.
+  assert.equal(heatSlowdownPct(21, 18), 0);
+  assert.equal(heatSlowdownPct(23, 21), 0);
+  // Caldo ma secco: l'effetto è trascurabile.
+  assert.equal(heatSlowdownPct(24, 8), 0);
+  assert.ok(heatSlowdownPct(26, 18) >= 2);
   const hot = heatSlowdownPct(30, 20);
   assert.ok(hot > 3 && hot < 6, `pct = ${hot}`);
   const [adjusted] = adjustStepsForHeat([step({ pace_min_s_km: 300, pace_max_s_km: 310 })], 4);
