@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Il tuo coach di corsa personale. Traccia, migliora, corri.",
     start_url: "/",
     display: "standalone",
-    // Combacia con lo sfondo dello splash scuro (#pwa-splash) così la schermata
+    // Combacia con lo sfondo dello splash scuro (#pwa-splash in components/pwa-splash.tsx) così la schermata
     // di avvio nativa di iOS sfuma senza stacchi nello splash dell'app.
     background_color: "#0d0d0f",
     theme_color: "#0d0d0f",
