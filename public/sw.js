@@ -1,7 +1,7 @@
 // Service worker: precache degli asset statici dell'app shell + runtime cache
 // per gli asset immutabili di Next. I contenuti autenticati (pagine, payload
-// RSC, API, Supabase) NON vengono mai cachati.
-const VERSION = "v2";
+// RSC, API, Supabase) NON vengono mai cachati. Gestisce anche le notifiche push.
+const VERSION = "v3";
 const STATIC_CACHE = `static-${VERSION}`;
 
 const PRECACHE_URLS = [
@@ -79,4 +79,48 @@ self.addEventListener("fetch", (event) => {
     );
   }
   // Tutto il resto (navigazioni, dati): network-only, pass-through.
+});
+
+// ── Notifiche push ──────────────────────────────────────────────────────────
+// Payload JSON inviato da lib/push/send.ts: { title, body, url, tag }.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data ? event.data.text() : "" };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "Zitto e Corri", {
+      body: data.body || "",
+      icon: "/icon-192x192.png",
+      badge: "/icon-192x192.png",
+      tag: data.tag || undefined,
+      data: { url: data.url || "/" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  // Solo URL della stessa origine: un payload malformato non apre siti esterni.
+  const target = new URL(event.notification.data?.url || "/", self.location.origin);
+  const url = target.origin === self.location.origin ? target.href : `${self.location.origin}/`;
+
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const client = windows.find((c) => new URL(c.url).origin === self.location.origin);
+      if (client) {
+        try {
+          const focused = await client.focus();
+          if (focused.url !== url) await focused.navigate(url);
+          return;
+        } catch {
+          // navigate() fallisce sui client non controllati dal SW: apri una nuova finestra.
+        }
+      }
+      await self.clients.openWindow(url);
+    })(),
+  );
 });

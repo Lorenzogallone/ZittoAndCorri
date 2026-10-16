@@ -15,6 +15,7 @@ import { LogOut } from "lucide-react";
 import type { ZeppConnectionView } from "@/lib/zepp/types";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { SettingsGroup } from "./settings-group";
+import { NotificationsSection } from "./notifications-section";
 
 export default async function SettingsPage({
   searchParams,
@@ -85,6 +86,12 @@ export default async function SettingsPage({
         <SettingsGroup title="Aspetto">
           <ThemeSettings initial={initialTheme} />
         </SettingsGroup>
+
+        {process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && (
+          <SettingsGroup title="Notifiche">
+            <NotificationsSection vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />
+          </SettingsGroup>
+        )}
 
         <SettingsGroup title="Coach AI" defaultOpen={focus === "gemini"}>
           <CoachMemorySection memories={memoriesRes.data ?? []} />

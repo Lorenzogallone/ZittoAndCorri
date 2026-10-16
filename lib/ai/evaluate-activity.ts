@@ -11,6 +11,8 @@ import type { GeminiModelId } from "@/lib/ai/models";
 import { isoDateShift } from "@/lib/dates";
 import type { Activity, EvaluationResult, PlannedWorkout, Profile } from "@/lib/types";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
+import { sendPushToUser } from "@/lib/push/send";
+import { analysisPushBody } from "@/lib/push/messages";
 
 type EvalActivity = Pick<Activity,
   "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" |
@@ -164,6 +166,17 @@ async function runActivityEvaluation(
     const { data: message, error: messageError } = await messageQuery;
     if (messageError || !message) throw messageError ?? new Error("Feedback chat non salvato");
     await admin.from("ai_jobs").update({ status: "done", output_message_id: message.id, updated_at: new Date().toISOString() }).eq("id", jobId);
+    // La notifica è un extra: qualunque problema non deve far fallire il job.
+    try {
+      await sendPushToUser(userId, {
+        title: "Analisi pronta",
+        body: analysisPushBody(result.summary),
+        url: `/activities/${activityId}`,
+        tag: `eval-${activityId}`,
+      });
+    } catch (pushError) {
+      console.error("runActivityEvaluation push:", pushError);
+    }
   } catch (error) {
     console.error("runActivityEvaluation:", error);
     await admin.from("ai_jobs").update({ status: "error", error: aiErrorMessage(error), updated_at: new Date().toISOString() }).eq("id", jobId);

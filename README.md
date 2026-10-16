@@ -90,6 +90,32 @@ Enable Zepp OS in Settings, generate the six-digit pairing code, and complete
 the connection from the Zepp phone app. Build and installation instructions are
 available in the [Zepp OS companion README](zepp-app/README.md).
 
+## Notifications
+
+Push notifications are optional: workout reminder for tomorrow, "analysis
+ready" after each activity, and a Monday recap from the coach. Apply
+`supabase/migrations/0019_push_notifications.sql`, then generate a VAPID key
+pair and set the variables listed in `.env.example`:
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Users enable notifications per device in **Settings → Notifiche** (on iPhone,
+the app must be added to the Home Screen first). The section is hidden when
+`NEXT_PUBLIC_VAPID_PUBLIC_KEY` is not set.
+
+The scheduled jobs are plain endpoints protected by `CRON_SECRET`:
+
+| Endpoint | Schedule (UTC) | Purpose |
+| --- | --- | --- |
+| `GET /api/cron/daily` | `30 16 * * *` | Reminder for tomorrow's planned workout |
+| `GET /api/cron/weekly` | `0 6 * * 1` | Recap of the previous week, saved in the coach chat |
+
+On Vercel they run automatically from `vercel.json` (Vercel sends
+`CRON_SECRET` as the bearer token). Any other scheduler can call them with
+`Authorization: Bearer <CRON_SECRET>`.
+
 ## PWA installation
 
 Deploy the app over HTTPS, open it in a supported browser, and choose **Install
