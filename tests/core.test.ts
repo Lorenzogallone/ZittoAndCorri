@@ -324,3 +324,15 @@ test("le ripetute vengono raggruppate e descritte a parole", () => {
   assert.equal(describeStep(work), "400 m a 4:20–4:30/km");
   assert.equal(describeStep(recovery), '90"');
 });
+
+test("lo splash PWA non viene reinserito dalle server action", () => {
+  // Nel layout server ogni server action/refresh rimanda un oggetto
+  // dangerouslySetInnerHTML nuovo: React 19 riscrive innerHTML e lo splash
+  // torna sopra l'app con la barra di caricamento infinita.
+  const layout = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(layout, /pwa-splash-root/);
+  const splash = readFileSync(new URL("../components/pwa-splash.tsx", import.meta.url), "utf8");
+  assert.match(splash, /^"use client";/);
+  assert.match(splash, /^const SPLASH_MARKUP = \{ __html: PWA_SPLASH_HTML \};$/m);
+  assert.match(splash, /dangerouslySetInnerHTML=\{SPLASH_MARKUP\}/);
+});
