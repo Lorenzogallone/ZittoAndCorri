@@ -59,6 +59,8 @@ export interface DerivedStreams {
   hr?: HrPoint[] | null;
   distance?: DistancePoint[] | null;
   laps?: FitLap[] | null;
+  /** Cadenza FIT (rpm): distingue camminata e jogging meglio della velocità. */
+  cadence?: Array<{ t: number; rpm: number }> | null;
 }
 
 export type DeclaredIntervals = NonNullable<IntervalAnalysis["declared"]>;
@@ -66,6 +68,14 @@ export type DeclaredIntervals = NonNullable<IntervalAnalysis["declared"]>;
 /** Colonna non ancora creata: la migration 0022 non è stata eseguita. */
 export const isMissingColumn = (error: { code?: string } | null | undefined) =>
   error?.code === "42703" || error?.code === "PGRST204";
+
+/** La colonna cadence è jsonb libero: tiene solo i punti {t, rpm} validi. */
+export function cadencePoints(value: unknown): Array<{ t: number; rpm: number }> | null {
+  if (!Array.isArray(value)) return null;
+  const points = value.filter((p): p is { t: number; rpm: number } =>
+    typeof p?.t === "number" && typeof p?.rpm === "number");
+  return points.length ? points : null;
+}
 
 /** Stream dell'attività, inclusi distanza e lap quando la migration c'è. */
 export async function loadStreams(supabase: SupabaseClient, activityId: string): Promise<DerivedStreams> {
@@ -79,6 +89,7 @@ export async function loadStreams(supabase: SupabaseClient, activityId: string):
     hr: data?.hr_series ?? null,
     distance: data?.distance_series ?? null,
     laps: data?.laps ?? null,
+    cadence: cadencePoints(data?.cadence),
   };
 }
 

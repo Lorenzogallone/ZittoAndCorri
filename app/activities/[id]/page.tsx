@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { timeInZoneFromSeries } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
 import { personalRecords } from "@/lib/metrics/best-efforts";
-import { computeIntervals, intervalsUpToDate, paceCheckFor, persistDerived, persistIntervals } from "@/lib/derived";
+import { cadencePoints, computeIntervals, intervalsUpToDate, paceCheckFor, persistDerived, persistIntervals } from "@/lib/derived";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import type { Activity, ActivityStream, Evaluation, Profile, TimeInZone } from "@/lib/types";
 import { ActivityView } from "./activity-view";
@@ -114,6 +114,7 @@ export default async function ActivityDetailPage({
       hr: streams?.hr_series,
       distance: streams?.distance_series,
       laps: streams?.laps,
+      cadence: cadencePoints(streams?.cadence),
     }, declared);
     if ("intervals" in activity) {
       const userId = user.id;

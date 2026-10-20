@@ -1,6 +1,6 @@
 // Traduce i workout_steps di una seduta in istruzioni leggibili: raggruppa le
 // ripetizioni ("6 × 400 m + 90\" recupero") e spiega ogni fase a parole.
-import type { WorkoutStepInput, WorkoutType } from "@/lib/types";
+import type { WorkoutStepInput, WorkoutStepVariant, WorkoutType } from "@/lib/types";
 
 export type StepBlock<S extends WorkoutStepInput = WorkoutStepInput> =
   | { kind: "single"; step: S }
@@ -13,6 +13,25 @@ export const STEP_KIND_LABELS: Record<WorkoutStepInput["kind"], string> = {
   steady: "Corsa continua",
   cooldown: "Defaticamento",
 };
+
+/** Variante valida per il tipo di fase: sprint sui tratti veloci, jog/walk sui recuperi. */
+export function stepVariant(step: Pick<WorkoutStepInput, "kind" | "variant">): WorkoutStepVariant | null {
+  if (step.kind === "work" && step.variant === "sprint") return "sprint";
+  if (step.kind === "recovery" && (step.variant === "jog" || step.variant === "walk")) return step.variant;
+  return null;
+}
+
+const VARIANT_STEP_LABELS: Record<WorkoutStepVariant, string> = {
+  sprint: "Sprint",
+  jog: "Recupero corricchiando",
+  walk: "Recupero camminando",
+};
+
+/** Nome della fase per la UI: "Sprint", "Recupero camminando"… */
+export function stepKindLabel(step: Pick<WorkoutStepInput, "kind" | "variant">): string {
+  const variant = stepVariant(step);
+  return variant ? VARIANT_STEP_LABELS[variant] : STEP_KIND_LABELS[step.kind];
+}
 
 /** Spiegazione breve, per chi non conosce il gergo, di ogni tipo di seduta. */
 export const WORKOUT_TYPE_GUIDE: Record<WorkoutType, string> = {
@@ -27,6 +46,7 @@ export const WORKOUT_TYPE_GUIDE: Record<WorkoutType, string> = {
 
 function sameStep(a: WorkoutStepInput, b: WorkoutStepInput): boolean {
   return a.kind === b.kind &&
+    stepVariant(a) === stepVariant(b) &&
     a.completion_type === b.completion_type &&
     a.completion_value === b.completion_value &&
     a.pace_min_s_km === b.pace_min_s_km &&
@@ -119,8 +139,12 @@ export function describeStep(step: WorkoutStepInput): string {
   const amount = formatStepAmount(step);
   const pace = formatStepPace(step);
   const hr = formatStepHr(step);
+  const variant = stepVariant(step);
   const parts = [amount ?? "a sensazione"];
+  if (variant === "walk") parts.push("camminando");
+  if (variant === "jog") parts.push("corricchiando");
   if (pace) parts.push(`a ${pace}`);
+  else if (variant === "sprint") parts.push("a tutta");
   if (hr) parts.push(`(cuore ${hr})`);
   return parts.join(" ");
 }

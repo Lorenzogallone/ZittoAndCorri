@@ -213,6 +213,9 @@ export type PlannedStatus = "planned" | "completed" | "skipped";
 
 export type WorkoutStepKind = "warmup" | "work" | "recovery" | "steady" | "cooldown";
 export type WorkoutStepCompletion = "time" | "distance" | "manual";
+/** Come si corre la fase: sprint (a tutta) o recupero corricchiando/camminando. */
+export type WorkoutStepVariant = "sprint" | "jog" | "walk";
+export const WORKOUT_STEP_VARIANTS = ["sprint", "jog", "walk"] as const;
 
 /** Fase guidata di un allenamento, consumata anche dalla Workout Extension Zepp. */
 export interface WorkoutStepInput {
@@ -224,6 +227,8 @@ export interface WorkoutStepInput {
   pace_max_s_km: number | null;
   hr_min_bpm: number | null;
   hr_max_bpm: number | null;
+  /** Solo per work (sprint) e recovery (jog, walk); assente = come da kind. */
+  variant?: WorkoutStepVariant | null;
 }
 
 export interface WorkoutStep extends WorkoutStepInput {

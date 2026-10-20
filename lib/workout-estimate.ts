@@ -2,6 +2,7 @@
 // grafico a blocchi e i riepiloghi. Funzioni pure.
 
 import type { WorkoutStepInput, WorkoutType } from "@/lib/types";
+import { stepVariant } from "./workout-guide.ts";
 
 /** Passo di ripiego (s/km) quando la fase non ha un target. */
 const DEFAULT_PACE: Record<WorkoutStepInput["kind"], number> = {
@@ -12,10 +13,14 @@ const DEFAULT_PACE: Record<WorkoutStepInput["kind"], number> = {
   cooldown: 390,
 };
 
+/** Passo di ripiego per le varianti: sprint, recupero corricchiando o camminando. */
+const VARIANT_PACE = { sprint: 210, jog: 450, walk: 660 } as const;
+
 function stepPace(step: WorkoutStepInput): number {
   const { pace_min_s_km: min, pace_max_s_km: max } = step;
   if (min != null && max != null) return (min + max) / 2;
-  return min ?? max ?? DEFAULT_PACE[step.kind];
+  const variant = stepVariant(step);
+  return min ?? max ?? (variant ? VARIANT_PACE[variant] : DEFAULT_PACE[step.kind]);
 }
 
 export function estimateStep(step: WorkoutStepInput): { seconds: number; meters: number } {
@@ -40,6 +45,9 @@ export function estimateWorkout(steps: WorkoutStepInput[]): { seconds: number; m
 
 /** Intensità 1-4 di una fase, per l'altezza dei blocchi nel grafico. */
 export function stepIntensity(step: WorkoutStepInput, type?: WorkoutType | null): number {
+  const variant = stepVariant(step);
+  if (variant === "sprint") return 4;
+  if (variant === "walk") return 0.5;
   switch (step.kind) {
     case "work":
       return 4;

@@ -2,7 +2,7 @@ import { Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { WorkoutStepInput, WorkoutType } from "@/lib/types";
 import {
-  STEP_KIND_LABELS,
+  stepKindLabel,
   formatStepAmount,
   formatStepHr,
   formatStepPace,
@@ -20,7 +20,7 @@ function StepRow({ step, type, compact }: { step: WorkoutStepInput; type?: Worko
       <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", tone.dot)} />
       <div className="min-w-0 flex-1">
         <p className={cn("font-semibold uppercase tracking-wide", compact ? "text-[9px]" : "text-[10px]", tone.text)}>
-          {STEP_KIND_LABELS[step.kind]}
+          {stepKindLabel(step)}
         </p>
         <p className={cn("font-medium leading-snug", compact ? "text-xs" : "text-sm")}>
           {amount && <span className="tabular-nums">{amount}</span>}

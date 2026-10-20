@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/format";
 import { INTERVAL_SOURCE_LABELS } from "@/lib/intervals-text";
+import { TONES } from "@/lib/step-tones";
 import type { IntervalAnalysis, IntervalSegment, IntervalSource } from "@/lib/metrics/intervals";
 
 const clock = (seconds: number | null) => {
@@ -12,17 +13,18 @@ const clock = (seconds: number | null) => {
 };
 
 /** Colori coerenti con il profilo della seduta prevista (WorkoutGraph). */
-const KIND_BAR: Record<IntervalSegment["kind"], string> = {
-  work: "bg-rose-500",
-  steady: "bg-amber-400",
-  recovery: "bg-sky-300 dark:bg-sky-500/60",
-  warmup: "bg-sky-400",
-  cooldown: "bg-sky-400",
-};
+function tone(segment: IntervalSegment) {
+  if (segment.variant === "sprint") return TONES.sprint;
+  if (segment.variant === "walk" || segment.variant === "stop") return TONES.walk;
+  if (segment.kind === "work") return TONES.hard;
+  if (segment.kind === "steady") return TONES.tempo;
+  if (segment.kind === "recovery") return TONES.jog;
+  return TONES.easy;
+}
 
 /** Puntino del tratto: rispetto al range previsto se c'è, altrimenti il tipo. */
 function dotTone(segment: IntervalSegment): string {
-  if (segment.pace_deviation_s == null) return KIND_BAR[segment.kind];
+  if (segment.pace_deviation_s == null) return tone(segment).dot;
   if (segment.pace_deviation_s < 0) return "bg-sky-500";
   if (segment.pace_deviation_s > 0) return "bg-amber-500";
   return "bg-emerald-500";
@@ -43,9 +45,9 @@ function displayLabel(segment: IntervalSegment): string {
   return value % 60 === 0 ? `${value / 60}'` : value < 120 ? `${value}"` : `${Math.floor(value / 60)}'${String(value % 60).padStart(2, "0")}"`;
 }
 
-/** Il passo dei recuperi camminati (oltre 10:00/km) non dice nulla. */
+/** Il passo dei tratti camminati (oltre 10:00/km) non dice nulla. */
 const shownPace = (segment: IntervalSegment) =>
-  segment.kind === "recovery" && (segment.pace_s_km ?? 0) > 600 ? null : segment.pace_s_km;
+  segment.kind !== "work" && (segment.pace_s_km ?? 0) > 600 ? null : segment.pace_s_km;
 
 /** Come è stata corsa la seduta: larghezza = durata, altezza = velocità. */
 function ExecutedProfile({ segments }: { segments: IntervalSegment[] }) {
@@ -61,7 +63,7 @@ function ExecutedProfile({ segments }: { segments: IntervalSegment[] }) {
         return (
           <div
             key={index}
-            className={cn("animate-grow-y min-w-[3px] rounded-t-[3px] rounded-b-[1px]", KIND_BAR[segment.kind])}
+            className={cn("animate-grow-y min-w-[3px] rounded-t-[3px] rounded-b-[1px]", tone(segment).bar)}
             style={{
               flexGrow: segment.duration_s / total,
               flexBasis: 0,
@@ -83,6 +85,11 @@ function Row({ segment, muted }: { segment: IntervalSegment; muted: boolean }) {
         <span className={cn("h-2 w-2 shrink-0 rounded-full", dotTone(segment))} />
         <span className="truncate first-letter:uppercase">{displayLabel(segment)}</span>
         {segment.rep != null && <span className="shrink-0 text-xs font-normal text-muted-foreground tabular-nums">{segment.rep}/{segment.reps}</span>}
+        {segment.variant === "sprint" && segment.max_speed_kmh != null && (
+          <span className="shrink-0 text-xs font-normal text-muted-foreground tabular-nums" title="Velocità di punta">
+            {String(segment.max_speed_kmh).replace(".", ",")} km/h
+          </span>
+        )}
       </div>
       <div className={cn("border-t border-border/50 py-2 text-right tabular-nums", muted && "text-muted-foreground")}>{formatDuration(segment.duration_s)}</div>
       <div className={cn("border-t border-border/50 py-2 text-right tabular-nums", muted ? "text-muted-foreground" : "font-semibold")}>
@@ -119,6 +126,12 @@ export function IntervalsCard({
       ? `ultima ${s.fade_pct > 0 ? "più lenta" : "più veloce"} del ${String(Math.abs(s.fade_pct)).replace(".", ",")}%`
       : s?.fade_pct != null ? "ripetute regolari" : null,
   ].filter(Boolean).join(" · ");
+  const kmh = (value: number) => `${String(value).replace(".", ",")} km/h`;
+  const sprintTop = analysis.segments.filter((x) => x.variant === "sprint").map((x) => x.max_speed_kmh ?? 0);
+  // Sprint insieme ai tratti veloci: riga a parte. Solo sprint: basta la punta.
+  const sprint = s?.sprint
+    ? [`Sprint ${s.sprint.avg_pace_s_km ? `${clock(s.sprint.avg_pace_s_km)}/km` : ""}`.trim(), s.sprint.max_speed_kmh ? `punta ${kmh(s.sprint.max_speed_kmh)}` : null].filter(Boolean).join(" · ")
+    : s?.main === "sprint" && Math.max(0, ...sprintTop) > 0 ? `Punta ${kmh(Math.max(...sprintTop))}` : null;
 
   return (
     <section className="surface mb-4 p-4">
@@ -132,6 +145,7 @@ export function IntervalsCard({
       </div>
       {analysis.description && <p className="mt-1 text-xl font-bold tracking-tight">{analysis.description}</p>}
       {summary && <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{summary}</p>}
+      {sprint && <p className="text-xs text-muted-foreground tabular-nums">{sprint}</p>}
 
       <ExecutedProfile segments={analysis.segments} />
 
