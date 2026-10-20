@@ -21,12 +21,24 @@ function segmentLine(segment: IntervalSegment, index: number): string {
     formatDuration(segment.duration_s),
     segment.distance_m ? `${segment.distance_m} m` : null,
     segment.pace_s_km ? `${pace(segment.pace_s_km)}/km` : null,
+    segment.variant === "sprint" && segment.max_speed_kmh ? `punta ${String(segment.max_speed_kmh).replace(".", ",")} km/h` : null,
     segment.avg_hr ? `FC ${segment.avg_hr}${segment.max_hr ? ` (max ${segment.max_hr})` : ""}` : null,
     segment.hr_drop != null && segment.hr_drop > 0 ? `FC −${segment.hr_drop} nel recupero` : null,
     segment.pace_deviation_s ? `${segment.pace_deviation_s > 0 ? "+" : "−"}${Math.abs(segment.pace_deviation_s)}″/km dal range previsto` : null,
     segment.pace_deviation_s === 0 ? "nel range previsto" : null,
   ].filter(Boolean);
   return `${index}. ${name}: ${parts.join(", ")}`;
+}
+
+/** Come sono stati fatti i recuperi: "recuperi: 4 jogging, 3 camminata". */
+function recoveryMix(analysis: IntervalAnalysis): string | null {
+  const counts = new Map<string, number>();
+  for (const segment of analysis.segments) {
+    if (segment.kind !== "recovery" || !segment.variant) continue;
+    const name = { jog: "jogging", walk: "camminata", stop: "da fermo", sprint: "sprint" }[segment.variant];
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  return counts.size ? `recuperi: ${[...counts].map(([name, count]) => `${count} ${name}`).join(", ")}` : null;
 }
 
 /** Riepilogo in una riga, per il contesto del coach (storico recente). */
@@ -40,6 +52,10 @@ export function intervalsOneLine(analysis: IntervalAnalysis | null | undefined):
       : null,
     s?.fade_pct != null ? `ultima vs prima ${s.fade_pct > 0 ? "+" : ""}${String(s.fade_pct).replace(".", ",")}%` : null,
     s?.avg_hr ? `FC media nei tratti ${s.avg_hr}` : null,
+    s?.sprint
+      ? `${s.sprint.count} sprint${s.sprint.avg_pace_s_km ? ` a ${pace(s.sprint.avg_pace_s_km)}/km` : ""}${s.sprint.max_speed_kmh ? `, punta ${String(s.sprint.max_speed_kmh).replace(".", ",")} km/h` : ""}`
+      : null,
+    recoveryMix(analysis),
   ].filter(Boolean);
   const head = analysis.description ?? `${s?.work_count ?? 0} tratti veloci`;
   return `${head} (${INTERVAL_SOURCE_LABELS[analysis.source as IntervalSource]})${bits.length ? `: ${bits.join(", ")}` : ""}`;

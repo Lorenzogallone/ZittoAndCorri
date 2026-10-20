@@ -142,6 +142,7 @@ export async function ingestActivity(
     hr: data.hr_series,
     distance: data.distance_series,
     laps: data.laps,
+    cadence: data.cadence_series,
   });
 
   // 4. Fase 4: await recomputeSnapshot(ctx.userId) + valutazione AI
@@ -319,7 +320,7 @@ async function enrichActivity(
     distance_m: existing.distance_m,
     duration_s: existing.duration_s,
     moving_time_s,
-  }, gps, { gps, hr, distance, laps });
+  }, gps, { gps, hr, distance, laps, cadence });
 
   return existing.id;
 }

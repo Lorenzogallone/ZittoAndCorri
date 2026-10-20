@@ -1,18 +1,24 @@
 import { cn } from "@/lib/utils";
 import type { WorkoutStepInput, WorkoutType } from "@/lib/types";
 import { estimateStep, stepIntensity } from "@/lib/workout-estimate";
+import { stepVariant } from "@/lib/workout-guide";
+import { TONES, type StepTone } from "@/lib/step-tones";
 
 /** Colore per intensità, coerente con le zone cardiache (Z1 azzurro → Z5 rosso). */
-export function intensityTone(step: WorkoutStepInput, type?: WorkoutType | null): { bar: string; dot: string; text: string } {
+export function intensityTone(step: WorkoutStepInput, type?: WorkoutType | null): StepTone {
+  const variant = stepVariant(step);
+  if (variant === "sprint") return TONES.sprint;
+  if (variant === "walk") return TONES.walk;
   const level = stepIntensity(step, type);
-  if (level >= 4) return { bar: "bg-rose-500", dot: "bg-rose-500", text: "text-rose-600 dark:text-rose-400" };
-  if (level >= 3) return { bar: "bg-amber-400", dot: "bg-amber-400", text: "text-amber-600 dark:text-amber-400" };
-  if (level >= 2) return { bar: "bg-emerald-400", dot: "bg-emerald-400", text: "text-emerald-600 dark:text-emerald-400" };
-  if (step.kind === "recovery") return { bar: "bg-sky-300 dark:bg-sky-500/60", dot: "bg-sky-300", text: "text-sky-600 dark:text-sky-400" };
-  return { bar: "bg-sky-400", dot: "bg-sky-400", text: "text-sky-600 dark:text-sky-400" };
+  if (level >= 4) return TONES.hard;
+  if (level >= 3) return TONES.tempo;
+  if (level >= 2) return TONES.moderate;
+  if (step.kind === "recovery") return TONES.jog;
+  return TONES.easy;
 }
 
 const HEIGHT: Record<number, string> = {
+  0.5: "16%",
   1: "28%",
   1.5: "40%",
   2: "55%",

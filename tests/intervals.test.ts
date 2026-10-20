@@ -145,7 +145,8 @@ test("senza pause tra sprint e tratto successivo non inventa recuperi", () => {
   const { distance, hr } = simulate(phases, 11);
   const result = analyzeIntervals({ distance, hr, structures: [{ source: "notes", steps: notesStructure }] });
   const main = result.segments.filter((s) => s.kind !== "warmup" && s.kind !== "cooldown");
-  assert.deepEqual(main.map((s) => s.label), ["forte", "jog", "sprint", "forte", "jog", "sprint", "forte", "jog", "sprint"]);
+  assert.deepEqual(main.map((s) => s.label), ["forte", "Jogging", "sprint", "forte", "Jogging", "sprint", "forte", "Jogging", "sprint"]);
+  assert.deepEqual(main.map((s) => s.variant), [null, "jog", "sprint", null, "jog", "sprint", null, "jog", "sprint"]);
 });
 
 test("una seduta pianificata ma non fatta non produce ripetute inventate", () => {
@@ -215,4 +216,113 @@ test("le righe per il coach riassumono le ripetute", async () => {
   assert.equal(table.split("\n").filter((row) => /^\d+\. /.test(row)).length, 9);
   assert.match(table, /FC −\d+ nel recupero/);
   assert.equal(intervalsOneLine({ ...result, source: "none", segments: [] }), null);
+});
+
+// Sessione reale dell'atleta: riscaldamento, poi 4 × (3' veloce + 30" jogging
+// + 30" sprint + 2' camminata), FC con buchi. Va riconosciuta da sola.
+function athleteSession(seed = 21) {
+  const phases: Phase[] = [{ seconds: 320, speed: 2.99, hr: 140 }, { seconds: 40, speed: 1.2, hr: 135 }];
+  for (let set = 0; set < 4; set++) {
+    phases.push({ seconds: 180, speed: 3.75, hr: 165 }, { seconds: 30, speed: 2.05, hr: 160 }, { seconds: 33, speed: 4.8, hr: 172 });
+    if (set < 3) phases.push({ seconds: set === 2 ? 180 : 130, speed: 1.3, hr: 125 });
+  }
+  phases.push({ seconds: 25, speed: 1.4, hr: 130 });
+  const run = simulate(phases, seed);
+  // Il sensore perde la FC per qualche decina di secondi ogni tanto.
+  run.hr = run.hr.filter((p) => Math.floor(p.t / 50) % 3 !== 1);
+  return run;
+}
+
+test("riconosce da sola veloce, jogging, sprint e camminata", () => {
+  const { distance, hr } = athleteSession();
+  const result = analyzeIntervals({ distance, hr });
+  assert.equal(result.source, "auto");
+  assert.equal(result.segments[0].kind, "warmup", "il riscaldamento non è un tratto veloce");
+  const main = result.segments.filter((s) => s.kind !== "warmup" && s.kind !== "cooldown");
+  const pattern = main.map((s) => (s.kind === "work" ? (s.variant === "sprint" ? "S" : "V") : s.variant === "walk" ? "C" : s.variant === "jog" ? "J" : "?")).join("");
+  assert.equal(pattern, "VJSCVJSCVJSCVJS");
+  assert.match(result.description!, /^4 × \(3' veloce \+ 30" jogging \+ 3\d" sprint \+ 2'\d*"? ?camminata\)$/);
+  const sprints = main.filter((s) => s.variant === "sprint");
+  sprints.forEach((s) => assert.ok(Math.abs(s.duration_s - 33) <= 4, `sprint ${s.duration_s}`));
+  assert.ok(sprints.every((s) => (s.max_speed_kmh ?? 0) > 16), "velocità di punta");
+  assert.equal(result.summary!.work_count, 4);
+  assert.equal(result.summary!.sprint!.count, 4);
+  // Con i buchi della FC ogni tratto ha comunque un valore.
+  assert.ok(main.every((s) => s.avg_hr != null), main.map((s) => s.avg_hr).join(","));
+});
+
+test("allunghi alla fine di una corsa facile", () => {
+  const phases: Phase[] = [{ seconds: 2400, speed: 2.9, hr: 145 }];
+  for (let i = 0; i < 6; i++) phases.push({ seconds: 20, speed: 5.2, hr: 160 }, { seconds: 60, speed: 2.4, hr: 145 });
+  const { distance, hr } = simulate(phases, 5);
+  const result = analyzeIntervals({ distance, hr });
+  assert.equal(result.source, "auto");
+  const sprints = result.segments.filter((s) => s.variant === "sprint");
+  assert.equal(sprints.length, 6);
+  assert.equal(result.segments[0].label, "Corsa facile");
+  assert.match(result.description!, /^6 × \(20" sprint \+ 1' jogging\)$/);
+});
+
+test("le salite e discese di una corsa facile non sono ripetute", () => {
+  const rnd = random(9);
+  const distance: Array<{ t: number; d: number }> = [];
+  let d = 0;
+  for (let t = 1; t <= 3000; t++) {
+    d += 2.9 * (1 + 0.12 * Math.sin((2 * Math.PI * t) / 240)) + rnd() * 0.3;
+    distance.push({ t, d });
+  }
+  assert.equal(analyzeIntervals({ distance }).source, "none");
+});
+
+test("lap manuali senza intensità: classificati a più livelli", () => {
+  const { distance, hr, bounds } = athleteSession(3);
+  const laps = bounds.slice(0, -1).map((start, i) => lap(start, bounds[i + 1] - start, Math.round(distance[bounds[i + 1] - 1].d - (start ? distance[start - 1].d : 0)), i === bounds.length - 2 ? "sessionEnd" : "manual"));
+  const result = analyzeIntervals({ distance, hr, laps });
+  assert.equal(result.source, "laps");
+  const main = result.segments.filter((s) => s.kind !== "warmup" && s.kind !== "cooldown");
+  assert.equal(main.filter((s) => s.variant === "sprint").length, 4);
+  assert.equal(main.filter((s) => s.variant === "walk").length, 3);
+  assert.equal(main.filter((s) => s.variant === "jog").length, 4);
+});
+
+test("le fasi del piano sanno essere sprint, jogging o camminata", async () => {
+  const { stepKindLabel, describeStep, stepVariant } = await import("../lib/workout-guide.ts");
+  const { estimateStep, stepIntensity } = await import("../lib/workout-estimate.ts");
+  const { WorkoutStepsInputSchema } = await import("../lib/workout-steps.ts");
+  const sprint = { ...step("work", "Sprint a tutta", "time", 20), variant: "sprint" as const };
+  const walk = { ...step("recovery", "Cammina", "time", 120), variant: "walk" as const };
+  const jog = { ...step("recovery", "Corricchia", "time", 30), variant: "jog" as const };
+  assert.equal(stepKindLabel(sprint), "Sprint");
+  assert.equal(stepKindLabel(walk), "Recupero camminando");
+  assert.equal(stepKindLabel(jog), "Recupero corricchiando");
+  assert.equal(describeStep(sprint), '20" a tutta');
+  assert.equal(describeStep(walk), "2' camminando");
+  // Variante incoerente con il tipo: ignorata, non rompe nulla.
+  assert.equal(stepVariant({ kind: "warmup", variant: "sprint" }), null);
+  assert.ok(estimateStep(walk).meters < estimateStep(jog).meters * 4 * 0.8, "si cammina più piano");
+  assert.ok(stepIntensity(walk) < stepIntensity(jog));
+  // Lo schema conserva la variante e scarta valori sconosciuti senza invalidare la seduta.
+  const parsed = WorkoutStepsInputSchema.parse([sprint, { ...walk, variant: "boh" }]);
+  assert.equal(parsed[0].variant, "sprint");
+  assert.equal(parsed[1].variant, null);
+  const block = [
+    step("work", "Veloce", "time", 180), jog, sprint, walk,
+    step("work", "Veloce", "time", 180), jog, sprint, walk,
+    step("work", "Veloce", "time", 180), jog, sprint,
+  ];
+  assert.equal(describeStructure(block), `3 × (3' + 30" jogging + 20" sprint + 2' camminata)`);
+});
+
+test("la struttura dichiarata con camminata, ma corricchiando: vale il misurato", () => {
+  const { distance, hr } = athleteSession(8);
+  const declared: WorkoutStepInput[] = [];
+  for (let set = 0; set < 4; set++) {
+    declared.push(step("work", "veloce", "time", 180), { ...step("recovery", "jog", "time", 30), variant: "walk" }, { ...step("work", "sprint", "time", 30), variant: "sprint" });
+    if (set < 3) declared.push({ ...step("recovery", "cammino", "time", 120), variant: "walk" });
+  }
+  const result = analyzeIntervals({ distance, hr, structures: [{ source: "notes", steps: declared }] });
+  assert.equal(result.source, "notes");
+  const recoveries = result.segments.filter((s) => s.kind === "recovery");
+  assert.deepEqual(recoveries.map((s) => s.variant), ["jog", "walk", "jog", "walk", "jog", "walk", "jog"]);
+  assert.equal(result.segments.filter((s) => s.variant === "sprint").length, 4);
 });

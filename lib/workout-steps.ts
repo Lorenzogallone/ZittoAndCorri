@@ -8,6 +8,8 @@ import type {
 
 export const WORKOUT_STEP_KINDS = ["warmup", "work", "recovery", "steady", "cooldown"] as const;
 export const WORKOUT_STEP_COMPLETIONS = ["time", "distance", "manual"] as const;
+/** Sprint per i tratti veloci, jog/walk per i recuperi (vedi stepVariant). */
+export const WORKOUT_STEP_VARIANT_VALUES = ["sprint", "jog", "walk"] as const;
 
 export const WorkoutStepInputSchema = z.object({
   kind: z.enum(WORKOUT_STEP_KINDS),
@@ -18,6 +20,8 @@ export const WorkoutStepInputSchema = z.object({
   pace_max_s_km: z.number().int().min(120).max(1_200).nullable(),
   hr_min_bpm: z.number().int().min(80).max(220).nullable(),
   hr_max_bpm: z.number().int().min(80).max(220).nullable(),
+  // Facoltativo e tollerante: un valore strano non invalida la seduta.
+  variant: z.enum(WORKOUT_STEP_VARIANT_VALUES).nullish().catch(null),
 }).superRefine((step, ctx) => {
   if (step.completion_type === "manual" && step.completion_value != null) {
     ctx.addIssue({ code: "custom", path: ["completion_value"], message: "Una fase manuale non ha una durata o distanza automatica." });

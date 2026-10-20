@@ -42,8 +42,14 @@ const structureSchema: Schema = {
                 label: { type: Type.STRING, description: "Una o due parole in minuscolo: forte, sprint, jog, cammino, soglia, ritmo gara…" },
                 unit: { type: Type.STRING, enum: ["seconds", "meters", "open"] },
                 value: { type: Type.INTEGER, nullable: true, description: "Secondi o metri; null se unit è open." },
+                variant: {
+                  type: Type.STRING,
+                  enum: ["sprint", "jog", "walk"],
+                  nullable: true,
+                  description: "sprint per i tratti a tutta (sprint, allunghi, scatti); jog per i recuperi corricchiando; walk per i recuperi camminando; altrimenti null.",
+                },
               },
-              required: ["kind", "label", "unit", "value"],
+              required: ["kind", "label", "unit", "value", "variant"],
             },
           },
         },
@@ -64,6 +70,7 @@ const responseZod = z.object({
       label: z.string().trim().max(40),
       unit: z.enum(["seconds", "meters", "open"]),
       value: z.number().int().positive().max(50_000).nullish(),
+      variant: z.enum(["sprint", "jog", "walk"]).nullish().catch(null),
     })).min(1).max(12),
   })).max(12),
 });
@@ -81,6 +88,7 @@ function buildPrompt(notes: string, plannedHint: string | null): string {
     "- Se manca l'unità di un tratto, usa quella del tratto accanto (\"3 minuti forte + 1 jogging + 1 sprint\" → 180, 60, 60 secondi).",
     "- \"N x (…)\", \"N volte\", \"N serie\", \"N ripetute\" → un blocco con repeat N. La nota può contenere errori di trascrizione vocale (\"per\", \"paio\", \"ics\" al posto di \"x\"): interpreta l'intento.",
     "- forte, veloce, sprint, allungo, soglia, ritmo gara, progressivo → work; jogging, corsetta, piano, lento, recupero, camminata → recovery; riscaldamento → warmup; defaticamento → cooldown; tratto continuo a ritmo medio → steady.",
+    "- variant: sprint per sprint, allunghi e scatti a tutta; jog per i recuperi corricchiando (jogging, corsetta, piano); walk per i recuperi camminando o da fermo.",
     "- Riporta solo ciò che è scritto: non aggiungere recuperi, riscaldamento o defaticamento non citati.",
     "- Se la nota parla d'altro (sensazioni, meteo, dolori) found=false e blocks vuoto.",
     plannedHint ? `\nSeduta prevista dal piano, solo come riferimento (se la nota dice altro vale la nota): ${plannedHint}` : "",
@@ -103,6 +111,12 @@ export async function extractDeclaredStructure(
     for (let i = 0; i < block.repeat; i++) {
       for (const step of block.steps) {
         const open = step.unit === "open" || !step.value;
+        const variant = step.variant ?? (
+          step.kind === "work" && /sprint|allung|scatt/i.test(step.label) ? "sprint"
+          : step.kind === "recovery" && /cammin|fermo/i.test(step.label) ? "walk"
+          : step.kind === "recovery" && /jog|corsett|corricch|piano/i.test(step.label) ? "jog"
+          : null
+        );
         steps.push({
           kind: step.kind,
           label: step.label.toLowerCase() || step.kind,
@@ -112,6 +126,7 @@ export async function extractDeclaredStructure(
           pace_max_s_km: null,
           hr_min_bpm: null,
           hr_max_bpm: null,
+          variant,
         });
       }
     }

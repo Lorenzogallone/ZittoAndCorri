@@ -110,6 +110,10 @@ function paceInfo(step, projection) {
 function phaseInstruction(step, complete) {
   if (complete) return "Hai completato tutte le fasi. Defatica e salva l'attività quando hai finito."
   if (!step) return "Controlla il piano prima di ripartire."
+  // Varianti: sprint sui tratti veloci, jogging o camminata nei recuperi.
+  if (step.kind === "work" && step.variant === "sprint") return "Sprint: parti deciso\ne vai a tutta."
+  if (step.kind === "recovery" && step.variant === "jog") return "Corricchia piano:\nrespira e recupera."
+  if (step.kind === "recovery" && step.variant === "walk") return "Cammina: lascia\nscendere il cuore."
   const action = {
     warmup: "Riscaldati in modo facile\ne regolare.",
     work: "Mantieni il ritmo target\nsenza partire troppo forte.",
