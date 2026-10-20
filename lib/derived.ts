@@ -7,9 +7,19 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { bestEffortsForActivity } from "@/lib/metrics/best-efforts";
 import { checkPace, stepsToCheck, type PaceCheck } from "@/lib/metrics/pace-check";
+import {
+  analyzeIntervals,
+  describeStructure,
+  isStructured,
+  INTERVALS_VERSION,
+  type DeclaredStructure,
+  type DistancePoint,
+  type FitLap,
+  type IntervalAnalysis,
+} from "@/lib/metrics/intervals";
 import { romeDay } from "@/lib/local-date";
 import { workoutStepsOrLegacy } from "@/lib/workout-steps";
-import type { Activity, GpsPoint, PlannedWorkout } from "@/lib/types";
+import type { Activity, ActivityStream, GpsPoint, HrPoint, PlannedWorkout } from "@/lib/types";
 
 type DerivedActivity = Pick<Activity, "id" | "sport" | "started_at" | "distance_m" | "duration_s" | "moving_time_s">;
 
@@ -42,12 +52,121 @@ export async function paceCheckFor(
   return check ? { check, workout } : null;
 }
 
-/** Calcola e salva best_efforts e pace_check di un'attività. */
+// ── Ripetute ────────────────────────────────────────────────────────────────
+
+export interface DerivedStreams {
+  gps?: GpsPoint[] | null;
+  hr?: HrPoint[] | null;
+  distance?: DistancePoint[] | null;
+  laps?: FitLap[] | null;
+}
+
+export type DeclaredIntervals = NonNullable<IntervalAnalysis["declared"]>;
+
+/** Colonna non ancora creata: la migration 0022 non è stata eseguita. */
+export const isMissingColumn = (error: { code?: string } | null | undefined) =>
+  error?.code === "42703" || error?.code === "PGRST204";
+
+/** Stream dell'attività, inclusi distanza e lap quando la migration c'è. */
+export async function loadStreams(supabase: SupabaseClient, activityId: string): Promise<DerivedStreams> {
+  const { data } = await supabase
+    .from("activity_streams")
+    .select("*")
+    .eq("activity_id", activityId)
+    .maybeSingle<ActivityStream>();
+  return {
+    gps: data?.gps_series ?? null,
+    hr: data?.hr_series ?? null,
+    distance: data?.distance_series ?? null,
+    laps: data?.laps ?? null,
+  };
+}
+
+/** Seduta del giorno con una struttura da riconoscere (ripetute, progressivi…). */
+async function plannedStructure(supabase: SupabaseClient, userId: string, day: string): Promise<PlannedWorkout | null> {
+  const { data } = await supabase
+    .from("planned_workouts")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("date", day)
+    .neq("type", "cross")
+    .returns<PlannedWorkout[]>();
+  return (data ?? []).find((workout) => isStructured(workoutStepsOrLegacy(workout.workout_steps, workout))) ?? null;
+}
+
+/**
+ * Tratti della corsa: dai lap, dalla struttura scritta nella nota (che vince
+ * sul piano: è quello che l'atleta dice di aver fatto) o dalla seduta del giorno.
+ */
+export async function computeIntervals(
+  supabase: SupabaseClient,
+  userId: string,
+  activity: Pick<Activity, "sport" | "started_at">,
+  streams: DerivedStreams,
+  declared: DeclaredIntervals | null,
+): Promise<IntervalAnalysis | null> {
+  if (activity.sport !== "running") return null;
+  const structures: DeclaredStructure[] = [];
+  if (declared?.steps.length) structures.push({ source: "notes", steps: declared.steps, description: declared.description });
+  const workout = await plannedStructure(supabase, userId, romeDay(activity.started_at));
+  if (workout) {
+    const steps = workoutStepsOrLegacy(workout.workout_steps, workout);
+    structures.push({ source: "plan", steps, description: describeStructure(steps) });
+  }
+  return { ...analyzeIntervals({ ...streams, structures }), declared };
+}
+
+/** Analisi salvata ancora valida (stessa versione dell'algoritmo). */
+export const intervalsUpToDate = (intervals: IntervalAnalysis | null | undefined) =>
+  intervals?.version === INTERVALS_VERSION;
+
+/**
+ * Ricalcola e salva i tratti. `declared` undefined = conserva la struttura già
+ * letta dalla nota. Senza la migration 0022 non fa nulla.
+ */
+export async function persistIntervals(
+  supabase: SupabaseClient,
+  userId: string,
+  activity: Pick<Activity, "id" | "sport" | "started_at">,
+  streams?: DerivedStreams,
+  declared?: DeclaredIntervals | null,
+): Promise<IntervalAnalysis | null> {
+  try {
+    if (activity.sport !== "running") return null;
+    let keep = declared;
+    if (keep === undefined) {
+      const { data, error } = await supabase
+        .from("activities")
+        .select("intervals")
+        .eq("id", activity.id)
+        .eq("user_id", userId)
+        .maybeSingle<{ intervals: IntervalAnalysis | null }>();
+      if (isMissingColumn(error)) return null;
+      if (error) throw error;
+      keep = data?.intervals?.declared ?? null;
+    }
+    const analysis = await computeIntervals(supabase, userId, activity, streams ?? await loadStreams(supabase, activity.id), keep);
+    const { error } = await supabase
+      .from("activities")
+      .update({ intervals: analysis })
+      .eq("id", activity.id)
+      .eq("user_id", userId);
+    if (isMissingColumn(error)) return analysis;
+    if (error) throw error;
+    return analysis;
+  } catch (error) {
+    console.error("persistIntervals:", error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
+/** Calcola e salva best_efforts, pace_check e ripetute di un'attività. */
 export async function persistDerived(
   supabase: SupabaseClient,
   userId: string,
   activity: DerivedActivity,
   gps: GpsPoint[] | null | undefined,
+  streams?: DerivedStreams,
 ): Promise<void> {
   try {
     const bestEfforts = bestEffortsForActivity({ ...activity, gps });
@@ -61,6 +180,7 @@ export async function persistDerived(
   } catch (error) {
     console.error("persistDerived:", error instanceof Error ? error.message : error);
   }
+  await persistIntervals(supabase, userId, activity, streams);
 }
 
 /** Completa in background le corse importate prima dei best effort. */

@@ -6,7 +6,7 @@ import { avgPace } from "@/lib/metrics/pace";
 import { timeInZoneFromAverage, timeInZoneFromSeries, type HrConfig } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
 import { avgCadenceSpm, computeHrDrift, type CadencePoint } from "@/lib/metrics/effort";
-import { persistDerived } from "@/lib/derived";
+import { isMissingColumn, persistDerived } from "@/lib/derived";
 import type { Activity, ActivityStream } from "@/lib/types";
 import { ActivityInput } from "./schema";
 
@@ -80,6 +80,8 @@ export async function ingestActivity(
   delete rawPayload.hr_series;
   delete rawPayload.gps_series;
   delete rawPayload.cadence_series;
+  delete rawPayload.distance_series;
+  delete rawPayload.laps;
 
   // 3. insert activities (RLS + user_id esplicito)
   const { data: row, error } = await ctx.supabase
@@ -116,19 +118,18 @@ export async function ingestActivity(
   if (error) throw error;
 
   // 3b. insert activity_streams se presenti (pesanti, separati dal prompt)
-  if (data.hr_series || data.gps_series || data.cadence_series) {
-    const { error: streamError } = await ctx.supabase
-      .from("activity_streams")
-      .insert({
-        activity_id: row.id,
-        hr_series: data.hr_series ?? null,
-        gps_series: data.gps_series ?? null,
-        cadence: data.cadence_series ?? null,
-      });
-    if (streamError) throw streamError;
+  if (data.hr_series || data.gps_series || data.cadence_series || data.distance_series || data.laps) {
+    await saveStreams(ctx, {
+      activity_id: row.id,
+      hr_series: data.hr_series ?? null,
+      gps_series: data.gps_series ?? null,
+      cadence: data.cadence_series ?? null,
+      distance_series: data.distance_series ?? null,
+      laps: data.laps ?? null,
+    }, "insert");
   }
 
-  // 3c. best effort e verifica del passo (mai bloccanti)
+  // 3c. best effort, verifica del passo e ripetute (mai bloccanti)
   await persistDerived(ctx.supabase, ctx.userId, {
     id: row.id,
     sport: data.sport,
@@ -136,10 +137,43 @@ export async function ingestActivity(
     distance_m: data.distance_m,
     duration_s: data.duration_s,
     moving_time_s: data.moving_time_s ?? null,
-  }, data.gps_series);
+  }, data.gps_series, {
+    gps: data.gps_series,
+    hr: data.hr_series,
+    distance: data.distance_series,
+    laps: data.laps,
+  });
 
   // 4. Fase 4: await recomputeSnapshot(ctx.userId) + valutazione AI
   return row.id;
+}
+
+type StreamRow = {
+  activity_id: string;
+  hr_series: unknown;
+  gps_series: unknown;
+  cadence: unknown;
+  distance_series: unknown;
+  laps: unknown;
+};
+
+/**
+ * Salva gli stream. Distanza e lap arrivano con la migration 0022: se le
+ * colonne non ci sono ancora, si salva il resto invece di far fallire l'import.
+ */
+async function saveStreams(ctx: IngestContext, row: StreamRow, mode: "insert" | "upsert"): Promise<void> {
+  const write = (payload: Partial<StreamRow>) =>
+    mode === "insert"
+      ? ctx.supabase.from("activity_streams").insert(payload)
+      : ctx.supabase.from("activity_streams").upsert(payload);
+  const { error } = await write(row);
+  if (!error) return;
+  if (!isMissingColumn(error)) throw error;
+  const legacy: Partial<StreamRow> = { ...row };
+  delete legacy.distance_series;
+  delete legacy.laps;
+  const { error: legacyError } = await write(legacy);
+  if (legacyError) throw legacyError;
 }
 
 /** Colonne lette per l'arricchimento di un'attività esistente. */
@@ -214,9 +248,9 @@ async function enrichActivity(
 ): Promise<string> {
   const { data: streamRow } = await ctx.supabase
     .from("activity_streams")
-    .select("hr_series, gps_series, cadence")
+    .select("*")
     .eq("activity_id", existing.id)
-    .maybeSingle<Pick<ActivityStream, "hr_series" | "gps_series" | "cadence">>();
+    .maybeSingle<ActivityStream>();
 
   // Stream migliori tra salvati e nuovi (per HR/GPS vince il più fitto).
   const hr = longerSeries(streamRow?.hr_series, data.hr_series);
@@ -225,6 +259,9 @@ async function enrichActivity(
     (streamRow?.cadence as CadencePoint[] | null) ??
     data.cadence_series ??
     null;
+  // Distanza e lap ci sono solo nei FIT: il nuovo file vince se li porta.
+  const distance = data.distance_series ?? streamRow?.distance_series ?? null;
+  const laps = data.laps ?? streamRow?.laps ?? null;
 
   // Campi scalari: il nuovo file riempie solo i buchi.
   const moving_time_s = existing.moving_time_s ?? data.moving_time_s ?? null;
@@ -264,16 +301,15 @@ async function enrichActivity(
     .eq("user_id", ctx.userId);
   if (error) throw error;
 
-  if (hr || gps || cadence) {
-    const { error: streamError } = await ctx.supabase
-      .from("activity_streams")
-      .upsert({
-        activity_id: existing.id,
-        hr_series: hr,
-        gps_series: gps,
-        cadence,
-      });
-    if (streamError) throw streamError;
+  if (hr || gps || cadence || distance || laps) {
+    await saveStreams(ctx, {
+      activity_id: existing.id,
+      hr_series: hr,
+      gps_series: gps,
+      cadence,
+      distance_series: distance,
+      laps,
+    }, "upsert");
   }
 
   await persistDerived(ctx.supabase, ctx.userId, {
@@ -283,7 +319,7 @@ async function enrichActivity(
     distance_m: existing.distance_m,
     duration_s: existing.duration_s,
     moving_time_s,
-  }, gps);
+  }, gps, { gps, hr, distance, laps });
 
   return existing.id;
 }

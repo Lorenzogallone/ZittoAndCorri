@@ -9,6 +9,9 @@ import { RoutePreview } from "@/components/activity/route-preview";
 import { SeriesChart } from "@/components/activity/series-chart";
 import { SplitsChart } from "@/components/activity/splits-chart";
 import { ZonesBar } from "@/components/activity/zones-bar";
+import { IntervalsCard } from "@/components/activity/intervals-card";
+import { hasIntervals } from "@/lib/intervals-text";
+import type { IntervalAnalysis } from "@/lib/metrics/intervals";
 import { activeDuration, formatDuration, formatPace } from "@/lib/format";
 import { EFFORTS, type PersonalRecord } from "@/lib/metrics/best-efforts";
 import type { PaceCheck } from "@/lib/metrics/pace-check";
@@ -24,6 +27,7 @@ export interface ActivityViewProps {
   zones: TimeInZone | null;
   records: PersonalRecord[];
   pace: { check: PaceCheck; workoutId: string } | null;
+  intervals: IntervalAnalysis | null;
   evaluation: Pick<Evaluation, "summary" | "details" | "created_at"> | null;
   evaluationJob: { status: "pending" | "done" | "error"; error: string | null } | null;
   keyConfigured: boolean;
@@ -126,7 +130,12 @@ export function ActivityView(props: ActivityViewProps) {
           </div>
         )}
 
-        {props.pace && <PaceCheckCard check={props.pace.check} workoutId={props.pace.workoutId} />}
+        {/* Le ripetute misurate includono già il confronto con il passo previsto. */}
+        {hasIntervals(props.intervals) ? (
+          <IntervalsCard analysis={props.intervals} workoutId={props.pace?.workoutId} canEditNote={props.keyConfigured} />
+        ) : (
+          props.pace && <PaceCheckCard check={props.pace.check} workoutId={props.pace.workoutId} />
+        )}
 
         {charts.length > 0 && (
           <section className="surface mb-4 p-4">

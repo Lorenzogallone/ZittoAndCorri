@@ -21,7 +21,10 @@ export const metadata: Metadata = {
   description: "Il tuo coach di corsa personale.",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    // Piena e non traslucida: da iOS 26 con "black-translucent" il sistema
+    // sfuma i primi ~40pt dell'app sopra i contenuti. Il colore arriva dal
+    // meta theme-color, allineato al tema in applyThemeToDocument.
+    statusBarStyle: "default",
     title: "Zitto e Corri",
   },
   formatDetection: {
@@ -92,7 +95,6 @@ export default async function RootLayout({
         {/* Theme init: imposta classe (dark/light) e variabili colore inline
             dal seed DB, PRIMA del primo paint (anti-FOUC + sync cross-device). */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript(themeSeed) }} />
-        <div aria-hidden className="status-bar-backdrop" />
         <PwaSplash />
         <PwaRegister />
         <PwaDiagnostics />

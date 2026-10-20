@@ -201,21 +201,6 @@
     padding-top: env(safe-area-inset-top, 0px);
   }
 
-  /* Banda piena sotto la status bar nella PWA iOS. Da iOS 26 il sistema
-     sfuma i ~40pt in cima alla web app (effetto "scroll edge" di Liquid
-     Glass) e copriva il pulsante indietro; WebKit lo salta solo se il bordo
-     alto è coperto da un elemento fixed, largo quanto lo schermo e opaco, e
-     usa il suo colore. Alta quanto la safe-area: 0 in Safari e su desktop. */
-  .status-bar-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 40;
-    height: env(safe-area-inset-top, 0px);
-    background: var(--background);
-  }
-
   /* Subtle brand glow effect (segue il colore principale scelto). */
   .glow-coral {
     box-shadow: 0 0 60px -12px color-mix(in oklch, var(--brand) 25%, transparent),
