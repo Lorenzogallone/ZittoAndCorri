@@ -13,6 +13,11 @@ import type { Activity, EvaluationResult, PlannedWorkout, Profile } from "@/lib/
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { sendPushToUser } from "@/lib/push/send";
 import { analysisPushBody } from "@/lib/push/messages";
+import { extractDeclaredStructure, mayDescribeStructure } from "@/lib/ai/interval-structure";
+import { intervalsUpToDate, isMissingColumn, persistIntervals, type DeclaredIntervals } from "@/lib/derived";
+import type { IntervalAnalysis } from "@/lib/metrics/intervals";
+import { intervalsForPrompt } from "@/lib/intervals-text";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 type EvalActivity = Pick<Activity,
   "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" |
@@ -47,6 +52,29 @@ export async function enqueueActivityEvaluationSafely(
     console.error("enqueueActivityEvaluationSafely:", error);
     return null;
   }
+}
+
+/**
+ * Tratti della corsa per la valutazione. Una struttura appena letta dalla nota
+ * fa ricalcolare tutto; altrimenti si usa l'analisi salvata se è aggiornata.
+ */
+async function intervalsForEvaluation(
+  admin: SupabaseClient,
+  userId: string,
+  activity: Pick<Activity, "id" | "sport" | "started_at">,
+  declared: DeclaredIntervals | undefined,
+): Promise<IntervalAnalysis | null> {
+  if (activity.sport !== "running") return null;
+  if (declared) return persistIntervals(admin, userId, activity, undefined, declared);
+  const { data, error } = await admin
+    .from("activities")
+    .select("intervals")
+    .eq("id", activity.id)
+    .eq("user_id", userId)
+    .maybeSingle<{ intervals: IntervalAnalysis | null }>();
+  if (!error && intervalsUpToDate(data?.intervals)) return data!.intervals!;
+  if (error && !isMissingColumn(error)) throw error;
+  return persistIntervals(admin, userId, activity);
 }
 
 async function runActivityEvaluation(
@@ -94,11 +122,29 @@ async function runActivityEvaluation(
     if (nearbyPlanError ?? existingEvaluationError) {
       throw nearbyPlanError ?? existingEvaluationError;
     }
+    // Struttura scritta nella nota (es. "3 × (3' forte + 1' jog + 1' sprint)"):
+    // la legge Gemini, poi i tratti si misurano sul file. Mai bloccante.
+    let declared: DeclaredIntervals | undefined;
+    if (activity.sport === "running" && mayDescribeStructure(activity.notes)) {
+      const sameDay = (nearbyPlan ?? []).find((workout) => workout.date === activityDay);
+      const hint = sameDay ? [sameDay.type, sameDay.description].filter(Boolean).join(": ") : null;
+      try {
+        declared = (await extractDeclaredStructure(activity.notes, hint, { apiKey, model })) ?? undefined;
+      } catch (structureError) {
+        console.error("extractDeclaredStructure:", structureError);
+      }
+    }
+    const intervals = await intervalsForEvaluation(admin, userId, activity, declared).catch((intervalsError) => {
+      console.error("intervalsForEvaluation:", intervalsError);
+      return null;
+    });
+
     const detail = [
       activity.source_title ? `Titolo dal file: ${activity.source_title}.` : "",
       activityDetailLine(activity, effectiveHr),
       activity.rpe != null ? `Origine RPE: ${activity.rpe_source ?? "non specificata"}.` : "RPE non disponibile.",
       activity.splits?.length ? `Split per km: ${JSON.stringify(activity.splits)}.` : "",
+      intervalsForPrompt(intervals) ?? "",
       existingEvaluation?.details?.length
         ? `Dettagli già catalogati da conservare e consolidare: ${JSON.stringify(existingEvaluation.details)}.`
         : "",

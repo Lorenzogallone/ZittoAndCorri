@@ -18,6 +18,7 @@ import type {
 import { missingAiContextSections } from "@/lib/ai/context-contract";
 import { getZeppDashboard } from "@/lib/zepp/data";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
+import { intervalsOneLine } from "@/lib/intervals-text";
 
 export type AiContextPurpose = "chat" | "plan" | "evaluation";
 export type DataOrigin = "measured" | "user" | "derived" | "estimated";
@@ -46,14 +47,18 @@ type ContextActivity = Pick<
   | "hr_drift_pct"
   | "calories"
   | "pace_check"
+  | "intervals"
 >;
 
-type ContextActivityForAi = ContextActivity & {
+type ContextActivityForAi = Omit<ContextActivity, "intervals"> & {
+  /** Ripetute riconosciute, in una riga: la tabella completa va solo nella valutazione. */
+  intervals: string | null;
   data_origin: {
     device_metrics: DataOrigin;
     pace_zones_drift_splits: "derived";
     /** Passo reale vs previsto nei tratti con target della seduta dello stesso giorno. */
     pace_check: "derived" | null;
+    intervals: "derived" | null;
     rpe: DataOrigin | null;
     source_title: "measured" | null;
     notes: "user" | null;
@@ -305,12 +310,16 @@ function activityForAi(activity: ContextActivity): ContextActivityForAi {
         : activity.rpe_source === "api"
           ? "measured"
           : "estimated";
+  const { intervals, ...rest } = activity;
+  const intervalsLine = intervalsOneLine(intervals);
   return {
-    ...activity,
+    ...rest,
+    intervals: intervalsLine,
     data_origin: {
       device_metrics: activity.source === "manual" ? "user" : "measured",
       pace_zones_drift_splits: "derived",
       pace_check: activity.pace_check ? "derived" : null,
+      intervals: intervalsLine ? "derived" : null,
       rpe: rpeOrigin,
       source_title: activity.source_title ? "measured" : null,
       notes: activity.notes ? "user" : null,
@@ -333,6 +342,9 @@ async function contextActivities(supabase: SupabaseClient, userId: string, since
     .gte("started_at", `${since}T00:00:00`)
     .order("started_at")
     .returns<ContextActivity[]>();
+  const full = await query(`${CONTEXT_ACTIVITY_COLUMNS}, pace_check, intervals`);
+  if (full.error?.code !== "42703") return full;
+  // Migration 0022 (intervals) o 0018 (pace_check) non ancora eseguite.
   const result = await query(`${CONTEXT_ACTIVITY_COLUMNS}, pace_check`);
   if (result.error?.code === "42703") return query(CONTEXT_ACTIVITY_COLUMNS);
   return result;

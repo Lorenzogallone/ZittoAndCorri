@@ -41,6 +41,26 @@ export const ActivityInput = z
     cadence_series: z
       .array(z.object({ t: z.number(), rpm: z.number() }))
       .optional(),
+    // Distanza cumulativa dell'orologio (più precisa del GPS per le ripetute).
+    distance_series: z
+      .array(z.object({ t: z.number(), d: z.number() }))
+      .optional(),
+    // Lap del file FIT (pulsante, workout guidato o automatici a km).
+    laps: z
+      .array(
+        z.object({
+          start_s: z.number(),
+          duration_s: z.number(),
+          distance_m: z.number().nullable(),
+          avg_hr: z.number().nullable(),
+          max_hr: z.number().nullable(),
+          intensity: z.string().nullable(),
+          trigger: z.string().nullable(),
+          step: z.number().nullable(),
+        }),
+      )
+      .max(500)
+      .optional(),
   })
   .refine((a) => a.sport !== "running" || a.distance_m > 0, {
     message: "distance_m deve essere > 0 per le corse",

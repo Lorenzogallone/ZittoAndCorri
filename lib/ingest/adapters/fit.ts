@@ -72,6 +72,16 @@ function fitSportLabel(
 }
 
 /**
+ * Serie distanza utile solo se cresce davvero; oltre 2 ore si tiene un punto
+ * ogni 2 secondi per non appesantire l'upload (resta precisa per le ripetute).
+ */
+function compactDistance(series: NonNullable<ActivityInput["distance_series"]>): ActivityInput["distance_series"] {
+  if (series.length < 10 || series[series.length - 1].d - series[0].d < 50) return undefined;
+  if (series.length <= 7200) return series;
+  return series.filter((_, index) => index % 2 === 0 || index === series.length - 1);
+}
+
+/**
  * Parsa un file .fit e produce un ActivityInput pronto per ingestActivity.
  * Lancia se il file non è un FIT valido o non contiene una sessione.
  */
@@ -117,6 +127,7 @@ export async function parseFit(buf: ArrayBuffer): Promise<ActivityInput> {
   const gpsSeries: NonNullable<ActivityInput["gps_series"]> = [];
   const hrSeries: NonNullable<ActivityInput["hr_series"]> = [];
   const cadenceSeries: NonNullable<ActivityInput["cadence_series"]> = [];
+  const distanceSeries: NonNullable<ActivityInput["distance_series"]> = [];
   let hrMax = 0;
 
   for (const r of messages.recordMesgs ?? []) {
@@ -143,7 +154,28 @@ export async function parseFit(buf: ArrayBuffer): Promise<ActivityInput> {
     if (typeof r.cadence === "number" && r.cadence > 0) {
       cadenceSeries.push({ t, rpm: r.cadence });
     }
+
+    if (typeof r.distance === "number" && r.distance >= 0) {
+      distanceSeries.push({ t, d: Math.round(r.distance * 10) / 10 });
+    }
   }
+
+  // Lap: servono a separare le ripetute (pulsante lap o workout guidato).
+  const round = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? Math.round(value) : null);
+  const laps: NonNullable<ActivityInput["laps"]> = (messages.lapMesgs ?? [])
+    .filter((lap) => lap.startTime instanceof Date)
+    .map((lap) => ({
+      start_s: Math.round(((lap.startTime as Date).getTime() - startTime.getTime()) / 1000),
+      duration_s: Math.round(Number(lap.totalElapsedTime ?? lap.totalTimerTime ?? 0)),
+      distance_m: round(lap.totalDistance),
+      avg_hr: round(lap.avgHeartRate) || null,
+      max_hr: round(lap.maxHeartRate) || null,
+      intensity: typeof lap.intensity === "string" ? lap.intensity : null,
+      trigger: typeof lap.lapTrigger === "string" ? lap.lapTrigger : null,
+      step: round(lap.wktStepIndex),
+    }))
+    .filter((lap) => lap.duration_s > 0)
+    .slice(0, 500);
 
   const avgHr =
     typeof session.avgHeartRate === "number" && session.avgHeartRate > 0
@@ -193,5 +225,7 @@ export async function parseFit(buf: ArrayBuffer): Promise<ActivityInput> {
     gps_series: gpsSeries.length >= 2 ? gpsSeries : undefined,
     hr_series: hrSeries.length > 0 ? hrSeries : undefined,
     cadence_series: cadenceSeries.length > 0 ? cadenceSeries : undefined,
+    distance_series: compactDistance(distanceSeries),
+    laps: laps.length > 0 ? laps : undefined,
   };
 }

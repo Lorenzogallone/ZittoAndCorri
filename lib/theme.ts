@@ -224,6 +224,30 @@ export function applyThemeToDocument(
     const set = dark ? style.vars.dark : style.vars.light;
     for (const k in set) el.style.setProperty(k, set[k]);
   }
+
+  // Status bar della PWA iOS (stile "default", piena): prende il colore dal
+  // meta theme-color. Lo allineiamo allo sfondo del tema scelto nell'app, non
+  // solo al chiaro/scuro di sistema. Il canvas converte oklch in esadecimale.
+  try {
+    const bg = win.getComputedStyle(el).getPropertyValue("--background").trim();
+    const ctx = bg ? doc.createElement("canvas").getContext("2d") : null;
+    if (ctx) {
+      ctx.fillStyle = "#010203";
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, 1, 1);
+      const px = ctx.getImageData(0, 0, 1, 1).data;
+      const hex = "#" + [px[0], px[1], px[2]].map((n) => n.toString(16).padStart(2, "0")).join("");
+      if (hex !== "#010203") {
+        const metas = doc.querySelectorAll('meta[name="theme-color"]');
+        for (let i = 0; i < metas.length; i++) {
+          metas[i].setAttribute("content", hex);
+          metas[i].removeAttribute("media");
+        }
+      }
+    }
+  } catch {
+    // Senza canvas resta il theme-color di sistema del layout.
+  }
 }
 
 /** Wrapper comodo lato browser: applica al DOM, aggiorna la cache localStorage

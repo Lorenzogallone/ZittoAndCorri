@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { startEvaluation } from "@/app/activities/ai-actions";
 import type { AiJobStatus } from "@/app/actions/ai-jobs";
@@ -31,10 +32,13 @@ export function ActivityEvaluation({
   keyConfigured = true,
 }: Props) {
   const [displayedEvaluation, setDisplayedEvaluation] = useState(evaluation);
+  const router = useRouter();
   const showEvaluationResult = useCallback((status: AiJobStatus) => {
     if (!status.evaluationResult) throw new Error("Risultato valutazione mancante");
     setDisplayedEvaluation(status.evaluationResult);
-  }, []);
+    // La valutazione può aver riletto le ripetute dalla nota: aggiorna la pagina.
+    router.refresh();
+  }, [router]);
   // La chiave per-corsa permette di riprendere il polling se iOS sospende la
   // PWA, mentre onDone aggiorna questa sezione senza ricaricare la pagina.
   const { pending, done, error, start } = useAiJob(`eval:${activityId}`, {
@@ -47,9 +51,25 @@ export function ActivityEvaluation({
   // Con un'analisi già presente la nota resta nascosta finché non serve.
   const [showForm, setShowForm] = useState(false);
   const formVisible = !displayedEvaluation?.summary || showForm;
+  const sectionRef = useRef<HTMLElement>(null);
+
+  // "#nota" (es. dalla scheda Ripetute): apre il campo e ci porta lì.
+  useEffect(() => {
+    const open = () => {
+      if (window.location.hash !== "#nota") return;
+      setShowForm(true);
+      requestAnimationFrame(() => {
+        sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        document.getElementById("ai-notes")?.focus({ preventScroll: true });
+      });
+    };
+    open();
+    window.addEventListener("hashchange", open);
+    return () => window.removeEventListener("hashchange", open);
+  }, []);
 
   return (
-    <section className="surface p-5">
+    <section id="nota" ref={sectionRef} className="surface scroll-mt-4 p-5">
       <h2 className="mb-3 flex items-center gap-2 text-[15px] font-semibold">
         <Sparkles size={16} className="text-primary" /> Il commento del coach
       </h2>
@@ -109,7 +129,7 @@ export function ActivityEvaluation({
             name="notes"
             rows={3}
             defaultValue={displayedEvaluation ? "" : initialNotes ?? ""}
-            placeholder="Gambe pesanti, poco sonno, fastidio al polpaccio…"
+            placeholder="Gambe pesanti, caldo… e se hai fatto ripetute, com'erano: 3 × (3' forte + 1' jog + 1' sprint)"
           />
           <Button type="submit" disabled={!keyConfigured} variant="outline" className="w-full">
             {displayedEvaluation ? "Rivaluta" : initialFailed ? "Riprova" : "Chiedi al coach"}

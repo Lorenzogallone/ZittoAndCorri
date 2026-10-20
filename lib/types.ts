@@ -3,6 +3,7 @@
 
 import type { BestEfforts } from "./metrics/best-efforts.ts";
 import type { PaceCheck } from "./metrics/pace-check.ts";
+import type { DistancePoint, FitLap, IntervalAnalysis } from "./metrics/intervals.ts";
 
 export type WorkoutType =
   | "easy"
@@ -140,6 +141,8 @@ export interface Activity {
   best_efforts: BestEfforts | null;
   /** Passo reale contro previsto nelle sedute con target (lib/metrics/pace-check). */
   pace_check: PaceCheck | null;
+  /** Tratti della seduta (migration 0022: assente sui DB non migrati). */
+  intervals?: IntervalAnalysis | null;
   notes: string | null;
   raw_payload: unknown | null;
   created_at: string;
@@ -151,6 +154,9 @@ export interface ActivityStream {
   hr_series: HrPoint[] | null;
   gps_series: GpsPoint[] | null;
   cadence: unknown | null;
+  /** Migration 0022: distanza dell'orologio e lap del file FIT. */
+  distance_series?: DistancePoint[] | null;
+  laps?: FitLap[] | null;
 }
 
 /** Un punto per il carico giornaliero — usato da computeATLCTL. */

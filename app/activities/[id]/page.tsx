@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { timeInZoneFromSeries } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
 import { personalRecords } from "@/lib/metrics/best-efforts";
-import { paceCheckFor, persistDerived } from "@/lib/derived";
+import { computeIntervals, intervalsUpToDate, paceCheckFor, persistDerived, persistIntervals } from "@/lib/derived";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import type { Activity, ActivityStream, Evaluation, Profile, TimeInZone } from "@/lib/types";
 import { ActivityView } from "./activity-view";
@@ -42,11 +42,12 @@ export default async function ActivityDetailPage({
         .select("*")
         .eq("id", id)
         .maybeSingle<Activity>(),
+      // "*": distanza e lap dell'orologio arrivano con la migration 0022.
       supabase
         .from("activity_streams")
-        .select("hr_series, gps_series")
+        .select("*")
         .eq("activity_id", id)
-        .maybeSingle<Pick<ActivityStream, "hr_series" | "gps_series">>(),
+        .maybeSingle<ActivityStream>(),
       supabase
         .from("profiles")
         .select("max_hr, resting_hr")
@@ -103,6 +104,23 @@ export default async function ActivityDetailPage({
     after(() => persistDerived(createAdminClient(), userId, activity, gps));
   }
 
+  // Ripetute: l'analisi salvata se è aggiornata, altrimenti si calcola ora (corse
+  // importate prima, algoritmo cambiato) e si salva in background.
+  let intervals = intervalsUpToDate(activity.intervals) ? activity.intervals! : null;
+  if (!intervals && activity.sport === "running") {
+    const declared = activity.intervals?.declared ?? null;
+    intervals = await computeIntervals(supabase, user.id, activity, {
+      gps: streams?.gps_series,
+      hr: streams?.hr_series,
+      distance: streams?.distance_series,
+      laps: streams?.laps,
+    }, declared);
+    if ("intervals" in activity) {
+      const userId = user.id;
+      after(() => persistIntervals(createAdminClient(), userId, activity, undefined, declared));
+    }
+  }
+
   const profileCtx = await getEffectiveHrConfig(supabase, user.id, profile ?? null);
 
   // Zone HR: dalla serie reale se c'è (più precisa), altrimenti quelle salvate.
@@ -130,6 +148,7 @@ export default async function ActivityDetailPage({
       zones={zones}
       records={heldRecords}
       pace={paceResult ? { check: paceResult.check, workoutId: paceResult.workout.id } : null}
+      intervals={intervals}
       evaluation={evaluation ?? null}
       evaluationJob={evaluationJob ?? null}
       keyConfigured={Boolean(credential)}
