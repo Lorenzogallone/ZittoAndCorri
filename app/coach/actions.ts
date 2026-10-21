@@ -132,7 +132,7 @@ export async function sendCoachMessage(message: string): Promise<CoachActionResu
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const ai = await getAiConfig(user.id);
+  const ai = await getAiConfig(user.id, "chat");
   if (!ai) return { error: "Configura una chiave AI (Gemini o OpenRouter) nelle impostazioni." };
 
   const { data: userMessage, error: messageError } = await supabase
@@ -166,10 +166,11 @@ async function runCoachTurn(
     const context = await buildAiContext(admin, userId, "chat");
     context.conversation.recent_messages = context.conversation.recent_messages
       .filter((message) => message.id !== sourceMessageId);
-    const raw = await generateAi<unknown>(
+    const { data: raw, usage } = await generateAi<unknown>(
       buildCoachPrompt(serializeAiContext(context), userText),
       coachResponseSchema,
       ai,
+      "coach",
     );
     const result = coachResponseSchemaZod.parse(raw);
     const start = context.meta.today;
@@ -200,6 +201,8 @@ async function runCoachTurn(
         kind: hasProposal ? "plan_proposal" : "chat",
         content: result.reply + lockedNote,
         job_id: jobId,
+        // Costo di prompt e risposta, mostrato sotto i due messaggi in chat.
+        metadata: { ai_usage: usage, reply_to: sourceMessageId },
       })
       .select("id")
       .single<{ id: string }>();

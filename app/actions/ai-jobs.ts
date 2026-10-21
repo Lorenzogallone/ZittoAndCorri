@@ -12,7 +12,7 @@ export interface AiJobStatus {
     message: CoachMessage;
     proposal: PlanProposal | null;
   };
-  evaluationResult?: Pick<Evaluation, "summary" | "details" | "created_at">;
+  evaluationResult?: Pick<Evaluation, "summary" | "details" | "created_at" | "ai_usage">;
 }
 
 /**
@@ -70,17 +70,22 @@ export async function pollAiJob(jobId: string): Promise<AiJobStatus> {
   if (data.status === "done" && data.kind === "evaluation" && data.ref_id) {
     const { data: evaluation } = await supabase
       .from("evaluations")
-      .select("summary, details, created_at")
+      .select("*")
       .eq("activity_id", data.ref_id)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(1)
-      .maybeSingle<Pick<Evaluation, "summary" | "details" | "created_at">>();
+      .maybeSingle<Evaluation>();
     if (evaluation) {
       return {
         status: data.status,
         error: data.error,
-        evaluationResult: evaluation,
+        evaluationResult: {
+          summary: evaluation.summary,
+          details: evaluation.details,
+          created_at: evaluation.created_at,
+          ai_usage: evaluation.ai_usage ?? null,
+        },
       };
     }
   }

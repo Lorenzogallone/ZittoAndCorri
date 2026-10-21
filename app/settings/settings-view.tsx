@@ -12,9 +12,10 @@ import { ThemeSettings } from "./theme-settings";
 import { NotificationsSection } from "./notifications-section";
 import { GeminiKeySection } from "./gemini-key-section";
 import { OpenRouterSection } from "./openrouter-section";
-import { ProviderSetting } from "./provider-setting";
-import type { AiSwitchState } from "@/components/ai-provider-switch";
-import type { OpenRouterModel } from "@/lib/ai/openrouter";
+import { TaskModelsSection, type TaskRouteView } from "./task-models-section";
+import type { OpenRouterModel } from "@/lib/ai/openrouter-models";
+import type { AiTask } from "@/lib/ai/routing";
+import type { UsageSummary } from "@/lib/ai/usage";
 import { CoachMemorySection } from "./coach-memory-section";
 import { ZeppIntegrationSection } from "./zepp-integration-section";
 import { ApiKeySection } from "./api-key-section";
@@ -32,11 +33,13 @@ export interface SettingsViewProps {
   focusGemini: boolean;
   memories: CoachMemory[];
   zeppConnection: ZeppConnectionView | null;
-  ai: AiSwitchState;
+  /** Modelli per compito (migrazione 0024: perTask). */
+  aiTasks: { perTask: boolean; keys: { gemini: boolean; openrouter: boolean }; tasks: Record<AiTask, TaskRouteView> };
+  /** Spesa AI del mese; null senza la migrazione 0024. */
+  aiMonth: UsageSummary | null;
   /** undefined = database senza migrazione 0023. */
-  openrouter: { lastFour: string | null; model: string | null } | null | undefined;
+  openrouter: { lastFour: string } | null | undefined;
   openRouterModels: OpenRouterModel[];
-  suggestedModels: OpenRouterModel[];
 }
 
 export function SettingsView(props: SettingsViewProps) {
@@ -76,14 +79,14 @@ export function SettingsView(props: SettingsViewProps) {
       label: "Coach",
       content: (
         <>
-          <SettingsGroup title="Chi risponde">
-            <ProviderSetting initial={props.ai} />
+          <SettingsGroup title="Modelli">
+            <TaskModelsSection {...props.aiTasks} models={props.openRouterModels} month={props.aiMonth} />
           </SettingsGroup>
           <SettingsGroup title="Gemini">
             <GeminiKeySection credential={props.credential} focusRequested={props.focusGemini} />
           </SettingsGroup>
           <SettingsGroup title="OpenRouter">
-            <OpenRouterSection initial={props.openrouter} models={props.openRouterModels} suggested={props.suggestedModels} />
+            <OpenRouterSection initial={props.openrouter} />
           </SettingsGroup>
           <SettingsGroup title="Cosa ricorda il coach">
             <CoachMemorySection memories={props.memories} />

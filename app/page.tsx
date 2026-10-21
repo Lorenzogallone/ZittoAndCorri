@@ -69,7 +69,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
           <TodayCard next={next} today={today} heat={heat} week={week} race={race} />
         </div>
         <Suspense fallback={<div className="skeleton min-h-0 flex-1 rounded-[1.5rem]" />}>
-          <CoachChat key={prompt ?? ""} messages={[...(messagesRes.data ?? [])].reverse()} proposals={proposalsRes.data ?? []} ai={{ active: aiStatus.active, gemini: aiStatus.gemini, openrouter: aiStatus.openrouter }} analyzingActivities={pendingEvaluationsRes.count ?? 0} />
+          <CoachChat key={prompt ?? ""} messages={[...(messagesRes.data ?? [])].reverse()} proposals={proposalsRes.data ?? []} ai={aiStatus.chat} analyzingActivities={pendingEvaluationsRes.count ?? 0} />
         </Suspense>
       </div>
     </AppShell>

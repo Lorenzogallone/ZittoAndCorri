@@ -2,8 +2,9 @@
 // L'LLM produce solo testo qualitativo / struttura: i numeri di verità restano
 // in lib/metrics (principio §2.1). La chiave non tocca mai il client.
 import "server-only";
-import { GoogleGenAI, type Schema } from "@google/genai";
-import { DEFAULT_GEMINI_MODEL } from "@/lib/ai/models";
+import { GoogleGenAI, type GenerateContentResponseUsageMetadata, type Schema } from "@google/genai";
+import { DEFAULT_GEMINI_MODEL, geminiPrice } from "@/lib/ai/models";
+import { geminiUsage, type AiUsage } from "@/lib/ai/usage";
 
 export const PRIMARY_MODEL = DEFAULT_GEMINI_MODEL;
 const FALLBACK_MODEL = "gemini-2.5-flash-lite";
@@ -75,7 +76,7 @@ async function callModel(
   model: string,
   prompt: string,
   schema: Schema,
-): Promise<string> {
+): Promise<{ text: string; usage: GenerateContentResponseUsageMetadata | undefined }> {
   const res = await getClient(apiKey).models.generateContent({
     model,
     contents: prompt,
@@ -86,7 +87,12 @@ async function callModel(
   });
   const text = res.text;
   if (!text) throw new Error("Risposta AI vuota");
-  return text;
+  return { text, usage: res.usageMetadata };
+}
+
+/** JSON della risposta con token e costo stimato da listino. */
+function result<T>(model: string, reply: { text: string; usage: GenerateContentResponseUsageMetadata | undefined }) {
+  return { data: JSON.parse(reply.text) as T, usage: geminiUsage(model, reply.usage, geminiPrice(model)) };
 }
 
 /** Corre `p` contro un deadline assoluto: se scade, rigetta con AiTimeoutError
@@ -111,7 +117,7 @@ function withDeadline<T>(p: Promise<T>, deadlineAt: number): Promise<T> {
 
 /**
  * Genera un oggetto strutturato `T` validato dal `responseSchema` nativo di
- * Gemini. Retry con backoff esponenziale sui 429; come ultima spiaggia ripiega
+ * Gemini, con i token usati e il costo stimato. Retry con backoff esponenziale sui 429; come ultima spiaggia ripiega
  * sul modello lite. Gli errori non-quota vengono rilanciati subito. L'intera
  * operazione è limitata da DEADLINE_MS: oltre quel tempo torna AiTimeoutError
  * invece di rischiare il kill della funzione (vedi nota su DEADLINE_MS).
@@ -120,7 +126,7 @@ export async function generateStructured<T>(
   prompt: string,
   schema: Schema,
   opts: { apiKey: string; model?: string },
-): Promise<T> {
+): Promise<{ data: T; usage: AiUsage }> {
   const model = opts?.model ?? PRIMARY_MODEL;
   const deadlineAt = Date.now() + DEADLINE_MS;
   let lastErr: unknown;
@@ -128,8 +134,7 @@ export async function generateStructured<T>(
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     if (Date.now() >= deadlineAt) break;
     try {
-      const text = await withDeadline(callModel(opts.apiKey, model, prompt, schema), deadlineAt);
-      return JSON.parse(text) as T;
+      return result<T>(model, await withDeadline(callModel(opts.apiKey, model, prompt, schema), deadlineAt));
     } catch (err) {
       lastErr = err;
       if (err instanceof AiTimeoutError) throw err;
@@ -150,9 +155,7 @@ export async function generateStructured<T>(
 
   // Fallback storico solo per chiamate che non specificano alcun modello.
   try {
-    return JSON.parse(
-      await withDeadline(callModel(opts.apiKey, FALLBACK_MODEL, prompt, schema), deadlineAt),
-    ) as T;
+    return result<T>(FALLBACK_MODEL, await withDeadline(callModel(opts.apiKey, FALLBACK_MODEL, prompt, schema), deadlineAt));
   } catch (err) {
     throw lastErr ?? err;
   }

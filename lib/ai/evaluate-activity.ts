@@ -7,6 +7,7 @@ import { buildAiContext, serializeAiContext } from "@/lib/ai/context-envelope";
 import { activityDetailLine } from "@/lib/ai/context";
 import { buildEvaluationPrompt, evaluationResponseSchemaZod, evaluationSchema } from "@/lib/ai/prompt";
 import { aiErrorMessage, generateAi } from "@/lib/ai/llm";
+import { sumUsage, type AiUsage } from "@/lib/ai/usage";
 import { isoDateShift } from "@/lib/dates";
 import type { Activity, EvaluationResult, PlannedWorkout, Profile } from "@/lib/types";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
@@ -29,7 +30,7 @@ export async function enqueueActivityEvaluation(
   userId: string,
   activityId: string,
 ): Promise<string | null> {
-  const ai = await getAiConfig(userId);
+  const ai = await getAiConfig(userId, "analysis");
   if (!ai) return null;
   const admin = createAdminClient();
   const { data: current } = await admin.from("ai_jobs").select("id").eq("user_id", userId).eq("kind", "evaluation").eq("ref_id", activityId).eq("status", "pending").limit(1).maybeSingle<{ id: string }>();
@@ -123,11 +124,14 @@ async function runActivityEvaluation(
     // Struttura scritta nella nota (es. "3 × (3' forte + 1' jog + 1' sprint)"):
     // la legge Gemini, poi i tratti si misurano sul file. Mai bloccante.
     let declared: DeclaredIntervals | undefined;
+    let structureUsage: AiUsage | null = null;
     if (activity.sport === "running" && mayDescribeStructure(activity.notes)) {
       const sameDay = (nearbyPlan ?? []).find((workout) => workout.date === activityDay);
       const hint = sameDay ? [sameDay.type, sameDay.description].filter(Boolean).join(": ") : null;
       try {
-        declared = (await extractDeclaredStructure(activity.notes, hint, ai)) ?? undefined;
+        const structure = await extractDeclaredStructure(activity.notes, hint, ai);
+        declared = structure.declared ?? undefined;
+        structureUsage = structure.usage;
       } catch (structureError) {
         console.error("extractDeclaredStructure:", structureError);
       }
@@ -147,7 +151,7 @@ async function runActivityEvaluation(
         ? `Dettagli già catalogati da conservare e consolidare: ${JSON.stringify(existingEvaluation.details)}.`
         : "",
     ].filter(Boolean).join("\n");
-    const rawResult = await generateAi<unknown>(
+    const { data: rawResult, usage: evaluationUsage } = await generateAi<unknown>(
       buildEvaluationPrompt(
         serializeAiContext(context),
         detail,
@@ -155,8 +159,11 @@ async function runActivityEvaluation(
       ),
       evaluationSchema,
       ai,
+      "evaluation",
     );
     const result: EvaluationResult = evaluationResponseSchemaZod.parse(rawResult);
+    // Lettura della nota + valutazione: il costo mostrato è quello dell'analisi intera.
+    const usage = sumUsage([structureUsage, evaluationUsage]);
 
     const evaluationPayload = {
       model: ai.model,
@@ -164,13 +171,12 @@ async function runActivityEvaluation(
       details: result.details,
       flags: result.flags ?? {},
     };
-    const { error: evaluationError } = existingEvaluation
-      ? await admin.from("evaluations").update(evaluationPayload).eq("id", existingEvaluation.id)
-      : await admin.from("evaluations").insert({
-          user_id: userId,
-          activity_id: activityId,
-          ...evaluationPayload,
-        });
+    const saveEvaluation = (payload: typeof evaluationPayload & { ai_usage?: AiUsage | null }) => existingEvaluation
+      ? admin.from("evaluations").update(payload).eq("id", existingEvaluation.id)
+      : admin.from("evaluations").insert({ user_id: userId, activity_id: activityId, ...payload });
+    let { error: evaluationError } = await saveEvaluation({ ...evaluationPayload, ai_usage: usage });
+    // Senza la migrazione 0024 il costo resta solo sul messaggio della chat.
+    if (isMissingColumn(evaluationError)) ({ error: evaluationError } = await saveEvaluation(evaluationPayload));
     if (evaluationError) throw evaluationError;
 
     // Il commento libero è solo materiale di ingresso: una volta trasformato
@@ -196,7 +202,7 @@ async function runActivityEvaluation(
     const messagePayload = {
       content: result.summary,
       job_id: jobId,
-      metadata: { flags: result.flags ?? {}, details: result.details },
+      metadata: { flags: result.flags ?? {}, details: result.details, ai_usage: usage },
     };
     const messageQuery = existingMessage
       ? admin.from("coach_messages").update(messagePayload).eq("id", existingMessage.id).select("id").single<{ id: string }>()

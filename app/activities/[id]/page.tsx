@@ -54,14 +54,15 @@ export default async function ActivityDetailPage({
         .select("max_hr, resting_hr")
         .eq("id", user.id)
         .maybeSingle<Pick<Profile, "max_hr" | "resting_hr">>(),
+      // "*": il costo dell'analisi (ai_usage) arriva con la migrazione 0024.
       supabase
         .from("evaluations")
-        .select("summary, details, created_at")
+        .select("*")
         .eq("activity_id", id)
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1)
-        .maybeSingle<Pick<Evaluation, "summary" | "details" | "created_at">>(),
+        .maybeSingle<Evaluation>(),
       supabase
         .from("ai_jobs")
         .select("status, error")
@@ -149,7 +150,7 @@ export default async function ActivityDetailPage({
       intervals={intervals}
       evaluation={evaluation ?? null}
       evaluationJob={evaluationJob ?? null}
-      keyConfigured={aiStatus.active !== null}
+      keyConfigured={aiStatus.analysis.active !== null}
     />
   );
 }

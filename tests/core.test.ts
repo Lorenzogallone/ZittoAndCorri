@@ -239,23 +239,31 @@ test("l'errore quota interrompe il caricamento e resta leggibile", () => {
   assert.doesNotMatch(gemini, /Quota Gemini[^\n]*più/);
 });
 
-test("il modello scelto (Gemini o OpenRouter) viene persistito e usato da tutti i flussi AI", () => {
+test("chat e analisi usano provider e modello del proprio compito, e ogni chiamata registra il costo", () => {
   const models = readFileSync(new URL("../lib/ai/models.ts", import.meta.url), "utf8");
-  const migration = readFileSync(new URL("../supabase/migrations/0012_gemini_model_preference.sql", import.meta.url), "utf8");
+  const migration = readFileSync(new URL("../supabase/migrations/0024_ai_routing_and_costs.sql", import.meta.url), "utf8");
   const credentials = readFileSync(new URL("../lib/ai/credentials.ts", import.meta.url), "utf8");
+  const llm = readFileSync(new URL("../lib/ai/llm.ts", import.meta.url), "utf8");
   const coach = readFileSync(new URL("../app/coach/actions.ts", import.meta.url), "utf8");
   const evaluation = readFileSync(new URL("../lib/ai/evaluate-activity.ts", import.meta.url), "utf8");
+  const recap = readFileSync(new URL("../lib/push/weekly-recap.ts", import.meta.url), "utf8");
   assert.match(models, /DEFAULT_GEMINI_MODEL[^\n]*"gemini-3\.5-flash-lite"/);
-  assert.match(migration, /add column if not exists model text not null default 'gemini-3\.5-flash-lite'/);
-  assert.match(credentials, /update\(\{ model, updated_at:/);
-  assert.match(credentials, /export async function getAiConfig/);
-  // Chat e analisi passano dal provider attivo, non da Gemini direttamente.
+  assert.match(migration, /add column if not exists ai_routing jsonb/);
+  assert.match(migration, /create table if not exists public\.ai_usage_events/);
+  assert.match(credentials, /export async function getAiConfig\(userId: string, task: AiTask\)/);
+  assert.match(llm, /from\("ai_usage_events"\)\.insert/);
+  // Chat e analisi passano dal provider del compito, non da Gemini direttamente.
+  assert.match(coach, /getAiConfig\(user\.id, "chat"\)/);
+  assert.match(evaluation, /getAiConfig\(userId, "analysis"\)/);
+  assert.match(recap, /getAiConfig\(userId, "analysis"\)/);
   for (const source of [coach, evaluation]) {
-    assert.match(source, /getAiConfig\(/);
     assert.match(source, /generateAi<unknown>\(/);
     assert.doesNotMatch(source, /from "@\/lib\/ai\/gemini"/);
   }
   assert.match(evaluation, /model: ai\.model/);
+  // Il costo resta sul messaggio della chat, accanto alla domanda a cui risponde.
+  assert.match(coach, /metadata: \{ ai_usage: usage, reply_to: sourceMessageId \}/);
+  assert.match(evaluation, /ai_usage: usage/);
 });
 
 test("il tasto Profilo apre sempre la pagina profilo", () => {

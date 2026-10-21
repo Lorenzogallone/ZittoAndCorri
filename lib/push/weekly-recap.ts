@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getAiConfig } from "@/lib/ai/credentials";
 import { buildAiContext, serializeAiContext } from "@/lib/ai/context-envelope";
 import { generateAi } from "@/lib/ai/llm";
+import type { AiUsage } from "@/lib/ai/usage";
 import { sendPushToUser } from "@/lib/push/send";
 import {
   computeWeeklyStats,
@@ -64,16 +65,17 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-async function aiRecap(admin: SupabaseClient, userId: string, stats: WeeklyStats): Promise<string | null> {
+async function aiRecap(admin: SupabaseClient, userId: string, stats: WeeklyStats): Promise<{ reply: string; usage: AiUsage } | null> {
   try {
-    const ai = await getAiConfig(userId);
+    // Un riepilogo è un'analisi: usa il modello scelto per le analisi.
+    const ai = await getAiConfig(userId, "analysis");
     if (!ai) return null;
     const context = serializeAiContext(await buildAiContext(admin, userId, "chat"));
-    const raw = await withTimeout(
-      generateAi<unknown>(buildRecapPrompt(context, stats), recapSchema, ai),
+    const { data: raw, usage } = await withTimeout(
+      generateAi<unknown>(buildRecapPrompt(context, stats), recapSchema, ai, "weekly_recap"),
       AI_TIMEOUT_MS,
     );
-    return RecapResponse.parse(raw).reply;
+    return { reply: RecapResponse.parse(raw).reply, usage };
   } catch (error) {
     console.error("weekly recap AI:", error instanceof Error ? error.message : error);
     return null;
@@ -121,14 +123,13 @@ export async function runWeeklyRecap(
   const stats = computeWeeklyStats(week, activitiesRes.data ?? [], plannedRes.data ?? []);
   if (stats.activities === 0 && stats.planned === 0) return { outcome: "empty", delivered: 0 };
 
-  const content = (options.allowAi ? await aiRecap(admin, userId, stats) : null)
-    ?? deterministicWeeklyRecap(stats);
+  const recap = options.allowAi ? await aiRecap(admin, userId, stats) : null;
   const { error: insertError } = await admin.from("coach_messages").insert({
     user_id: userId,
     role: "assistant",
     kind: "chat",
-    content,
-    metadata: { type: "weekly_recap", week_start: week.start },
+    content: recap?.reply ?? deterministicWeeklyRecap(stats),
+    metadata: { type: "weekly_recap", week_start: week.start, ...(recap ? { ai_usage: recap.usage } : {}) },
   });
   if (insertError) throw insertError;
 
