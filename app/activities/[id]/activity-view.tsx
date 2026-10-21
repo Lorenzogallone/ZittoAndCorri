@@ -28,7 +28,7 @@ export interface ActivityViewProps {
   records: PersonalRecord[];
   pace: { check: PaceCheck; workoutId: string } | null;
   intervals: IntervalAnalysis | null;
-  evaluation: Pick<Evaluation, "summary" | "details" | "created_at"> | null;
+  evaluation: Pick<Evaluation, "summary" | "details" | "created_at" | "ai_usage"> | null;
   evaluationJob: { status: "pending" | "done" | "error"; error: string | null } | null;
   keyConfigured: boolean;
 }

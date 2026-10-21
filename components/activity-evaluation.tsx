@@ -11,11 +11,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { AiThinkingOverlay } from "@/components/ai-thinking-overlay";
 import { useAiJob } from "@/lib/use-ai-job";
 import type { Evaluation } from "@/lib/types";
+import { AiCost } from "@/components/ai-cost";
+import { readUsage } from "@/lib/ai/usage";
 
 interface Props {
   activityId: string;
   initialNotes: string | null;
-  evaluation: Pick<Evaluation, "summary" | "details" | "created_at"> | null;
+  evaluation: Pick<Evaluation, "summary" | "details" | "created_at" | "ai_usage"> | null;
   initialAnalyzing?: boolean;
   initialFailed?: boolean;
   initialError?: string | null;
@@ -32,6 +34,7 @@ export function ActivityEvaluation({
   keyConfigured = true,
 }: Props) {
   const [displayedEvaluation, setDisplayedEvaluation] = useState(evaluation);
+  const usage = readUsage(displayedEvaluation?.ai_usage);
   const router = useRouter();
   const showEvaluationResult = useCallback((status: AiJobStatus) => {
     if (!status.evaluationResult) throw new Error("Risultato valutazione mancante");
@@ -83,6 +86,9 @@ export function ActivityEvaluation({
             <li key={`${detail}-${index}`} className="rounded-full bg-muted px-2.5 py-1 text-xs">{detail}</li>
           ))}
         </ul>
+      )}
+      {usage && displayedEvaluation?.summary && !isAnalyzing && (
+        <AiCost usage={usage} part="total" prefix="Costo dell'analisi" className="mt-3" />
       )}
 
       {!keyConfigured && !isAnalyzing && (

@@ -1,7 +1,9 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeGeminiModel, type GeminiModelId } from "@/lib/ai/models";
+import { parseRouting, resolveTask, withRoute, type AiProvider, type AiRouting, type AiTask, type TaskRoute } from "@/lib/ai/routing";
 
 export interface GeminiConfig {
   apiKey: string;
@@ -47,15 +49,6 @@ export async function storeGeminiApiKey(
   if (error) throw error;
 }
 
-export async function setGeminiModel(userId: string, model: GeminiModelId): Promise<void> {
-  const admin = createAdminClient();
-  const { error } = await admin
-    .from("user_ai_credentials")
-    .update({ model, updated_at: new Date().toISOString() })
-    .eq("user_id", userId);
-  if (error) throw error;
-}
-
 export async function removeGeminiApiKey(userId: string): Promise<void> {
   const admin = createAdminClient();
   const { error } = await admin.rpc("admin_delete_gemini_credential", {
@@ -64,15 +57,21 @@ export async function removeGeminiApiKey(userId: string): Promise<void> {
   if (error) throw error;
 }
 
-// ── OpenRouter e provider attivo (migrazione 0023) ──────────────────────────
+// ── OpenRouter e modello per compito (migrazioni 0023 e 0024) ───────────────
 
-export type AiProvider = "gemini" | "openrouter";
+export type { AiProvider, AiTask } from "@/lib/ai/routing";
 
-export type AiConfig =
-  | { provider: "gemini"; apiKey: string; model: GeminiModelId }
-  | { provider: "openrouter"; apiKey: string; model: string };
+export type AiConfig = (
+  | { provider: "gemini"; model: GeminiModelId }
+  | { provider: "openrouter"; model: string }
+) & {
+  apiKey: string;
+  /** Per registrare token e costo della chiamata. */
+  userId: string;
+  task: AiTask;
+};
 
-/** Funzione o colonna non ancora create: il database non ha la migrazione 0023. */
+/** Funzione o colonna non ancora create: il database non ha la migrazione. */
 const notMigrated = (error: { code?: string } | null | undefined) =>
   error?.code === "PGRST202" || error?.code === "42703" || error?.code === "42P01" || error?.code === "PGRST205";
 
@@ -90,45 +89,51 @@ export async function getOpenRouterConfig(userId: string): Promise<{ apiKey: str
   return { apiKey, model: metadataResult.data?.model ?? null };
 }
 
-async function preferredProvider(userId: string): Promise<AiProvider> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.from("profiles").select("ai_provider").eq("id", userId).maybeSingle<{ ai_provider: string | null }>();
-  if (error && !notMigrated(error)) throw error;
-  return data?.ai_provider === "openrouter" ? "openrouter" : "gemini";
+/**
+ * Provider e modello di chat e analisi (`profiles.ai_routing`). `stored` è
+ * false se il database non ha ancora la migrazione 0024: allora vale per
+ * tutto il provider scelto prima (`ai_provider`).
+ */
+export async function loadAiRouting(client: SupabaseClient, userId: string): Promise<{ routing: AiRouting; stored: boolean }> {
+  const legacy = (value: string | null | undefined): AiProvider => (value === "openrouter" ? "openrouter" : "gemini");
+  const full = await client.from("profiles").select("ai_provider, ai_routing").eq("id", userId).maybeSingle<{ ai_provider: string | null; ai_routing: unknown }>();
+  if (!full.error) return { routing: parseRouting(full.data?.ai_routing, legacy(full.data?.ai_provider)), stored: true };
+  if (!notMigrated(full.error)) throw full.error;
+  const basic = await client.from("profiles").select("ai_provider").eq("id", userId).maybeSingle<{ ai_provider: string | null }>();
+  if (basic.error && !notMigrated(basic.error)) throw basic.error;
+  return { routing: parseRouting(null, legacy(basic.data?.ai_provider)), stored: false };
 }
 
 /**
- * Provider e modello da usare per chat, piani e analisi: quello scelto
- * dall'atleta se configurato, altrimenti l'altro. Null se nessuno è pronto.
+ * Provider e modello per il compito: quelli scelti nelle impostazioni se
+ * pronti, altrimenti l'altro provider. Null se nessuna chiave è configurata.
  */
-export async function getAiConfig(userId: string): Promise<AiConfig | null> {
-  const [preferred, gemini, openrouter] = await Promise.all([
-    preferredProvider(userId),
+export async function getAiConfig(userId: string, task: AiTask): Promise<AiConfig | null> {
+  const admin = createAdminClient();
+  const [{ routing }, gemini, openrouter] = await Promise.all([
+    loadAiRouting(admin, userId),
     getGeminiConfig(userId),
     getOpenRouterConfig(userId),
   ]);
-  const router = openrouter?.model ? { provider: "openrouter" as const, apiKey: openrouter.apiKey, model: openrouter.model } : null;
-  const google = gemini ? { provider: "gemini" as const, ...gemini } : null;
-  return preferred === "openrouter" ? router ?? google : google ?? router;
+  const resolved = resolveTask(routing[task], {
+    gemini: { configured: !!gemini, model: gemini?.model ?? null },
+    openrouter: { configured: !!openrouter, model: openrouter?.model ?? null },
+  });
+  if (!resolved) return null;
+  return resolved.provider === "gemini"
+    ? { provider: "gemini", model: normalizeGeminiModel(resolved.model), apiKey: gemini!.apiKey, userId, task }
+    : { provider: "openrouter", model: resolved.model, apiKey: openrouter!.apiKey, userId, task };
 }
 
-export async function storeOpenRouterApiKey(userId: string, apiKey: string, model: string | null): Promise<void> {
+export async function storeOpenRouterApiKey(userId: string, apiKey: string): Promise<void> {
   const admin = createAdminClient();
   const { error } = await admin.rpc("admin_set_openrouter_credential", {
     p_user_id: userId,
     p_secret: apiKey,
     p_last_four: apiKey.slice(-4),
-    p_model: model,
+    // Null mantiene il modello già salvato: i modelli ora si scelgono per compito.
+    p_model: null,
   });
-  if (error) throw error;
-}
-
-export async function setOpenRouterModel(userId: string, model: string): Promise<void> {
-  const admin = createAdminClient();
-  const { error } = await admin
-    .from("user_openrouter_credentials")
-    .update({ model, updated_at: new Date().toISOString() })
-    .eq("user_id", userId);
   if (error) throw error;
 }
 
@@ -138,8 +143,22 @@ export async function removeOpenRouterApiKey(userId: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Senza la migrazione 0024 resta solo il provider unico di prima. */
 export async function setAiProvider(userId: string, provider: AiProvider): Promise<void> {
   const admin = createAdminClient();
   const { error } = await admin.from("profiles").update({ ai_provider: provider }).eq("id", userId);
+  if (error) throw error;
+}
+
+/** Cambia provider e/o modello di un compito; la chat aggiorna anche ai_provider. */
+export async function setAiRoute(userId: string, task: AiTask, patch: Partial<TaskRoute>): Promise<void> {
+  const admin = createAdminClient();
+  const { routing, stored } = await loadAiRouting(admin, userId);
+  if (!stored) throw Object.assign(new Error("Migrazione 0024 mancante"), { code: "42703" });
+  const next = withRoute(routing, task, patch);
+  const { error } = await admin
+    .from("profiles")
+    .update(task === "chat" ? { ai_routing: next, ai_provider: next.chat.provider } : { ai_routing: next })
+    .eq("id", userId);
   if (error) throw error;
 }

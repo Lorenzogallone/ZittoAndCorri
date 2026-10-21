@@ -7,6 +7,11 @@ import "server-only";
 
 import type { Schema } from "@google/genai";
 import { extractJson as parseJson, toJsonSchema } from "./json-schema.ts";
+import type { OpenRouterModel } from "./openrouter-models.ts";
+import { openRouterUsage, type AiUsage } from "./usage.ts";
+
+export type { OpenRouterModel } from "./openrouter-models.ts";
+export { suggestedOpenRouterModels } from "./openrouter-models.ts";
 
 const API = "https://openrouter.ai/api/v1";
 const DEADLINE_MS = 180_000;
@@ -41,12 +46,31 @@ async function errorFrom(response: Response): Promise<OpenRouterError> {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Output strutturato `T` da un modello OpenRouter. */
+interface ChatUsage {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  cost?: number | null;
+  prompt_tokens_details?: { cached_tokens?: number | null } | null;
+  completion_tokens_details?: { reasoning_tokens?: number | null } | null;
+}
+
+/** Listino del catalogo per stimare o dividere il costo; null se non noto. */
+async function catalogPrice(model: string) {
+  const entry = (await listOpenRouterModels()).find((m) => m.id === model);
+  return entry && entry.prompt_per_m != null && entry.completion_per_m != null
+    ? { input: entry.prompt_per_m, output: entry.completion_per_m }
+    : null;
+}
+
+/**
+ * Output strutturato `T` da un modello OpenRouter, con token e costo. Il costo
+ * è quello addebitato (`usage.cost`, sempre presente nelle risposte).
+ */
 export async function generateOpenRouter<T>(
   prompt: string,
   schema: Schema,
   opts: { apiKey: string; model: string },
-): Promise<T> {
+): Promise<{ data: T; usage: AiUsage }> {
   const jsonSchema = toJsonSchema(schema);
   const body = {
     model: opts.model,
@@ -83,15 +107,19 @@ export async function generateOpenRouter<T>(
       const data = (await response.json()) as {
         choices?: Array<{ message?: { content?: string | null } }>;
         error?: { message?: string; code?: number };
+        usage?: ChatUsage;
       };
       if (data.error) throw new OpenRouterError(data.error.message ?? "Errore OpenRouter", data.error.code ?? 502);
       const content = data.choices?.[0]?.message?.content;
       if (!content) throw new OpenRouterError("Risposta vuota dal modello", 502);
+      let parsed: T;
       try {
-        return parseJson(content) as T;
+        parsed = parseJson(content) as T;
       } catch {
         throw new OpenRouterError("Risposta del modello non in formato JSON", 422);
       }
+      const price = await catalogPrice(opts.model).catch(() => null);
+      return { data: parsed, usage: openRouterUsage(opts.model, data.usage, price) };
     } catch (error) {
       lastError = error;
       const status = error instanceof OpenRouterError ? error.status : 0;
@@ -111,17 +139,6 @@ export async function generateOpenRouter<T>(
 export async function verifyOpenRouterKey(apiKey: string): Promise<void> {
   const response = await fetch(`${API}/key`, { headers: headers(apiKey), cache: "no-store", signal: AbortSignal.timeout(15_000) });
   if (!response.ok) throw await errorFrom(response);
-}
-
-export interface OpenRouterModel {
-  id: string;
-  name: string;
-  /** Prezzo in dollari per milione di token (input, output); 0 = gratis. */
-  prompt_per_m: number | null;
-  completion_per_m: number | null;
-  context: number | null;
-  /** Data di uscita (secondi unix), per suggerire i modelli più recenti. */
-  created: number | null;
 }
 
 /**
@@ -159,17 +176,4 @@ export async function listOpenRouterModels(): Promise<OpenRouterModel[]> {
   } catch {
     return [];
   }
-}
-
-/** Pochi suggerimenti: il modello più recente di alcune famiglie note, più uno gratuito. */
-export function suggestedOpenRouterModels(models: OpenRouterModel[]): OpenRouterModel[] {
-  const families = [/^anthropic\/claude/, /^openai\/gpt/, /^google\/gemini/, /^deepseek\//, /:free$/];
-  const picks: OpenRouterModel[] = [];
-  for (const family of families) {
-    const best = models
-      .filter((m) => family.test(m.id) && !picks.includes(m) && !/preview|beta|image|audio/i.test(m.id))
-      .sort((a, b) => (b.created ?? 0) - (a.created ?? 0))[0];
-    if (best) picks.push(best);
-  }
-  return picks;
 }

@@ -8,6 +8,7 @@ import { Type, type Schema } from "@google/genai";
 import { z } from "zod";
 import { generateAi } from "@/lib/ai/llm";
 import type { AiConfig } from "@/lib/ai/credentials";
+import type { AiUsage } from "@/lib/ai/usage";
 import { describeStructure, isStructured } from "@/lib/metrics/intervals";
 import type { DeclaredIntervals } from "@/lib/derived";
 import type { WorkoutStepInput } from "@/lib/types";
@@ -97,13 +98,20 @@ function buildPrompt(notes: string, plannedHint: string | null): string {
   ].join("\n");
 }
 
-/** Struttura dichiarata nella nota, o null se la nota non ne descrive una. */
+/**
+ * Struttura dichiarata nella nota (null se la nota non ne descrive una) e
+ * token/costo della lettura, che si sommano all'analisi.
+ */
 export async function extractDeclaredStructure(
   notes: string,
   plannedHint: string | null,
   ai: AiConfig,
-): Promise<DeclaredIntervals | null> {
-  const raw = await generateAi<unknown>(buildPrompt(notes, plannedHint), structureSchema, ai);
+): Promise<{ declared: DeclaredIntervals | null; usage: AiUsage }> {
+  const { data: raw, usage } = await generateAi<unknown>(buildPrompt(notes, plannedHint), structureSchema, ai, "interval_structure");
+  return { declared: declaredFrom(raw), usage };
+}
+
+function declaredFrom(raw: unknown): DeclaredIntervals | null {
   const parsed = responseZod.safeParse(raw);
   if (!parsed.success || !parsed.data.found) return null;
   const steps: WorkoutStepInput[] = [];

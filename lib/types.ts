@@ -291,6 +291,8 @@ export interface Evaluation {
   details: string[] | null;
   /** Flag qualitativi, es. {"overreaching":true,"good_progress":true}. */
   flags: Record<string, boolean> | null;
+  /** Token e costo dell'analisi (migrazione 0024), vedi lib/ai/usage.ts. */
+  ai_usage?: unknown;
   created_at: string;
 }
 

@@ -18,6 +18,8 @@ import type { WorkoutBrief } from "@/lib/plan/proposal-diff";
 import { WorkoutSteps } from "@/components/workout-steps";
 import { AiModelLine, AiProviderToggle, useAiSwitch, type AiSwitchState } from "@/components/ai-provider-switch";
 import { workoutHeadline } from "@/lib/workout-guide";
+import { AiCost } from "@/components/ai-cost";
+import { readUsage } from "@/lib/ai/usage";
 
 const dayLabel = (iso: string) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", timeZone: "UTC" });
@@ -25,6 +27,25 @@ const dayLabel = (iso: string) =>
 function briefText(brief: WorkoutBrief): string {
   const amount = brief.headline ?? (brief.meters ? formatDistance(brief.meters).replace(",00", "") : brief.minutes ? `${brief.minutes} min` : null);
   return [TYPE_LABELS[brief.type], amount].filter(Boolean).join(" · ");
+}
+
+const messageTime = (iso: string) =>
+  new Date(iso).toLocaleString("it-IT", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+/**
+ * Data e costo sotto il messaggio: sotto la domanda il costo del prompt (tutto
+ * il contesto inviato), sotto la risposta quello della risposta; tocca per il
+ * dettaglio. Analisi e riepiloghi, senza domanda, mostrano il totale.
+ */
+function MessageFooter({ item, replyUsage }: { item: CoachMessage; replyUsage: ReturnType<typeof readUsage> }) {
+  const time = messageTime(item.created_at);
+  const own = item.role === "assistant" ? readUsage(item.metadata?.ai_usage) : null;
+  const usage = item.role === "user" ? replyUsage : own;
+  if (!usage) {
+    return <p className={`mt-1 text-[10px] text-muted-foreground ${item.role === "user" ? "text-right" : ""}`}>{time}</p>;
+  }
+  const part = item.role === "user" ? "prompt" : item.metadata?.reply_to ? "reply" : "total";
+  return <AiCost usage={usage} part={part} prefix={time} className={cn("mt-1", item.role === "user" && "text-right")} />;
 }
 
 const STATUS_TEXT: Record<Exclude<PlanProposal["status"], "pending">, string> = {
@@ -163,6 +184,12 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
   }, []);
   const { pending, error, start } = useAiJob("coach", { onDone: showCoachResult });
   const proposalsById = new Map(displayProposals.map((proposal) => [proposal.id, proposal]));
+  // Costo di ogni risposta indicizzato per la domanda a cui risponde.
+  const usageByQuestion = new Map(displayMessages.flatMap((item) => {
+    const replyTo = item.metadata?.reply_to;
+    const usage = readUsage(item.metadata?.ai_usage);
+    return typeof replyTo === "string" && usage ? [[replyTo, usage] as const] : [];
+  }));
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, [displayMessages.length, pending]);
 
@@ -268,7 +295,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
                   />
                 )}
               </div>
-              <p className={`mt-1 text-[10px] text-muted-foreground ${item.role === "user" ? "text-right" : ""}`}>{new Date(item.created_at).toLocaleString("it-IT", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+              <MessageFooter item={item} replyUsage={usageByQuestion.get(item.id) ?? null} />
             </div>
           );
         })}

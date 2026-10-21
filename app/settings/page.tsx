@@ -4,8 +4,10 @@ import { sanitizePrefs } from "@/lib/theme";
 import type { Profile, AiCredentialMetadata, CoachMemory } from "@/lib/types";
 import type { ZeppConnectionView } from "@/lib/zepp/types";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
-import { getAiStatus } from "@/lib/ai/ai-status";
-import { listOpenRouterModels, suggestedOpenRouterModels } from "@/lib/ai/openrouter";
+import { getAiStatus, type TaskStatus } from "@/lib/ai/ai-status";
+import { listOpenRouterModels } from "@/lib/ai/openrouter";
+import { summarizeUsage } from "@/lib/ai/usage";
+import { todayIso } from "@/lib/dates";
 import { SettingsView } from "./settings-view";
 
 export default async function SettingsPage({
@@ -20,7 +22,7 @@ export default async function SettingsPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [profileRes, themeRes, credentialRes, memoriesRes, aiStatus, openRouterModels] = await Promise.all([
+  const [profileRes, themeRes, credentialRes, memoriesRes, aiStatus, openRouterModels, usageRes] = await Promise.all([
     supabase
       .from("profiles")
       .select("max_hr, resting_hr, birthdate, api_key")
@@ -45,7 +47,19 @@ export default async function SettingsPage({
       .returns<CoachMemory[]>(),
     getAiStatus(supabase, user.id),
     listOpenRouterModels(),
+    // Spesa AI del mese (migrazione 0024); l'ora legale sposta il confine di un'ora al massimo.
+    supabase
+      .from("ai_usage_events")
+      .select("task, cost_usd, estimated")
+      .eq("user_id", user.id)
+      .gte("created_at", `${todayIso().slice(0, 7)}-01T00:00:00+01:00`)
+      .returns<Array<{ task: string; cost_usd: number | string | null; estimated: boolean | null }>>(),
   ]);
+  const route = (task: TaskStatus) => ({
+    provider: task.active ?? task.provider,
+    gemini: task.gemini.model,
+    openrouter: task.openrouter?.model ?? null,
+  });
 
   const profile = profileRes.data;
   const zeppConnectionRes = await supabase
@@ -84,10 +98,14 @@ export default async function SettingsPage({
       focusGemini={focus === "gemini"}
       memories={memoriesRes.data ?? []}
       zeppConnection={zeppConnectionRes.data ?? null}
-      ai={{ active: aiStatus.active, gemini: aiStatus.gemini, openrouter: aiStatus.openrouter }}
-      openrouter={aiStatus.openrouter ? (aiStatus.openrouter.lastFour ? { lastFour: aiStatus.openrouter.lastFour, model: aiStatus.openrouter.model } : null) : undefined}
+      aiTasks={{
+        perTask: aiStatus.perTask,
+        keys: { gemini: aiStatus.keys.gemini.configured, openrouter: !!aiStatus.keys.openrouter?.configured },
+        tasks: { chat: route(aiStatus.chat), analysis: route(aiStatus.analysis) },
+      }}
+      aiMonth={usageRes.error ? null : summarizeUsage(usageRes.data ?? [])}
+      openrouter={aiStatus.keys.openrouter ? (aiStatus.keys.openrouter.lastFour ? { lastFour: aiStatus.keys.openrouter.lastFour } : null) : undefined}
       openRouterModels={openRouterModels}
-      suggestedModels={suggestedOpenRouterModels(openRouterModels)}
     />
   );
 }

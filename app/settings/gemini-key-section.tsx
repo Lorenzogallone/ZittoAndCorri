@@ -5,19 +5,8 @@ import { Check, ExternalLink, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { deleteGeminiApiKey, saveGeminiApiKey, saveGeminiModel } from "./actions";
-import {
-  GEMINI_MODELS,
-  isGeminiModelId,
-  normalizeGeminiModel,
-} from "@/lib/ai/models";
+import { deleteGeminiApiKey, saveGeminiApiKey } from "./actions";
+import { DEFAULT_GEMINI_MODEL } from "@/lib/ai/models";
 import type { AiCredentialMetadata } from "@/lib/types";
 import { IntegrationCard, IntegrationHelp } from "./integration-card";
 
@@ -31,9 +20,6 @@ export function GeminiKeySection({
   const [key, setKey] = useState("");
   const [pending, setPending] = useState(false);
   const [configured, setConfigured] = useState(credential);
-  const [selectedModel, setSelectedModel] = useState(normalizeGeminiModel(credential?.model));
-  const [modelPending, setModelPending] = useState(false);
-  const [modelSaved, setModelSaved] = useState(false);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -54,7 +40,7 @@ export function GeminiKeySection({
       setConfigured({
         provider: "gemini",
         last_four: key.slice(-4),
-        model: selectedModel,
+        model: configured?.model ?? DEFAULT_GEMINI_MODEL,
         verified_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
@@ -62,28 +48,6 @@ export function GeminiKeySection({
       setEditing(false);
     }
     setPending(false);
-  }
-
-  async function selectModel(value: string) {
-    if (!isGeminiModelId(value) || value === selectedModel) return;
-    const previous = selectedModel;
-    setSelectedModel(value);
-    setModelPending(true);
-    setModelSaved(false);
-    setError(null);
-    const result = await saveGeminiModel(value);
-    if (result.error) {
-      setSelectedModel(previous);
-      setError(result.error);
-    } else {
-      setConfigured((current) => current ? {
-        ...current,
-        model: value,
-        updated_at: new Date().toISOString(),
-      } : current);
-      setModelSaved(true);
-    }
-    setModelPending(false);
   }
 
   async function remove() {
@@ -98,7 +62,7 @@ export function GeminiKeySection({
   return (
     <IntegrationCard
       id="gemini-integration"
-      description="Serve per la chat con il coach, i piani e le analisi delle corse."
+      description="Gratis entro i limiti di Google. Il modello si sceglie sopra, per la chat e per le analisi."
     >
       <div className="space-y-4">
       {configured && !editing ? (
@@ -138,30 +102,6 @@ export function GeminiKeySection({
       )}
 
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-
-      {configured && !editing && (
-        <div className="space-y-2 border-t border-border/60 pt-4">
-          <div className="flex items-center justify-between gap-3">
-            <Label htmlFor="gemini-model">Modello per coach e analisi</Label>
-            {modelSaved && !modelPending && (
-              <span className="text-xs text-emerald-600">Salvato</span>
-            )}
-          </div>
-          <Select value={selectedModel} onValueChange={selectModel} disabled={modelPending}>
-            <SelectTrigger id="gemini-model" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent position="popper" align="start">
-              {GEMINI_MODELS.map((model) => (
-                <SelectItem key={model.id} value={model.id}>
-                  {model.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {modelPending && <p className="text-xs text-muted-foreground">Salvataggio…</p>}
-        </div>
-      )}
 
       <IntegrationHelp title="Come ottenere la chiave">
         <ol className="mt-2 list-decimal space-y-1 pl-4">
