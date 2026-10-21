@@ -5,8 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getGeminiConfig } from "@/lib/ai/credentials";
-import type { GeminiModelId } from "@/lib/ai/models";
+import { getAiConfig, type AiConfig } from "@/lib/ai/credentials";
 import { buildAiContext, serializeAiContext } from "@/lib/ai/context-envelope";
 import {
   buildCoachPrompt,
@@ -15,10 +14,11 @@ import {
   type CoachResponse,
 } from "@/lib/ai/prompt";
 import { generalGoalName } from "@/lib/goals";
-import { aiErrorMessage, generateStructured } from "@/lib/ai/gemini";
+import { aiErrorMessage, generateAi } from "@/lib/ai/llm";
 import { WORKOUT_TYPES, type CoachMessage, type ProposedWorkout } from "@/lib/types";
 import { normalizeWorkoutSteps } from "@/lib/workout-steps";
 import { insertPlanProposal } from "@/lib/plan/proposals";
+import { diffAgainstCalendar } from "@/lib/plan/proposal-calendar";
 
 export interface CoachActionResult { jobId?: string; error?: string; userMessage?: CoachMessage }
 
@@ -116,6 +116,13 @@ async function applyGoalUpdate(
   return goal.id;
 }
 
+/** Finestra in cui il coach può proporre modifiche: 4 settimane da oggi. */
+const PROPOSAL_WINDOW_DAYS = 28;
+
+function dayLabel(iso: string): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", timeZone: "UTC" });
+}
+
 export async function sendCoachMessage(message: string): Promise<CoachActionResult> {
   const text = message.trim();
   if (!text) return { error: "Scrivi un messaggio per il coach." };
@@ -125,8 +132,8 @@ export async function sendCoachMessage(message: string): Promise<CoachActionResu
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const gemini = await getGeminiConfig(user.id);
-  if (!gemini) return { error: "Configura prima la tua chiave Gemini nelle impostazioni." };
+  const ai = await getAiConfig(user.id);
+  if (!ai) return { error: "Configura una chiave AI (Gemini o OpenRouter) nelle impostazioni." };
 
   const { data: userMessage, error: messageError } = await supabase
     .from("coach_messages")
@@ -143,7 +150,7 @@ export async function sendCoachMessage(message: string): Promise<CoachActionResu
   if (jobError || !job) return { error: "Impossibile avviare il coach.", userMessage };
 
   const userId = user.id;
-  after(() => runCoachTurn(job.id, userId, userMessage.id, text, gemini.apiKey, gemini.model));
+  after(() => runCoachTurn(job.id, userId, userMessage.id, text, ai));
   return { jobId: job.id, userMessage };
 }
 
@@ -152,38 +159,46 @@ async function runCoachTurn(
   userId: string,
   sourceMessageId: string,
   userText: string,
-  apiKey: string,
-  model: GeminiModelId,
+  ai: AiConfig,
 ) {
   const admin = createAdminClient();
   try {
     const context = await buildAiContext(admin, userId, "chat");
     context.conversation.recent_messages = context.conversation.recent_messages
       .filter((message) => message.id !== sourceMessageId);
-    const raw = await generateStructured<unknown>(
+    const raw = await generateAi<unknown>(
       buildCoachPrompt(serializeAiContext(context), userText),
       coachResponseSchema,
-      { apiKey, model },
+      ai,
     );
     const result = coachResponseSchemaZod.parse(raw);
     const start = context.meta.today;
-    const end = dateShift(start, 13);
+    const end = dateShift(start, PROPOSAL_WINDOW_DAYS - 1);
     let goalId = context.goal?.id ?? null;
     if (result.goal_update) {
       const updated = await applyGoalUpdate(admin, userId, result.goal_update, start);
       if (updated !== undefined) goalId = updated;
     }
-    const workouts = result.workouts
+    const proposed = result.workouts
       .map((workout) => cleanWorkout(workout, start, end, goalId))
       .filter((workout): workout is NonNullable<typeof workout> => workout !== null);
+
+    // Solo ciò che cambia davvero, mai giorni passati o già corsi.
+    const diff = await diffAgainstCalendar(admin, userId, start, end, proposed, result.remove_dates.filter(isIsoDate));
+    const hasProposal = diff.touched.length > 0 && !!result.plan_summary;
+    const lockedNote = diff.locked.length
+      ? `\n\n_Non ho toccato ${diff.locked.map(dayLabel).join(", ")}: ${diff.locked.length === 1 ? "è un giorno già passato o già corso" : "sono giorni già passati o già corsi"}._`
+      : proposed.length && !diff.touched.length
+        ? "\n\n_Nessuna modifica da confermare: il piano di quei giorni è già così._"
+        : "";
 
     const { data: assistant, error: assistantError } = await admin
       .from("coach_messages")
       .insert({
         user_id: userId,
         role: "assistant",
-        kind: workouts.length ? "plan_proposal" : "chat",
-        content: result.reply,
+        kind: hasProposal ? "plan_proposal" : "chat",
+        content: result.reply + lockedNote,
         job_id: jobId,
       })
       .select("id")
@@ -214,13 +229,14 @@ async function runCoachTurn(
       }
     }
 
-    if (workouts.length && result.plan_summary) {
+    if (hasProposal) {
       const proposalId = await insertPlanProposal(admin, {
         userId,
-        summary: result.plan_summary,
-        rangeStart: start,
-        rangeEnd: end,
-        workouts,
+        summary: result.plan_summary!,
+        touched: diff.touched,
+        workouts: diff.workouts,
+        removeDates: diff.removeDates,
+        changes: diff.changes,
         sourceMessageId,
       });
       await admin.from("coach_messages").update({ plan_proposal_id: proposalId }).eq("id", assistant.id);
@@ -251,9 +267,17 @@ export async function applyPlanProposal(proposalId: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const { data, error } = await supabase.rpc("apply_plan_proposal", { p_proposal_id: proposalId });
+  // Solo la funzione giorno per giorno (migrazione 0023): la vecchia cancellava
+  // tutte le sedute della finestra, anche quelle non citate o già passate.
+  const { data, error } = await supabase.rpc("apply_plan_proposal_v2", { p_proposal_id: proposalId });
+  if (error?.code === "PGRST202") {
+    return { error: "Per applicare le proposte serve aggiornare il database (migrazione 0023)." };
+  }
   if (error) return { error: "Impossibile applicare la proposta." };
-  if (data === "stale") return { error: "Il piano è cambiato: chiedi al coach una nuova proposta." };
+  if (data === "stale") return { error: "Il piano di quei giorni è cambiato o sono già passati: chiedi al coach una nuova proposta." };
+  if (data !== "applied") return { error: "Proposta non più valida." };
+  revalidatePath("/plan");
+  revalidatePath("/");
   return { ok: true };
 }
 

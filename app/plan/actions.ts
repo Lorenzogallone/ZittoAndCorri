@@ -10,6 +10,7 @@ import { addDays, romeDay } from "@/lib/local-date";
 import { ADAPT_DURATIONS, ADAPT_REASONS, adaptWorkout, originalFields, type AdaptReason } from "@/lib/plan/adapt";
 import { recoveryWorkouts } from "@/lib/plan/recovery";
 import { insertPlanProposal } from "@/lib/plan/proposals";
+import { diffAgainstCalendar } from "@/lib/plan/proposal-calendar";
 import { hrZones } from "@/lib/metrics/zones";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 
@@ -255,13 +256,19 @@ export async function planRecovery(): Promise<void> {
       })
       .select("id")
       .single<{ id: string }>();
-    if (message) {
+    // Dopo la gara il vecchio piano non serve più: le sedute di recupero più
+    // lo svuotamento degli altri giorni delle prossime due settimane.
+    const end = addDays(today, 13);
+    const window = Array.from({ length: 14 }, (_, i) => addDays(today, i));
+    const diff = await diffAgainstCalendar(supabase, user.id, today, end, workouts, window);
+    if (message && diff.touched.length) {
       const proposalId = await insertPlanProposal(supabase, {
         userId: user.id,
         summary: "Recupero dopo la gara",
-        rangeStart: today,
-        rangeEnd: addDays(today, 13),
-        workouts,
+        touched: diff.touched,
+        workouts: diff.workouts,
+        removeDates: diff.removeDates,
+        changes: diff.changes,
         sourceMessageId: null,
       });
       await supabase.from("coach_messages").update({ plan_proposal_id: proposalId }).eq("id", message.id);

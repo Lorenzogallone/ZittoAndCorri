@@ -2,12 +2,11 @@ import "server-only";
 
 import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getGeminiConfig } from "@/lib/ai/credentials";
+import { getAiConfig, type AiConfig } from "@/lib/ai/credentials";
 import { buildAiContext, serializeAiContext } from "@/lib/ai/context-envelope";
 import { activityDetailLine } from "@/lib/ai/context";
 import { buildEvaluationPrompt, evaluationResponseSchemaZod, evaluationSchema } from "@/lib/ai/prompt";
-import { aiErrorMessage, generateStructured } from "@/lib/ai/gemini";
-import type { GeminiModelId } from "@/lib/ai/models";
+import { aiErrorMessage, generateAi } from "@/lib/ai/llm";
 import { isoDateShift } from "@/lib/dates";
 import type { Activity, EvaluationResult, PlannedWorkout, Profile } from "@/lib/types";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
@@ -30,14 +29,14 @@ export async function enqueueActivityEvaluation(
   userId: string,
   activityId: string,
 ): Promise<string | null> {
-  const gemini = await getGeminiConfig(userId);
-  if (!gemini) return null;
+  const ai = await getAiConfig(userId);
+  if (!ai) return null;
   const admin = createAdminClient();
   const { data: current } = await admin.from("ai_jobs").select("id").eq("user_id", userId).eq("kind", "evaluation").eq("ref_id", activityId).eq("status", "pending").limit(1).maybeSingle<{ id: string }>();
   if (current) return current.id;
   const { data: job, error } = await admin.from("ai_jobs").insert({ user_id: userId, kind: "evaluation", ref_id: activityId, status: "pending" }).select("id").single<{ id: string }>();
   if (error || !job) throw error ?? new Error("Job non creato");
-  after(() => runActivityEvaluation(job.id, userId, activityId, gemini.apiKey, gemini.model));
+  after(() => runActivityEvaluation(job.id, userId, activityId, ai));
   return job.id;
 }
 
@@ -81,8 +80,7 @@ async function runActivityEvaluation(
   jobId: string,
   userId: string,
   activityId: string,
-  apiKey: string,
-  model: GeminiModelId,
+  ai: AiConfig,
 ) {
   const admin = createAdminClient();
   try {
@@ -129,7 +127,7 @@ async function runActivityEvaluation(
       const sameDay = (nearbyPlan ?? []).find((workout) => workout.date === activityDay);
       const hint = sameDay ? [sameDay.type, sameDay.description].filter(Boolean).join(": ") : null;
       try {
-        declared = (await extractDeclaredStructure(activity.notes, hint, { apiKey, model })) ?? undefined;
+        declared = (await extractDeclaredStructure(activity.notes, hint, ai)) ?? undefined;
       } catch (structureError) {
         console.error("extractDeclaredStructure:", structureError);
       }
@@ -149,19 +147,19 @@ async function runActivityEvaluation(
         ? `Dettagli già catalogati da conservare e consolidare: ${JSON.stringify(existingEvaluation.details)}.`
         : "",
     ].filter(Boolean).join("\n");
-    const rawResult = await generateStructured<unknown>(
+    const rawResult = await generateAi<unknown>(
       buildEvaluationPrompt(
         serializeAiContext(context),
         detail,
         nearbyPlan?.length ? JSON.stringify(nearbyPlan) : null,
       ),
       evaluationSchema,
-      { apiKey, model },
+      ai,
     );
     const result: EvaluationResult = evaluationResponseSchemaZod.parse(rawResult);
 
     const evaluationPayload = {
-      model,
+      model: ai.model,
       summary: result.summary,
       details: result.details,
       flags: result.flags ?? {},

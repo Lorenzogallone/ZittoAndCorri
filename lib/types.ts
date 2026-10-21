@@ -4,6 +4,7 @@
 import type { BestEfforts } from "./metrics/best-efforts.ts";
 import type { PaceCheck } from "./metrics/pace-check.ts";
 import type { DistancePoint, FitLap, IntervalAnalysis } from "./metrics/intervals.ts";
+import type { ProposalChange } from "./plan/proposal-diff.ts";
 
 export type WorkoutType =
   | "easy"
@@ -380,6 +381,9 @@ export interface PlanProposal {
   range_start: string;
   range_end: string;
   workouts: ProposedWorkout[];
+  /** Migrazione 0023: giorni da svuotare e prima/dopo per giorno. */
+  remove_dates?: string[] | null;
+  changes?: ProposalChange[] | null;
   status: "pending" | "applied" | "rejected" | "stale";
   created_at: string;
   applied_at: string | null;

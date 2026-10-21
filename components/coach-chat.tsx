@@ -13,15 +13,86 @@ import type { AiJobStatus } from "@/app/actions/ai-jobs";
 import { applyPlanProposal, rejectPlanProposal, sendCoachMessage } from "@/app/coach/actions";
 import { TYPE_LABELS } from "@/lib/activity-meta";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
-import type { CoachMessage, PlanProposal } from "@/lib/types";
+import type { CoachMessage, PlanProposal, ProposedWorkout } from "@/lib/types";
+import type { WorkoutBrief } from "@/lib/plan/proposal-diff";
 import { WorkoutSteps } from "@/components/workout-steps";
+import { AiModelLine, AiProviderToggle, useAiSwitch, type AiSwitchState } from "@/components/ai-provider-switch";
 import { workoutHeadline } from "@/lib/workout-guide";
+
+const dayLabel = (iso: string) =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", timeZone: "UTC" });
+
+function briefText(brief: WorkoutBrief): string {
+  const amount = brief.headline ?? (brief.meters ? formatDistance(brief.meters).replace(",00", "") : brief.minutes ? `${brief.minutes} min` : null);
+  return [TYPE_LABELS[brief.type], amount].filter(Boolean).join(" · ");
+}
+
+const STATUS_TEXT: Record<Exclude<PlanProposal["status"], "pending">, string> = {
+  applied: "Modifiche applicate al piano.",
+  rejected: "Proposta annullata.",
+  stale: "Proposta superata: il piano di quei giorni è cambiato o sono già passati.",
+};
+
+/** Prima/dopo giorno per giorno: si vede subito cosa cambia e cosa no. */
+function ChangeList({ proposal }: { proposal: PlanProposal }) {
+  const changes = proposal.changes ?? [];
+  if (!changes.length) return null;
+  return (
+    <ul className="divide-y divide-border/50">
+      {changes.map((change) => (
+        <li key={change.date} className="flex items-baseline gap-3 px-4 py-2.5 text-xs">
+          <span className="w-12 shrink-0 font-semibold capitalize">{dayLabel(change.date)}</span>
+          <span className="min-w-0 flex-1">
+            {change.before.length > 0 && (
+              <span className="text-muted-foreground line-through decoration-muted-foreground/60">{change.before.map(briefText).join(", ")}</span>
+            )}
+            {change.before.length > 0 && <span className="px-1.5 text-muted-foreground">→</span>}
+            <span className="font-medium">{change.after.length ? change.after.map(briefText).join(", ") : "riposo"}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function WorkoutDetails({ workout }: { workout: ProposedWorkout }) {
+  return (
+    <div className="px-4 py-3 text-xs">
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-semibold capitalize">{dayLabel(workout.date)}</span>
+        <span className="text-primary">{TYPE_LABELS[workout.type]}</span>
+      </div>
+      <p className="mt-1 text-muted-foreground">{[
+        workoutHeadline(workout.workout_steps ?? []),
+        workout.target_distance_m ? formatDistance(workout.target_distance_m) : null,
+        workout.target_duration_s ? formatDuration(workout.target_duration_s) : null,
+        workout.target_pace_s_km ? formatPace(workout.target_pace_s_km) : null,
+        workout.target_hr_bpm ? `HR ≤ ${workout.target_hr_bpm}` : null,
+      ].filter(Boolean).join(" · ")}</p>
+      {workout.description && (
+        <div className="mt-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Cosa fare e perché</p>
+          <p className="mt-0.5 leading-relaxed">{workout.description}</p>
+        </div>
+      )}
+      {workout.workout_steps?.length > 1 && (
+        <div className="mt-2"><WorkoutSteps steps={workout.workout_steps} compact /></div>
+      )}
+      {workout.focus && (
+        <div className="mt-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Su cosa concentrarti</p>
+          <p className="mt-0.5 leading-relaxed">{workout.focus}</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ProposalCard({ proposal, onStatusChange }: { proposal: PlanProposal; onStatusChange: (status: PlanProposal["status"]) => void }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (proposal.status !== "pending") {
-    return <p className="mt-3 text-xs text-muted-foreground">Proposta {proposal.status === "applied" ? "applicata" : "annullata"}.</p>;
+    return <p className="mt-3 text-xs text-muted-foreground">{STATUS_TEXT[proposal.status]}</p>;
   }
 
   async function decide(apply: boolean) {
@@ -38,47 +109,28 @@ function ProposalCard({ proposal, onStatusChange }: { proposal: PlanProposal; on
     }
   }
 
+  const hasChanges = (proposal.changes?.length ?? 0) > 0;
   return (
     <div className="mt-4 overflow-hidden rounded-2xl border border-primary/20 bg-background/60">
       <div className="border-b border-border/60 px-4 py-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-primary">Proposta piano</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-primary">Modifiche al piano</p>
         <p className="mt-1 text-sm">{proposal.summary}</p>
       </div>
-      <div className="max-h-64 divide-y divide-border/50 overflow-y-auto">
-        {proposal.workouts.map((workout, index) => (
-          <div key={`${workout.date}-${index}`} className="px-4 py-3 text-xs">
-            <div className="flex items-center justify-between gap-3">
-              <span className="font-semibold">{new Date(`${workout.date}T12:00:00`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" })}</span>
-              <span className="text-primary">{TYPE_LABELS[workout.type]}</span>
+      <ChangeList proposal={proposal} />
+      {proposal.workouts.length > 0 && (
+        hasChanges ? (
+          <details className="border-t border-border/60">
+            <summary className="cursor-pointer px-4 py-2.5 text-xs font-medium text-primary">Dettagli delle sedute nuove</summary>
+            <div className="max-h-72 divide-y divide-border/50 overflow-y-auto">
+              {proposal.workouts.map((workout, index) => <WorkoutDetails key={`${workout.date}-${index}`} workout={workout} />)}
             </div>
-            <p className="mt-1 text-muted-foreground">{[
-              workoutHeadline(workout.workout_steps ?? []),
-              workout.target_distance_m ? formatDistance(workout.target_distance_m) : null,
-              workout.target_duration_s ? formatDuration(workout.target_duration_s) : null,
-              workout.target_pace_s_km ? formatPace(workout.target_pace_s_km) : null,
-              workout.target_hr_bpm ? `HR ≤ ${workout.target_hr_bpm}` : null,
-            ].filter(Boolean).join(" · ")}</p>
-            {workout.description && (
-              <div className="mt-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Cosa fare e perché</p>
-                <p className="mt-0.5 leading-relaxed">{workout.description}</p>
-              </div>
-            )}
-            {workout.workout_steps?.length > 1 && (
-              <details className="mt-2">
-                <summary className="cursor-pointer text-[10px] font-semibold uppercase tracking-wide text-primary">Come si svolge</summary>
-                <div className="mt-2"><WorkoutSteps steps={workout.workout_steps} compact /></div>
-              </details>
-            )}
-            {workout.focus && (
-              <div className="mt-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Su cosa concentrarti</p>
-                <p className="mt-0.5 leading-relaxed">{workout.focus}</p>
-              </div>
-            )}
+          </details>
+        ) : (
+          <div className="max-h-72 divide-y divide-border/50 overflow-y-auto">
+            {proposal.workouts.map((workout, index) => <WorkoutDetails key={`${workout.date}-${index}`} workout={workout} />)}
           </div>
-        ))}
-      </div>
+        )
+      )}
       {error && <p className="px-4 pt-3 text-xs text-destructive">{error}</p>}
       <div className="grid grid-cols-2 gap-2 p-3">
         <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => decide(false)}><X size={14} /> Annulla</Button>
@@ -88,7 +140,9 @@ function ProposalCard({ proposal, onStatusChange }: { proposal: PlanProposal; on
   );
 }
 
-export function CoachChat({ messages, proposals, keyConfigured, analyzingActivities = 0 }: { messages: CoachMessage[]; proposals: PlanProposal[]; keyConfigured: boolean; analyzingActivities?: number }) {
+export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: { messages: CoachMessage[]; proposals: PlanProposal[]; ai: AiSwitchState; analyzingActivities?: number }) {
+  const aiSwitch = useAiSwitch(ai);
+  const keyConfigured = aiSwitch.state.active !== null;
   const searchParams = useSearchParams();
   const [message, setMessage] = useState(searchParams.get("prompt") ?? "");
   const [isExpanded, setIsExpanded] = useState(false);
@@ -172,7 +226,11 @@ export function CoachChat({ messages, proposals, keyConfigured, analyzingActivit
         style={isExpanded ? { paddingTop: "max(env(safe-area-inset-top, 0px), 0.625rem)" } : undefined}
       >
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/12 text-primary"><Sparkles size={16} /></span>
-        <h2 className="min-w-0 flex-1 text-[15px] font-semibold">Coach</h2>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[15px] font-semibold leading-tight">Coach</h2>
+          <AiModelLine state={aiSwitch.state} />
+        </div>
+        <AiProviderToggle state={aiSwitch.state} choose={aiSwitch.choose} pending={aiSwitch.pending} />
         <Button
           type="button"
           variant="ghost"
@@ -185,6 +243,7 @@ export function CoachChat({ messages, proposals, keyConfigured, analyzingActivit
           {isExpanded ? <Minimize2 /> : <Maximize2 />}
         </Button>
       </header>
+      {aiSwitch.error && <p className="border-b border-border/50 px-4 py-2 text-xs text-destructive">{aiSwitch.error}</p>}
       {analyzingActivities > 0 && (
         <div className="flex items-center gap-2 border-b border-border/50 bg-primary/5 px-4 py-2 text-xs text-muted-foreground">
           <LoaderCircle size={13} className="animate-spin text-primary" />
@@ -221,7 +280,7 @@ export function CoachChat({ messages, proposals, keyConfigured, analyzingActivit
         className="border-t border-border/60 bg-card p-3"
         style={isExpanded ? { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 2rem)" } : undefined}
       >
-        {!keyConfigured ? <Link href="/settings?focus=gemini#gemini-integration" className="block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">Configura la chiave Gemini per parlare con il coach</Link> : <div className="flex items-end gap-2"><Textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={2} disabled={pending} placeholder="Es. Sono in vacanza 2 giorni..." className="max-h-32 min-h-12 resize-none" /><Button type="submit" size="icon" disabled={pending || !message.trim()} aria-label="Invia"><Send size={17} /></Button></div>}
+        {!keyConfigured ? <Link href="/settings?tab=coach" className="block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">Aggiungi una chiave Gemini o OpenRouter per parlare con il coach</Link> : <div className="flex items-end gap-2"><Textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={2} disabled={pending} placeholder="Es. Sono in vacanza 2 giorni..." className="max-h-32 min-h-12 resize-none" /><Button type="submit" size="icon" disabled={pending || !message.trim()} aria-label="Invia"><Send size={17} /></Button></div>}
         {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
       </form>
     </section>

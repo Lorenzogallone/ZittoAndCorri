@@ -122,9 +122,11 @@ test("la proposta non scrive il piano prima della conferma", () => {
   const source = readFileSync(new URL("../app/coach/actions.ts", import.meta.url), "utf8");
   const sendTurn = source.slice(source.indexOf("async function runCoachTurn"), source.indexOf("export async function applyPlanProposal"));
   const applyTurn = source.slice(source.indexOf("export async function applyPlanProposal"), source.indexOf("export async function rejectPlanProposal"));
-  assert.doesNotMatch(sendTurn, /from\("planned_workouts"\)\.insert/);
-  assert.match(source, /rpc\("apply_plan_proposal"/);
-  assert.doesNotMatch(applyTurn, /revalidatePath|router\.refresh|location\.reload/);
+  assert.doesNotMatch(sendTurn, /from\("planned_workouts"\)\.(insert|delete|update)/);
+  // Solo la funzione giorno per giorno: la vecchia cancellava l'intera finestra.
+  assert.match(applyTurn, /rpc\("apply_plan_proposal_v2"/);
+  assert.doesNotMatch(applyTurn, /rpc\("apply_plan_proposal"/);
+  assert.doesNotMatch(applyTurn, /router\.refresh|location\.reload/);
 });
 
 test("l'import salva l'attività prima di accodare il feedback", () => {
@@ -237,7 +239,7 @@ test("l'errore quota interrompe il caricamento e resta leggibile", () => {
   assert.doesNotMatch(gemini, /Quota Gemini[^\n]*più/);
 });
 
-test("il modello Gemini scelto viene persistito e usato da tutti i flussi AI", () => {
+test("il modello scelto (Gemini o OpenRouter) viene persistito e usato da tutti i flussi AI", () => {
   const models = readFileSync(new URL("../lib/ai/models.ts", import.meta.url), "utf8");
   const migration = readFileSync(new URL("../supabase/migrations/0012_gemini_model_preference.sql", import.meta.url), "utf8");
   const credentials = readFileSync(new URL("../lib/ai/credentials.ts", import.meta.url), "utf8");
@@ -246,8 +248,14 @@ test("il modello Gemini scelto viene persistito e usato da tutti i flussi AI", (
   assert.match(models, /DEFAULT_GEMINI_MODEL[^\n]*"gemini-3\.5-flash-lite"/);
   assert.match(migration, /add column if not exists model text not null default 'gemini-3\.5-flash-lite'/);
   assert.match(credentials, /update\(\{ model, updated_at:/);
-  assert.match(coach, /\{ apiKey, model \}/);
-  assert.match(evaluation, /model,/);
+  assert.match(credentials, /export async function getAiConfig/);
+  // Chat e analisi passano dal provider attivo, non da Gemini direttamente.
+  for (const source of [coach, evaluation]) {
+    assert.match(source, /getAiConfig\(/);
+    assert.match(source, /generateAi<unknown>\(/);
+    assert.doesNotMatch(source, /from "@\/lib\/ai\/gemini"/);
+  }
+  assert.match(evaluation, /model: ai\.model/);
 });
 
 test("il tasto Profilo apre sempre la pagina profilo", () => {
