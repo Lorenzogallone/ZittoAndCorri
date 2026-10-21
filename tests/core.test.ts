@@ -169,7 +169,9 @@ test("il coach deduce piano vs svolto dai dati senza forzare un match", () => {
 
 test("la home mostra la chat senza i feedback automatici delle attività", () => {
   const home = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
-  assert.match(home, /\.in\("kind", \["chat", "plan_proposal"\]\)/);
+  // "status" porta i segni di "Nuova chat"; i feedback delle attività restano fuori.
+  assert.match(home, /\.in\("kind", \["chat", "plan_proposal", "status"\]\)/);
+  assert.doesNotMatch(home, /activity_feedback/);
 });
 
 test("le risposte del coach supportano Markdown senza renderizzare HTML arbitrario", () => {
