@@ -19,6 +19,7 @@ import { WORKOUT_TYPES, type CoachMessage, type ProposedWorkout } from "@/lib/ty
 import { normalizeWorkoutSteps } from "@/lib/workout-steps";
 import { insertPlanProposal } from "@/lib/plan/proposals";
 import { diffAgainstCalendar } from "@/lib/plan/proposal-calendar";
+import { NEW_SESSION } from "@/lib/coach-session";
 
 export interface CoachActionResult { jobId?: string; error?: string; userMessage?: CoachMessage }
 
@@ -299,6 +300,31 @@ export async function deleteCoachMemory(memoryId: string) {
   if (!user) redirect("/login");
   await supabase.from("coach_memories").delete().eq("id", memoryId).eq("user_id", user.id);
   revalidatePath("/settings");
+}
+
+/**
+ * "Nuova chat": un segno nella conversazione da cui il coach riparte. Prima
+ * resta leggibile in chat ma il coach non la vede più, e il riassunto della
+ * conversazione si azzera. Piano, corse e memorie non cambiano.
+ */
+export async function startNewCoachChat(): Promise<{ marker?: CoachMessage; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const { data: marker, error } = await supabase
+    .from("coach_messages")
+    .insert({ user_id: user.id, role: "system", kind: "status", content: "Nuova chat", metadata: { type: NEW_SESSION } })
+    .select("*")
+    .single<CoachMessage>();
+  if (error || !marker) return { error: "Impossibile iniziare una nuova chat. Riprova." };
+  const { error: stateError } = await supabase.from("coach_state").upsert({
+    user_id: user.id,
+    conversation_summary: null,
+    summarized_through: marker.created_at,
+    updated_at: new Date().toISOString(),
+  });
+  if (stateError) console.error("startNewCoachChat:", stateError.message);
+  return { marker };
 }
 
 export async function clearCoachHistory(includeMemories: boolean) {

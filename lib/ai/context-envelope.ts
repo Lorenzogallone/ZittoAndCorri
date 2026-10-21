@@ -21,6 +21,7 @@ import { getZeppDashboard } from "@/lib/zepp/data";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { intervalsOneLine } from "@/lib/intervals-text";
 import { planCalendar, type CalendarDay } from "@/lib/ai/plan-calendar";
+import { currentSession } from "@/lib/coach-session";
 
 export type AiContextPurpose = "chat" | "plan" | "evaluation";
 export type DataOrigin = "measured" | "user" | "derived" | "estimated";
@@ -438,7 +439,7 @@ export async function buildAiContext(
     contextActivities(supabase, userId, since90),
     supabase.from("planned_workouts").select("*").eq("user_id", userId).gte("date", since14).lte("date", calendarTo).order("date").returns<PlannedWorkout[]>(),
     supabase.from("coach_memories").select("id, category, content, valid_from, valid_until, source, source_message_id, confidence").eq("user_id", userId).eq("is_active", true).or(`valid_until.is.null,valid_until.gte.${today}`).order("created_at").returns<Array<Pick<CoachMemory, "id" | "category" | "content" | "valid_from" | "valid_until" | "source" | "source_message_id" | "confidence">>>(),
-    supabase.from("coach_messages").select("id, role, kind, content, created_at, plan_proposal_id").eq("user_id", userId).neq("kind", "activity_feedback").order("created_at", { ascending: false }).limit(80).returns<Array<Pick<CoachMessage, "id" | "role" | "kind" | "content" | "created_at" | "plan_proposal_id">>>(),
+    supabase.from("coach_messages").select("id, role, kind, content, created_at, plan_proposal_id, metadata").eq("user_id", userId).neq("kind", "activity_feedback").order("created_at", { ascending: false }).limit(80).returns<Array<Pick<CoachMessage, "id" | "role" | "kind" | "content" | "created_at" | "plan_proposal_id" | "metadata">>>(),
     supabase.from("coach_state").select("conversation_summary").eq("user_id", userId).maybeSingle<{ conversation_summary: string | null }>(),
     supabase.from("evaluations").select("summary, details, created_at, activity_id").eq("user_id", userId).order("created_at", { ascending: false }).limit(5).returns<Array<{ summary: string | null; details: string[] | null; created_at: string; activity_id: string }>>(),
     supabase.from("plan_proposals").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(10).returns<PlanProposal[]>(),
@@ -465,7 +466,12 @@ export async function buildAiContext(
       .filter((a) => romeDate(new Date(a.started_at)) >= calendarFrom)
       .map((a) => ({ day: romeDate(new Date(a.started_at)), sport: a.sport, distance_m: a.distance_m, seconds: activeSeconds(a) })),
   });
-  const conversation = selectConversation(messages ?? [], proposalRows ?? []);
+  // Dopo "Nuova chat" il coach vede solo la conversazione corrente e le sue proposte.
+  const session = currentSession(messages ?? []);
+  const conversation = selectConversation(
+    session.messages,
+    (proposalRows ?? []).filter((p) => !session.startedAt || p.created_at > session.startedAt),
+  );
   const profileConfig = await getEffectiveHrConfig(supabase, userId, profile ?? null);
   const best = bestReference(acts);
   const focusActivity = options?.activityId

@@ -28,7 +28,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
     supabase.from("planned_workouts").select("*").eq("user_id", user.id).eq("status", "planned").gte("date", today).order("date").order("created_at").limit(1).maybeSingle<PlannedWorkout>(),
     supabase.from("planned_workouts").select("*").eq("user_id", user.id).gte("date", monday).lte("date", sunday).returns<PlannedWorkout[]>(),
     supabase.from("activities").select("started_at, sport, distance_m").eq("user_id", user.id).gte("started_at", `${addDays(monday, -1)}T12:00:00`).lte("started_at", `${addDays(sunday, 1)}T12:00:00`).returns<Array<Pick<Activity, "started_at" | "sport" | "distance_m">>>(),
-    supabase.from("coach_messages").select("*").eq("user_id", user.id).in("kind", ["chat", "plan_proposal"]).order("created_at", { ascending: false }).limit(60).returns<CoachMessage[]>(),
+    supabase.from("coach_messages").select("*").eq("user_id", user.id).in("kind", ["chat", "plan_proposal", "status"]).order("created_at", { ascending: false }).limit(60).returns<CoachMessage[]>(),
     supabase.from("plan_proposals").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10).returns<PlanProposal[]>(),
     getAiStatus(supabase, user.id),
     supabase.from("ai_jobs").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("kind", "evaluation").eq("status", "pending"),

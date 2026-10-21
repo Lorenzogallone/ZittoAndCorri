@@ -1,16 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
-import { Check, LoaderCircle, Maximize2, Minimize2, Send, Sparkles, X } from "lucide-react";
+import { Check, LoaderCircle, Maximize2, Minimize2, Send, Sparkles, SquarePen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { cn } from "@/lib/utils";
 import { useAiJob } from "@/lib/use-ai-job";
 import type { AiJobStatus } from "@/app/actions/ai-jobs";
-import { applyPlanProposal, rejectPlanProposal, sendCoachMessage } from "@/app/coach/actions";
+import { applyPlanProposal, rejectPlanProposal, sendCoachMessage, startNewCoachChat } from "@/app/coach/actions";
+import { isSessionMarker, splitSessions } from "@/lib/coach-session";
 import { TYPE_LABELS } from "@/lib/activity-meta";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
 import type { CoachMessage, PlanProposal, ProposedWorkout } from "@/lib/types";
@@ -161,6 +163,42 @@ function ProposalCard({ proposal, onStatusChange }: { proposal: PlanProposal; on
   );
 }
 
+// Area visibile della finestra: su iPhone la tastiera la riduce senza cambiare
+// il layout, quindi la chat a tutto schermo ne segue altezza e scostamento.
+function subscribeViewport(onChange: () => void) {
+  const vv = window.visualViewport;
+  vv?.addEventListener("resize", onChange);
+  vv?.addEventListener("scroll", onChange);
+  window.addEventListener("resize", onChange);
+  return () => {
+    vv?.removeEventListener("resize", onChange);
+    vv?.removeEventListener("scroll", onChange);
+    window.removeEventListener("resize", onChange);
+  };
+}
+const viewportSnapshot = () => {
+  const vv = window.visualViewport;
+  return vv ? `${Math.round(vv.height)}:${Math.round(vv.offsetTop)}:${window.innerHeight}` : "";
+};
+
+function useVisibleViewport() {
+  const snapshot = useSyncExternalStore(subscribeViewport, viewportSnapshot, () => "");
+  if (!snapshot) return null;
+  const [height, top, layout] = snapshot.split(":").map(Number);
+  // La tastiera occupa almeno un quarto dello schermo; sotto è solo la barra di Safari.
+  return { height, top, keyboard: layout - height > layout / 4 };
+}
+
+function SessionDivider({ item }: { item: CoachMessage }) {
+  return (
+    <div className="flex items-center gap-3 py-1 text-[11px] font-medium text-muted-foreground" role="separator">
+      <span className="h-px flex-1 bg-border" />
+      Nuova chat · {messageTime(item.created_at)}
+      <span className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
 export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: { messages: CoachMessage[]; proposals: PlanProposal[]; ai: AiSwitchState; analyzingActivities?: number }) {
   const aiSwitch = useAiSwitch(ai);
   const keyConfigured = aiSwitch.state.active !== null;
@@ -169,7 +207,11 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
   const [isExpanded, setIsExpanded] = useState(false);
   const [displayMessages, setDisplayMessages] = useState(messages);
   const [displayProposals, setDisplayProposals] = useState(proposals);
-  const endRef = useRef<HTMLDivElement>(null);
+  const [showEarlier, setShowEarlier] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const viewport = useVisibleViewport();
   const showCoachResult = useCallback((status: AiJobStatus) => {
     if (!status.coachResult) throw new Error("Risultato chat mancante");
     const { message: coachMessage, proposal } = status.coachResult;
@@ -190,8 +232,20 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
     const usage = readUsage(item.metadata?.ai_usage);
     return typeof replyTo === "string" && usage ? [[replyTo, usage] as const] : [];
   }));
+  // Dopo "Nuova chat" si vede solo la conversazione corrente; le precedenti a richiesta.
+  const session = splitSessions(displayMessages);
+  const shown = showEarlier
+    ? displayMessages.filter((item) => item.kind !== "status" || isSessionMarker(item))
+    : session.current;
+  const freshSession = displayMessages.some(isSessionMarker) && session.current.length === 0;
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, [displayMessages.length, pending]);
+  // Scorre solo l'elenco dei messaggi (scrollIntoView spostava anche la pagina),
+  // anche quando si apre la tastiera: l'ultimo messaggio resta sopra il campo.
+  const visibleHeight = isExpanded ? viewport?.height : undefined;
+  useEffect(() => {
+    const list = listRef.current;
+    if (list) list.scrollTo({ top: list.scrollHeight, behavior: isExpanded ? "auto" : "smooth" });
+  }, [displayMessages.length, pending, isExpanded, visibleHeight, showEarlier]);
 
   useEffect(() => {
     if (!isExpanded) return;
@@ -206,6 +260,23 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
       window.removeEventListener("keydown", collapseOnEscape);
     };
   }, [isExpanded]);
+
+  async function newChat() {
+    if (pending || resetting) return;
+    setResetting(true);
+    setResetError(null);
+    try {
+      const result = await startNewCoachChat();
+      if (result.marker) {
+        setDisplayMessages((current) => [...current, result.marker!]);
+        setShowEarlier(false);
+      } else setResetError(result.error ?? "Impossibile iniziare una nuova chat.");
+    } catch {
+      setResetError("Connessione interrotta. Riprova.");
+    } finally {
+      setResetting(false);
+    }
+  }
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -243,21 +314,40 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
     });
   }
 
-  return (
-    <section className={cn(
-      "flex min-h-0 flex-1 basis-0 flex-col overflow-hidden bg-card",
-      isExpanded ? "fixed inset-0 z-[70] rounded-none" : "rounded-[1.5rem] shadow-[var(--surface-shadow)] ring-1 ring-border/60",
-    )}>
+  const chat = (
+    <section
+      className={cn(
+        "flex min-h-0 flex-col overflow-hidden",
+        isExpanded
+          ? "fixed inset-x-0 top-0 z-[80] h-[100dvh] bg-background"
+          : "flex-1 basis-0 rounded-[1.5rem] bg-card shadow-[var(--surface-shadow)] ring-1 ring-border/60",
+      )}
+      style={isExpanded && viewport ? { top: viewport.top, height: viewport.height } : undefined}
+      role={isExpanded ? "dialog" : undefined}
+      aria-modal={isExpanded || undefined}
+      aria-label={isExpanded ? "Chat con il coach" : undefined}
+    >
       <header
-        className="flex items-center gap-3 border-b border-border/60 px-4 py-2"
+        className="flex items-center gap-2 border-b border-border/60 py-2 pl-4 pr-2"
         style={isExpanded ? { paddingTop: "max(env(safe-area-inset-top, 0px), 0.625rem)" } : undefined}
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/12 text-primary"><Sparkles size={16} /></span>
-        <div className="min-w-0 flex-1">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary"><Sparkles size={16} /></span>
+        <div className="ml-1 min-w-0 flex-1">
           <h2 className="text-[15px] font-semibold leading-tight">Coach</h2>
           <AiModelLine state={aiSwitch.state} />
         </div>
         <AiProviderToggle state={aiSwitch.state} choose={aiSwitch.choose} pending={aiSwitch.pending} />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={newChat}
+          disabled={pending || resetting || freshSession || displayMessages.length === 0}
+          aria-label="Nuova chat"
+          title="Nuova chat: il coach riparte senza la conversazione precedente"
+        >
+          {resetting ? <LoaderCircle className="animate-spin" /> : <SquarePen />}
+        </Button>
         <Button
           type="button"
           variant="ghost"
@@ -270,16 +360,29 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
           {isExpanded ? <Minimize2 /> : <Maximize2 />}
         </Button>
       </header>
-      {aiSwitch.error && <p className="border-b border-border/50 px-4 py-2 text-xs text-destructive">{aiSwitch.error}</p>}
+      {(aiSwitch.error || resetError) && <p className="border-b border-border/50 px-4 py-2 text-xs text-destructive">{aiSwitch.error ?? resetError}</p>}
       {analyzingActivities > 0 && (
         <div className="flex items-center gap-2 border-b border-border/50 bg-primary/5 px-4 py-2 text-xs text-muted-foreground">
           <LoaderCircle size={13} className="animate-spin text-primary" />
           {analyzingActivities === 1 ? "Sto analizzando una nuova attività…" : `Sto analizzando ${analyzingActivities} attività…`}
         </div>
       )}
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5">
-        {displayMessages.length === 0 && <div className="mx-auto max-w-sm py-8 text-center"><p className="text-lg font-semibold">Parlami della tua settimana</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">Posso adattare il piano a vacanze, caldo, escursioni, fatica o battiti troppo alti.</p></div>}
-        {displayMessages.map((item) => {
+      <div ref={listRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-5">
+        {!showEarlier && session.earlier > 0 && (
+          <button type="button" onClick={() => setShowEarlier(true)} className="mx-auto block rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground">
+            Mostra la chat precedente
+          </button>
+        )}
+        {shown.length === 0 && (freshSession ? (
+          <div className="mx-auto max-w-sm py-8 text-center">
+            <p className="text-lg font-semibold">Nuova chat</p>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Il coach riparte da zero con la conversazione, ma conosce sempre piano, corse e quello che ha memorizzato di te.</p>
+          </div>
+        ) : (
+          <div className="mx-auto max-w-sm py-8 text-center"><p className="text-lg font-semibold">Parlami della tua settimana</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">Posso adattare il piano a vacanze, caldo, escursioni, fatica o battiti troppo alti.</p></div>
+        ))}
+        {shown.map((item) => {
+          if (isSessionMarker(item)) return <SessionDivider key={item.id} item={item} />;
           const proposal = item.plan_proposal_id ? proposalsById.get(item.plan_proposal_id) : null;
           return (
             <div key={item.id} className={item.role === "user" ? "ml-10" : "mr-3"}>
@@ -300,16 +403,25 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
           );
         })}
         {pending && <div className="mr-16 flex items-center gap-2 rounded-2xl rounded-bl-md bg-muted/55 px-4 py-3 text-sm text-muted-foreground"><LoaderCircle size={15} className="animate-spin" /> Sto ragionando sul tuo contesto…</div>}
-        <div ref={endRef} />
       </div>
       <form
         onSubmit={submit}
-        className="border-t border-border/60 bg-card p-3"
-        style={isExpanded ? { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 2rem)" } : undefined}
+        className={cn("border-t border-border/60 p-3", isExpanded ? "bg-background" : "bg-card")}
+        // A tutto schermo: sopra l'indicatore home, o attaccato alla tastiera quando è aperta.
+        style={isExpanded ? { paddingBottom: viewport?.keyboard ? "0.5rem" : "max(env(safe-area-inset-bottom, 0px), 0.75rem)" } : undefined}
       >
         {!keyConfigured ? <Link href="/settings?tab=coach" className="block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">Aggiungi una chiave Gemini o OpenRouter per parlare con il coach</Link> : <div className="flex items-end gap-2"><Textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={2} disabled={pending} placeholder="Es. Sono in vacanza 2 giorni..." className="max-h-32 min-h-12 resize-none" /><Button type="submit" size="icon" disabled={pending || !message.trim()} aria-label="Invia"><Send size={17} /></Button></div>}
         {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
       </form>
     </section>
   );
+
+  // A tutto schermo la chat va direttamente nel body: fuori dal contenitore che
+  // scorre (che su iOS la ritagliava e la lasciava sotto la barra in basso).
+  return isExpanded ? (
+    <>
+      <div className="min-h-0 flex-1 basis-0 rounded-[1.5rem] bg-card ring-1 ring-border/60" aria-hidden="true" />
+      {createPortal(chat, document.body)}
+    </>
+  ) : chat;
 }
