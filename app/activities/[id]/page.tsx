@@ -7,6 +7,7 @@ import { computeSplits } from "@/lib/metrics/splits";
 import { personalRecords } from "@/lib/metrics/best-efforts";
 import { cadencePoints, computeIntervals, intervalsUpToDate, paceCheckFor, persistDerived, persistIntervals } from "@/lib/derived";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
+import { getAiStatus } from "@/lib/ai/ai-status";
 import type { Activity, ActivityStream, Evaluation, Profile, TimeInZone } from "@/lib/types";
 import { ActivityView } from "./activity-view";
 
@@ -35,7 +36,7 @@ export default async function ActivityDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: activity }, { data: streams }, { data: profile }, { data: evaluation }, { data: evaluationJob }, { data: credential }] =
+  const [{ data: activity }, { data: streams }, { data: profile }, { data: evaluation }, { data: evaluationJob }, aiStatus] =
     await Promise.all([
       supabase
         .from("activities")
@@ -70,11 +71,7 @@ export default async function ActivityDetailPage({
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle<{ status: "pending" | "done" | "error"; error: string | null }>(),
-      supabase
-        .from("user_ai_credentials")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle<{ user_id: string }>(),
+      getAiStatus(supabase, user.id),
     ]);
 
   if (!activity) notFound();
@@ -152,7 +149,7 @@ export default async function ActivityDetailPage({
       intervals={intervals}
       evaluation={evaluation ?? null}
       evaluationJob={evaluationJob ?? null}
-      keyConfigured={Boolean(credential)}
+      keyConfigured={aiStatus.active !== null}
     />
   );
 }

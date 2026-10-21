@@ -11,6 +11,10 @@ import { HeatSetting } from "./heat-setting";
 import { ThemeSettings } from "./theme-settings";
 import { NotificationsSection } from "./notifications-section";
 import { GeminiKeySection } from "./gemini-key-section";
+import { OpenRouterSection } from "./openrouter-section";
+import { ProviderSetting } from "./provider-setting";
+import type { AiSwitchState } from "@/components/ai-provider-switch";
+import type { OpenRouterModel } from "@/lib/ai/openrouter";
 import { CoachMemorySection } from "./coach-memory-section";
 import { ZeppIntegrationSection } from "./zepp-integration-section";
 import { ApiKeySection } from "./api-key-section";
@@ -28,6 +32,11 @@ export interface SettingsViewProps {
   focusGemini: boolean;
   memories: CoachMemory[];
   zeppConnection: ZeppConnectionView | null;
+  ai: AiSwitchState;
+  /** undefined = database senza migrazione 0023. */
+  openrouter: { lastFour: string | null; model: string | null } | null | undefined;
+  openRouterModels: OpenRouterModel[];
+  suggestedModels: OpenRouterModel[];
 }
 
 export function SettingsView(props: SettingsViewProps) {
@@ -67,8 +76,14 @@ export function SettingsView(props: SettingsViewProps) {
       label: "Coach",
       content: (
         <>
-          <SettingsGroup title="Chiave Gemini">
+          <SettingsGroup title="Chi risponde">
+            <ProviderSetting initial={props.ai} />
+          </SettingsGroup>
+          <SettingsGroup title="Gemini">
             <GeminiKeySection credential={props.credential} focusRequested={props.focusGemini} />
+          </SettingsGroup>
+          <SettingsGroup title="OpenRouter">
+            <OpenRouterSection initial={props.openrouter} models={props.openRouterModels} suggested={props.suggestedModels} />
           </SettingsGroup>
           <SettingsGroup title="Cosa ricorda il coach">
             <CoachMemorySection memories={props.memories} />

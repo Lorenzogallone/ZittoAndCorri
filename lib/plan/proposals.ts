@@ -3,8 +3,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Salva una proposta di piano con la fotografia delle sedute che andrà a
- * sostituire: se nel frattempo il piano cambia, apply_plan_proposal la marca
+ * Salva una proposta con la fotografia delle sedute dei giorni che tocca: se nel
+ * frattempo il piano di quei giorni cambia, apply_plan_proposal_v2 la marca
  * come superata invece di sovrascrivere modifiche più recenti.
  */
 export async function insertPlanProposal(
@@ -12,9 +12,11 @@ export async function insertPlanProposal(
   input: {
     userId: string;
     summary: string;
-    rangeStart: string;
-    rangeEnd: string;
+    /** Giorni modificati dalla proposta (nuove sedute + giorni da svuotare). */
+    touched: string[];
     workouts: unknown[];
+    removeDates: string[];
+    changes: unknown;
     sourceMessageId: string | null;
   },
 ): Promise<string> {
@@ -23,8 +25,7 @@ export async function insertPlanProposal(
     .select("id, updated_at")
     .eq("user_id", input.userId)
     .in("status", ["planned", "skipped"])
-    .gte("date", input.rangeStart)
-    .lte("date", input.rangeEnd)
+    .in("date", input.touched)
     .order("id")
     .returns<Array<{ id: string; updated_at: string }>>();
   const rows = base ?? [];
@@ -32,20 +33,26 @@ export async function insertPlanProposal(
     (value, row) => !value || row.updated_at > value ? row.updated_at : value,
     null,
   );
-  const { data: proposal, error } = await supabase
+  const row = {
+    user_id: input.userId,
+    source_message_id: input.sourceMessageId,
+    summary: input.summary,
+    range_start: input.touched[0],
+    range_end: input.touched[input.touched.length - 1],
+    workouts: input.workouts,
+    base_workout_ids: rows.map((r) => r.id).sort(),
+    base_latest_updated_at: latest,
+  };
+  let result = await supabase
     .from("plan_proposals")
-    .insert({
-      user_id: input.userId,
-      source_message_id: input.sourceMessageId,
-      summary: input.summary,
-      range_start: input.rangeStart,
-      range_end: input.rangeEnd,
-      workouts: input.workouts,
-      base_workout_ids: rows.map((row) => row.id).sort(),
-      base_latest_updated_at: latest,
-    })
+    .insert({ ...row, remove_dates: input.removeDates, changes: input.changes })
     .select("id")
     .single<{ id: string }>();
-  if (error || !proposal) throw error ?? new Error("Proposta non salvata");
-  return proposal.id;
+  // Database senza migrazione 0023: la proposta si salva comunque (applicarla
+  // chiederà l'aggiornamento), così la chat continua a funzionare.
+  if (result.error?.code === "42703" || result.error?.code === "PGRST204") {
+    result = await supabase.from("plan_proposals").insert(row).select("id").single<{ id: string }>();
+  }
+  if (result.error || !result.data) throw result.error ?? new Error("Proposta non salvata");
+  return result.data.id;
 }

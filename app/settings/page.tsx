@@ -4,6 +4,8 @@ import { sanitizePrefs } from "@/lib/theme";
 import type { Profile, AiCredentialMetadata, CoachMemory } from "@/lib/types";
 import type { ZeppConnectionView } from "@/lib/zepp/types";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
+import { getAiStatus } from "@/lib/ai/ai-status";
+import { listOpenRouterModels, suggestedOpenRouterModels } from "@/lib/ai/openrouter";
 import { SettingsView } from "./settings-view";
 
 export default async function SettingsPage({
@@ -18,7 +20,7 @@ export default async function SettingsPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [profileRes, themeRes, credentialRes, memoriesRes] = await Promise.all([
+  const [profileRes, themeRes, credentialRes, memoriesRes, aiStatus, openRouterModels] = await Promise.all([
     supabase
       .from("profiles")
       .select("max_hr, resting_hr, birthdate, api_key")
@@ -41,6 +43,8 @@ export default async function SettingsPage({
       .eq("is_active", true)
       .order("created_at", { ascending: false })
       .returns<CoachMemory[]>(),
+    getAiStatus(supabase, user.id),
+    listOpenRouterModels(),
   ]);
 
   const profile = profileRes.data;
@@ -80,6 +84,10 @@ export default async function SettingsPage({
       focusGemini={focus === "gemini"}
       memories={memoriesRes.data ?? []}
       zeppConnection={zeppConnectionRes.data ?? null}
+      ai={{ active: aiStatus.active, gemini: aiStatus.gemini, openrouter: aiStatus.openrouter }}
+      openrouter={aiStatus.openrouter ? (aiStatus.openrouter.lastFour ? { lastFour: aiStatus.openrouter.lastFour, model: aiStatus.openrouter.model } : null) : undefined}
+      openRouterModels={openRouterModels}
+      suggestedModels={suggestedOpenRouterModels(openRouterModels)}
     />
   );
 }

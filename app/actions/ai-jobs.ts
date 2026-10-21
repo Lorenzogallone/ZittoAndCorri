@@ -55,7 +55,7 @@ export async function pollAiJob(jobId: string): Promise<AiJobStatus> {
       const { data: proposal } = message.plan_proposal_id
         ? await supabase
             .from("plan_proposals")
-            .select("id, user_id, source_message_id, summary, range_start, range_end, workouts, status, created_at, applied_at")
+            .select("*")
             .eq("id", message.plan_proposal_id)
             .eq("user_id", user.id)
             .maybeSingle<PlanProposal>()

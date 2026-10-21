@@ -86,8 +86,8 @@ export function ActivityEvaluation({
       )}
 
       {!keyConfigured && !isAnalyzing && (
-        <Link href="/settings?focus=gemini#gemini-integration" className="mt-3 block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">
-          Configura la chiave Gemini per ricevere il commento
+        <Link href="/settings?tab=coach" className="mt-3 block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">
+          Aggiungi una chiave Gemini o OpenRouter per ricevere il commento
         </Link>
       )}
 

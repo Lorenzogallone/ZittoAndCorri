@@ -14,11 +14,13 @@ import type {
   Profile,
   RacePredict,
   ATLCTLResult,
+  PlanProposal,
 } from "@/lib/types";
 import { missingAiContextSections } from "@/lib/ai/context-contract";
 import { getZeppDashboard } from "@/lib/zepp/data";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { intervalsOneLine } from "@/lib/intervals-text";
+import { planCalendar, type CalendarDay } from "@/lib/ai/plan-calendar";
 
 export type AiContextPurpose = "chat" | "plan" | "evaluation";
 export type DataOrigin = "measured" | "user" | "derived" | "estimated";
@@ -207,17 +209,70 @@ export interface AiContextEnvelope {
   };
   pace_hr_calibration: Array<PaceCalibrationEntry & { origin: "derived" }> | null;
   current_plan: {
-    recent_14d: PlannedWorkout[];
+    /** Da 7 giorni fa a 27 giorni avanti, giorno per giorno, con i giorni bloccati. */
+    calendar: CalendarDay[];
+    /** Dettaglio completo delle sedute dei prossimi 14 giorni. */
     upcoming_14d: PlannedWorkout[];
+    recent_14d: Array<Pick<PlannedWorkout, "date" | "type" | "status">>;
   };
   memories: Array<Pick<CoachMemory, "id" | "category" | "content" | "valid_from" | "valid_until" | "source" | "source_message_id" | "confidence">>;
   conversation: {
     summary: string | null;
+    /** Chat recente (senza i commenti automatici alle corse), la più vecchia prima. */
     recent_messages: Array<Pick<CoachMessage, "id" | "role" | "kind" | "content" | "created_at">>;
+    /** Ultime proposte di modifica del piano e cosa ne ha fatto l'atleta. */
+    proposals: Array<{ created_at: string; summary: string; status: string; days: string[] }>;
   };
   evaluations: Array<{ summary: string; details: string[]; created_at: string; activity_id: string; origin: "derived" }>;
   focus_activity: ContextActivityForAi | null;
   missing_data: string[];
+}
+
+const PROPOSAL_STATUS: Record<string, string> = {
+  pending: "in attesa di conferma",
+  applied: "applicata dall'atleta",
+  rejected: "rifiutata dall'atleta",
+  stale: "superata",
+};
+
+/** Giorni toccati da una proposta (nuove sedute + giorni svuotati). */
+function proposalDays(proposal: PlanProposal): string[] {
+  const days = new Set<string>([
+    ...proposal.workouts.map((w) => w.date),
+    ...(proposal.remove_dates ?? []),
+  ]);
+  return [...days].sort();
+}
+
+/**
+ * Chat da dare al coach: fino a 40 messaggi entro un budget di testo, i più
+ * recenti; ogni proposta di piano porta con sé il suo esito.
+ */
+function selectConversation(
+  messages: Array<Pick<CoachMessage, "id" | "role" | "kind" | "content" | "created_at" | "plan_proposal_id">>,
+  proposals: PlanProposal[],
+): Pick<AiContextEnvelope["conversation"], "recent_messages" | "proposals"> {
+  const byId = new Map(proposals.map((p) => [p.id, p]));
+  const picked: AiContextEnvelope["conversation"]["recent_messages"] = [];
+  let budget = 20_000;
+  for (const message of messages) {
+    let content = message.content.length > 1_800 ? `${message.content.slice(0, 1_800)}…` : message.content;
+    const proposal = message.plan_proposal_id ? byId.get(message.plan_proposal_id) : null;
+    if (proposal) content += `\n[Proposta di piano ${PROPOSAL_STATUS[proposal.status] ?? proposal.status}: ${proposal.summary} (giorni ${proposalDays(proposal).join(", ")})]`;
+    if (picked.length >= 8 && budget - content.length < 0) break;
+    budget -= content.length;
+    picked.push({ id: message.id, role: message.role, kind: message.kind, content, created_at: message.created_at });
+    if (picked.length >= 40) break;
+  }
+  return {
+    recent_messages: picked.reverse(),
+    proposals: proposals.slice(0, 8).map((p) => ({
+      created_at: p.created_at,
+      summary: p.summary,
+      status: PROPOSAL_STATUS[p.status] ?? p.status,
+      days: proposalDays(p),
+    })),
+  };
 }
 
 function romeDate(date = new Date()): string {
@@ -362,42 +417,55 @@ export async function buildAiContext(
   const since21 = shiftDate(today, -20);
   const since14 = shiftDate(today, -13);
   const until14 = shiftDate(today, 13);
+  const calendarFrom = shiftDate(today, -7);
+  const calendarTo = shiftDate(today, 27);
 
   const [
     { data: authUserData, error: authUserError },
     { data: profile, error: profileError },
     { data: goal, error: goalError },
     { data: activities, error: activitiesError },
-    { data: recentPlan, error: recentPlanError },
-    { data: upcomingPlan, error: upcomingPlanError },
+    { data: planRows, error: planError },
     { data: memories, error: memoriesError },
     { data: messages, error: messagesError },
     { data: state, error: stateError },
     { data: evaluations, error: evaluationsError },
+    { data: proposalRows, error: proposalsError },
   ] = await Promise.all([
     supabase.auth.admin.getUserById(userId),
     supabase.from("profiles").select("birthdate, max_hr, resting_hr").eq("id", userId).maybeSingle<Pick<Profile, "birthdate" | "max_hr" | "resting_hr">>(),
     supabase.from("goals").select("id, race_name, race_date, distance_m, target_time_s").eq("user_id", userId).eq("is_active", true).maybeSingle<Pick<Goal, "id" | "race_name" | "race_date" | "distance_m" | "target_time_s">>(),
     contextActivities(supabase, userId, since90),
-    supabase.from("planned_workouts").select("*").eq("user_id", userId).gte("date", since14).lt("date", today).order("date").returns<PlannedWorkout[]>(),
-    supabase.from("planned_workouts").select("*").eq("user_id", userId).gte("date", today).lte("date", until14).order("date").returns<PlannedWorkout[]>(),
+    supabase.from("planned_workouts").select("*").eq("user_id", userId).gte("date", since14).lte("date", calendarTo).order("date").returns<PlannedWorkout[]>(),
     supabase.from("coach_memories").select("id, category, content, valid_from, valid_until, source, source_message_id, confidence").eq("user_id", userId).eq("is_active", true).or(`valid_until.is.null,valid_until.gte.${today}`).order("created_at").returns<Array<Pick<CoachMemory, "id" | "category" | "content" | "valid_from" | "valid_until" | "source" | "source_message_id" | "confidence">>>(),
-    supabase.from("coach_messages").select("id, role, kind, content, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(24).returns<Array<Pick<CoachMessage, "id" | "role" | "kind" | "content" | "created_at">>>(),
+    supabase.from("coach_messages").select("id, role, kind, content, created_at, plan_proposal_id").eq("user_id", userId).neq("kind", "activity_feedback").order("created_at", { ascending: false }).limit(80).returns<Array<Pick<CoachMessage, "id" | "role" | "kind" | "content" | "created_at" | "plan_proposal_id">>>(),
     supabase.from("coach_state").select("conversation_summary").eq("user_id", userId).maybeSingle<{ conversation_summary: string | null }>(),
     supabase.from("evaluations").select("summary, details, created_at, activity_id").eq("user_id", userId).order("created_at", { ascending: false }).limit(5).returns<Array<{ summary: string | null; details: string[] | null; created_at: string; activity_id: string }>>(),
+    supabase.from("plan_proposals").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(10).returns<PlanProposal[]>(),
   ]);
 
   const queryErrors = [
-    authUserError, profileError, goalError, activitiesError, recentPlanError, upcomingPlanError,
-    memoriesError, messagesError, stateError, evaluationsError,
+    authUserError, profileError, goalError, activitiesError, planError,
+    memoriesError, messagesError, stateError, evaluationsError, proposalsError,
   ].filter((error): error is NonNullable<typeof error> => error != null);
   if (queryErrors.length) {
     throw new Error(`Contesto AI non disponibile: ${queryErrors.map((error) => error.message).join("; ")}`);
   }
 
   const acts = activities ?? [];
-  const recent = recentPlan ?? [];
-  const upcoming = upcomingPlan ?? [];
+  const plan = planRows ?? [];
+  const recent = plan.filter((w) => w.date < today).map((w) => ({ date: w.date, type: w.type, status: w.status }));
+  const upcoming = plan.filter((w) => w.date >= today && w.date <= until14);
+  const calendar = planCalendar({
+    today,
+    from: calendarFrom,
+    to: calendarTo,
+    workouts: plan.filter((w) => w.date >= calendarFrom),
+    activities: acts
+      .filter((a) => romeDate(new Date(a.started_at)) >= calendarFrom)
+      .map((a) => ({ day: romeDate(new Date(a.started_at)), sport: a.sport, distance_m: a.distance_m, seconds: activeSeconds(a) })),
+  });
+  const conversation = selectConversation(messages ?? [], proposalRows ?? []);
   const profileConfig = await getEffectiveHrConfig(supabase, userId, profile ?? null);
   const best = bestReference(acts);
   const focusActivity = options?.activityId
@@ -580,9 +648,9 @@ export async function buildAiContext(
       weekly_12w: weeklyHistory(acts),
     },
     pace_hr_calibration: calibration,
-    current_plan: { recent_14d: recent, upcoming_14d: upcoming },
+    current_plan: { calendar, upcoming_14d: upcoming, recent_14d: recent },
     memories: memories ?? [],
-    conversation: { summary: state?.conversation_summary ?? null, recent_messages: [...(messages ?? [])].reverse() },
+    conversation: { summary: state?.conversation_summary ?? null, ...conversation },
     evaluations: (evaluations ?? []).flatMap((e) => e.summary ? [{ summary: e.summary, details: e.details ?? [], created_at: e.created_at, activity_id: e.activity_id, origin: "derived" as const }] : []),
     focus_activity: focusActivity ? activityForAi(focusActivity) : null,
     missing_data: missing,

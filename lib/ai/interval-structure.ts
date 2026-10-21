@@ -6,8 +6,8 @@ import "server-only";
 
 import { Type, type Schema } from "@google/genai";
 import { z } from "zod";
-import { generateStructured } from "@/lib/ai/gemini";
-import type { GeminiModelId } from "@/lib/ai/models";
+import { generateAi } from "@/lib/ai/llm";
+import type { AiConfig } from "@/lib/ai/credentials";
 import { describeStructure, isStructured } from "@/lib/metrics/intervals";
 import type { DeclaredIntervals } from "@/lib/derived";
 import type { WorkoutStepInput } from "@/lib/types";
@@ -101,9 +101,9 @@ function buildPrompt(notes: string, plannedHint: string | null): string {
 export async function extractDeclaredStructure(
   notes: string,
   plannedHint: string | null,
-  gemini: { apiKey: string; model: GeminiModelId },
+  ai: AiConfig,
 ): Promise<DeclaredIntervals | null> {
-  const raw = await generateStructured<unknown>(buildPrompt(notes, plannedHint), structureSchema, gemini);
+  const raw = await generateAi<unknown>(buildPrompt(notes, plannedHint), structureSchema, ai);
   const parsed = responseZod.safeParse(raw);
   if (!parsed.success || !parsed.data.found) return null;
   const steps: WorkoutStepInput[] = [];

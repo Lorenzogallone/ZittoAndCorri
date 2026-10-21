@@ -3,9 +3,9 @@ import "server-only";
 import { Type, type Schema } from "@google/genai";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { getGeminiConfig } from "@/lib/ai/credentials";
+import { getAiConfig } from "@/lib/ai/credentials";
 import { buildAiContext, serializeAiContext } from "@/lib/ai/context-envelope";
-import { generateStructured } from "@/lib/ai/gemini";
+import { generateAi } from "@/lib/ai/llm";
 import { sendPushToUser } from "@/lib/push/send";
 import {
   computeWeeklyStats,
@@ -66,11 +66,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 async function aiRecap(admin: SupabaseClient, userId: string, stats: WeeklyStats): Promise<string | null> {
   try {
-    const gemini = await getGeminiConfig(userId);
-    if (!gemini) return null;
+    const ai = await getAiConfig(userId);
+    if (!ai) return null;
     const context = serializeAiContext(await buildAiContext(admin, userId, "chat"));
     const raw = await withTimeout(
-      generateStructured<unknown>(buildRecapPrompt(context, stats), recapSchema, gemini),
+      generateAi<unknown>(buildRecapPrompt(context, stats), recapSchema, ai),
       AI_TIMEOUT_MS,
     );
     return RecapResponse.parse(raw).reply;

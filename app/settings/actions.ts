@@ -6,7 +6,17 @@ import { createClient } from "@/lib/supabase/server";
 import { sanitizePrefs, type ThemePrefs } from "@/lib/theme";
 import crypto from "crypto";
 import { verifyGeminiApiKey } from "@/lib/ai/gemini";
-import { removeGeminiApiKey, setGeminiModel, storeGeminiApiKey } from "@/lib/ai/credentials";
+import {
+  removeGeminiApiKey,
+  removeOpenRouterApiKey,
+  setAiProvider,
+  setGeminiModel,
+  setOpenRouterModel,
+  storeGeminiApiKey,
+  storeOpenRouterApiKey,
+  type AiProvider,
+} from "@/lib/ai/credentials";
+import { OpenRouterError, verifyOpenRouterKey } from "@/lib/ai/openrouter";
 import { isGeminiModelId } from "@/lib/ai/models";
 
 export interface ProfileFormState {
@@ -169,6 +179,94 @@ export async function saveGeminiModel(model: string): Promise<{ error?: string; 
     return { error: "Impossibile salvare il modello. Riprova." };
   }
 
+  return { ok: true };
+}
+
+// ── OpenRouter ──────────────────────────────────────────────────────────────
+
+/** Id del catalogo OpenRouter, es. "openai/gpt-5-mini" o "meta-llama/llama-4:free". */
+const isOpenRouterModel = (model: string) => /^[a-z0-9][\w.-]*\/[\w.:-]+$/i.test(model) && model.length <= 120;
+
+const MIGRATION_ERROR = "Per usare OpenRouter serve aggiornare il database (migrazione 0023).";
+const notMigrated = (error: unknown) => {
+  const code = (error as { code?: string } | null)?.code;
+  return code === "PGRST202" || code === "42P01" || code === "PGRST205" || code === "42703";
+};
+
+export async function saveOpenRouterKey(
+  apiKey: string,
+  model: string,
+): Promise<{ error?: string; ok?: boolean }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const key = apiKey.trim();
+  const chosen = model.trim();
+  if (key.length < 16) return { error: "La chiave OpenRouter non sembra valida." };
+  if (!isOpenRouterModel(chosen)) return { error: "Scegli un modello (es. openai/gpt-5-mini)." };
+  try {
+    await verifyOpenRouterKey(key);
+  } catch (error) {
+    console.error("saveOpenRouterKey verify:", error instanceof Error ? error.message : error);
+    return { error: error instanceof OpenRouterError && error.status === 401 ? "Chiave OpenRouter non valida." : "Non riesco a verificare la chiave con OpenRouter. Riprova." };
+  }
+  try {
+    const { data: existing } = await supabase.from("user_openrouter_credentials").select("user_id").eq("user_id", user.id).maybeSingle();
+    await storeOpenRouterApiKey(user.id, key, chosen);
+    // Prima chiave: la si vuole usare, diventa il provider attivo.
+    if (!existing) await setAiProvider(user.id, "openrouter");
+  } catch (error) {
+    console.error("saveOpenRouterKey:", error instanceof Error ? error.message : error);
+    return { error: notMigrated(error) ? MIGRATION_ERROR : "Impossibile salvare la chiave. Riprova." };
+  }
+  revalidatePath("/settings");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function saveOpenRouterModel(model: string): Promise<{ error?: string; ok?: boolean }> {
+  const chosen = model.trim();
+  if (!isOpenRouterModel(chosen)) return { error: "Modello non valido (es. openai/gpt-5-mini)." };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  try {
+    await setOpenRouterModel(user.id, chosen);
+  } catch (error) {
+    console.error("saveOpenRouterModel:", error instanceof Error ? error.message : error);
+    return { error: notMigrated(error) ? MIGRATION_ERROR : "Impossibile salvare il modello. Riprova." };
+  }
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function deleteOpenRouterKey(): Promise<{ error?: string; ok?: boolean }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  try {
+    await removeOpenRouterApiKey(user.id);
+    await setAiProvider(user.id, "gemini");
+  } catch (error) {
+    console.error("deleteOpenRouterKey:", error instanceof Error ? error.message : error);
+    return { error: "Impossibile rimuovere la chiave. Riprova." };
+  }
+  revalidatePath("/");
+  return { ok: true };
+}
+
+/** Provider usato da chat, piani e analisi: si cambia dalla chat o dalle impostazioni. */
+export async function chooseAiProvider(provider: AiProvider): Promise<{ error?: string; ok?: boolean }> {
+  if (provider !== "gemini" && provider !== "openrouter") return { error: "Provider non valido." };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  try {
+    await setAiProvider(user.id, provider);
+  } catch (error) {
+    console.error("chooseAiProvider:", error instanceof Error ? error.message : error);
+    return { error: notMigrated(error) ? MIGRATION_ERROR : "Impossibile cambiare modello. Riprova." };
+  }
   return { ok: true };
 }
 
