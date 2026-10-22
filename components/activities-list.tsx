@@ -28,7 +28,7 @@ function ActivityRow({ activity, analyzing }: { activity: ListActivity; analyzin
   const title = activity.source_title || (isRun ? TYPE_LABELS[activity.type] : SPORT_LABELS[activity.sport]);
   return (
     <li>
-      <Link href={`/activities/${activity.id}`} className="flex items-center gap-3 py-3 transition-colors active:bg-muted/40">
+      <Link href={`/activities/${activity.id}`} className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition-colors active:bg-muted/60">
         {/* Tessera nel colore del tipo di seduta (corse) o dello sport. */}
         <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", isRun ? TYPE_COLORS[activity.type] : SPORT_COLORS[activity.sport ?? "other"])}>
           <Icon size={18} strokeWidth={2.2} />

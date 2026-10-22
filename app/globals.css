@@ -380,12 +380,26 @@ input[type="datetime-local"]::-webkit-date-and-time-value {
   from { background-position: 150% 0; }
   to { background-position: -50% 0; }
 }
+/* Piccolo "pop" di conferma (check di una seduta fatta). */
+@keyframes zc-pop {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
 
 /* "backwards" e non "both": a fine animazione non resta un transform applicato,
    che renderebbe il contenitore il riferimento dei figli position: fixed (la
    chat a tutto schermo restava chiusa sopra la tab bar). */
 .animate-enter {
   animation: zc-enter 0.42s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+/* Ingresso in ritardo: dettagli che arrivano dopo il blocco principale
+   (es. chip dei record). */
+.animate-enter-late {
+  animation: zc-enter 0.42s cubic-bezier(0.2, 0.7, 0.2, 1) 150ms backwards;
+}
+.animate-pop {
+  animation: zc-pop 0.42s cubic-bezier(0.3, 0.7, 0.3, 1) backwards;
 }
 .stagger > * {
   animation: zc-enter 0.42s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
@@ -432,6 +446,8 @@ input[type="datetime-local"]::-webkit-date-and-time-value {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-enter,
+  .animate-enter-late,
+  .animate-pop,
   .stagger > *,
   .animate-grow-y,
   .animate-grow-x,

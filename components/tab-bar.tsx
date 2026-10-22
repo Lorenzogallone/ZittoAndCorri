@@ -5,11 +5,13 @@ import { usePathname } from "next/navigation";
 import { MessageCircle, Activity, Calendar, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// `fill`: icone con un'area chiusa da riempire quando la tab è attiva; le
+// altre (linee aperte o dettagli interni) prendono solo un tratto più spesso.
 const tabs = [
-  { href: "/", label: "Coach", icon: MessageCircle },
-  { href: "/activities", label: "Corse", icon: Activity },
-  { href: "/plan", label: "Piano", icon: Calendar },
-  { href: "/profile", label: "Profilo", icon: User },
+  { href: "/", label: "Coach", icon: MessageCircle, fill: true },
+  { href: "/activities", label: "Corse", icon: Activity, fill: false },
+  { href: "/plan", label: "Piano", icon: Calendar, fill: false },
+  { href: "/profile", label: "Profilo", icon: User, fill: true },
 ] as const;
 
 export function TabBar() {
@@ -21,45 +23,61 @@ export function TabBar() {
   }
 
   return (
-    <nav className="z-50 shrink-0 border-t border-border/60 bg-background" role="tablist">
+    // Resta l'ultimo elemento della colonna di AppShell (niente position:
+    // fixed): cambia solo l'aspetto, una pillola che galleggia sullo sfondo.
+    <nav className="z-50 shrink-0 bg-background" role="tablist">
       {/* Solo una piccola parte della safe-area in basso: la barra siede vicino
           alla home-indicator senza il gap dell'intera env(safe-area-inset-bottom). */}
       <div
-        className="mx-auto flex max-w-md items-center justify-around px-3"
+        className="mx-auto max-w-md"
         style={{
-          paddingTop: "6px",
+          paddingTop: "4px",
           paddingBottom: "max(env(safe-area-inset-bottom, 0px) - 14px, 6px)",
         }}
       >
-        {tabs.map(({ href, label, icon: Icon }) => {
-          const active = isActive(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              role="tab"
-              aria-selected={active}
-              className="group flex flex-1 flex-col items-center gap-0.5"
-            >
-              <span
-                className={cn(
-                  "flex h-8 w-14 items-center justify-center rounded-full transition-all duration-300 ease-out group-active:scale-90",
-                  active ? "bg-primary/12 text-primary" : "text-muted-foreground",
-                )}
+        <div className="mx-4 mb-1 flex items-center justify-around rounded-full bg-card/85 px-2 py-1 shadow-[0_8px_24px_-12px_oklch(0_0_0/0.25)] ring-1 ring-border/60 backdrop-blur-xl dark:ring-white/8">
+          {tabs.map(({ href, label, icon: Icon, fill }) => {
+            const active = isActive(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                role="tab"
+                aria-selected={active}
+                className="group flex flex-1 flex-col items-center gap-0.5 pt-1"
               >
-                <Icon size={21} strokeWidth={active ? 2.3 : 1.8} />
-              </span>
-              <span
-                className={cn(
-                  "text-micro font-medium tracking-wide transition-colors",
-                  active ? "text-foreground" : "text-muted-foreground",
-                )}
-              >
-                {label}
-              </span>
-            </Link>
-          );
-        })}
+                <span
+                  className={cn(
+                    "flex h-6 items-center justify-center transition-[color,transform] duration-200 ease-out group-active:scale-90",
+                    active ? "text-primary" : "text-muted-foreground",
+                  )}
+                >
+                  <Icon
+                    size={22}
+                    strokeWidth={active ? (fill ? 2 : 2.5) : 1.8}
+                    fill={active && fill ? "currentColor" : "none"}
+                  />
+                </span>
+                <span
+                  className={cn(
+                    "text-micro transition-colors",
+                    active ? "font-semibold text-foreground" : "font-medium text-muted-foreground",
+                  )}
+                >
+                  {label}
+                </span>
+                {/* Segno della tab attiva: puntino nel colore principale. */}
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "h-1 w-1 rounded-full bg-primary transition-[opacity,transform] duration-200",
+                    active ? "scale-100 opacity-100" : "scale-0 opacity-0",
+                  )}
+                />
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </nav>
   );

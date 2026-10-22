@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 import { Check, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
-import { Button } from "@/components/ui/button";
 import { Section } from "@/components/section";
 import { WorkoutGraph } from "@/components/workout-graph";
 import { WorkoutSteps } from "@/components/workout-steps";
@@ -13,6 +12,7 @@ import { AdaptSheet } from "@/components/plan/adapt-sheet";
 import { RacePacingCard } from "@/components/plan/race-pacing";
 import { updateWorkoutStatus } from "../actions";
 import { DeleteWorkoutButton } from "./delete-workout-button";
+import { MarkDoneButton } from "./mark-done-button";
 import { activeDuration, formatDistance, formatDuration, formatPace } from "@/lib/format";
 import { TYPE_LABELS } from "@/lib/activity-meta";
 import { WORKOUT_TYPE_GUIDE, workoutHeadline } from "@/lib/workout-guide";
@@ -125,8 +125,8 @@ export default async function PlannedWorkoutPage({ params }: Props) {
       {hot && <div className="mb-6"><HeatNote heat={hot} referencePace={fastestPace} /></div>}
 
       {doneActivity && (
-        <Link href={`/activities/${doneActivity.id}`} className="mb-6 flex items-center gap-3 rounded-2xl bg-primary/[0.07] px-4 py-3">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground"><Check size={15} strokeWidth={3} /></span>
+        <Link href={`/activities/${doneActivity.id}`} className="animate-enter mb-6 flex items-center gap-3 rounded-2xl bg-primary/[0.07] px-4 py-3">
+          <span className="animate-pop flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground"><Check size={15} strokeWidth={3} /></span>
           <span className="min-w-0 flex-1 text-sm">
             <span className="font-medium">Fatta</span>
             <span className="text-muted-foreground tabular-nums">
@@ -172,9 +172,7 @@ export default async function PlannedWorkoutPage({ params }: Props) {
           <form action={updateWorkoutStatus} className="col-span-2">
             <input type="hidden" name="id" value={workout.id} />
             <input type="hidden" name="status" value={done ? "planned" : "completed"} />
-            <Button type="submit" variant={done ? "outline" : "default"} className="w-full">
-              <Check size={16} /> {done ? "Segnata come fatta · annulla" : "Segna come fatta"}
-            </Button>
+            <MarkDoneButton done={done} />
           </form>
           {!done && workout.date >= today && (
             <>

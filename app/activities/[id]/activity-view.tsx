@@ -102,7 +102,7 @@ export function ActivityView(props: ActivityViewProps) {
             )}
           </h1>
           {props.records.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
+            <div className="animate-enter-late mt-3 flex flex-wrap gap-1.5">
               {props.records.map((record) => (
                 <span key={record.key} className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-caption font-semibold text-amber-700 tabular-nums dark:text-amber-300">
                   <Trophy size={14} /> Record {EFFORTS.find((effort) => effort.key === record.key)?.label} · {formatDuration(record.time_s)}
