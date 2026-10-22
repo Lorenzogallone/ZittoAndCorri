@@ -51,7 +51,7 @@ export function TabBar() {
               </span>
               <span
                 className={cn(
-                  "text-[10.5px] font-medium tracking-wide transition-colors",
+                  "text-micro font-medium tracking-wide transition-colors",
                   active ? "text-foreground" : "text-muted-foreground",
                 )}
               >

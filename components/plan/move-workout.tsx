@@ -61,7 +61,7 @@ export function MoveWorkout({ id, date, today }: { id: string; date: string; tod
               )}
               aria-label={current ? `${day} (attuale)` : `Sposta al ${day}`}
             >
-              <span className="text-[10px] uppercase text-muted-foreground">{label.top}</span>
+              <span className="text-micro uppercase text-muted-foreground">{label.top}</span>
               <span className="font-semibold tabular-nums">{label.day}</span>
             </button>
           );

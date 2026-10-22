@@ -44,7 +44,7 @@ function MessageFooter({ item, replyUsage }: { item: CoachMessage; replyUsage: R
   const own = item.role === "assistant" ? readUsage(item.metadata?.ai_usage) : null;
   const usage = item.role === "user" ? replyUsage : own;
   if (!usage) {
-    return <p className={`mt-1 text-[10px] text-muted-foreground ${item.role === "user" ? "text-right" : ""}`}>{time}</p>;
+    return <p className={`mt-1 text-micro text-muted-foreground ${item.role === "user" ? "text-right" : ""}`}>{time}</p>;
   }
   const part = item.role === "user" ? "prompt" : item.metadata?.reply_to ? "reply" : "total";
   return <AiCost usage={usage} part={part} prefix={time} className={cn("mt-1", item.role === "user" && "text-right")} />;
@@ -94,7 +94,7 @@ function WorkoutDetails({ workout }: { workout: ProposedWorkout }) {
       ].filter(Boolean).join(" · ")}</p>
       {workout.description && (
         <div className="mt-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Cosa fare e perché</p>
+          <p className="text-micro font-semibold uppercase tracking-wide text-primary">Cosa fare e perché</p>
           <p className="mt-0.5 leading-relaxed">{workout.description}</p>
         </div>
       )}
@@ -103,7 +103,7 @@ function WorkoutDetails({ workout }: { workout: ProposedWorkout }) {
       )}
       {workout.focus && (
         <div className="mt-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Su cosa concentrarti</p>
+          <p className="text-micro font-semibold uppercase tracking-wide text-primary">Su cosa concentrarti</p>
           <p className="mt-0.5 leading-relaxed">{workout.focus}</p>
         </div>
       )}
@@ -191,7 +191,7 @@ function useVisibleViewport() {
 
 function SessionDivider({ item }: { item: CoachMessage }) {
   return (
-    <div className="flex items-center gap-3 py-1 text-[11px] font-medium text-muted-foreground" role="separator">
+    <div className="flex items-center gap-3 py-1 text-micro font-medium text-muted-foreground" role="separator">
       <span className="h-px flex-1 bg-border" />
       Nuova chat · {messageTime(item.created_at)}
       <span className="h-px flex-1 bg-border" />
@@ -320,7 +320,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
         "flex min-h-0 flex-col overflow-hidden",
         isExpanded
           ? "fixed inset-x-0 top-0 z-[80] h-[100dvh] bg-background"
-          : "flex-1 basis-0 rounded-[1.5rem] bg-card shadow-[var(--surface-shadow)] ring-1 ring-border/60",
+          : "flex-1 basis-0 rounded-3xl bg-card shadow-[var(--surface-shadow)] ring-1 ring-border/60",
       )}
       style={isExpanded && viewport ? { top: viewport.top, height: viewport.height } : undefined}
       role={isExpanded ? "dialog" : undefined}
@@ -333,7 +333,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary"><Sparkles size={16} /></span>
         <div className="ml-1 min-w-0 flex-1">
-          <h2 className="text-[15px] font-semibold leading-tight">Coach</h2>
+          <h2 className="text-body font-semibold leading-tight">Coach</h2>
           <AiModelLine state={aiSwitch.state} />
         </div>
         <AiProviderToggle state={aiSwitch.state} choose={aiSwitch.choose} pending={aiSwitch.pending} />
@@ -375,11 +375,11 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
         )}
         {shown.length === 0 && (freshSession ? (
           <div className="mx-auto max-w-sm py-8 text-center">
-            <p className="text-lg font-semibold">Nuova chat</p>
+            <p className="text-heading font-semibold">Nuova chat</p>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Il coach riparte da zero con la conversazione, ma conosce sempre piano, corse e quello che ha memorizzato di te.</p>
           </div>
         ) : (
-          <div className="mx-auto max-w-sm py-8 text-center"><p className="text-lg font-semibold">Parlami della tua settimana</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">Posso adattare il piano a vacanze, caldo, escursioni, fatica o battiti troppo alti.</p></div>
+          <div className="mx-auto max-w-sm py-8 text-center"><p className="text-heading font-semibold">Parlami della tua settimana</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">Posso adattare il piano a vacanze, caldo, escursioni, fatica o battiti troppo alti.</p></div>
         ))}
         {shown.map((item) => {
           if (isSessionMarker(item)) return <SessionDivider key={item.id} item={item} />;
@@ -420,7 +420,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
   // scorre (che su iOS la ritagliava e la lasciava sotto la barra in basso).
   return isExpanded ? (
     <>
-      <div className="min-h-0 flex-1 basis-0 rounded-[1.5rem] bg-card ring-1 ring-border/60" aria-hidden="true" />
+      <div className="min-h-0 flex-1 basis-0 rounded-3xl bg-card ring-1 ring-border/60" aria-hidden="true" />
       {createPortal(chat, document.body)}
     </>
   ) : chat;

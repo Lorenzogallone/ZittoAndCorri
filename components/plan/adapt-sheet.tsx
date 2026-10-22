@@ -73,7 +73,7 @@ export function AdaptSheet({ variant = "header" }: { variant?: "header" | "inlin
           >
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-muted-foreground/25" />
             <div className="mb-4 flex items-center justify-between">
-              <h2 id="adapt-title" className="text-lg font-semibold">Come ti senti?</h2>
+              <h2 id="adapt-title" className="text-heading font-semibold">Come ti senti?</h2>
               <Button type="button" variant="ghost" size="icon-sm" onClick={close} aria-label="Chiudi"><X size={18} /></Button>
             </div>
 

@@ -8,7 +8,7 @@ import { PlanWeek, type PlanActivity } from "@/components/plan/week-list";
 import { PhaseBar } from "@/components/plan/phase-bar";
 import { AdaptSheet } from "@/components/plan/adapt-sheet";
 import { AdaptationBanner } from "@/components/plan/adaptation-banner";
-import { cn } from "@/lib/utils";
+import { Segmented } from "@/components/ui/segmented";
 import { formatDistance } from "@/lib/format";
 import { addDays, daysBetween, mondayOf, romeDay } from "@/lib/local-date";
 import { buildDays } from "@/lib/plan/day-status";
@@ -122,19 +122,15 @@ export default async function PlanPage({ searchParams }: Props) {
       )}
 
       <div className="mb-5 flex items-center justify-between gap-3">
-        <div className="inline-flex rounded-xl bg-muted p-0.5 text-[13px] font-medium" role="tablist">
-          {(["weeks", "month"] as const).map((key) => (
-            <Link
-              key={key}
-              href={key === "month" ? "/plan?view=month" : "/plan"}
-              role="tab"
-              aria-selected={view === key}
-              className={cn("rounded-[10px] px-3 py-1.5 transition-colors", view === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}
-            >
-              {key === "weeks" ? "Settimane" : "Mese"}
-            </Link>
-          ))}
-        </div>
+        <Segmented
+          className="inline-grid"
+          ariaLabel="Vista"
+          value={view}
+          options={[
+            { key: "weeks", label: "Settimane", href: "/plan" },
+            { key: "month", label: "Mese", href: "/plan?view=month" },
+          ]}
+        />
         {view === "weeks" && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Link href={`/plan?week=${addDays(firstMonday, -14)}`} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted" aria-label="Settimane precedenti">

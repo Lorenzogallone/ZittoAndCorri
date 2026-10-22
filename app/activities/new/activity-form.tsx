@@ -253,7 +253,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
-        <h3 className="text-lg font-semibold text-foreground">Revisione attività</h3>
+        <h3 className="text-heading font-semibold text-foreground">Revisione attività</h3>
         <p className="text-xs text-muted-foreground">
           I dati sono stati estratti con successo. Puoi modificarli prima di salvare.
         </p>

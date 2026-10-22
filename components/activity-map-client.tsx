@@ -134,7 +134,7 @@ export default function ActivityMapClient({ gpsSeries }: ActivityMapClientProps)
       )}
       <div ref={mapContainerRef} className="w-full h-full" />
       {colored && (
-        <div className="pointer-events-none absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full bg-background/85 px-2.5 py-1 text-[10px] font-medium text-muted-foreground backdrop-blur">
+        <div className="pointer-events-none absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full bg-background/85 px-2.5 py-1 text-micro font-medium text-muted-foreground backdrop-blur">
           lento
           <span className="h-1.5 w-12 rounded-full" style={{ background: `linear-gradient(90deg, ${PACE_SCALE.slow}, ${PACE_SCALE.mid}, ${PACE_SCALE.fast})` }} />
           veloce

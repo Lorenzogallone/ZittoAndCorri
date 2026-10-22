@@ -43,14 +43,14 @@ export function PaceHistory({ sessions }: { sessions: PaceSession[] }) {
             <Link key={session.id} href={`/activities/${session.id}`} className="flex flex-col items-center gap-1.5 rounded-xl py-2 hover:bg-muted/40">
               <span className={cn("h-2.5 w-2.5 rounded-full", status.tone)} title={status.label} />
               <span className="text-sm font-semibold tabular-nums">{deviationText(session.check.avg_deviation_s)}</span>
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-micro text-muted-foreground">
                 {new Date(session.started_at).toLocaleDateString("it-IT", { day: "numeric", month: "short" })}
               </span>
             </Link>
           );
         })}
       </div>
-      <p className="mt-2 text-[11px] text-muted-foreground">
+      <p className="mt-2 text-micro text-muted-foreground">
         Secondi al km rispetto al passo previsto: − più veloce, + più lento.
       </p>
       {trend && (

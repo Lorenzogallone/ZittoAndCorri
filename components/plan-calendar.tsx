@@ -43,7 +43,7 @@ export function PlanCalendar({ days, month, today, raceDate }: Props) {
 
       <div className="grid grid-cols-7 text-center">
         {WEEKDAYS.map((d, i) => (
-          <span key={i} className="py-1 text-[10px] font-medium uppercase text-muted-foreground">{d}</span>
+          <span key={i} className="py-1 text-micro font-medium uppercase text-muted-foreground">{d}</span>
         ))}
       </div>
 
@@ -84,7 +84,7 @@ export function PlanCalendar({ days, month, today, raceDate }: Props) {
         })}
       </div>
 
-      <div className="mt-3 flex justify-center gap-4 text-[11px] text-muted-foreground">
+      <div className="mt-3 flex justify-center gap-4 text-micro text-muted-foreground">
         <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Fatta</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 opacity-40" />In programma</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full border border-muted-foreground/50" />Saltata</span>

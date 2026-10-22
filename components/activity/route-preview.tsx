@@ -54,7 +54,7 @@ export function RoutePreview({ gps }: { gps: GpsPoint[] }) {
         <MapIcon size={13} /> Mappa
       </span>
       {colors && (
-        <span className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-full bg-background/90 px-2.5 py-1.5 text-[10px] font-medium text-muted-foreground">
+        <span className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-full bg-background/90 px-2.5 py-1.5 text-micro font-medium text-muted-foreground">
           lento
           <span className="h-1.5 w-10 rounded-full" style={{ background: `linear-gradient(90deg, ${PACE_SCALE.slow}, ${PACE_SCALE.mid}, ${PACE_SCALE.fast})` }} />
           veloce

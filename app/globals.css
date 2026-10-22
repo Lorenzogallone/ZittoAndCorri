@@ -18,6 +18,30 @@
   --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+  /* Display condensato: titoli di pagina, numeri hero, headline seduta. */
+  --font-display: var(--font-barlow-condensed);
+
+  /* Scala tipografica: usare solo questi token (oltre a xs/sm/base). */
+  --text-display-xl: 3.75rem;
+  --text-display-xl--line-height: 1;
+  --text-display: 2.75rem;
+  --text-display--line-height: 1;
+  --text-title: 1.75rem;
+  --text-title--line-height: 1.15;
+  --text-heading: 1.125rem;
+  --text-heading--line-height: 1.3;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.45;
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.35;
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1.2;
+
+  /* Card "inchiostro" e superficie secondaria dentro le card. */
+  --color-hero: var(--hero);
+  --color-hero-foreground: var(--hero-foreground);
+  --color-hero-muted: var(--hero-muted);
+  --color-surface-2: var(--surface-2);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -50,10 +74,12 @@
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* Dai raggi grandi in su valori fissi: le card restano a 20px (2xl) e i
+     tile hero a 24px (3xl), senza gonfiarsi con il moltiplicatore. */
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
 
   /* Custom colors for the warm palette */
   --color-coral: oklch(0.68 0.16 30);
@@ -89,6 +115,10 @@
   --sidebar-accent: oklch(0.96 0.003 85);
   --sidebar-accent-foreground: oklch(0.2 0.005 85);
   --sidebar-border: oklch(0.915 0.004 85);
+  --hero: oklch(0.21 0.01 270);
+  --hero-foreground: oklch(0.98 0.002 85);
+  --hero-muted: oklch(0.72 0.01 270);
+  --surface-2: oklch(0.965 0.004 85);
 
   /* Primary e brand: sovrascrivibili dall'utente (Impostazioni → App). */
   --primary: oklch(0.68 0.16 30);
@@ -115,16 +145,18 @@
 
   /* Ombra delle superfici: quasi impercettibile in chiaro, assente in scuro. */
   --surface-shadow: 0 1px 2px oklch(0 0 0 / 0.04), 0 4px 16px -8px oklch(0 0 0 / 0.08);
+  --surface-hairline: color-mix(in oklch, var(--border) 70%, transparent);
+  --hero-shadow: 0 12px 32px -16px oklch(0 0 0 / 0.35);
 }
 
 /* Fallback scuro senza JS: vale solo in automatico (nessuna classe forzata). */
 @media (prefers-color-scheme: dark) {
   :root:not(.light):not(.dark) {
-    --background: oklch(0.16 0.004 270);
+    --background: oklch(0.13 0.004 270);
     --foreground: oklch(0.96 0.002 85);
-    --card: oklch(0.205 0.005 270);
+    --card: oklch(0.185 0.005 270);
     --card-foreground: oklch(0.96 0.002 85);
-    --popover: oklch(0.225 0.005 270);
+    --popover: oklch(0.21 0.005 270);
     --popover-foreground: oklch(0.96 0.002 85);
     --secondary: oklch(0.24 0.006 270);
     --secondary-foreground: oklch(0.88 0.004 85);
@@ -132,25 +164,31 @@
     --muted-foreground: oklch(0.68 0.01 270);
     --accent: oklch(0.26 0.02 30);
     --accent-foreground: oklch(0.96 0.002 85);
-    --border: oklch(0.285 0.006 270);
-    --input: oklch(0.285 0.006 270);
-    --sidebar: oklch(0.205 0.005 270);
+    --border: oklch(0.27 0.006 270);
+    --input: oklch(0.27 0.006 270);
+    --sidebar: oklch(0.185 0.005 270);
     --sidebar-foreground: oklch(0.96 0.002 85);
     --sidebar-accent: oklch(0.24 0.006 270);
     --sidebar-accent-foreground: oklch(0.96 0.002 85);
-    --sidebar-border: oklch(0.285 0.006 270);
+    --sidebar-border: oklch(0.27 0.006 270);
+    --hero: oklch(0.24 0.008 270);
+    --hero-foreground: oklch(0.97 0.002 85);
+    --hero-muted: oklch(0.7 0.01 270);
+    --surface-2: oklch(0.26 0.006 270);
     --viz-1: #3987e5;
     --viz-2: #d95926;
     --surface-shadow: none;
+    --surface-hairline: oklch(1 0 0 / 0.06);
+    --hero-shadow: none;
   }
 }
 
 .dark {
-  --background: oklch(0.16 0.004 270);
+  --background: oklch(0.13 0.004 270);
   --foreground: oklch(0.96 0.002 85);
-  --card: oklch(0.205 0.005 270);
+  --card: oklch(0.185 0.005 270);
   --card-foreground: oklch(0.96 0.002 85);
-  --popover: oklch(0.225 0.005 270);
+  --popover: oklch(0.21 0.005 270);
   --popover-foreground: oklch(0.96 0.002 85);
   --secondary: oklch(0.24 0.006 270);
   --secondary-foreground: oklch(0.88 0.004 85);
@@ -158,16 +196,22 @@
   --muted-foreground: oklch(0.68 0.01 270);
   --accent: oklch(0.26 0.02 30);
   --accent-foreground: oklch(0.96 0.002 85);
-  --border: oklch(0.285 0.006 270);
-  --input: oklch(0.285 0.006 270);
-  --sidebar: oklch(0.205 0.005 270);
+  --border: oklch(0.27 0.006 270);
+  --input: oklch(0.27 0.006 270);
+  --sidebar: oklch(0.185 0.005 270);
   --sidebar-foreground: oklch(0.96 0.002 85);
   --sidebar-accent: oklch(0.24 0.006 270);
   --sidebar-accent-foreground: oklch(0.96 0.002 85);
-  --sidebar-border: oklch(0.285 0.006 270);
+  --sidebar-border: oklch(0.27 0.006 270);
+  --hero: oklch(0.24 0.008 270);
+  --hero-foreground: oklch(0.97 0.002 85);
+  --hero-muted: oklch(0.7 0.01 270);
+  --surface-2: oklch(0.26 0.006 270);
   --viz-1: #3987e5;
   --viz-2: #d95926;
   --surface-shadow: none;
+  --surface-hairline: oklch(1 0 0 / 0.06);
+  --hero-shadow: none;
 }
 
 @layer base {
@@ -211,11 +255,31 @@
                 0 0 15px -4px color-mix(in oklch, var(--brand) 10%, transparent);
   }
 
-  /* Superficie: card piatta con bordo sottile, ombra solo in chiaro. */
+  /* Superficie: card con ombra morbida e bordo hairline in chiaro; in scuro
+     niente ombra, solo un bordo bianco quasi trasparente. */
   .surface {
     background: var(--card);
-    border-radius: 1.25rem;
-    box-shadow: var(--surface-shadow), inset 0 0 0 1px color-mix(in oklch, var(--border) 70%, transparent);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--surface-shadow), inset 0 0 0 1px var(--surface-hairline);
+  }
+
+  /* Card "inchiostro" (stile hero): scura in entrambi i temi, senza bordo. */
+  .surface-hero {
+    background: var(--hero);
+    color: var(--hero-foreground);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--hero-shadow);
+  }
+
+  /* Etichetta minuscola sopra titoli e metriche. */
+  .eyebrow {
+    @apply text-micro font-semibold uppercase tracking-[0.12em] text-muted-foreground;
+  }
+  /* Nelle card hero l'eyebrow usa il grigio della hero (anche fuori da
+     .surface-hero, con data-tone="hero"). */
+  .surface-hero .eyebrow,
+  .eyebrow[data-tone="hero"] {
+    color: var(--hero-muted);
   }
 
   /* iOS-style thin separator */

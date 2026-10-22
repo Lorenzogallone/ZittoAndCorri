@@ -26,11 +26,11 @@ export function ZonesBar({ zones }: { zones: TimeInZone }) {
           const seconds = zones[zone.key] ?? 0;
           return (
             <div key={zone.key}>
-              <dt className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground" title={zone.label}>
+              <dt className="flex items-center justify-center gap-1 text-micro text-muted-foreground" title={zone.label}>
                 <span className={`h-1.5 w-1.5 rounded-full ${zone.color}`} />Z{index + 1}
               </dt>
-              <dd className="mt-0.5 text-[13px] font-semibold tabular-nums">{Math.round((seconds / total) * 100)}%</dd>
-              <dd className="text-[10px] text-muted-foreground tabular-nums">{formatDuration(seconds)}</dd>
+              <dd className="mt-0.5 text-caption font-semibold tabular-nums">{Math.round((seconds / total) * 100)}%</dd>
+              <dd className="text-micro text-muted-foreground tabular-nums">{formatDuration(seconds)}</dd>
             </div>
           );
         })}

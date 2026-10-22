@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronRight, Settings } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import { Section } from "@/components/section";
 import { SegmentedTabs } from "@/components/segmented-tabs";
 import { FormChart, type FormPoint } from "@/components/charts/form-chart";
 import { WeekBars, type WeekBar } from "@/components/charts/week-bars";
@@ -30,15 +31,6 @@ export interface ProfileViewProps {
   reference: PredictionReference | null;
   records: PersonalRecord[];
   paceSessions: PaceSession[];
-}
-
-function Block({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="mb-8">
-      <h2 className="mb-3 text-[15px] font-semibold tracking-tight">{title}</h2>
-      {children}
-    </section>
-  );
 }
 
 export function ProfileView(props: ProfileViewProps) {
@@ -106,7 +98,7 @@ export function ProfileView(props: ProfileViewProps) {
           <div className="min-w-0 flex-1">
             <p className="text-xs text-muted-foreground">Obiettivo</p>
             {goal ? (
-              <p className="truncate text-[15px] font-semibold">
+              <p className="truncate text-body font-semibold">
                 {goal.race_name}
                 <span className="font-normal text-muted-foreground">
                   {" · "}{formatDistance(goal.distance_m)}
@@ -114,7 +106,7 @@ export function ProfileView(props: ProfileViewProps) {
                 </span>
               </p>
             ) : (
-              <p className="text-[15px] font-semibold">Da impostare</p>
+              <p className="text-body font-semibold">Da impostare</p>
             )}
           </div>
           {daysToRace != null && daysToRace >= 0 && (
@@ -126,27 +118,27 @@ export function ProfileView(props: ProfileViewProps) {
         </Link>
 
         {trends.length > 0 && (
-          <Block title="Andamento">
+          <Section title="Andamento">
             <div className="surface p-4">
               <SegmentedTabs tabs={trends} />
             </div>
-          </Block>
+          </Section>
         )}
 
         {performance.length > 0 && (
-          <Block title="Prestazioni">
+          <Section title="Prestazioni">
             <div className="surface p-4">
               <SegmentedTabs tabs={performance} />
             </div>
-          </Block>
+          </Section>
         )}
 
         {props.paceSessions.length > 0 && (
-          <Block title="Passo nelle sedute veloci">
+          <Section title="Passo nelle sedute veloci">
             <div className="surface p-4">
               <PaceHistory sessions={props.paceSessions} />
             </div>
-          </Block>
+          </Section>
         )}
       </div>
     </AppShell>

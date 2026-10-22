@@ -40,7 +40,7 @@ export function AiModelLine({ state }: { state: AiSwitchState }) {
   // Con l'interruttore visibile il provider si vede già: basta il modello.
   const both = state.gemini.configured && !!state.openrouter?.configured;
   return (
-    <p className="truncate text-[11px] leading-tight text-muted-foreground">
+    <p className="truncate text-micro leading-tight text-muted-foreground">
       {label}{both ? "" : ` · ${NAMES[state.active]}`}
     </p>
   );
@@ -50,13 +50,13 @@ export function AiProviderToggle({ state, choose, pending }: { state: AiSwitchSt
   const both = state.gemini.configured && !!state.openrouter?.configured;
   if (!both) {
     return state.active ? (
-      <Link href="/settings?tab=coach" className="shrink-0 text-[11px] font-medium text-primary" title="Aggiungi o cambia modello">
+      <Link href="/settings?tab=coach" className="shrink-0 text-micro font-medium text-primary" title="Aggiungi o cambia modello">
         Modello
       </Link>
     ) : null;
   }
   return (
-    <div className="inline-flex shrink-0 rounded-lg bg-muted p-0.5 text-[11px] font-medium" role="radiogroup" aria-label="Chi risponde">
+    <div className="inline-flex shrink-0 rounded-lg bg-muted p-0.5 text-micro font-medium" role="radiogroup" aria-label="Chi risponde">
       {(["gemini", "openrouter"] as const).map((provider) => (
         <button
           key={provider}

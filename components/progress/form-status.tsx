@@ -94,7 +94,7 @@ export function FormStatus({
         <dl className="mt-5 grid grid-cols-3 gap-3 border-t border-border/60 pt-4">
           {metrics.map((metric) => (
             <div key={metric.label}>
-              <dt className="text-[11px] text-muted-foreground">{metric.label}</dt>
+              <dt className="text-micro text-muted-foreground">{metric.label}</dt>
               <dd className="mt-0.5 text-base font-semibold tabular-nums">{metric.value}</dd>
             </div>
           ))}

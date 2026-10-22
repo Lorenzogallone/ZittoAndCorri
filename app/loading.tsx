@@ -19,7 +19,7 @@ export default function Loading() {
             {Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="mx-auto h-5 w-5 rounded-full" />)}
           </div>
         </div>
-        <Skeleton className="min-h-40 flex-1 rounded-[1.5rem]" />
+        <Skeleton className="min-h-40 flex-1 rounded-3xl" />
       </div>
     </AppShell>
   );

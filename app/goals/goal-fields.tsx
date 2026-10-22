@@ -62,7 +62,7 @@ export function GoalFields({
               }`}
             >
               <span className="block text-sm font-semibold">{option.label}</span>
-              <span className="mt-0.5 block text-[11px] leading-snug">{option.hint}</span>
+              <span className="mt-0.5 block text-micro leading-snug">{option.hint}</span>
             </button>
           ))}
         </div>

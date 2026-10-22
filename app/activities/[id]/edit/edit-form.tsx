@@ -140,7 +140,7 @@ export function EditActivityForm({ activity }: Props) {
 
         <div className="separator my-1" />
         <p className="text-xs text-muted-foreground uppercase tracking-wider">
-          Metodi & Cardio {isImported && <span className="text-[10px] lowercase text-muted-foreground">(non modificabili per GPX)</span>}
+          Metodi & Cardio {isImported && <span className="text-micro lowercase text-muted-foreground">(non modificabili per GPX)</span>}
         </p>
 
         <div className="grid grid-cols-2 gap-3">

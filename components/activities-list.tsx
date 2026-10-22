@@ -31,14 +31,14 @@ function ActivityRow({ activity, analyzing }: { activity: ListActivity; analyzin
           {isRun && <span className={cn("absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-card", TYPE_DOTS[activity.type])} />}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-medium">{title}</p>
+          <p className="truncate text-body font-medium">{title}</p>
           <p className="mt-0.5 truncate text-xs text-muted-foreground tabular-nums">
             {dayLabel(day)} · {formatDuration(activeDuration(activity))}
             {analyzing && <span className="text-primary"> · analisi in corso…</span>}
           </p>
         </div>
         <div className="shrink-0 text-right tabular-nums">
-          <p className="text-[15px] font-semibold">
+          <p className="text-body font-semibold">
             {activity.distance_m > 0 ? formatDistance(activity.distance_m) : formatDuration(activeDuration(activity))}
           </p>
           {isRun && activity.avg_pace_s_km != null && (
@@ -63,7 +63,7 @@ export function ActivitiesList({ activities, analyzing }: { activities: ListActi
     <>
       {months.map((month) => (
         <section key={month.key} className="mb-6">
-          <h2 className="mb-1 px-1 text-[13px] font-medium capitalize text-muted-foreground">{monthLabel(`${month.key}-01`)}</h2>
+          <h2 className="mb-1 px-1 text-caption font-medium capitalize text-muted-foreground">{monthLabel(`${month.key}-01`)}</h2>
           <ul className="surface divide-y divide-border/60 px-4">
             {month.items.map((activity) => (
               <ActivityRow key={activity.id} activity={activity} analyzing={analyzing.has(activity.id)} />

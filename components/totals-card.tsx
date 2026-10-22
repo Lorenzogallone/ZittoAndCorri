@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { Segmented } from "@/components/ui/segmented";
+import { Stat } from "@/components/stat";
 import type { PeriodTotals, TotalsPeriodKey } from "@/lib/metrics/totals";
 
 const km = (meters: number, digits = 1) =>
@@ -28,49 +29,24 @@ export function TotalsCard({ periods, initial = "month" }: { periods: PeriodTota
   const note = comparison(period);
   return (
     <section className="surface mb-8 p-4">
-      <div className="grid grid-cols-4 rounded-xl bg-muted p-0.5 text-xs font-medium" role="tablist" aria-label="Periodo">
-        {periods.map((candidate) => (
-          <button
-            key={candidate.key}
-            type="button"
-            role="tab"
-            aria-selected={candidate.key === active}
-            onClick={() => setActive(candidate.key)}
-            className={cn(
-              "rounded-[10px] py-1.5 transition-colors",
-              candidate.key === active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
-            )}
-          >
-            {candidate.label}
-          </button>
-        ))}
-      </div>
+      <Segmented
+        size="sm"
+        ariaLabel="Periodo"
+        options={periods.map(({ key, label }) => ({ key, label }))}
+        value={active}
+        onChange={setActive}
+      />
 
       <div className="mt-4" role="tabpanel">
-        <p className="text-xs capitalize text-muted-foreground">{period.caption}</p>
-        <p className="mt-0.5 text-4xl font-bold tracking-tight">
-          {km(period.running_m)} <span className="text-lg font-semibold text-muted-foreground">km di corsa</span>
-        </p>
-        {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
+        <Stat size="lg" label={period.caption} value={km(period.running_m)} unit="km di corsa" />
+        {note && <p className="mt-1.5 text-xs text-muted-foreground">{note}</p>}
 
-        <dl className="mt-4 grid grid-cols-4 gap-2 border-t border-border/60 pt-3">
-          <div>
-            <dt className="text-[10px] text-muted-foreground">Uscite</dt>
-            <dd className="text-sm font-semibold tabular-nums">{period.runs}</dd>
-          </div>
-          <div>
-            <dt className="text-[10px] text-muted-foreground">Tempo</dt>
-            <dd className="text-sm font-semibold tabular-nums">{hours(period.seconds)}</dd>
-          </div>
-          <div>
-            <dt className="text-[10px] text-muted-foreground">Dislivello</dt>
-            <dd className="text-sm font-semibold tabular-nums">{Math.round(period.elevation_m).toLocaleString("it-IT")} m</dd>
-          </div>
-          <div>
-            <dt className="text-[10px] text-muted-foreground">Più lunga</dt>
-            <dd className="text-sm font-semibold tabular-nums">{km(period.longest_m)} km</dd>
-          </div>
-        </dl>
+        <div className="mt-4 grid grid-cols-4 gap-2 border-t border-border/60 pt-3">
+          <Stat size="sm" label="Uscite" value={String(period.runs)} />
+          <Stat size="sm" label="Tempo" value={hours(period.seconds)} />
+          <Stat size="sm" label="Dislivello" value={Math.round(period.elevation_m).toLocaleString("it-IT")} unit="m" />
+          <Stat size="sm" label="Più lunga" value={km(period.longest_m)} unit="km" />
+        </div>
         {period.walking_m > 0 && (
           <p className="mt-3 text-xs text-muted-foreground">
             Più {km(period.walking_m)} km di camminate ed escursioni
