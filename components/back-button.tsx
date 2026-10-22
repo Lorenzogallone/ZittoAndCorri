@@ -24,7 +24,7 @@ export function BackButton({ fallbackHref, label = "Indietro" }: BackButtonProps
     router.back();
   }, [router]);
 
-  const className = "-ml-2 inline-flex items-center text-[15px] font-medium text-primary transition-opacity active:opacity-50";
+  const className = "-ml-2 inline-flex items-center text-body font-medium text-primary transition-opacity active:opacity-50";
 
   if (fallbackHref) {
     return (

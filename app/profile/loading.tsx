@@ -9,9 +9,9 @@ export default function Loading() {
         <Skeleton className="h-7 w-44" />
         <Skeleton className="h-3 w-full" />
       </div>
-      <Skeleton className="mb-8 h-14 w-full rounded-[1.25rem]" />
+      <Skeleton className="mb-8 h-14 w-full rounded-2xl" />
       <Skeleton className="mb-3 h-5 w-32" />
-      <Skeleton className="h-52 w-full rounded-[1.25rem]" />
+      <Skeleton className="h-52 w-full rounded-2xl" />
     </AppShell>
   );
 }

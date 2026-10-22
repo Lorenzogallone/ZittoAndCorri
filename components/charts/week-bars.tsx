@@ -40,8 +40,8 @@ export function WeekBars({ weeks, current }: { weeks: WeekBar[]; current: string
   return (
     <div>
       <div className="mb-2 flex gap-4 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px] bg-primary" />Fatti</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px] bg-muted-foreground/25 dark:bg-muted-foreground/40" />Previsti</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-xs bg-primary" />Fatti</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-xs bg-muted-foreground/25 dark:bg-muted-foreground/40" />Previsti</span>
       </div>
       <div ref={ref} className="relative" style={{ height: HEIGHT }}>
         {width > 0 && (
@@ -49,7 +49,7 @@ export function WeekBars({ weeks, current }: { weeks: WeekBar[]; current: string
             {ticks.map((tick) => (
               <g key={tick}>
                 <line x1={PAD.left} x2={PAD.left + innerW} y1={PAD.top + innerH - (tick / top) * innerH} y2={PAD.top + innerH - (tick / top) * innerH} stroke="var(--border)" strokeWidth={1} />
-                <text x={PAD.left - 6} y={PAD.top + innerH - (tick / top) * innerH + 3.5} textAnchor="end" className="fill-muted-foreground text-[10px] tabular-nums">
+                <text x={PAD.left - 6} y={PAD.top + innerH - (tick / top) * innerH + 3.5} textAnchor="end" className="fill-muted-foreground text-micro tabular-nums">
                   {tick}
                 </text>
               </g>
@@ -84,12 +84,12 @@ export function WeekBars({ weeks, current }: { weeks: WeekBar[]; current: string
                     />
                   )}
                   {isCurrent && (week.done_m > 0 || week.planned_m > 0) && (
-                    <text x={barX(index) + barW / 2} y={Math.min(y(week.done_m), y(week.planned_m)) - 5} textAnchor="middle" className="fill-foreground text-[10px] font-semibold tabular-nums">
+                    <text x={barX(index) + barW / 2} y={Math.min(y(week.done_m), y(week.planned_m)) - 5} textAnchor="middle" className="fill-foreground text-micro font-semibold tabular-nums">
                       {kmLabel(week.done_m)}
                     </text>
                   )}
                   {(isCurrent || (index % labelEvery === 0 && Math.abs(index - currentIndex) > 1)) && (
-                    <text x={barX(index) + barW / 2} y={HEIGHT - 6} textAnchor="middle" className={isCurrent ? "fill-foreground text-[10px] font-medium" : "fill-muted-foreground text-[10px]"}>
+                    <text x={barX(index) + barW / 2} y={HEIGHT - 6} textAnchor="middle" className={isCurrent ? "fill-foreground text-micro font-medium" : "fill-muted-foreground text-micro"}>
                       {isCurrent ? "Ora" : weekLabel(week.week_start)}
                     </text>
                   )}
@@ -103,7 +103,7 @@ export function WeekBars({ weeks, current }: { weeks: WeekBar[]; current: string
             className="pointer-events-none absolute top-0 z-10 rounded-lg border border-border bg-popover px-2.5 py-1.5 text-xs shadow-sm"
             style={{ left: Math.min(Math.max(0, barX(active) + barW / 2 - 64), Math.max(0, width - 132)), width: 128 }}
           >
-            <p className="text-[10px] text-muted-foreground">Settimana del {weekLabel(focused.week_start)}</p>
+            <p className="text-micro text-muted-foreground">Settimana del {weekLabel(focused.week_start)}</p>
             <p className="font-semibold tabular-nums">{kmLabel(focused.done_m)} fatti</p>
             {focused.planned_m > 0 && <p className="text-muted-foreground tabular-nums">{kmLabel(focused.planned_m)} previsti</p>}
           </div>

@@ -33,7 +33,7 @@ const int = (value: number) => value.toLocaleString("it-IT");
 /** Dettaglio completo: token, costo di prompt e risposta, modello. */
 export function UsageBreakdown({ usage, className }: { usage: AiUsage; className?: string }) {
   return (
-    <dl className={cn("mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-left text-[11px] leading-relaxed", className)}>
+    <dl className={cn("mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-left text-micro leading-relaxed", className)}>
       <dt className="text-muted-foreground">Prompt</dt>
       <dd>
         {int(usage.input_tokens)} token{usage.cached_tokens ? ` (${int(usage.cached_tokens)} in cache)` : ""} · {precise(usage.input_cost_usd)}
@@ -60,7 +60,7 @@ export function UsageBreakdown({ usage, className }: { usage: AiUsage; className
 /** Riga compatta che si apre sul dettaglio. */
 export function AiCost({ usage, part, prefix, className }: { usage: AiUsage; part: CostPart; prefix?: string; className?: string }) {
   return (
-    <details className={cn("group text-[10px] text-muted-foreground", className)}>
+    <details className={cn("group text-micro text-muted-foreground", className)}>
       <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
         {prefix ? `${prefix} · ` : ""}{costSummary(usage, part)}
       </summary>

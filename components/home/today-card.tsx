@@ -104,7 +104,7 @@ export function TodayCard({ next, today, heat, week, race }: Props) {
         <div className="mt-2.5 grid grid-cols-7 justify-items-center gap-1">
           {week.map((day, index) => (
             <div key={day.date} className="flex flex-col items-center gap-1">
-              <span className={cn("text-[10px]", day.date === today ? "font-semibold text-primary" : "text-muted-foreground")}>{WEEKDAYS[index]}</span>
+              <span className={cn("text-micro", day.date === today ? "font-semibold text-primary" : "text-muted-foreground")}>{WEEKDAYS[index]}</span>
               <DayStateIcon state={day.state} size="sm" />
             </div>
           ))}

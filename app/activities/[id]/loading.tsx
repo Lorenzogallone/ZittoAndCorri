@@ -11,8 +11,8 @@ export default function Loading() {
           <div key={i} className="space-y-1.5"><Skeleton className="h-3 w-12" /><Skeleton className="h-5 w-16" /></div>
         ))}
       </div>
-      <Skeleton className="mb-4 h-52 w-full rounded-[1.25rem]" />
-      <Skeleton className="h-40 w-full rounded-[1.25rem]" />
+      <Skeleton className="mb-4 h-52 w-full rounded-2xl" />
+      <Skeleton className="h-40 w-full rounded-2xl" />
     </AppShell>
   );
 }

@@ -94,7 +94,7 @@ function Row({ segment, muted }: { segment: IntervalSegment; muted: boolean }) {
       <div className={cn("border-t border-border/50 py-2 text-right tabular-nums", muted && "text-muted-foreground")}>{formatDuration(segment.duration_s)}</div>
       <div className={cn("border-t border-border/50 py-2 text-right tabular-nums", muted ? "text-muted-foreground" : "font-semibold")}>
         {clock(shownPace(segment))}
-        {deviation && !muted && <span className="ml-1 text-[11px] font-normal text-muted-foreground">{deviation}</span>}
+        {deviation && !muted && <span className="ml-1 text-micro font-normal text-muted-foreground">{deviation}</span>}
       </div>
       <div className="border-t border-border/50 py-2 text-right tabular-nums text-muted-foreground">
         {segment.kind === "recovery" && segment.hr_drop != null && segment.hr_drop > 0
@@ -136,7 +136,7 @@ export function IntervalsCard({
   return (
     <section className="surface mb-4 p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-[15px] font-semibold">Ripetute</h2>
+        <h2 className="text-body font-semibold">Ripetute</h2>
         {source === "plan" && workoutId ? (
           <Link href={`/plan/${workoutId}`} className="text-xs text-primary">{INTERVAL_SOURCE_LABELS[source]}</Link>
         ) : (
@@ -151,9 +151,9 @@ export function IntervalsCard({
 
       <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-4 text-sm">
         <div />
-        <div className="pb-1 text-right text-[11px] text-muted-foreground">Tempo</div>
-        <div className="pb-1 text-right text-[11px] text-muted-foreground">Passo</div>
-        <div className="pb-1 text-right text-[11px] text-muted-foreground">FC</div>
+        <div className="pb-1 text-right text-micro text-muted-foreground">Tempo</div>
+        <div className="pb-1 text-right text-micro text-muted-foreground">Passo</div>
+        <div className="pb-1 text-right text-micro text-muted-foreground">FC</div>
         {analysis.segments.map((segment, index) => (
           <Row key={index} segment={segment} muted={segment.kind !== "work" && segment.kind !== "steady"} />
         ))}

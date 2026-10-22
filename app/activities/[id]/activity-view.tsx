@@ -10,6 +10,7 @@ import { SeriesChart } from "@/components/activity/series-chart";
 import { SplitsChart } from "@/components/activity/splits-chart";
 import { ZonesBar } from "@/components/activity/zones-bar";
 import { IntervalsCard } from "@/components/activity/intervals-card";
+import { Stat } from "@/components/stat";
 import { hasIntervals } from "@/lib/intervals-text";
 import type { IntervalAnalysis } from "@/lib/metrics/intervals";
 import { activeDuration, formatDuration, formatPace } from "@/lib/format";
@@ -33,15 +34,6 @@ export interface ActivityViewProps {
   keyConfigured: boolean;
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 text-lg font-semibold tabular-nums">{value}</dd>
-    </div>
-  );
-}
-
 export function ActivityView(props: ActivityViewProps) {
   const { activity } = props;
   const isRun = activity.sport === "running";
@@ -57,14 +49,14 @@ export function ActivityView(props: ActivityViewProps) {
   });
   const stats = [
     { label: "Tempo", value: formatDuration(duration) },
-    isRun && activity.avg_pace_s_km != null ? { label: "Passo", value: formatPace(activity.avg_pace_s_km).replace("/km", "") } : null,
-    activity.avg_hr != null ? { label: "FC media", value: `${activity.avg_hr}` } : null,
-    activity.elevation_gain_m != null ? { label: "Dislivello", value: `${activity.elevation_gain_m} m` } : null,
-    activity.avg_cadence_spm != null ? { label: "Cadenza", value: `${activity.avg_cadence_spm}` } : null,
-    activity.max_hr != null ? { label: "FC max", value: `${activity.max_hr}` } : null,
+    isRun && activity.avg_pace_s_km != null ? { label: "Passo", value: formatPace(activity.avg_pace_s_km).replace("/km", ""), unit: "/km" } : null,
+    activity.avg_hr != null ? { label: "FC media", value: `${activity.avg_hr}`, unit: "bpm" } : null,
+    activity.elevation_gain_m != null ? { label: "Dislivello", value: `${activity.elevation_gain_m}`, unit: "m" } : null,
+    activity.avg_cadence_spm != null ? { label: "Cadenza", value: `${activity.avg_cadence_spm}`, unit: "spm" } : null,
+    activity.max_hr != null ? { label: "FC max", value: `${activity.max_hr}`, unit: "bpm" } : null,
     activity.hr_drift_pct != null ? { label: "Deriva FC", value: `${activity.hr_drift_pct > 0 ? "+" : ""}${activity.hr_drift_pct}%` } : null,
     activity.rpe != null ? { label: "Fatica", value: `${activity.rpe}/10` } : null,
-  ].filter((stat): stat is { label: string; value: string } => stat != null);
+  ].filter((stat): stat is { label: string; value: string; unit?: string } => stat != null);
 
   const charts = [
     props.splits?.length ? { key: "pace", label: "Passo", content: <SplitsChart splits={props.splits} /> } : null,
@@ -89,7 +81,7 @@ export function ActivityView(props: ActivityViewProps) {
         <div className="-mr-2 flex items-center gap-1">
           <ShareActivityButton activityId={activity.id} title={title} />
           {/* replace: dopo il salvataggio "indietro" torna alla lista, non al form. */}
-          <Link href={`/activities/${activity.id}/edit`} replace className="px-2 text-[15px] font-medium text-primary active:opacity-50">
+          <Link href={`/activities/${activity.id}/edit`} replace className="px-2 text-body font-medium text-primary active:opacity-50">
             Modifica
           </Link>
         </div>
@@ -99,11 +91,11 @@ export function ActivityView(props: ActivityViewProps) {
         <header className="mb-6">
           <p className="text-sm text-muted-foreground first-letter:uppercase">{date}</p>
           <p className="mt-1 text-base font-medium">{title}</p>
-          <h1 className="text-5xl font-bold tracking-tighter">
+          <h1 className="mt-1 font-display text-display-xl font-bold tabular-nums tracking-tight">
             {activity.distance_m > 0 ? (
               <>
                 {(activity.distance_m / 1000).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                <span className="ml-1.5 text-2xl font-semibold tracking-tight text-muted-foreground">km</span>
+                <span className="ml-1.5 text-title font-semibold text-muted-foreground">km</span>
               </>
             ) : (
               formatDuration(duration)
@@ -120,9 +112,9 @@ export function ActivityView(props: ActivityViewProps) {
           )}
         </header>
 
-        <dl className="mb-6 grid grid-cols-3 gap-x-4 gap-y-4">
+        <div className="mb-6 grid grid-cols-3 gap-x-4 gap-y-4">
           {stats.map((stat) => <Stat key={stat.label} {...stat} />)}
-        </dl>
+        </div>
 
         {props.gps && props.gps.length >= 2 && (
           <div className="mb-4">
@@ -145,7 +137,7 @@ export function ActivityView(props: ActivityViewProps) {
 
         {props.zones && Object.values(props.zones).some((seconds) => (seconds ?? 0) > 0) && (
           <section className="surface mb-4 p-4">
-            <h2 className="mb-3 text-[15px] font-semibold">Zone cardiache</h2>
+            <h2 className="mb-3 text-body font-semibold">Zone cardiache</h2>
             <ZonesBar zones={props.zones} />
           </section>
         )}

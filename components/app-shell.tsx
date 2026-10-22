@@ -43,8 +43,8 @@ export function AppShell({
       <main className="min-h-0 flex-1 overflow-y-auto scroll-touch">
         <div className="animate-enter mx-auto h-full w-full max-w-lg px-5 pb-8 pt-3">
           {title && (
-            <div className="mb-6 flex items-center justify-between gap-3 pt-2">
-              <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight">{title}</h1>
+            <div className="mb-5 flex items-center justify-between gap-3 pt-2">
+              <h1 className="font-display text-display font-bold tracking-tight">{title}</h1>
               {!backHref && headerAction}
             </div>
           )}

@@ -40,7 +40,7 @@ export default async function ActivitiesPage() {
     >
       {list.length === 0 ? (
         <div className="flex flex-col items-center gap-4 py-20 text-center">
-          <p className="text-lg font-semibold">Ancora nessuna corsa</p>
+          <p className="text-heading font-semibold">Ancora nessuna corsa</p>
           <p className="text-sm text-muted-foreground">Importa un file dall&apos;orologio o registrala a mano.</p>
           <Button asChild>
             <Link href="/activities/new"><Plus size={16} /> Nuova attività</Link>

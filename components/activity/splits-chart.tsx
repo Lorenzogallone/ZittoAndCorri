@@ -47,7 +47,7 @@ export function SplitsChart({ splits }: { splits: Split[] }) {
                   style={{ animationDelay: `${Math.min(index * 30, 500)}ms` }}
                 />
                 {(index % labelEvery === 0 || index === splits.length - 1) && (
-                  <text x={barX(index) + barW / 2} y={HEIGHT - 5} textAnchor="middle" className="fill-muted-foreground text-[10px] tabular-nums">
+                  <text x={barX(index) + barW / 2} y={HEIGHT - 5} textAnchor="middle" className="fill-muted-foreground text-micro tabular-nums">
                     {split.km}
                   </text>
                 )}

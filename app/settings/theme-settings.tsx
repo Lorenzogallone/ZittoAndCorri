@@ -21,6 +21,7 @@ import {
   type StyleKey,
   type ThemePrefs,
 } from "@/lib/theme";
+import { Segmented } from "@/components/ui/segmented";
 import { updateThemePrefs } from "./actions";
 
 const MODES: { key: ThemeMode; label: string; icon: typeof Sun }[] = [
@@ -54,25 +55,12 @@ export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
     <div id="theme-settings-content" className="divide-y divide-border/60">
       <div className="space-y-2.5 py-4">
         <p className="text-sm font-medium">Tema</p>
-        <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-0.5">
-          {MODES.map(({ key, label, icon: Icon }) => {
-            const active = prefs.mode === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => update({ mode: key })}
-                aria-pressed={active}
-                className={`flex items-center justify-center gap-1.5 rounded-[10px] py-1.5 text-[13px] font-medium transition-all ${
-                  active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                }`}
-              >
-                <Icon size={14} />
-                {label}
-              </button>
-            );
-          })}
-        </div>
+        <Segmented
+          ariaLabel="Tema"
+          value={prefs.mode}
+          onChange={(mode) => update({ mode })}
+          options={MODES.map(({ key, label, icon: Icon }) => ({ key, label, icon: <Icon size={14} /> }))}
+        />
       </div>
 
       <div className="space-y-3 py-4">

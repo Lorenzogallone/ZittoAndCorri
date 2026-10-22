@@ -123,7 +123,7 @@ export function AiThinkingOverlay({ pending, variant }: AiThinkingOverlayProps) 
               <span>.</span><span>.</span><span>.</span>
             </span>
           </div>
-          <span className="text-[10px] text-muted-foreground tabular-nums">
+          <span className="text-micro text-muted-foreground tabular-nums">
             {elapsed}s
           </span>
         </div>
