@@ -7,8 +7,9 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const token = bearerToken(request);
     if (!token) return Response.json({ error: "Token mancante." }, { status: 401 });
-    const connection = await authorizeZeppToken(token, "workout");
-    if (!connection) return Response.json({ error: "Token workout non valido o revocato." }, { status: 401 });
+    // Il piano serve sia alla Workout Extension sia al widget "Oggi" della Mini App salute.
+    const connection = await authorizeZeppToken(token);
+    if (!connection) return Response.json({ error: "Token non valido o revocato." }, { status: 401 });
 
     const body = await readJsonWithLimit(request, 32 * 1024);
     const parsed = ZeppWorkoutPullRequestSchema.safeParse(body);

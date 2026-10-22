@@ -141,7 +141,7 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
           <ol className="list-decimal space-y-1.5 pl-4">
             <li>Genera il codice qui sopra (valido 10 minuti).</li>
             <li>
-              <strong>App Salute (sync dati):</strong> apri Zepp sul telefono → Active 3 Premium → App → Zitto e Corri → Impostazioni → incolla il codice → <em>Collega</em>.
+              <strong>App Salute (sync dati):</strong> apri Zepp sul telefono → il tuo orologio → App → Zitto e Corri → Impostazioni → incolla il codice → <em>Collega</em>.
             </li>
             <li>
               <strong>App Coach (allenamenti):</strong> sempre in Zepp → App → Zitto e Corri Coach → Impostazioni → incolla lo <strong>stesso codice</strong> → <em>Collega</em>.

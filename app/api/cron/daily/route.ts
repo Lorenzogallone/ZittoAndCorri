@@ -1,4 +1,6 @@
-// Cron giornaliero: promemoria della seduta di domani (ora di Roma).
+// Cron giornaliero: promemoria della seduta di domani (ora di Roma) e seconda
+// sincronizzazione Intervals.icu del giorno (la prima è /api/cron/intervals al
+// mattino): su Vercel Hobby ogni cron gira al massimo una volta al giorno.
 // Auth: Authorization: Bearer ${CRON_SECRET} (vedi vercel.json).
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -8,6 +10,7 @@ import { reminderBody } from "@/lib/push/messages";
 import { romeDate, shiftIsoDate } from "@/lib/push/weekly-stats";
 import { TYPE_LABELS } from "@/lib/activity-meta";
 import type { PlannedWorkout } from "@/lib/types";
+import { syncAllIntervalsUsers } from "@/lib/intervals/sync";
 
 export const maxDuration = 300;
 
@@ -20,8 +23,13 @@ export async function GET(request: Request) {
   const authError = cronAuthError(request);
   if (authError) return authError;
 
+  const intervals = await syncAllIntervalsUsers().catch((error) => {
+    console.error("cron daily intervals:", error instanceof Error ? error.message : error);
+    return { error: "sync Intervals.icu non riuscita" };
+  });
+
   const date = shiftIsoDate(romeDate(), 1);
-  if (!isPushConfigured()) return Response.json({ date, skipped: "push non configurato" });
+  if (!isPushConfigured()) return Response.json({ date, intervals, skipped: "push non configurato" });
 
   const admin = createAdminClient();
   const [subsRes, workoutsRes] = await Promise.all([
@@ -62,5 +70,5 @@ export async function GET(request: Request) {
     delivered += sent;
   }
 
-  return Response.json({ date, users: byUser.size, notified, delivered });
+  return Response.json({ date, users: byUser.size, notified, delivered, intervals });
 }
