@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { cn } from "@/lib/utils";
+import { tap } from "@/lib/haptics";
 import { useAiJob } from "@/lib/use-ai-job";
 import type { AiJobStatus } from "@/app/actions/ai-jobs";
 import { applyPlanProposal, rejectPlanProposal, sendCoachMessage, startNewCoachChat } from "@/app/coach/actions";
@@ -124,7 +125,10 @@ function ProposalCard({ proposal, onStatusChange }: { proposal: PlanProposal; on
     try {
       const result = apply ? await applyPlanProposal(proposal.id) : await rejectPlanProposal(proposal.id);
       if (result?.error) setError(result.error);
-      else onStatusChange(apply ? "applied" : "rejected");
+      else {
+        if (apply) tap();
+        onStatusChange(apply ? "applied" : "rejected");
+      }
     } catch {
       setError("Connessione interrotta. Verifica il piano prima di riprovare.");
     } finally {
