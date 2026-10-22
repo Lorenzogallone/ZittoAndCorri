@@ -19,13 +19,6 @@ import {
   VIBRATOR_SCENE_STRONG_REMINDER,
 } from "@zos/sensor"
 import {
-  KEY_DOWN,
-  KEY_EVENT_DOUBLE_CLICK,
-  KEY_UP,
-  offKey,
-  onKey,
-} from "@zos/interaction"
-import {
   createRuntime,
   extractSportValue,
   formatClock,
@@ -167,7 +160,6 @@ DataWidget(
       refs: {},
       vibrator: null,
       sounds: null,
-      keyRegistered: false,
       lastMetrics: null,
       lastResult: null,
       phasePromptTimer: null,
@@ -229,7 +221,8 @@ DataWidget(
       text({ x: px(244), y: px(242), w: px(170), h: px(19), text_size: px(14), color: COLORS.yellow, text: "DISTANZA KM" })
       this.state.refs.distance = text({ x: px(244), y: px(261), w: px(170), h: px(57), text_size: px(44), text: "—" })
 
-      // ── Fascia bassa: orologio, stato, bottoni ────────────────────────
+      // ── Fascia bassa: orologio, stato, bottoni touch ──────────────────
+      // Le Workout Extension non ricevono i tasti fisici: solo i tocchi.
       this.state.refs.clock = text({ x: px(156), y: px(342), w: px(154), h: px(27), text_size: px(22), color: COLORS.yellow, text: "--:--" })
       this.state.refs.status = text({ x: px(91), y: px(369), w: px(284), h: px(18), text_size: px(12), color: COLORS.muted, text: "Apri questa pagina per gli avvisi" })
 
@@ -288,7 +281,6 @@ DataWidget(
 
     onResume() {
       this.state.visible = true
-      this.registerInputs()
       this.registerHeartRate()
       this.refreshPlan()
       this.tick()
@@ -314,29 +306,10 @@ DataWidget(
       if (this.state.timer) clearInterval(this.state.timer)
       this.state.timer = null
       this.hidePhasePrompt()
-      if (this.state.keyRegistered) {
-        try { offKey() } catch {}
-        this.state.keyRegistered = false
-      }
       if (this.state.heartRate) {
         try { this.state.heartRate.offCurrentChange(this.state.hrCallback) } catch {}
       }
       this.state.heartRate = null
-    },
-
-    registerInputs() {
-      if (this.state.keyRegistered) return
-      try {
-        onKey({
-          callback: (key, keyEvent) => {
-            if (keyEvent !== KEY_EVENT_DOUBLE_CLICK) return false
-            if (key === KEY_DOWN) { this.changeStep(1); return true }
-            if (key === KEY_UP) { this.changeStep(-1); return true }
-            return false
-          },
-        })
-        this.state.keyRegistered = true
-      } catch {}
     },
 
     registerHeartRate() {

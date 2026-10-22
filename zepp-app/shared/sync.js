@@ -4,6 +4,7 @@ import {
   clearPendingSyncs,
   enqueueSync,
   getIntegrationEnabled,
+  getLastResult,
   getPendingSyncs,
   setIntegrationEnabled,
   setLastResult,
@@ -37,7 +38,15 @@ export async function flushPending(requester) {
       })
       sent += 1
     } catch (error) {
-      setLastResult({ ok: false, at: new Date().toISOString(), error: String(error) })
+      // Teniamo ora, readiness e riepilogo dell'ultimo invio riuscito: li
+      // mostrano la pagina e il widget "Oggi".
+      const previous = getLastResult()
+      setLastResult({
+        ...(previous?.at ? previous : {}),
+        ok: false,
+        failedAt: new Date().toISOString(),
+        error: String(error),
+      })
       throw error
     }
   }

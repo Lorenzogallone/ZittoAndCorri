@@ -5,7 +5,7 @@
     "appName": "Zitto e Corri Coach",
     "appType": "app",
     "extType": "workout",
-    "version": { "code": 1, "name": "1.0.0" },
+    "version": { "code": 2, "name": "1.0.1" },
     "icon": "icon.png",
     "vender": "ZittoAndCorri",
     "description": "Allenamenti di corsa guidati con fasi, target e avvisi"
@@ -41,7 +41,10 @@
         { "name": "Active 3 Premium", "deviceSource": 10944768, "st": "r", "dw": 466 },
         { "name": "Active 3 Premium", "deviceSource": 10944769, "st": "r", "dw": 466 },
         { "name": "Active 3 Premium", "deviceSource": 10944771, "st": "r", "dw": 466 },
-        { "name": "Active 3 Premium", "deviceSource": 10948867, "st": "r", "dw": 466 }
+        { "name": "Active 3 Premium", "deviceSource": 10948867, "st": "r", "dw": 466 },
+        { "name": "Balance 2", "deviceSource": 9568512, "st": "r", "dw": 480 },
+        { "name": "Balance 2", "deviceSource": 9568513, "st": "r", "dw": 480 },
+        { "name": "Balance 2", "deviceSource": 9568515, "st": "r", "dw": 480 }
       ],
       "designWidth": 466
     }

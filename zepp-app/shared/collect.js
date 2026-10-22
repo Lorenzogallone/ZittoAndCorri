@@ -65,12 +65,12 @@ export function collectHealthPayload(trigger = "manual") {
     localDate: localDate(now),
     timezoneOffsetMinutes: -now.getTimezoneOffset(),
     device: {
-      deviceName: device.deviceName ? String(device.deviceName) : "Active 3 Premium",
+      deviceName: device.deviceName ? String(device.deviceName) : "Amazfit",
       deviceSource: device.deviceSource,
       osVersion: system.osVersion,
       firmwareVersion: system.firmwareVersion,
       apiLevel: system.minAPI,
-      appVersion: "1.0.4",
+      appVersion: "1.0.5",
     },
     data: {
       workout: workout ? {
