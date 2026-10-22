@@ -134,7 +134,7 @@ export function IntervalsCard({
     : s?.main === "sprint" && Math.max(0, ...sprintTop) > 0 ? `Punta ${kmh(Math.max(...sprintTop))}` : null;
 
   return (
-    <section className="surface mb-4 p-4">
+    <section className="surface p-4">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-body font-semibold">Ripetute</h2>
         {source === "plan" && workoutId ? (

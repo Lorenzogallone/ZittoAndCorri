@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Trophy } from "lucide-react";
+import { Flame, Footprints, Gauge, Heart, HeartPulse, Mountain, Timer, TrendingUp, Trophy, type LucideIcon } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { SegmentedTabs } from "@/components/segmented-tabs";
 import { ActivityEvaluation } from "@/components/activity-evaluation";
@@ -48,20 +48,20 @@ export function ActivityView(props: ActivityViewProps) {
     timeZone: "Europe/Rome",
   });
   const stats = [
-    { label: "Tempo", value: formatDuration(duration) },
-    isRun && activity.avg_pace_s_km != null ? { label: "Passo", value: formatPace(activity.avg_pace_s_km).replace("/km", ""), unit: "/km" } : null,
-    activity.avg_hr != null ? { label: "FC media", value: `${activity.avg_hr}`, unit: "bpm" } : null,
-    activity.elevation_gain_m != null ? { label: "Dislivello", value: `${activity.elevation_gain_m}`, unit: "m" } : null,
-    activity.avg_cadence_spm != null ? { label: "Cadenza", value: `${activity.avg_cadence_spm}`, unit: "spm" } : null,
-    activity.max_hr != null ? { label: "FC max", value: `${activity.max_hr}`, unit: "bpm" } : null,
-    activity.hr_drift_pct != null ? { label: "Deriva FC", value: `${activity.hr_drift_pct > 0 ? "+" : ""}${activity.hr_drift_pct}%` } : null,
-    activity.rpe != null ? { label: "Fatica", value: `${activity.rpe}/10` } : null,
-  ].filter((stat): stat is { label: string; value: string; unit?: string } => stat != null);
+    { label: "Tempo", value: formatDuration(duration), icon: Timer },
+    isRun && activity.avg_pace_s_km != null ? { label: "Passo", value: formatPace(activity.avg_pace_s_km).replace("/km", ""), unit: "/km", icon: Gauge } : null,
+    activity.avg_hr != null ? { label: "FC media", value: `${activity.avg_hr}`, unit: "bpm", icon: Heart } : null,
+    activity.elevation_gain_m != null ? { label: "Dislivello", value: `${activity.elevation_gain_m}`, unit: "m", icon: Mountain } : null,
+    activity.avg_cadence_spm != null ? { label: "Cadenza", value: `${activity.avg_cadence_spm}`, unit: "spm", icon: Footprints } : null,
+    activity.max_hr != null ? { label: "FC max", value: `${activity.max_hr}`, unit: "bpm", icon: HeartPulse } : null,
+    activity.hr_drift_pct != null ? { label: "Deriva FC", value: `${activity.hr_drift_pct > 0 ? "+" : ""}${activity.hr_drift_pct}%`, icon: TrendingUp } : null,
+    activity.rpe != null ? { label: "Fatica", value: `${activity.rpe}/10`, icon: Flame } : null,
+  ].filter((stat): stat is { label: string; value: string; unit?: string; icon: LucideIcon } => stat != null);
 
   const charts = [
     props.splits?.length ? { key: "pace", label: "Passo", content: <SplitsChart splits={props.splits} /> } : null,
     props.hr && props.hr.length >= 2
-      ? { key: "hr", label: "Cuore", content: <SeriesChart points={props.hr.map((p) => ({ t: p.t, v: p.bpm }))} color="#ef4444" unit="bpm" /> }
+      ? { key: "hr", label: "Cuore", content: <SeriesChart points={props.hr.map((p) => ({ t: p.t, v: p.bpm }))} color="var(--viz-2)" unit="bpm" /> }
       : null,
     props.elevation && props.elevation.length >= 2
       ? {
@@ -87,15 +87,15 @@ export function ActivityView(props: ActivityViewProps) {
         </div>
       }
     >
-      <div className="stagger">
-        <header className="mb-6">
-          <p className="text-sm text-muted-foreground first-letter:uppercase">{date}</p>
-          <p className="mt-1 text-base font-medium">{title}</p>
+      <div className="stagger space-y-6">
+        <header>
+          <p className="text-caption text-muted-foreground first-letter:uppercase">{date}</p>
+          <p className="mt-1 text-body font-medium">{title}</p>
           <h1 className="mt-1 font-display text-display-xl font-bold tabular-nums tracking-tight">
             {activity.distance_m > 0 ? (
               <>
                 {(activity.distance_m / 1000).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                <span className="ml-1.5 text-title font-semibold text-muted-foreground">km</span>
+                <span className="ml-1.5 text-heading font-semibold tracking-normal text-muted-foreground">km</span>
               </>
             ) : (
               formatDuration(duration)
@@ -104,23 +104,19 @@ export function ActivityView(props: ActivityViewProps) {
           {props.records.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {props.records.map((record) => (
-                <span key={record.key} className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300">
-                  <Trophy size={13} /> Record {EFFORTS.find((effort) => effort.key === record.key)?.label} · {formatDuration(record.time_s)}
+                <span key={record.key} className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-caption font-semibold text-amber-700 tabular-nums dark:text-amber-300">
+                  <Trophy size={14} /> Record {EFFORTS.find((effort) => effort.key === record.key)?.label} · {formatDuration(record.time_s)}
                 </span>
               ))}
             </div>
           )}
         </header>
 
-        <div className="mb-6 grid grid-cols-3 gap-x-4 gap-y-4">
+        <div className="grid grid-cols-3 gap-x-3 gap-y-5">
           {stats.map((stat) => <Stat key={stat.label} {...stat} />)}
         </div>
 
-        {props.gps && props.gps.length >= 2 && (
-          <div className="mb-4">
-            <RoutePreview gps={props.gps} />
-          </div>
-        )}
+        {props.gps && props.gps.length >= 2 && <RoutePreview gps={props.gps} />}
 
         {/* Le ripetute misurate includono già il confronto con il passo previsto. */}
         {hasIntervals(props.intervals) ? (
@@ -130,13 +126,13 @@ export function ActivityView(props: ActivityViewProps) {
         )}
 
         {charts.length > 0 && (
-          <section className="surface mb-4 p-4">
+          <section className="surface p-4">
             <SegmentedTabs tabs={charts} />
           </section>
         )}
 
         {props.zones && Object.values(props.zones).some((seconds) => (seconds ?? 0) > 0) && (
-          <section className="surface mb-4 p-4">
+          <section className="surface p-4">
             <h2 className="mb-3 text-body font-semibold">Zone cardiache</h2>
             <ZonesBar zones={props.zones} />
           </section>

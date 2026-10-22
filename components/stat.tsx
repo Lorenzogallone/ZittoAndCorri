@@ -29,7 +29,7 @@ export function Stat({
   return (
     <div className={cn("min-w-0", className)}>
       <p className="eyebrow flex items-center gap-1" data-tone={tone === "hero" ? "hero" : undefined}>
-        {Icon && <Icon size={12} strokeWidth={2.4} aria-hidden="true" />}
+        {Icon && <Icon size={14} strokeWidth={2.2} className="shrink-0 text-primary" aria-hidden="true" />}
         <span className="truncate">{label}</span>
       </p>
       <p className={cn("mt-1 flex items-baseline gap-1 font-display tabular-nums tracking-tight", VALUE_SIZE[size])}>

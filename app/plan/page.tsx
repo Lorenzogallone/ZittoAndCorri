@@ -9,6 +9,7 @@ import { PhaseBar } from "@/components/plan/phase-bar";
 import { AdaptSheet } from "@/components/plan/adapt-sheet";
 import { AdaptationBanner } from "@/components/plan/adaptation-banner";
 import { Segmented } from "@/components/ui/segmented";
+import { Button } from "@/components/ui/button";
 import { formatDistance } from "@/lib/format";
 import { addDays, daysBetween, mondayOf, romeDay } from "@/lib/local-date";
 import { buildDays } from "@/lib/plan/day-status";
@@ -97,16 +98,16 @@ export default async function PlanPage({ searchParams }: Props) {
       )}
 
       {goal ? (
-        <Link href="/goals" className="mb-7 block">
+        <Link href="/goals" className="mb-8 block">
           <div className="flex items-baseline justify-between gap-3">
-            <p className="truncate text-base font-semibold">{goal.race_name}</p>
+            <p className="truncate font-display text-title font-bold tracking-tight">{goal.race_name}</p>
             {daysToRace != null && daysToRace >= 0 && (
-              <p className="shrink-0 text-sm font-semibold tabular-nums text-primary">
+              <p className="shrink-0 font-display text-heading font-bold tabular-nums tracking-tight text-primary">
                 {daysToRace === 0 ? "Oggi" : daysToRace < 14 ? `tra ${daysToRace} giorni` : `${Math.ceil(daysToRace / 7)} settimane`}
               </p>
             )}
           </div>
-          <p className="mb-3 mt-0.5 text-xs text-muted-foreground">
+          <p className="mb-4 mt-1 text-caption text-muted-foreground tabular-nums">
             {formatDistance(goal.distance_m)}
             {goal.race_date
               ? ` · ${new Date(`${goal.race_date}T12:00:00Z`).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}`
@@ -115,7 +116,7 @@ export default async function PlanPage({ searchParams }: Props) {
           {phases && <PhaseBar plan={phases} />}
         </Link>
       ) : (
-        <Link href="/?prompt=Vorrei+impostare+un+obiettivo" className="surface mb-7 flex items-center justify-between px-4 py-3 text-sm text-muted-foreground">
+        <Link href="/?prompt=Vorrei+impostare+un+obiettivo" className="surface mb-8 flex items-center justify-between px-4 py-3 text-body text-muted-foreground">
           Nessun obiettivo · parlane al coach
           <ChevronRight size={16} />
         </Link>
@@ -170,9 +171,11 @@ export default async function PlanPage({ searchParams }: Props) {
         </div>
       )}
 
-      <Link href="/plan/new" className="mt-2 flex items-center justify-center gap-1.5 py-3 text-sm font-medium text-primary">
-        <Plus size={16} /> Aggiungi una seduta
-      </Link>
+      <Button asChild variant="outline" className="mt-2 w-full">
+        <Link href="/plan/new">
+          <Plus size={16} /> Aggiungi una seduta
+        </Link>
+      </Button>
     </AppShell>
   );
 }
