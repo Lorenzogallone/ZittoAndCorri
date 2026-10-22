@@ -57,7 +57,7 @@ AppSettingsPage({
       ? card([
           heading("Guida della corsa"),
           Text({ paragraph: true, style: { color: COLORS.muted, fontSize: "13px", margin: "0 0 12px", lineHeight: "1.45" } },
-            "Il piano si aggiorna alle 06:00, alle 18:00 e quando apri la pagina Coach dentro Exercise."),
+            "Il piano si aggiorna quando apri la pagina Coach dentro Exercise oppure con «Aggiorna piano ora»."),
           Select({
             label: "Allenamento",
             title: "Scegli cosa correre",

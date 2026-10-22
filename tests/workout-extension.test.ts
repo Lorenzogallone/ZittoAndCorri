@@ -125,7 +125,7 @@ test("la previsione chilometrica interpola il passaggio e usa la media mobile", 
   assert.equal(kilometerProjection({ ...runtime, kmBoundaries: {} }, { duration: 300, distance: 1010 }, 300), null);
 });
 
-test("pairing e pull distinguono rigidamente health e workout", () => {
+test("pairing distingue health e workout; il piano in sola lettura serve a entrambi", () => {
   assert.equal(ZeppPairRequestSchema.parse({ code: "123456", clientId: "watch-health", device: {} }).clientKind, "health");
   assert.equal(ZeppPairRequestSchema.parse({ code: "123456", clientId: "watch-workout", clientKind: "workout", device: {} }).clientKind, "workout");
   assert.equal(ZeppWorkoutPullRequestSchema.safeParse({ localDate: "2026-08-26", timezoneOffsetMinutes: 120 }).success, true);
@@ -136,7 +136,9 @@ test("pairing e pull distinguono rigidamente health e workout", () => {
   assert.match(data, /onConflict: "user_id,client_kind"/);
   assert.match(data, /\.eq\("user_id", userId\)\.eq\("client_kind", clientKind\)/);
   assert.match(healthRoute, /authorizeZeppToken\(token, "health"\)/);
-  assert.match(workoutRoute, /authorizeZeppToken\(token, "workout"\)/);
+  // Il pull è in sola lettura: lo usano la Workout Extension e il widget "Oggi" della Mini App salute.
+  assert.match(workoutRoute, /authorizeZeppToken\(token\)/);
+  assert.doesNotMatch(healthRoute, /authorizeZeppToken\(token\)/);
 });
 
 test("il pull preferisce un override valido e richiede un solo allenamento oggi", () => {
@@ -168,7 +170,8 @@ test("pipeline AI, cache offline e controlli dell'estensione restano nel contrat
   assert.match(migration, /jsonb_build_array/);
   assert.match(sync, /result\.notModified && cached/);
   assert.match(widget, /Offline · uso piano salvato/);
-  assert.match(widget, /KEY_EVENT_DOUBLE_CLICK/);
+  // Le Workout Extension non ricevono i tasti fisici (docs Zepp): solo tocchi.
+  assert.doesNotMatch(widget, /onKey|KEY_EVENT_DOUBLE_CLICK/);
   assert.match(widget, /event\.CLICK/);
   assert.match(widget, /radius: px\(233\)/);
   assert.match(widget, /RESIDUO FASE/);

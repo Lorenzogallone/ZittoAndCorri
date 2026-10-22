@@ -1,6 +1,6 @@
 {
   "name": "zitto-and-corri-zepp-os",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "description": "Mini Program opzionale Zepp OS per ZittoAndCorri",
   "main": "app.js",
