@@ -1,6 +1,16 @@
 {
   "crons": [
-    { "path": "/api/cron/daily", "schedule": "30 16 * * *" },
-    { "path": "/api/cron/weekly", "schedule": "0 6 * * 1" }
+    {
+      "path": "/api/cron/intervals",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/daily",
+      "schedule": "30 16 * * *"
+    },
+    {
+      "path": "/api/cron/weekly",
+      "schedule": "0 6 * * 1"
+    }
   ]
 }

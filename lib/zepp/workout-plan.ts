@@ -139,11 +139,14 @@ export async function pullZeppWorkoutPlan(
   const revision = revisionFor(workouts, selection.source === "override" ? selection.selected?.id ?? null : null);
 
   const now = new Date().toISOString();
-  await admin.from("zepp_connections").update({
-    last_sync_at: now,
-    last_error: null,
-    updated_at: now,
-  }).eq("id", connection.id);
+  // Per il client salute "ultima sincronizzazione" resta quella dei dati, non del piano.
+  if (connection.client_kind === "workout") {
+    await admin.from("zepp_connections").update({
+      last_sync_at: now,
+      last_error: null,
+      updated_at: now,
+    }).eq("id", connection.id);
+  }
 
   return {
     schemaVersion: 1 as const,

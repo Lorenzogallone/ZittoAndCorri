@@ -7,7 +7,9 @@ import { SPORTS } from "@/lib/types";
 
 export const ActivityInput = z
   .object({
-    source: z.enum(["manual", "json_import", "file", "strava", "healthkit"]),
+    source: z.enum(["manual", "json_import", "file", "strava", "healthkit", "intervals"]),
+    // Identificativo nella sorgente esterna (es. "intervals:123"): evita i doppi import.
+    external_id: z.string().trim().min(1).max(120).optional(),
     type: z
       .enum(["unclassified", "easy", "tempo", "interval", "long", "race", "recovery", "cross"])
       .default("unclassified"),

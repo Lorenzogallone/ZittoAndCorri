@@ -12,7 +12,7 @@ import {
 import type { ZeppPairRequest, ZeppSyncPayload } from "@/lib/zepp/schema";
 import { computeZeppReadiness } from "@/lib/zepp/readiness";
 import { createPairingCode, createZeppToken, hashZeppCredential } from "@/lib/zepp/security";
-import type { ZeppConnectionView, ZeppDailyMetric, ZeppReadinessResult } from "@/lib/zepp/types";
+import type { WellnessDay, ZeppConnectionView, ZeppDailyMetric, ZeppReadinessResult } from "@/lib/zepp/types";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { isZeppFresh, ZEPP_DAILY_STALE_DAYS } from "@/lib/zepp/hr-values";
 
@@ -87,6 +87,21 @@ function toDailyMetric(row: Record<string, unknown>): ZeppDailyMetric {
     completeness: row.completeness && typeof row.completeness === "object"
       ? row.completeness as Record<string, boolean>
       : null,
+  };
+}
+
+function toWellnessDay(row: Record<string, unknown>): WellnessDay {
+  const source = row.source === "zepp" || row.source === "manual" ? row.source : "intervals";
+  return {
+    date: String(row.date),
+    captured_at: String(row.captured_at),
+    source,
+    sleep_secs: numeric(row.sleep_secs),
+    sleep_score: numeric(row.sleep_score),
+    resting_hr: numeric(row.resting_hr),
+    hrv: numeric(row.hrv),
+    spo2: numeric(row.spo2),
+    steps: numeric(row.steps),
   };
 }
 
@@ -371,8 +386,10 @@ export async function getZeppDashboard(
   readiness: ZeppReadinessResult;
   /** True se Zepp è attivo ma non sincronizza da più di ZEPP_DAILY_STALE_DAYS. */
   stale: boolean;
+  /** Wellness recente (Intervals.icu), dal più nuovo; vuoto senza migrazione 0025. */
+  wellness: WellnessDay[];
 }> {
-  const [{ data: connectionData }, { data: metricData }] = await Promise.all([
+  const [{ data: connectionData }, { data: metricData }, wellnessResult] = await Promise.all([
     supabase.from("zepp_connections")
       .select("id, user_id, token_hash, client_kind, enabled, auto_sync, device_name, device_source, os_version, firmware_version, api_level, paired_at, last_sync_at, last_error")
       .eq("user_id", userId)
@@ -384,8 +401,17 @@ export async function getZeppDashboard(
       .order("date", { ascending: false })
       .limit(42)
       .returns<Record<string, unknown>[]>(),
+    supabase.from("wellness_daily")
+      .select("date, captured_at, source, sleep_secs, sleep_score, resting_hr, hrv, spo2, steps")
+      .eq("user_id", userId)
+      .order("date", { ascending: false })
+      .limit(42)
+      .returns<Record<string, unknown>[]>(),
   ]);
   const connection = publicConnection(connectionData ?? null);
+  // Senza la migrazione 0025 la tabella non c'è: si va avanti senza wellness.
+  const wellnessAll = wellnessResult.error ? [] : (wellnessResult.data ?? []).map(toWellnessDay);
+  const wellness = wellnessAll.length && isZeppFresh(wellnessAll[0].captured_at, ZEPP_DAILY_STALE_DAYS) ? wellnessAll : [];
   const all = (metricData ?? []).map(toDailyMetric);
   // Se l'orologio non sincronizza da qualche giorno i suoi dati non descrivono
   // più l'atleta: si ignorano e si torna al solo calcolo interno.
@@ -396,8 +422,9 @@ export async function getZeppDashboard(
     connection,
     latest: enabled ? metrics[0] ?? null : null,
     recent: enabled ? metrics : [],
-    readiness: computeZeppReadiness(metrics, internal, new Date(), enabled),
+    readiness: computeZeppReadiness(metrics, internal, new Date(), enabled, wellness),
     stale: enabled && stale,
+    wellness,
   };
 }
 

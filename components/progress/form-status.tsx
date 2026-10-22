@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { ATLCTLResult } from "@/lib/types";
-import type { ZeppDailyMetric, ZeppReadinessResult } from "@/lib/zepp/types";
+import type { WellnessDay, ZeppDailyMetric, ZeppReadinessResult } from "@/lib/zepp/types";
 
 const INTERNAL = {
   calibrating: { label: "In calibrazione", text: "Ancora qualche corsa e la lettura diventa stabile.", tone: "text-foreground" },
@@ -52,24 +52,28 @@ export function FormStatus({
   load,
   readiness,
   latest,
+  wellness = null,
   stale,
   hasData,
 }: {
   load: ATLCTLResult;
   readiness: ZeppReadinessResult | null;
   latest: ZeppDailyMetric | null;
+  /** Giorno più recente da Intervals.icu: riempie i dati che Zepp non ha. */
+  wellness?: WellnessDay | null;
   stale: boolean;
   hasData: boolean;
 }) {
   const assisted = readiness?.available && readiness.status ? ZEPP[readiness.status] : null;
   const state = assisted ?? INTERNAL[load.status];
-  const metrics = latest
-    ? [
-        latest.sleep_total_min != null ? { label: "Sonno", value: sleepLabel(latest.sleep_total_min) } : null,
-        latest.resting_hr != null ? { label: "FC a riposo", value: `${latest.resting_hr}` } : null,
-        latest.vo2_max != null ? { label: "VO₂max", value: `${latest.vo2_max}` } : null,
-      ].filter((metric): metric is { label: string; value: string } => metric != null)
-    : [];
+  const sleepMin = latest?.sleep_total_min ?? (wellness?.sleep_secs != null ? Math.round(wellness.sleep_secs / 60) : null);
+  const restingHr = latest?.resting_hr ?? wellness?.resting_hr ?? null;
+  const metrics = [
+    sleepMin != null ? { label: "Sonno", value: sleepLabel(sleepMin) } : null,
+    restingHr != null ? { label: "FC a riposo", value: `${restingHr}` } : null,
+    wellness?.hrv != null ? { label: "HRV", value: `${Math.round(wellness.hrv)} ms` } : null,
+    latest?.vo2_max != null ? { label: "VO₂max", value: `${latest.vo2_max}` } : null,
+  ].filter((metric): metric is { label: string; value: string } => metric != null).slice(0, 3);
 
   if (!hasData) {
     return (

@@ -27,6 +27,7 @@ export type ActivitySource =
   | "json_import"
   | "file"
   | "strava"
+  | "intervals"
   | "healthkit";
 
 export const WORKOUT_TYPES: WorkoutType[] = [

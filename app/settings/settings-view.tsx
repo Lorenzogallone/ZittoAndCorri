@@ -18,6 +18,8 @@ import type { AiTask } from "@/lib/ai/routing";
 import type { UsageSummary } from "@/lib/ai/usage";
 import { CoachMemorySection } from "./coach-memory-section";
 import { ZeppIntegrationSection } from "./zepp-integration-section";
+import { IntervalsSection } from "./intervals-section";
+import type { IntervalsConnectionView } from "@/lib/intervals/credentials";
 import { ApiKeySection } from "./api-key-section";
 import { SettingsGroup } from "./settings-group";
 import { SettingsTabs } from "./settings-tabs";
@@ -33,6 +35,8 @@ export interface SettingsViewProps {
   focusGemini: boolean;
   memories: CoachMemory[];
   zeppConnection: ZeppConnectionView | null;
+  /** undefined = database senza migrazione 0025. */
+  intervals: IntervalsConnectionView | null | undefined;
   /** Modelli per compito (migrazione 0024: perTask). */
   aiTasks: { perTask: boolean; keys: { gemini: boolean; openrouter: boolean }; tasks: Record<AiTask, TaskRouteView> };
   /** Spesa AI del mese; null senza la migrazione 0024. */
@@ -99,6 +103,9 @@ export function SettingsView(props: SettingsViewProps) {
       label: "Collegamenti",
       content: (
         <>
+          <SettingsGroup title="Intervals.icu">
+            <IntervalsSection initial={props.intervals} />
+          </SettingsGroup>
           <SettingsGroup title="Orologio Zepp">
             <ZeppIntegrationSection initialConnection={props.zeppConnection} />
           </SettingsGroup>
