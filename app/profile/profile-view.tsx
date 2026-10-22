@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, Settings } from "lucide-react";
+import { ChevronRight, Flag, Settings } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/section";
@@ -42,7 +42,7 @@ export function ProfileView(props: ProfileViewProps) {
       content: (
         <>
           <FormChart points={props.formPoints} />
-          <p className="mt-3 text-xs text-muted-foreground">
+          <p className="mt-3 text-caption text-muted-foreground">
             {props.formTrend ?? "Forma: allenamento delle ultime 6 settimane. Fatica: quello degli ultimi 7 giorni."}
           </p>
         </>
@@ -79,9 +79,9 @@ export function ProfileView(props: ProfileViewProps) {
       }
     >
       <div className="stagger">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/12 text-sm font-bold text-primary">{props.initials}</div>
-          <p className="truncate text-lg font-semibold">{props.displayName}</p>
+        <div className="mb-6 flex items-center gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-body font-bold text-primary-foreground">{props.initials}</div>
+          <p className="min-w-0 truncate font-display text-heading font-bold tracking-tight">{props.displayName}</p>
         </div>
 
         <div className="mb-3">
@@ -94,9 +94,10 @@ export function ProfileView(props: ProfileViewProps) {
           />
         </div>
 
-        <Link href="/goals" className="surface mb-8 flex items-center gap-3 px-5 py-4 transition-transform active:scale-[0.99]">
+        <Link href="/goals" className="surface mb-8 flex items-center gap-3 px-4 py-4 transition-transform active:scale-[0.99]">
+          <Flag size={20} strokeWidth={2.2} className="shrink-0 text-primary" />
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-muted-foreground">Obiettivo</p>
+            <p className="eyebrow">Obiettivo</p>
             {goal ? (
               <p className="truncate text-body font-semibold">
                 {goal.race_name}
@@ -110,7 +111,7 @@ export function ProfileView(props: ProfileViewProps) {
             )}
           </div>
           {daysToRace != null && daysToRace >= 0 && (
-            <span className="shrink-0 text-sm font-semibold tabular-nums text-primary">
+            <span className="shrink-0 font-display text-heading font-bold tabular-nums tracking-tight text-primary">
               {daysToRace === 0 ? "Oggi" : daysToRace === 1 ? "Domani" : `${daysToRace} gg`}
             </span>
           )}

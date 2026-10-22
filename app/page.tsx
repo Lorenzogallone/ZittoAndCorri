@@ -6,13 +6,26 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { CoachChat } from "@/components/coach-chat";
 import { TodayCard } from "@/components/home/today-card";
-import { addDays, daysBetween, mondayOf, romeDay } from "@/lib/local-date";
+import { addDays, daysBetween, mondayOf, romeDay, romeHour } from "@/lib/local-date";
 import { buildDays } from "@/lib/plan/day-status";
 import { heatForDates } from "@/lib/weather";
 import { getAiStatus } from "@/lib/ai/ai-status";
 import type { Activity, CoachMessage, Goal, PlanProposal, PlannedWorkout } from "@/lib/types";
 
 export const maxDuration = 240;
+
+/** Saluto in base all'ora di adesso a Roma. */
+function greeting(): string {
+  const hour = romeHour(new Date().toISOString()) ?? 12;
+  if (hour >= 5 && hour < 13) return "Buongiorno";
+  if (hour >= 13 && hour < 18) return "Buon pomeriggio";
+  return "Buonasera";
+}
+
+/** "mercoledì 22 ottobre". */
+function longDate(iso: string): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+}
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ prompt?: string }> }) {
   const { prompt } = await searchParams;
@@ -54,18 +67,22 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   return (
     <AppShell>
       <div className="flex h-full min-h-0 flex-col">
-        <div className="mb-4 flex items-center justify-between pt-2">
-          <h1 className="font-display text-display font-bold tracking-tight">Ciao {name}</h1>
+        {/* Niente titolo grande: l'H1 della home è la prossima seduta. */}
+        <div className="mb-5 flex shrink-0 items-center justify-between gap-3 pt-2">
+          <div className="min-w-0">
+            <p className="eyebrow truncate">{greeting()}, {name}</p>
+            <p className="mt-1 text-caption text-muted-foreground first-letter:uppercase">{longDate(today)}</p>
+          </div>
           <Link
             href="/activities/new"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-90"
             aria-label="Registra un'attività"
             title="Registra un'attività"
           >
             <Plus size={18} />
           </Link>
         </div>
-        <div className="mb-3 shrink-0">
+        <div className="mb-6 shrink-0">
           <TodayCard next={next} today={today} heat={heat} week={week} race={race} />
         </div>
         <Suspense fallback={<div className="skeleton min-h-0 flex-1 rounded-3xl" />}>

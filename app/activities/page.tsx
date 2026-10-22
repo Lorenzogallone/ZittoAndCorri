@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Footprints, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -39,10 +39,13 @@ export default async function ActivitiesPage() {
       }
     >
       {list.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 py-20 text-center">
-          <p className="text-heading font-semibold">Ancora nessuna corsa</p>
-          <p className="text-sm text-muted-foreground">Importa un file dall&apos;orologio o registrala a mano.</p>
-          <Button asChild>
+        <div className="flex flex-col items-center py-16 text-center">
+          <span className="flex h-18 w-18 items-center justify-center rounded-3xl bg-hero text-hero-foreground">
+            <Footprints size={30} strokeWidth={2.2} className="text-primary" />
+          </span>
+          <p className="mt-6 font-display text-title font-bold tracking-tight">Ancora nessuna corsa</p>
+          <p className="mt-2 max-w-xs text-body text-muted-foreground">Importa un file dall&apos;orologio o registrala a mano.</p>
+          <Button asChild className="mt-6">
             <Link href="/activities/new"><Plus size={16} /> Nuova attività</Link>
           </Button>
         </div>
