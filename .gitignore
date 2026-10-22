@@ -56,3 +56,6 @@ image.png
 
 # worktree temporanei degli agenti
 .claude/worktrees/
+
+# dump temporanei
+tmp*.json
