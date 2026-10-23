@@ -1,6 +1,31 @@
 import { BaseSideService } from "@zeppos/zml/base-side"
 
 const STORAGE = () => settings.settingsStorage
+
+// Marcatori di avvio e protezioni. Zeus avvolge il bundle in un try/catch che
+// scrive solo su console: un errore all'avvio sarebbe invisibile. zml usa i
+// globali Logger e sideService senza controllarli; se il runtime dell'app Zepp
+// non li espone, il servizio muore prima del nostro onInit. Qui lasciamo una
+// traccia del caricamento e forniamo dei sostituti minimi.
+function mark(key, value) {
+  try { settings.settingsStorage.setItem(key, String(value ?? "")) } catch {}
+}
+mark("service_loaded_at", new Date().toISOString())
+console.log("[ZC salute] side service: modulo caricato", new Date().toISOString())
+try {
+  const root = typeof globalThis !== "undefined" ? globalThis : null
+  if (root && typeof Logger === "undefined") {
+    const noop = () => {}
+    root.Logger = { getLogger: () => ({ log: noop, error: noop, debug: noop, warn: noop, info: noop }) }
+    mark("service_polyfill", "Logger")
+  }
+  if (root && typeof sideService === "undefined") {
+    root.sideService = { appInfo: { app: { appName: "Zitto e Corri" } }, launchReasons: {}, launchArgs: null }
+    mark("service_polyfill", `${settings.settingsStorage.getItem("service_polyfill") || ""} sideService`.trim())
+  }
+} catch (error) {
+  mark("service_init_error", `polyfill: ${error.message || String(error)}`)
+}
 const DIAGNOSTIC_LIMIT = 60000
 
 function diagnosticJson(value) {
@@ -15,6 +40,28 @@ function diagnosticJson(value) {
 
 function setDiagnostic(key, value) {
   STORAGE().setItem(`diagnostic_${key}`, String(value ?? ""))
+}
+
+function redacted(body, keys) {
+  if (!keys?.length || !body || typeof body !== "object") return body
+  const copy = { ...body }
+  for (const key of keys) if (key in copy) copy[key] = "[nascosto]"
+  return copy
+}
+
+// Traccia dell'avvio del servizio sul telefono, mostrata nelle impostazioni:
+// serve a capire se Zepp lo avvia davvero e per quale motivo.
+function noteServiceStart() {
+  try {
+    STORAGE().setItem("service_started_at", new Date().toISOString())
+    const reasons = typeof sideService !== "undefined" && sideService.launchReasons
+      ? Object.keys(sideService.launchReasons).filter((key) => sideService.launchReasons[key])
+      : []
+    STORAGE().setItem("service_launch_reason", reasons.join(", ") || "sconosciuto")
+    console.log("[ZC salute] side service: onInit, motivo =", reasons.join(", ") || "sconosciuto")
+  } catch (error) {
+    console.log("[ZC salute] side service: onInit senza storage", String(error))
+  }
 }
 
 function parseBody(response) {
@@ -63,7 +110,7 @@ async function request(path, options = {}) {
   const body = parseBody(response)
   if (options.diagnostic) {
     setDiagnostic("http_status", response.status)
-    setDiagnostic("response", diagnosticJson(body))
+    setDiagnostic("response", diagnosticJson(redacted(body, options.redact)))
   }
   if (response.status < 200 || response.status >= 300) {
     const detail = Array.isArray(body.details) && body.details.length
@@ -95,7 +142,10 @@ async function pair() {
   STORAGE().setItem("connection_status", "Collegamento in corso…")
   const result = await request("/api/zepp/pair", {
     body: { code, clientId: clientId(), clientKind: "health", device: {} },
+    diagnostic: true,
+    redact: ["accessToken"],
   })
+  console.log("[ZC salute] pairing riuscito")
   STORAGE().setItem("paired_origin", normalizedOrigin())
   STORAGE().setItem("access_token", result.accessToken)
   STORAGE().setItem("paired", "true")
@@ -161,52 +211,98 @@ async function disconnect() {
   }
 }
 
-AppSideService(
-  BaseSideService({
-    onInit() {
-      STORAGE().addListener("change", async ({ key }) => {
-        try {
-          if (key === "pair_action") await pair()
-          if (key === "pair_action") {
-            this.call({ method: "CONNECTION_STATE", params: { enabled: true, schedule: storedSchedule() } })
-          }
-          if (key === "sync_action") this.call({ method: "SYNC_NOW", params: {} })
-          if (key === "disconnect_action") {
-            await disconnect()
-            this.call({ method: "CONNECTION_STATE", params: { enabled: false } })
-          }
-        } catch (error) {
-          STORAGE().setItem("connection_status", error.message || String(error))
-        }
-      })
-    },
 
-    async onRequest(req, res) {
-      if (req.method === "GET_CONNECTION_STATE") {
-        const enabled = STORAGE().getItem("paired") === "true"
-        res(null, { enabled, schedule: enabled ? storedSchedule() : null })
-        return
+// Il pulsante "Collega" scrive pair_action. Se in quel momento il servizio sul
+// telefono non era attivo, il sistema lo avvia per quella modifica e zml la
+// consegna a onSettingsChange (sideService.launchArgs); se era già attivo
+// arriva come evento "change". In più l'orologio, chiedendo lo stato a ogni
+// apertura, completa un pairing rimasto in sospeso. pair_handled evita doppi
+// invii dello stesso codice (è monouso).
+function pairingPending() {
+  const requested = STORAGE().getItem("pair_action")
+  if (!requested || requested === STORAGE().getItem("pair_handled")) return false
+  if (STORAGE().getItem("paired") === "true" && STORAGE().getItem("access_token")) return false
+  return /^\d{6}$/.test(String(STORAGE().getItem("pairing_code") || "").trim())
+}
+
+function markPairingHandled() {
+  STORAGE().setItem("pair_handled", STORAGE().getItem("pair_action") || "")
+}
+
+// Esito dell'ultimo tentativo di collegamento, per impostazioni e orologio.
+function pairResult() {
+  const raw = STORAGE().getItem("pair_result")
+  if (!raw) return null
+  try { return JSON.parse(raw) } catch { return null }
+}
+
+async function completePairing(service) {
+  console.log("[ZC salute] pairing in sospeso?", pairingPending())
+  if (!pairingPending()) return null
+  markPairingHandled()
+  const at = new Date().toISOString()
+  try {
+    await pair()
+  } catch (error) {
+    const message = error.message || String(error)
+    console.log("[ZC salute] pairing fallito", message)
+    STORAGE().setItem("connection_status", message)
+    STORAGE().setItem("pair_result", JSON.stringify({ ok: false, at, error: message }))
+    if (!error.status) {
+      setDiagnostic("http_status", "Errore di rete")
+      setDiagnostic("response", message)
+      // Nessuna risposta HTTP: riprova al prossimo avvio o alla prossima
+      // apertura dell'app sull'orologio.
+      STORAGE().removeItem("pair_handled")
+    }
+    return { ok: false, error: message }
+  }
+  STORAGE().setItem("pair_result", JSON.stringify({ ok: true, at }))
+  try {
+    service.call({ method: "CONNECTION_STATE", params: { enabled: true, schedule: storedSchedule() } })
+  } catch {}
+  return { ok: true }
+}
+
+const service = BaseSideService({
+  onInit() {
+    noteServiceStart()
+    mark("service_init_error", "")
+    completePairing(this)
+  },
+
+  async onSettingsChange(change) {
+    const key = change?.key
+    console.log("[ZC salute] onSettingsChange", key)
+    try {
+      if (key === "pair_action") await completePairing(this)
+      if (key === "sync_action") this.call({ method: "SYNC_NOW", params: {} })
+      if (key === "disconnect_action") {
+        await disconnect()
+        this.call({ method: "CONNECTION_STATE", params: { enabled: false } })
       }
-      if (req.method === "PULL_WORKOUTS") {
-        try {
-          const result = await pullWorkouts(req.params || {})
-          res(null, { ok: true, ...result })
-        } catch (error) {
-          res(null, {
-            ok: false,
-            error: error.message || String(error),
-            revoked: error.status === 401,
-          })
-        }
-        return
-      }
-      if (req.method !== "SYNC_PAYLOAD" || !req.params?.payload) {
-        res(new Error("Richiesta non supportata"), null)
-        return
-      }
+    } catch (error) {
+      STORAGE().setItem("connection_status", error.message || String(error))
+    }
+  },
+
+  async onRequest(req, res) {
+    console.log("[ZC salute] onRequest", req?.method)
+    if (req.method === "GET_CONNECTION_STATE") {
+      const pairing = await completePairing(this)
+      const enabled = STORAGE().getItem("paired") === "true"
+      res(null, {
+        enabled,
+        schedule: enabled ? storedSchedule() : null,
+        pairing: pairing || (enabled ? null : pairResult()),
+        pairingRequested: Boolean(STORAGE().getItem("pair_action")),
+      })
+      return
+    }
+    if (req.method === "PULL_WORKOUTS") {
       try {
-        const result = await postPayload(req.params.payload)
-        res(null, { ok: true, readiness: result.readiness || null })
+        const result = await pullWorkouts(req.params || {})
+        res(null, { ok: true, ...result })
       } catch (error) {
         res(null, {
           ok: false,
@@ -214,6 +310,37 @@ AppSideService(
           revoked: error.status === 401,
         })
       }
-    },
-  }),
-)
+      return
+    }
+    if (req.method !== "SYNC_PAYLOAD" || !req.params?.payload) {
+      res(new Error("Richiesta non supportata"), null)
+      return
+    }
+    try {
+      const result = await postPayload(req.params.payload)
+      res(null, { ok: true, readiness: result.readiness || null })
+    } catch (error) {
+      res(null, {
+        ok: false,
+        error: error.message || String(error),
+        revoked: error.status === 401,
+      })
+    }
+  },
+})
+
+// Se l'inizializzazione di zml fallisce, registriamo l'errore e completiamo
+// comunque un pairing in sospeso (senza messaggistica verso l'orologio).
+const zmlInit = service.onInit
+service.onInit = function (...args) {
+  try {
+    zmlInit.apply(this, args)
+  } catch (error) {
+    mark("service_init_error", error.message || String(error))
+    console.log("[ZC salute] errore nell'onInit di zml", String(error))
+    noteServiceStart()
+    completePairing(this)
+  }
+}
+
+AppSideService(service)

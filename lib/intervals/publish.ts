@@ -1,7 +1,8 @@
 import "server-only";
 
-// Pubblicazione del piano su Intervals.icu: i prossimi 7 giorni (la finestra
-// che Zepp carica sull'orologio) come eventi WORKOUT con external_id "zc:<id>".
+// Pubblicazione del piano su Intervals.icu: tutte le sedute future (fino a un
+// anno) come eventi WORKOUT con external_id "zc:<id>". Sul calendario Intervals
+// si vede l'intero piano; Zepp ne carica sull'orologio i prossimi 7 giorni.
 // Le sedute cambiate vengono aggiornate, quelle sparite dal piano rimosse;
 // gli eventi creati a mano dall'atleta su Intervals non vengono toccati.
 
@@ -37,8 +38,8 @@ export interface IntervalsPublishSummary {
   errors: string[];
 }
 
-/** Zepp mostra sull'orologio circa una settimana di piano. */
-export const PUBLISH_DAYS = 7;
+/** Orizzonte pubblicato: tutto il piano futuro, entro un anno da oggi. */
+export const PUBLISH_DAYS = 366;
 
 const TYPE_TITLES: Record<string, string> = {
   easy: "Corsa facile",

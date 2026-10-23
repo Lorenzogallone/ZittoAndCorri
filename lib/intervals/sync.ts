@@ -6,6 +6,7 @@ import "server-only";
 import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
+  claimIntervalsImport,
   getIntervalsApiKey,
   INTERVALS_COLUMNS,
   listIntervalsUsers,
@@ -58,12 +59,12 @@ export async function runIntervalsSync(
 }
 
 /** Giro per tutti gli utenti con una chiave salvata (cron). Un errore non ferma gli altri. */
-export async function syncAllIntervalsUsers() {
+export async function syncAllIntervalsUsers(options: { publish?: boolean } = {}) {
   const users = await listIntervalsUsers();
   const results: Array<{ user: string; imported: number; wellnessDays: number; published: number; error: string | null }> = [];
   for (const user of users) {
     try {
-      const result = await runIntervalsSync(user.user_id, user);
+      const result = await runIntervalsSync(user.user_id, user, { publish: options.publish });
       results.push({
         user: user.user_id,
         imported: result.import?.activities.imported ?? 0,
@@ -80,8 +81,29 @@ export async function syncAllIntervalsUsers() {
   return { users: users.length, results };
 }
 
+/** Intervallo minimo tra due import lanciati dall'apertura della PWA. */
+export const IMPORT_ON_OPEN_MIN_MS = 10 * 60_000;
+
 /**
- * Dopo una modifica al piano: ripubblica i prossimi 7 giorni su Intervals.icu
+ * All'apertura della PWA: se l'ultimo import è più vecchio di 10 minuti,
+ * importa corse e wellness da Intervals.icu a risposta già inviata. La corsa
+ * appena fatta compare al primo aggiornamento della pagina, senza aspettare il
+ * cron. Non ripubblica il piano.
+ */
+export function scheduleIntervalsImportIfStale(userId: string): void {
+  after(async () => {
+    try {
+      const connection = await claimIntervalsImport(userId, IMPORT_ON_OPEN_MIN_MS);
+      if (!connection || !(connection.import_activities || connection.import_wellness)) return;
+      await runIntervalsSync(userId, connection, { publish: false });
+    } catch (error) {
+      console.error("scheduleIntervalsImportIfStale:", error instanceof Error ? error.message : error);
+    }
+  });
+}
+
+/**
+ * Dopo una modifica al piano: ripubblica tutte le sedute future su Intervals.icu
  * a risposta già inviata, così l'orologio riceve la versione nuova al prossimo
  * giro di Zepp (circa tre volte al giorno) senza aspettare il cron.
  */
