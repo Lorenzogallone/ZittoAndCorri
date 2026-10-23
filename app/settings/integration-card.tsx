@@ -13,7 +13,7 @@ export function IntegrationCard({
 }) {
   return (
     <div id={id} className="scroll-mt-6 py-4">
-      {description && <p className="mb-4 text-[13px] leading-relaxed text-muted-foreground">{description}</p>}
+      {description && <p className="mb-4 text-caption leading-relaxed text-muted-foreground">{description}</p>}
       {children}
     </div>
   );
@@ -23,7 +23,7 @@ export function IntegrationCard({
 export function IntegrationHelp({ title, children }: { title: string; children: ReactNode }) {
   return (
     <details className="group/help">
-      <summary className="flex cursor-pointer list-none items-center gap-1 text-[13px] font-medium text-primary">
+      <summary className="flex cursor-pointer list-none items-center gap-1 text-caption font-medium text-primary">
         {title}
         <ChevronDown size={14} className="transition-transform group-open/help:rotate-180" />
       </summary>

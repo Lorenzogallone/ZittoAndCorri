@@ -63,11 +63,11 @@ export function SeriesChart({
           {ticks.map((tick) => (
             <g key={tick}>
               <line x1={PAD.left} x2={PAD.left + innerW} y1={y(tick)} y2={y(tick)} stroke="var(--border)" strokeWidth={1} />
-              <text x={PAD.left - 6} y={y(tick) + 3.5} textAnchor="end" className="fill-muted-foreground text-[10px] tabular-nums">{tick}</text>
+              <text x={PAD.left - 6} y={y(tick) + 3.5} textAnchor="end" className="fill-muted-foreground text-micro tabular-nums">{tick}</text>
             </g>
           ))}
-          <text x={PAD.left} y={HEIGHT - 4} className="fill-muted-foreground text-[10px]">0:00</text>
-          <text x={PAD.left + innerW} y={HEIGHT - 4} textAnchor="end" className="fill-muted-foreground text-[10px] tabular-nums">
+          <text x={PAD.left} y={HEIGHT - 4} className="fill-muted-foreground text-micro">0:00</text>
+          <text x={PAD.left + innerW} y={HEIGHT - 4} textAnchor="end" className="fill-muted-foreground text-micro tabular-nums">
             {formatDuration(span)}
           </text>
           {area && <path d={fill} fill={color} opacity={0.1} />}

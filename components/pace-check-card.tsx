@@ -25,7 +25,7 @@ export function PaceCheckCard({ check, workoutId }: { check: PaceCheck; workoutI
   } as Parameters<typeof formatStepPace>[0])).filter(Boolean))];
   const single = check.reps.length === 1;
   return (
-    <section className="surface mb-4 p-5">
+    <section className="surface p-5">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-sm font-semibold">{single ? "Passo del tratto principale" : "Passo delle ripetute"}</h2>
         <Link href={`/plan/${workoutId}`} className="text-xs text-primary">Seduta</Link>

@@ -17,6 +17,13 @@ export function intensityTone(step: WorkoutStepInput, type?: WorkoutType | null)
   return TONES.easy;
 }
 
+// Sulla card inchiostro i tratti chiari del tema scuro (corsetta, camminata)
+// sparirebbero: lì si usano versioni chiare fisse.
+const ON_DARK = new Map<StepTone, string>([
+  [TONES.jog, "bg-sky-300"],
+  [TONES.walk, "bg-hero-foreground/35"],
+]);
+
 const HEIGHT: Record<number, string> = {
   0.5: "16%",
   1: "28%",
@@ -34,11 +41,14 @@ export function WorkoutGraph({
   steps,
   type,
   size = "md",
+  onDark = false,
   className,
 }: {
   steps: WorkoutStepInput[];
   type?: WorkoutType | null;
   size?: "sm" | "md";
+  /** Su sfondo scuro fisso (card hero): colori leggibili in entrambi i temi. */
+  onDark?: boolean;
   className?: string;
 }) {
   if (!steps.length) return null;
@@ -50,18 +60,21 @@ export function WorkoutGraph({
       role="img"
       aria-label="Profilo della seduta: blocchi più alti sono tratti più intensi"
     >
-      {blocks.map(({ step, seconds }, index) => (
-        <div
-          key={index}
-          className={cn("animate-grow-y min-w-[3px] rounded-t-[3px] rounded-b-[1px]", intensityTone(step, type).bar)}
-          style={{
-            flexGrow: seconds / total,
-            flexBasis: 0,
-            height: HEIGHT[stepIntensity(step, type)] ?? "50%",
-            animationDelay: `${Math.min(index * 25, 400)}ms`,
-          }}
-        />
-      ))}
+      {blocks.map(({ step, seconds }, index) => {
+        const tone = intensityTone(step, type);
+        return (
+          <div
+            key={index}
+            className={cn("animate-grow-y min-w-[3px] rounded-t-[3px] rounded-b-[1px]", (onDark && ON_DARK.get(tone)) || tone.bar)}
+            style={{
+              flexGrow: seconds / total,
+              flexBasis: 0,
+              height: HEIGHT[stepIntensity(step, type)] ?? "50%",
+              animationDelay: `${Math.min(index * 25, 400)}ms`,
+            }}
+          />
+        );
+      })}
     </div>
   );
 }

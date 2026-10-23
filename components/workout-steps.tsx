@@ -19,7 +19,7 @@ function StepRow({ step, type, compact }: { step: WorkoutStepInput; type?: Worko
     <li className="flex gap-3">
       <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", tone.dot)} />
       <div className="min-w-0 flex-1">
-        <p className={cn("font-semibold uppercase tracking-wide", compact ? "text-[9px]" : "text-[10px]", tone.text)}>
+        <p className={cn("text-micro font-semibold uppercase tracking-wide", tone.text)}>
           {stepKindLabel(step)}
         </p>
         <p className={cn("font-medium leading-snug", compact ? "text-xs" : "text-sm")}>
@@ -28,7 +28,7 @@ function StepRow({ step, type, compact }: { step: WorkoutStepInput; type?: Worko
           {step.label}
         </p>
         {(pace || hr) && (
-          <p className={cn("mt-0.5 tabular-nums text-muted-foreground", compact ? "text-[11px]" : "text-xs")}>
+          <p className={cn("mt-0.5 tabular-nums text-muted-foreground", compact ? "text-micro" : "text-xs")}>
             {[pace && `Passo ${pace}`, hr && `♥ ${hr}`].filter(Boolean).join(" · ")}
           </p>
         )}

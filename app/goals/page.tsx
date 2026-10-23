@@ -35,12 +35,12 @@ function GoalCard({ goal, isActive }: GoalCardProps) {
       className={`surface relative overflow-hidden p-5 ${isActive ? "ring-2 ring-primary/30" : ""}`}
     >
       {isActive && (
-        <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wider text-primary bg-primary/10 rounded-full px-2 py-0.5">
+        <span className="absolute top-3 right-3 text-micro font-semibold uppercase tracking-wider text-primary bg-primary/10 rounded-full px-2 py-0.5">
           Attivo
         </span>
       )}
 
-      <h2 className="text-lg font-semibold pr-16">{goal.race_name}</h2>
+      <h2 className="text-heading font-semibold pr-16">{goal.race_name}</h2>
 
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
         <span>{goal.race_date ? formatDate(goal.race_date) : "Obiettivo generico · senza scadenza"}</span>
@@ -135,7 +135,7 @@ export default async function GoalsPage() {
       {/* Goal attivo in evidenza */}
       {activeGoal && (
         <div className="mb-6">
-          <p className="mb-2 px-1 text-[13px] font-medium text-muted-foreground">Attivo</p>
+          <p className="mb-2 px-1 text-caption font-medium text-muted-foreground">Attivo</p>
           <GoalCard goal={activeGoal} isActive />
         </div>
       )}
@@ -144,7 +144,7 @@ export default async function GoalsPage() {
       {otherGoals.length > 0 && (
         <div className="flex flex-col gap-3">
           {activeGoal && (
-            <p className="px-1 text-[13px] font-medium text-muted-foreground">Altri obiettivi</p>
+            <p className="px-1 text-caption font-medium text-muted-foreground">Altri obiettivi</p>
           )}
           {otherGoals.map((g) => (
             <GoalCard key={g.id} goal={g} isActive={false} />
