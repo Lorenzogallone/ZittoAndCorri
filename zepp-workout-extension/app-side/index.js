@@ -48,7 +48,7 @@ async function pair() {
     code,
     clientId: clientId(),
     clientKind: "workout",
-    device: { appVersion: "1.0.2" },
+    device: { appVersion: "1.0.3" },
   })
   STORAGE().setItem("paired_origin", origin())
   STORAGE().setItem("access_token", result.accessToken)
@@ -111,9 +111,12 @@ async function disconnect() {
 }
 
 
-// Il pulsante "Collega" scrive pair_action; se in quel momento il servizio sul
-// telefono non era attivo (succede finché l'app sull'orologio non è aperta), la
-// richiesta viene completata al prossimo avvio del servizio.
+// Il pulsante "Collega" scrive pair_action. Se in quel momento il servizio sul
+// telefono non era attivo, il sistema lo avvia per quella modifica e zml la
+// consegna a onSettingsChange (sideService.launchArgs); se era già attivo
+// arriva come evento "change". In più la pagina Coach, chiedendo lo stato,
+// completa un pairing rimasto in sospeso. pair_handled evita doppi invii dello
+// stesso codice (è monouso).
 function pairingPending() {
   const requested = STORAGE().getItem("pair_action")
   if (!requested || requested === STORAGE().getItem("pair_handled")) return false
@@ -125,28 +128,39 @@ function markPairingHandled() {
   STORAGE().setItem("pair_handled", STORAGE().getItem("pair_action") || "")
 }
 
+async function completePairing() {
+  if (!pairingPending()) return false
+  markPairingHandled()
+  try {
+    await pair()
+    return true
+  } catch (error) {
+    STORAGE().setItem("connection_status", error.message || String(error))
+    if (!error.status) STORAGE().removeItem("pair_handled")
+    return false
+  }
+}
+
 AppSideService(
   BaseSideService({
     onInit() {
-      if (pairingPending()) {
-        markPairingHandled()
-        pair().catch((error) => STORAGE().setItem("connection_status", error.message || String(error)))
-      }
-      STORAGE().addListener("change", async ({ key }) => {
-        try {
-          if (key === "pair_action") {
-            markPairingHandled()
-            await pair()
-          }
-          if (key === "sync_action" || key === "override_workout_id") await pullFromSettings.call(this)
-          if (key === "disconnect_action") await disconnect()
-        } catch (error) {
-          STORAGE().setItem("connection_status", error.message || String(error))
-        }
-      })
+      completePairing()
     },
+
+    async onSettingsChange(change) {
+      const key = change?.key
+      try {
+        if (key === "pair_action") await completePairing()
+        if (key === "sync_action" || key === "override_workout_id") await pullFromSettings.call(this)
+        if (key === "disconnect_action") await disconnect()
+      } catch (error) {
+        STORAGE().setItem("connection_status", error.message || String(error))
+      }
+    },
+
     async onRequest(req, res) {
       if (req.method === "GET_CONNECTION_STATE") {
+        await completePairing()
         res(null, { enabled: STORAGE().getItem("paired") === "true" })
         return
       }
