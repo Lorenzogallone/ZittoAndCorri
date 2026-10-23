@@ -11,6 +11,7 @@ import { buildDays } from "@/lib/plan/day-status";
 import { heatForDates } from "@/lib/weather";
 import { getAiStatus } from "@/lib/ai/ai-status";
 import type { Activity, CoachMessage, Goal, PlanProposal, PlannedWorkout } from "@/lib/types";
+import { scheduleIntervalsImportIfStale } from "@/lib/intervals/sync";
 
 export const maxDuration = 240;
 
@@ -32,6 +33,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  scheduleIntervalsImportIfStale(user.id);
 
   const today = romeDay();
   const monday = mondayOf(today);
