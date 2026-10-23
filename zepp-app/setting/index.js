@@ -125,6 +125,9 @@ AppSettingsPage({
           }),
         ])
 
+    const serviceLoadedAt = storage.getItem("service_loaded_at") || "mai"
+    const serviceInitError = storage.getItem("service_init_error") || ""
+    const servicePolyfill = storage.getItem("service_polyfill") || ""
     const serviceStartedAt = storage.getItem("service_started_at") || "mai (nessun avvio registrato)"
     const serviceReason = storage.getItem("service_launch_reason") || "—"
     const pairRequestedAt = storage.getItem("pair_action")
@@ -138,6 +141,8 @@ AppSettingsPage({
     const diagnosticChildren = [
       heading("Diagnostica sincronizzazione"),
       Text({ paragraph: true, style: { color: COLORS.ink, fontSize: "12px", lineHeight: "1.55", margin: "0 0 10px" } },
+        `Codice del servizio caricato: ${serviceLoadedAt}${servicePolyfill ? ` (sostituiti: ${servicePolyfill})` : ""}\n` +
+        (serviceInitError ? `Errore all'avvio del servizio: ${serviceInitError}\n` : "") +
         `Servizio telefono: avviato ${serviceStartedAt} (motivo: ${serviceReason})\n` +
         `Pulsante Collega premuto: ${pairRequestedAt ? new Date(Number(pairRequestedAt)).toISOString() : "mai"}\n` +
         `Richiesta presa in carico dal servizio: ${pairRequestedAt ? (pairHandled ? "sì" : "no") : "—"}\n` +

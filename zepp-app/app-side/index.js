@@ -1,6 +1,30 @@
 import { BaseSideService } from "@zeppos/zml/base-side"
 
 const STORAGE = () => settings.settingsStorage
+
+// Marcatori di avvio e protezioni. Zeus avvolge il bundle in un try/catch che
+// scrive solo su console: un errore all'avvio sarebbe invisibile. zml usa i
+// globali Logger e sideService senza controllarli; se il runtime dell'app Zepp
+// non li espone, il servizio muore prima del nostro onInit. Qui lasciamo una
+// traccia del caricamento e forniamo dei sostituti minimi.
+function mark(key, value) {
+  try { settings.settingsStorage.setItem(key, String(value ?? "")) } catch {}
+}
+mark("service_loaded_at", new Date().toISOString())
+try {
+  const root = typeof globalThis !== "undefined" ? globalThis : null
+  if (root && typeof Logger === "undefined") {
+    const noop = () => {}
+    root.Logger = { getLogger: () => ({ log: noop, error: noop, debug: noop, warn: noop, info: noop }) }
+    mark("service_polyfill", "Logger")
+  }
+  if (root && typeof sideService === "undefined") {
+    root.sideService = { appInfo: { app: { appName: "Zitto e Corri" } }, launchReasons: {}, launchArgs: null }
+    mark("service_polyfill", `${settings.settingsStorage.getItem("service_polyfill") || ""} sideService`.trim())
+  }
+} catch (error) {
+  mark("service_init_error", `polyfill: ${error.message || String(error)}`)
+}
 const DIAGNOSTIC_LIMIT = 60000
 
 function diagnosticJson(value) {
@@ -233,59 +257,43 @@ async function completePairing(service) {
   return { ok: true }
 }
 
-AppSideService(
-  BaseSideService({
-    onInit() {
-      noteServiceStart()
-      completePairing(this)
-    },
+const service = BaseSideService({
+  onInit() {
+    noteServiceStart()
+    mark("service_init_error", "")
+    completePairing(this)
+  },
 
-    async onSettingsChange(change) {
-      const key = change?.key
-      try {
-        if (key === "pair_action") await completePairing(this)
-        if (key === "sync_action") this.call({ method: "SYNC_NOW", params: {} })
-        if (key === "disconnect_action") {
-          await disconnect()
-          this.call({ method: "CONNECTION_STATE", params: { enabled: false } })
-        }
-      } catch (error) {
-        STORAGE().setItem("connection_status", error.message || String(error))
+  async onSettingsChange(change) {
+    const key = change?.key
+    try {
+      if (key === "pair_action") await completePairing(this)
+      if (key === "sync_action") this.call({ method: "SYNC_NOW", params: {} })
+      if (key === "disconnect_action") {
+        await disconnect()
+        this.call({ method: "CONNECTION_STATE", params: { enabled: false } })
       }
-    },
+    } catch (error) {
+      STORAGE().setItem("connection_status", error.message || String(error))
+    }
+  },
 
-    async onRequest(req, res) {
-      if (req.method === "GET_CONNECTION_STATE") {
-        const pairing = await completePairing(this)
-        const enabled = STORAGE().getItem("paired") === "true"
-        res(null, {
-          enabled,
-          schedule: enabled ? storedSchedule() : null,
-          pairing: pairing || (enabled ? null : pairResult()),
-          pairingRequested: Boolean(STORAGE().getItem("pair_action")),
-        })
-        return
-      }
-      if (req.method === "PULL_WORKOUTS") {
-        try {
-          const result = await pullWorkouts(req.params || {})
-          res(null, { ok: true, ...result })
-        } catch (error) {
-          res(null, {
-            ok: false,
-            error: error.message || String(error),
-            revoked: error.status === 401,
-          })
-        }
-        return
-      }
-      if (req.method !== "SYNC_PAYLOAD" || !req.params?.payload) {
-        res(new Error("Richiesta non supportata"), null)
-        return
-      }
+  async onRequest(req, res) {
+    if (req.method === "GET_CONNECTION_STATE") {
+      const pairing = await completePairing(this)
+      const enabled = STORAGE().getItem("paired") === "true"
+      res(null, {
+        enabled,
+        schedule: enabled ? storedSchedule() : null,
+        pairing: pairing || (enabled ? null : pairResult()),
+        pairingRequested: Boolean(STORAGE().getItem("pair_action")),
+      })
+      return
+    }
+    if (req.method === "PULL_WORKOUTS") {
       try {
-        const result = await postPayload(req.params.payload)
-        res(null, { ok: true, readiness: result.readiness || null })
+        const result = await pullWorkouts(req.params || {})
+        res(null, { ok: true, ...result })
       } catch (error) {
         res(null, {
           ok: false,
@@ -293,6 +301,36 @@ AppSideService(
           revoked: error.status === 401,
         })
       }
-    },
-  }),
-)
+      return
+    }
+    if (req.method !== "SYNC_PAYLOAD" || !req.params?.payload) {
+      res(new Error("Richiesta non supportata"), null)
+      return
+    }
+    try {
+      const result = await postPayload(req.params.payload)
+      res(null, { ok: true, readiness: result.readiness || null })
+    } catch (error) {
+      res(null, {
+        ok: false,
+        error: error.message || String(error),
+        revoked: error.status === 401,
+      })
+    }
+  },
+})
+
+// Se l'inizializzazione di zml fallisce, registriamo l'errore e completiamo
+// comunque un pairing in sospeso (senza messaggistica verso l'orologio).
+const zmlInit = service.onInit
+service.onInit = function (...args) {
+  try {
+    zmlInit.apply(this, args)
+  } catch (error) {
+    mark("service_init_error", error.message || String(error))
+    noteServiceStart()
+    completePairing(this)
+  }
+}
+
+AppSideService(service)
