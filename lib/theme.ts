@@ -120,9 +120,9 @@ function neutrals(
       "--sidebar-accent": `oklch(0.96 ${c} ${hue})`,
       "--sidebar-accent-foreground": `oklch(0.2 0.006 ${hue})`,
       "--sidebar-border": `oklch(0.915 ${c} ${hue})`,
-      "--hero": `oklch(0.262 ${c * 1.2} ${hue})`,
-      "--hero-foreground": `oklch(0.98 0.004 ${hue})`,
-      "--hero-muted": `oklch(0.72 0.012 ${hue})`,
+      "--hero": `oklch(1 0 0)`,
+      "--hero-foreground": `oklch(0.2 0.006 ${hue})`,
+      "--hero-muted": `oklch(0.52 0.012 ${hue})`,
       "--surface-2": `oklch(0.965 ${c} ${hue})`,
     };
   }
