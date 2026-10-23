@@ -73,7 +73,7 @@ export function ActivityEvaluation({
 
   return (
     <section id="nota" ref={sectionRef} className="surface scroll-mt-4 p-5">
-      <h2 className="mb-3 flex items-center gap-2 text-[15px] font-semibold">
+      <h2 className="mb-3 flex items-center gap-2 text-body font-semibold">
         <Sparkles size={16} className="text-primary" /> Il commento del coach
       </h2>
 

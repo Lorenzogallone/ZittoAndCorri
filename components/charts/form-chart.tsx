@@ -81,7 +81,7 @@ export function FormChart({ points }: { points: FormPoint[] }) {
               <line key={tick} x1={PAD.left} x2={PAD.left + innerW} y1={y(tick)} y2={y(tick)} stroke="var(--border)" strokeWidth={1} />
             ))}
             {months.map(({ i, date }) => (
-              <text key={date} x={x(i)} y={HEIGHT - 6} textAnchor="middle" className="fill-muted-foreground text-[10px]">
+              <text key={date} x={x(i)} y={HEIGHT - 6} textAnchor="middle" className="fill-muted-foreground text-micro">
                 {new Date(`${date}T12:00:00Z`).toLocaleDateString("it-IT", { month: "short", timeZone: "UTC" })}
               </text>
             ))}
@@ -118,7 +118,7 @@ export function FormChart({ points }: { points: FormPoint[] }) {
             className="pointer-events-none absolute top-0 z-10 rounded-lg border border-border bg-popover px-2.5 py-1.5 text-xs shadow-sm"
             style={{ left: Math.min(Math.max(0, x(active) - 60), Math.max(0, width - 124)), width: 120 }}
           >
-            <p className="text-[10px] text-muted-foreground">{dayLabel(focused.date)}</p>
+            <p className="text-micro text-muted-foreground">{dayLabel(focused.date)}</p>
             {SERIES.map((series) => (
               <p key={series.key} className="flex items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-1.5 text-muted-foreground">

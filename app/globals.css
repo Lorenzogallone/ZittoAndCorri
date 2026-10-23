@@ -9,7 +9,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ============================================================
-   ZittoAndCorri — Design System: Warm Minimal Dark
+   ZittoAndCorri — Design System: arancio sportivo, neutri classici
    ============================================================ */
 
 @theme inline {
@@ -18,6 +18,30 @@
   --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+  /* Display condensato: titoli di pagina, numeri hero, headline seduta. */
+  --font-display: var(--font-barlow-condensed);
+
+  /* Scala tipografica: usare solo questi token (oltre a xs/sm/base). */
+  --text-display-xl: 3.75rem;
+  --text-display-xl--line-height: 1;
+  --text-display: 2.75rem;
+  --text-display--line-height: 1;
+  --text-title: 1.75rem;
+  --text-title--line-height: 1.15;
+  --text-heading: 1.125rem;
+  --text-heading--line-height: 1.3;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.45;
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.35;
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1.2;
+
+  /* Card "inchiostro" e superficie secondaria dentro le card. */
+  --color-hero: var(--hero);
+  --color-hero-foreground: var(--hero-foreground);
+  --color-hero-muted: var(--hero-muted);
+  --color-surface-2: var(--surface-2);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -50,15 +74,17 @@
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* Dai raggi grandi in su valori fissi: le card restano a 20px (2xl) e i
+     tile hero a 24px (3xl), senza gonfiarsi con il moltiplicatore. */
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
 
   /* Custom colors for the warm palette */
-  --color-coral: oklch(0.68 0.16 30);
-  --color-coral-light: oklch(0.75 0.14 30);
-  --color-coral-dark: oklch(0.58 0.16 30);
+  --color-coral: oklch(0.662 0.221 36.9);
+  --color-coral-light: oklch(0.74 0.18 40);
+  --color-coral-dark: oklch(0.57 0.2 36);
   --color-warm-cream: oklch(0.93 0.01 80);
   --color-warm-muted: oklch(0.55 0.02 80);
   --color-surface: oklch(0.17 0.012 260);
@@ -66,43 +92,48 @@
 }
 
 /* ============================================================
-   Palette: neutro minimale (chiaro quasi bianco, scuro quasi nero) con
-   l'accento scelto dall'utente come unico colore forte.
+   Palette classica da app sportiva: arancio brand (#FC4C02) su grigi neutri
+   leggermente freddi; in scuro neri neutri. L'accento resta modificabile
+   dall'utente ed è l'unico colore forte.
    ============================================================ */
 :root {
-  --background: oklch(0.985 0.002 85);
-  --foreground: oklch(0.2 0.005 85);
+  --background: oklch(0.977 0.004 286);
+  --foreground: oklch(0.262 0.007 286);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.005 85);
+  --card-foreground: oklch(0.262 0.007 286);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.005 85);
-  --secondary: oklch(0.96 0.003 85);
-  --secondary-foreground: oklch(0.3 0.005 85);
-  --muted: oklch(0.955 0.003 85);
-  --muted-foreground: oklch(0.52 0.008 85);
-  --accent: oklch(0.955 0.015 30);
-  --accent-foreground: oklch(0.2 0.005 85);
-  --border: oklch(0.915 0.004 85);
-  --input: oklch(0.915 0.004 85);
+  --popover-foreground: oklch(0.262 0.007 286);
+  --secondary: oklch(0.955 0.005 286);
+  --secondary-foreground: oklch(0.32 0.007 286);
+  --muted: oklch(0.955 0.005 286);
+  --muted-foreground: oklch(0.539 0.017 286);
+  --accent: oklch(0.962 0.025 40);
+  --accent-foreground: oklch(0.262 0.007 286);
+  --border: oklch(0.915 0.008 286);
+  --input: oklch(0.915 0.008 286);
   --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.2 0.005 85);
-  --sidebar-accent: oklch(0.96 0.003 85);
-  --sidebar-accent-foreground: oklch(0.2 0.005 85);
-  --sidebar-border: oklch(0.915 0.004 85);
+  --sidebar-foreground: oklch(0.262 0.007 286);
+  --sidebar-accent: oklch(0.955 0.005 286);
+  --sidebar-accent-foreground: oklch(0.262 0.007 286);
+  --sidebar-border: oklch(0.915 0.008 286);
+  --hero: oklch(0.262 0.007 286);
+  --hero-foreground: oklch(0.985 0 0);
+  --hero-muted: oklch(0.74 0.012 286);
+  --surface-2: oklch(0.965 0.004 286);
 
   /* Primary e brand: sovrascrivibili dall'utente (Impostazioni → App). */
-  --primary: oklch(0.68 0.16 30);
+  --primary: oklch(0.662 0.221 36.9);
   --primary-foreground: oklch(0.99 0 0);
-  --destructive: oklch(0.6 0.2 25);
-  --ring: oklch(0.68 0.16 30);
-  --brand: oklch(0.68 0.16 30);
-  --sidebar-primary: oklch(0.68 0.16 30);
+  --destructive: oklch(0.55 0.21 25);
+  --ring: oklch(0.662 0.221 36.9);
+  --brand: oklch(0.662 0.221 36.9);
+  --sidebar-primary: oklch(0.662 0.221 36.9);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-ring: oklch(0.68 0.16 30);
+  --sidebar-ring: oklch(0.662 0.221 36.9);
 
   --radius: 0.875rem;
 
-  --chart-1: oklch(0.68 0.16 30);
+  --chart-1: oklch(0.662 0.221 36.9);
   --chart-2: oklch(0.72 0.14 60);
   --chart-3: oklch(0.65 0.12 160);
   --chart-4: oklch(0.6 0.15 280);
@@ -115,59 +146,73 @@
 
   /* Ombra delle superfici: quasi impercettibile in chiaro, assente in scuro. */
   --surface-shadow: 0 1px 2px oklch(0 0 0 / 0.04), 0 4px 16px -8px oklch(0 0 0 / 0.08);
+  --surface-hairline: color-mix(in oklch, var(--border) 70%, transparent);
+  --hero-shadow: 0 12px 32px -16px oklch(0 0 0 / 0.35);
 }
 
 /* Fallback scuro senza JS: vale solo in automatico (nessuna classe forzata). */
 @media (prefers-color-scheme: dark) {
   :root:not(.light):not(.dark) {
-    --background: oklch(0.16 0.004 270);
-    --foreground: oklch(0.96 0.002 85);
-    --card: oklch(0.205 0.005 270);
-    --card-foreground: oklch(0.96 0.002 85);
-    --popover: oklch(0.225 0.005 270);
-    --popover-foreground: oklch(0.96 0.002 85);
-    --secondary: oklch(0.24 0.006 270);
-    --secondary-foreground: oklch(0.88 0.004 85);
-    --muted: oklch(0.24 0.006 270);
-    --muted-foreground: oklch(0.68 0.01 270);
-    --accent: oklch(0.26 0.02 30);
-    --accent-foreground: oklch(0.96 0.002 85);
-    --border: oklch(0.285 0.006 270);
-    --input: oklch(0.285 0.006 270);
-    --sidebar: oklch(0.205 0.005 270);
-    --sidebar-foreground: oklch(0.96 0.002 85);
-    --sidebar-accent: oklch(0.24 0.006 270);
-    --sidebar-accent-foreground: oklch(0.96 0.002 85);
-    --sidebar-border: oklch(0.285 0.006 270);
+    --background: oklch(0.175 0 0);
+    --foreground: oklch(0.965 0 0);
+    --card: oklch(0.225 0 0);
+    --card-foreground: oklch(0.965 0 0);
+    --popover: oklch(0.25 0 0);
+    --popover-foreground: oklch(0.965 0 0);
+    --secondary: oklch(0.27 0 0);
+    --secondary-foreground: oklch(0.88 0 0);
+    --muted: oklch(0.27 0 0);
+    --muted-foreground: oklch(0.7 0.008 286);
+    --accent: oklch(0.29 0.04 40);
+    --accent-foreground: oklch(0.965 0 0);
+    --border: oklch(0.3 0 0);
+    --input: oklch(0.3 0 0);
+    --sidebar: oklch(0.225 0 0);
+    --sidebar-foreground: oklch(0.965 0 0);
+    --sidebar-accent: oklch(0.27 0 0);
+    --sidebar-accent-foreground: oklch(0.965 0 0);
+    --sidebar-border: oklch(0.3 0 0);
+    --hero: oklch(0.27 0.004 286);
+    --hero-foreground: oklch(0.97 0 0);
+    --hero-muted: oklch(0.72 0.01 286);
+    --surface-2: oklch(0.28 0 0);
     --viz-1: #3987e5;
     --viz-2: #d95926;
     --surface-shadow: none;
+    --surface-hairline: oklch(1 0 0 / 0.06);
+    --hero-shadow: none;
   }
 }
 
 .dark {
-  --background: oklch(0.16 0.004 270);
-  --foreground: oklch(0.96 0.002 85);
-  --card: oklch(0.205 0.005 270);
-  --card-foreground: oklch(0.96 0.002 85);
-  --popover: oklch(0.225 0.005 270);
-  --popover-foreground: oklch(0.96 0.002 85);
-  --secondary: oklch(0.24 0.006 270);
-  --secondary-foreground: oklch(0.88 0.004 85);
-  --muted: oklch(0.24 0.006 270);
-  --muted-foreground: oklch(0.68 0.01 270);
-  --accent: oklch(0.26 0.02 30);
-  --accent-foreground: oklch(0.96 0.002 85);
-  --border: oklch(0.285 0.006 270);
-  --input: oklch(0.285 0.006 270);
-  --sidebar: oklch(0.205 0.005 270);
-  --sidebar-foreground: oklch(0.96 0.002 85);
-  --sidebar-accent: oklch(0.24 0.006 270);
-  --sidebar-accent-foreground: oklch(0.96 0.002 85);
-  --sidebar-border: oklch(0.285 0.006 270);
+  --background: oklch(0.175 0 0);
+  --foreground: oklch(0.965 0 0);
+  --card: oklch(0.225 0 0);
+  --card-foreground: oklch(0.965 0 0);
+  --popover: oklch(0.25 0 0);
+  --popover-foreground: oklch(0.965 0 0);
+  --secondary: oklch(0.27 0 0);
+  --secondary-foreground: oklch(0.88 0 0);
+  --muted: oklch(0.27 0 0);
+  --muted-foreground: oklch(0.7 0.008 286);
+  --accent: oklch(0.29 0.04 40);
+  --accent-foreground: oklch(0.965 0 0);
+  --border: oklch(0.3 0 0);
+  --input: oklch(0.3 0 0);
+  --sidebar: oklch(0.225 0 0);
+  --sidebar-foreground: oklch(0.965 0 0);
+  --sidebar-accent: oklch(0.27 0 0);
+  --sidebar-accent-foreground: oklch(0.965 0 0);
+  --sidebar-border: oklch(0.3 0 0);
+  --hero: oklch(0.27 0.004 286);
+  --hero-foreground: oklch(0.97 0 0);
+  --hero-muted: oklch(0.72 0.01 286);
+  --surface-2: oklch(0.28 0 0);
   --viz-1: #3987e5;
   --viz-2: #d95926;
   --surface-shadow: none;
+  --surface-hairline: oklch(1 0 0 / 0.06);
+  --hero-shadow: none;
 }
 
 @layer base {
@@ -211,11 +256,31 @@
                 0 0 15px -4px color-mix(in oklch, var(--brand) 10%, transparent);
   }
 
-  /* Superficie: card piatta con bordo sottile, ombra solo in chiaro. */
+  /* Superficie: card con ombra morbida e bordo hairline in chiaro; in scuro
+     niente ombra, solo un bordo bianco quasi trasparente. */
   .surface {
     background: var(--card);
-    border-radius: 1.25rem;
-    box-shadow: var(--surface-shadow), inset 0 0 0 1px color-mix(in oklch, var(--border) 70%, transparent);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--surface-shadow), inset 0 0 0 1px var(--surface-hairline);
+  }
+
+  /* Card "inchiostro" (stile hero): scura in entrambi i temi, senza bordo. */
+  .surface-hero {
+    background: var(--hero);
+    color: var(--hero-foreground);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--hero-shadow);
+  }
+
+  /* Etichetta minuscola sopra titoli e metriche. */
+  .eyebrow {
+    @apply text-micro font-semibold uppercase tracking-[0.12em] text-muted-foreground;
+  }
+  /* Nelle card hero l'eyebrow usa il grigio della hero (anche fuori da
+     .surface-hero, con data-tone="hero"). */
+  .surface-hero .eyebrow,
+  .eyebrow[data-tone="hero"] {
+    color: var(--hero-muted);
   }
 
   /* iOS-style thin separator */
@@ -316,12 +381,26 @@ input[type="datetime-local"]::-webkit-date-and-time-value {
   from { background-position: 150% 0; }
   to { background-position: -50% 0; }
 }
+/* Piccolo "pop" di conferma (check di una seduta fatta). */
+@keyframes zc-pop {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
 
 /* "backwards" e non "both": a fine animazione non resta un transform applicato,
    che renderebbe il contenitore il riferimento dei figli position: fixed (la
    chat a tutto schermo restava chiusa sopra la tab bar). */
 .animate-enter {
   animation: zc-enter 0.42s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+/* Ingresso in ritardo: dettagli che arrivano dopo il blocco principale
+   (es. chip dei record). */
+.animate-enter-late {
+  animation: zc-enter 0.42s cubic-bezier(0.2, 0.7, 0.2, 1) 150ms backwards;
+}
+.animate-pop {
+  animation: zc-pop 0.42s cubic-bezier(0.3, 0.7, 0.3, 1) backwards;
 }
 .stagger > * {
   animation: zc-enter 0.42s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
@@ -368,6 +447,8 @@ input[type="datetime-local"]::-webkit-date-and-time-value {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-enter,
+  .animate-enter-late,
+  .animate-pop,
   .stagger > *,
   .animate-grow-y,
   .animate-grow-x,

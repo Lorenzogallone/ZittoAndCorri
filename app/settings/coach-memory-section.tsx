@@ -36,7 +36,7 @@ export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
         <ul className="space-y-3">
           {memories.map((memory) => (
             <li key={memory.id}>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="text-micro font-medium uppercase tracking-wide text-muted-foreground">
                 {CATEGORY_LABELS[memory.category] ?? memory.category}
                 {memory.valid_until && ` · fino al ${new Date(`${memory.valid_until}T12:00:00`).toLocaleDateString("it-IT", { day: "numeric", month: "short" })}`}
               </p>

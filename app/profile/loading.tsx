@@ -4,14 +4,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function Loading() {
   return (
     <AppShell title="Profilo">
-      <div className="surface mb-4 space-y-3 p-5">
-        <Skeleton className="h-3 w-24" />
-        <Skeleton className="h-7 w-44" />
-        <Skeleton className="h-3 w-full" />
+      <div className="mb-6 flex items-center gap-3">
+        <Skeleton className="h-12 w-12 rounded-full" />
+        <Skeleton className="h-5 w-36" />
       </div>
-      <Skeleton className="mb-8 h-14 w-full rounded-[1.25rem]" />
+      {/* Card dello stato di forma. */}
+      <div className="surface mb-3 space-y-3 p-5">
+        <div className="h-3 w-24 rounded-md bg-muted" />
+        <div className="h-10 w-44 rounded-md bg-muted" />
+        <div className="h-3 w-full rounded-md bg-muted" />
+      </div>
+      <Skeleton className="mb-8 h-14 w-full rounded-2xl" />
       <Skeleton className="mb-3 h-5 w-32" />
-      <Skeleton className="h-52 w-full rounded-[1.25rem]" />
+      <Skeleton className="h-52 w-full rounded-2xl" />
     </AppShell>
   );
 }

@@ -87,7 +87,7 @@ export function OpenRouterModelPicker({
           aria-describedby={undefined}
         >
           <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
-            <DialogPrimitive.Title className="min-w-0 flex-1 truncate text-[15px] font-semibold">{title}</DialogPrimitive.Title>
+            <DialogPrimitive.Title className="min-w-0 flex-1 truncate text-body font-semibold">{title}</DialogPrimitive.Title>
             <DialogPrimitive.Close asChild>
               <Button type="button" variant="ghost" size="icon-sm" aria-label="Chiudi"><X /></Button>
             </DialogPrimitive.Close>
@@ -125,7 +125,7 @@ export function OpenRouterModelPicker({
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,0px)]">
                 {browsing && suggested.length > 0 && (
                   <section>
-                    <h3 className="sticky top-0 z-10 bg-background/95 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-primary backdrop-blur">Consigliati</h3>
+                    <h3 className="sticky top-0 z-10 bg-background/95 px-4 py-1.5 text-micro font-semibold uppercase tracking-wide text-primary backdrop-blur">Consigliati</h3>
                     {suggested.map((model) => (
                       <ModelRow key={`s-${model.id}`} model={model} withProvider selected={model.id === value} onPick={() => pick(model.id)} />
                     ))}
@@ -133,7 +133,7 @@ export function OpenRouterModelPicker({
                 )}
                 {groups.map((group) => (
                   <section key={group.provider}>
-                    <h3 className="sticky top-0 z-10 bg-background/95 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">
+                    <h3 className="sticky top-0 z-10 bg-background/95 px-4 py-1.5 text-micro font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">
                       {group.provider} <span className="font-normal">· {group.models.length}</span>
                     </h3>
                     {group.models.map((model) => (

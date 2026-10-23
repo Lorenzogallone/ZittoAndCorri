@@ -15,7 +15,7 @@ export function PhaseBar({ plan }: { plan: PhasePlan }) {
             <div
               key={phase.key}
               className={cn(
-                "h-1.5 rounded-full",
+                "h-2 rounded-full",
                 index < currentIndex ? "bg-primary/45" : index === currentIndex ? "bg-primary" : "bg-muted-foreground/20",
               )}
               style={{ flexGrow: phase.weeks / totalWeeks, flexBasis: 0 }}
@@ -23,7 +23,7 @@ export function PhaseBar({ plan }: { plan: PhasePlan }) {
           ))}
         </div>
         <span
-          className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-primary"
+          className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-primary"
           style={{ left: `${plan.progress * 100}%` }}
           aria-hidden="true"
         />

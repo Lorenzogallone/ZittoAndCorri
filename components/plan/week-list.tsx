@@ -79,22 +79,27 @@ function DayRow({ day, today }: { day: PlanDay; today: string }) {
     <li>
       <Link
         href={dayHref(day)}
-        className={cn("flex items-center gap-3 py-2.5 transition-colors active:bg-muted/40", isToday && "-mx-2 rounded-xl bg-primary/[0.07] px-2")}
+        className={cn(
+          // -mx-2/px-2: la tinta della pressione arriva oltre il testo senza spostarlo.
+          "-mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors active:bg-muted/60",
+          // Oggi: tinta dell'accento e segno pieno a sinistra.
+          isToday && "bg-primary/10",
+        )}
       >
         <div className="w-9 shrink-0 text-center">
-          <p className={cn("text-[10px] uppercase tracking-wide", isToday ? "font-semibold text-primary" : "text-muted-foreground")}>{weekday}</p>
-          <p className={cn("text-base font-semibold tabular-nums leading-tight", isToday && "text-primary")}>{date.getUTCDate()}</p>
+          <p className={cn("text-micro uppercase tracking-wide", isToday ? "font-semibold text-primary" : "text-muted-foreground")}>{weekday}</p>
+          <p className={cn("font-display text-heading font-bold tabular-nums leading-tight", isToday && "text-primary")}>{date.getUTCDate()}</p>
         </div>
         <div className="min-w-0 flex-1">
           <p className={cn(
-            "flex items-center gap-2 truncate text-sm",
+            "flex items-center gap-2 truncate text-body",
             workout || activity ? "font-medium" : "text-muted-foreground",
             day.state === "skipped" && "text-muted-foreground line-through",
           )}>
             {dot && <span className={cn("h-2 w-2 shrink-0 rounded-full", dot)} />}
             <span className="truncate">{title}</span>
           </p>
-          {subtitle && <p className="mt-0.5 truncate text-xs text-muted-foreground tabular-nums">{subtitle}</p>}
+          {subtitle && <p className="mt-0.5 truncate text-caption text-muted-foreground tabular-nums">{subtitle}</p>}
         </div>
         <DayStateIcon state={day.state} />
       </Link>
@@ -111,10 +116,10 @@ export function PlanWeek({ days, today, title, highlight = false }: { days: Plan
   return (
     <section className={cn("mb-6", highlight ? "surface px-4 pb-1 pt-4" : "px-1 opacity-90")}>
       <div className="mb-1 flex items-baseline justify-between gap-3">
-        <h2 className={cn("text-[15px] font-semibold", !highlight && "text-muted-foreground")}>
+        <h2 className={cn("text-body font-semibold", !highlight && "text-muted-foreground")}>
           {title ?? rangeLabel(days[0].date, days[days.length - 1].date)}
         </h2>
-        <p className="text-xs text-muted-foreground tabular-nums">
+        <p className="text-caption text-muted-foreground tabular-nums">
           {kmText(done)}{planned > 0 && <span> / {kmText(planned)}</span>}
         </p>
       </div>
@@ -124,7 +129,7 @@ export function PlanWeek({ days, today, title, highlight = false }: { days: Plan
         </div>
       )}
       {due > 0 && (
-        <p className="mb-1 text-[11px] text-muted-foreground">{sessionsDone} su {due} sedute fatte</p>
+        <p className="mb-1 text-micro text-muted-foreground">{sessionsDone} su {due} sedute fatte</p>
       )}
       <ul className="divide-y divide-border/60">
         {days.map((day) => <DayRow key={day.date} day={day} today={today} />)}

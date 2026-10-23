@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { clientLog, isStandalone } from "@/lib/clientlog";
 
 /**
- * Thin coral progress bar at the top of the screen that animates
+ * Thin brand-orange progress bar at the top of the screen that animates
  * whenever a Next.js navigation starts. Gives visual feedback that
  * the page is loading (important on Vercel where RSC rendering takes time).
  *

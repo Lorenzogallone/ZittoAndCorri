@@ -1,4 +1,6 @@
+import { Activity, HeartPulse, Moon, Wind } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Stat } from "@/components/stat";
 import type { ATLCTLResult } from "@/lib/types";
 import type { WellnessDay, ZeppDailyMetric, ZeppReadinessResult } from "@/lib/zepp/types";
 
@@ -18,19 +20,21 @@ const ZEPP = {
   rest: { label: "Riposo", text: "Riposo o attività molto leggera.", tone: "text-orange-600 dark:text-orange-400" },
 } as const;
 
-function ScoreRing({ value }: { value: number }) {
+/** Anello di prontezza: l'arco prende il colore dello stato (verde, ambra,
+ *  arancio) come l'etichetta accanto, non l'accento. */
+function ScoreRing({ value, tone }: { value: number; tone: string }) {
   const clamped = Math.max(0, Math.min(100, Math.round(value)));
   return (
-    <div className="relative h-16 w-16 shrink-0" role="img" aria-label={`Prontezza ${clamped} su 100`}>
-      <svg viewBox="0 0 64 64" className="h-16 w-16 -rotate-90">
-        <circle cx="32" cy="32" r="27" fill="none" stroke="var(--muted)" strokeWidth="5" />
+    <div className="relative h-28 w-28 shrink-0" role="img" aria-label={`Prontezza ${clamped} su 100`}>
+      <svg viewBox="0 0 112 112" className={cn("h-28 w-28 -rotate-90", tone)}>
+        <circle cx="56" cy="56" r="51" fill="none" strokeWidth="10" className="stroke-muted" />
         <circle
-          cx="32"
-          cy="32"
-          r="27"
+          cx="56"
+          cy="56"
+          r="51"
           fill="none"
-          stroke="var(--primary)"
-          strokeWidth="5"
+          stroke="currentColor"
+          strokeWidth="10"
           strokeLinecap="round"
           pathLength={100}
           strokeDasharray={100}
@@ -38,7 +42,7 @@ function ScoreRing({ value }: { value: number }) {
           className="animate-ring"
         />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-lg font-bold tabular-nums">{clamped}</span>
+      <span className="absolute inset-0 flex items-center justify-center font-display text-display font-bold tabular-nums tracking-tight">{clamped}</span>
     </div>
   );
 }
@@ -47,7 +51,7 @@ function sleepLabel(minutes: number): string {
   return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, "0")}′`;
 }
 
-/** Stato di forma in una riga, con i pochi dati dell'orologio che contano. */
+/** Hero del profilo: stato di forma, prontezza dell'orologio e i pochi dati che contano. */
 export function FormStatus({
   load,
   readiness,
@@ -66,46 +70,53 @@ export function FormStatus({
 }) {
   const assisted = readiness?.available && readiness.status ? ZEPP[readiness.status] : null;
   const state = assisted ?? INTERNAL[load.status];
+  // Zepp quando c'è, altrimenti i dati notturni da Intervals.icu.
   const sleepMin = latest?.sleep_total_min ?? (wellness?.sleep_secs != null ? Math.round(wellness.sleep_secs / 60) : null);
   const restingHr = latest?.resting_hr ?? wellness?.resting_hr ?? null;
   const metrics = [
-    sleepMin != null ? { label: "Sonno", value: sleepLabel(sleepMin) } : null,
-    restingHr != null ? { label: "FC a riposo", value: `${restingHr}` } : null,
-    wellness?.hrv != null ? { label: "HRV", value: `${Math.round(wellness.hrv)} ms` } : null,
-    latest?.vo2_max != null ? { label: "VO₂max", value: `${latest.vo2_max}` } : null,
-  ].filter((metric): metric is { label: string; value: string } => metric != null).slice(0, 3);
+    sleepMin != null ? { label: "Sonno", value: sleepLabel(sleepMin), icon: Moon } : null,
+    restingHr != null ? { label: "FC riposo", value: `${restingHr}`, unit: "bpm", icon: HeartPulse } : null,
+    wellness?.hrv != null ? { label: "HRV", value: `${Math.round(wellness.hrv)}`, unit: "ms", icon: Activity } : null,
+    latest?.vo2_max != null ? { label: "VO₂max", value: `${latest.vo2_max}`, icon: Wind } : null,
+  ].filter((metric) => metric != null).slice(0, 3);
 
   if (!hasData) {
     return (
       <section className="surface p-5">
-        <p className="text-xs text-muted-foreground">Stato di forma</p>
-        <p className="mt-1 text-sm text-muted-foreground">Registra le prime corse per vedere come stai.</p>
+        <p className="eyebrow">Stato di forma</p>
+        <p className="mt-2 text-body text-muted-foreground">Registra le prime corse per vedere come stai.</p>
       </section>
     );
   }
 
+  const ring = readiness?.available && readiness.score != null ? readiness.score : null;
   return (
     <section className="surface p-5">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-xs text-muted-foreground">Stato di forma</p>
-          <p className={cn("mt-1 text-2xl font-bold tracking-tight", state.tone)}>{state.label}</p>
-          <p className="mt-1 text-sm leading-snug text-muted-foreground">{state.text}</p>
+      <p className="eyebrow">Stato di forma</p>
+      {ring != null ? (
+        <div className="mt-4 flex items-center gap-5">
+          <ScoreRing value={ring} tone={state.tone} />
+          <div className="min-w-0">
+            <p className={cn("font-display text-title font-bold tracking-tight text-balance", state.tone)}>{state.label}</p>
+            <p className="mt-1.5 text-caption text-muted-foreground">{state.text}</p>
+          </div>
         </div>
-        {readiness?.available && readiness.score != null && <ScoreRing value={readiness.score} />}
-      </div>
+      ) : (
+        // Senza orologio l'etichetta dello stato è l'elemento dominante.
+        <div className="mt-2">
+          <p className={cn("font-display text-display font-bold tracking-tight text-balance", state.tone)}>{state.label}</p>
+          <p className="mt-2 text-body text-muted-foreground">{state.text}</p>
+        </div>
+      )}
       {metrics.length > 0 && (
-        <dl className="mt-5 grid grid-cols-3 gap-3 border-t border-border/60 pt-4">
+        <div className="mt-5 grid grid-cols-3 gap-3 border-t border-border/60 pt-4">
           {metrics.map((metric) => (
-            <div key={metric.label}>
-              <dt className="text-[11px] text-muted-foreground">{metric.label}</dt>
-              <dd className="mt-0.5 text-base font-semibold tabular-nums">{metric.value}</dd>
-            </div>
+            <Stat key={metric.label} size="sm" {...metric} />
           ))}
-        </dl>
+        </div>
       )}
       {stale && (
-        <p className="mt-4 text-xs text-muted-foreground">
+        <p className="mt-4 text-caption text-muted-foreground">
           L&apos;orologio non si sincronizza da qualche giorno: per ora conto solo le tue attività.
         </p>
       )}

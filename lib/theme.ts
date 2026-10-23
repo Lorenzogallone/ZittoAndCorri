@@ -41,7 +41,8 @@ export interface AccentDef {
 }
 
 export const ACCENTS: Record<AccentKey, AccentDef> = {
-  coral: { label: "Coral", brand: "oklch(0.68 0.16 30)" },
+  // La chiave "coral" resta per le preferenze salvate: ora è l'arancio del brand.
+  coral: { label: "Arancio", brand: "oklch(0.662 0.221 36.9)" },
   amber: { label: "Ambra", brand: "oklch(0.72 0.15 70)" },
   green: { label: "Verde", brand: "oklch(0.66 0.15 155)" },
   blue: { label: "Blu", brand: "oklch(0.60 0.16 250)" },
@@ -85,6 +86,10 @@ export const NEUTRAL_KEYS = [
   "--sidebar-accent",
   "--sidebar-accent-foreground",
   "--sidebar-border",
+  "--hero",
+  "--hero-foreground",
+  "--hero-muted",
+  "--surface-2",
 ] as const;
 
 /** Costruisce la mappa di variabili neutre per un dato hue/chroma, usando la
@@ -115,28 +120,36 @@ function neutrals(
       "--sidebar-accent": `oklch(0.96 ${c} ${hue})`,
       "--sidebar-accent-foreground": `oklch(0.2 0.006 ${hue})`,
       "--sidebar-border": `oklch(0.915 ${c} ${hue})`,
+      "--hero": `oklch(0.262 ${c * 1.2} ${hue})`,
+      "--hero-foreground": `oklch(0.98 0.004 ${hue})`,
+      "--hero-muted": `oklch(0.72 0.012 ${hue})`,
+      "--surface-2": `oklch(0.965 ${c} ${hue})`,
     };
   }
   return {
-    "--background": `oklch(0.16 ${c} ${hue})`,
+    "--background": `oklch(0.175 ${c} ${hue})`,
     "--foreground": `oklch(0.96 0.004 ${hue})`,
-    "--card": `oklch(0.205 ${c} ${hue})`,
+    "--card": `oklch(0.225 ${c} ${hue})`,
     "--card-foreground": `oklch(0.96 0.004 ${hue})`,
-    "--popover": `oklch(0.225 ${c} ${hue})`,
+    "--popover": `oklch(0.25 ${c} ${hue})`,
     "--popover-foreground": `oklch(0.96 0.004 ${hue})`,
-    "--secondary": `oklch(0.24 ${c} ${hue})`,
+    "--secondary": `oklch(0.27 ${c} ${hue})`,
     "--secondary-foreground": `oklch(0.88 0.006 ${hue})`,
-    "--muted": `oklch(0.24 ${c} ${hue})`,
+    "--muted": `oklch(0.27 ${c} ${hue})`,
     "--muted-foreground": `oklch(0.68 0.014 ${hue})`,
     "--accent": `oklch(0.26 ${c * 1.2} ${hue})`,
     "--accent-foreground": `oklch(0.96 0.004 ${hue})`,
-    "--border": `oklch(0.285 ${c} ${hue})`,
-    "--input": `oklch(0.285 ${c} ${hue})`,
-    "--sidebar": `oklch(0.205 ${c} ${hue})`,
+    "--border": `oklch(0.3 ${c} ${hue})`,
+    "--input": `oklch(0.3 ${c} ${hue})`,
+    "--sidebar": `oklch(0.225 ${c} ${hue})`,
     "--sidebar-foreground": `oklch(0.96 0.004 ${hue})`,
-    "--sidebar-accent": `oklch(0.24 ${c} ${hue})`,
+    "--sidebar-accent": `oklch(0.27 ${c} ${hue})`,
     "--sidebar-accent-foreground": `oklch(0.96 0.004 ${hue})`,
-    "--sidebar-border": `oklch(0.285 ${c} ${hue})`,
+    "--sidebar-border": `oklch(0.3 ${c} ${hue})`,
+    "--hero": `oklch(0.27 ${c} ${hue})`,
+    "--hero-foreground": `oklch(0.97 0.004 ${hue})`,
+    "--hero-muted": `oklch(0.7 0.014 ${hue})`,
+    "--surface-2": `oklch(0.28 ${c} ${hue})`,
   };
 }
 
@@ -152,28 +165,28 @@ export interface StyleDef {
 export const STYLES: Record<StyleKey, StyleDef> = {
   // La chiave "warm" resta per compatibilità con le preferenze salvate.
   warm: {
-    label: "Neutro",
-    description: "Bianco e nero, minimale.",
+    label: "Classico",
+    description: "Bianco e grigio, come le app sportive.",
     vars: null,
-    preview: { light: "oklch(0.985 0.002 85)", dark: "oklch(0.16 0.004 270)" },
+    preview: { light: "oklch(0.977 0.004 286)", dark: "oklch(0.175 0 0)" },
   },
   night: {
     label: "Notte",
     description: "Grigio freddo.",
     vars: { light: neutrals(280, 0.008, false), dark: neutrals(280, 0.016, true) },
-    preview: { light: "oklch(0.97 0.01 280)", dark: "oklch(0.17 0.02 280)" },
+    preview: { light: "oklch(0.97 0.01 280)", dark: "oklch(0.14 0.02 280)" },
   },
   ocean: {
     label: "Oceano",
     description: "Grigio-blu.",
     vars: { light: neutrals(240, 0.012, false), dark: neutrals(240, 0.026, true) },
-    preview: { light: "oklch(0.97 0.014 240)", dark: "oklch(0.17 0.03 240)" },
+    preview: { light: "oklch(0.97 0.014 240)", dark: "oklch(0.14 0.03 240)" },
   },
   forest: {
     label: "Foresta",
     description: "Verde salvia.",
     vars: { light: neutrals(155, 0.012, false), dark: neutrals(155, 0.02, true) },
-    preview: { light: "oklch(0.97 0.014 155)", dark: "oklch(0.17 0.024 155)" },
+    preview: { light: "oklch(0.97 0.014 155)", dark: "oklch(0.14 0.024 155)" },
   },
 };
 
