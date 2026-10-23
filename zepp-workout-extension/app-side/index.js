@@ -11,6 +11,7 @@ function mark(key, value) {
   try { settings.settingsStorage.setItem(key, String(value ?? "")) } catch {}
 }
 mark("service_loaded_at", new Date().toISOString())
+console.log("[ZC coach] side service: modulo caricato", new Date().toISOString())
 try {
   const root = typeof globalThis !== "undefined" ? globalThis : null
   if (root && typeof Logger === "undefined") {
@@ -47,7 +48,10 @@ function noteServiceStart() {
       ? Object.keys(sideService.launchReasons).filter((key) => sideService.launchReasons[key])
       : []
     STORAGE().setItem("service_launch_reason", reasons.join(", ") || "sconosciuto")
-  } catch {}
+    console.log("[ZC coach] side service: onInit, motivo =", reasons.join(", ") || "sconosciuto")
+  } catch (error) {
+    console.log("[ZC coach] side service: onInit senza storage", String(error))
+  }
 }
 
 function clientId() {
@@ -82,7 +86,7 @@ async function pair() {
     code,
     clientId: clientId(),
     clientKind: "workout",
-    device: { appVersion: "1.0.5" },
+    device: { appVersion: "1.0.6" },
   })
   STORAGE().setItem("paired_origin", origin())
   STORAGE().setItem("access_token", result.accessToken)
@@ -163,6 +167,7 @@ function markPairingHandled() {
 }
 
 async function completePairing() {
+  console.log("[ZC coach] pairing in sospeso?", pairingPending())
   if (!pairingPending()) return false
   markPairingHandled()
   const at = new Date().toISOString()
@@ -172,6 +177,7 @@ async function completePairing() {
     return true
   } catch (error) {
     const message = error.message || String(error)
+    console.log("[ZC coach] pairing fallito", message)
     STORAGE().setItem("connection_status", message)
     STORAGE().setItem("pair_result", JSON.stringify({ ok: false, at, error: message }))
     if (!error.status) STORAGE().removeItem("pair_handled")
@@ -188,6 +194,7 @@ const service = BaseSideService({
 
   async onSettingsChange(change) {
     const key = change?.key
+    console.log("[ZC coach] onSettingsChange", key)
     try {
       if (key === "pair_action") await completePairing()
       if (key === "sync_action" || key === "override_workout_id") await pullFromSettings.call(this)
@@ -198,6 +205,7 @@ const service = BaseSideService({
   },
 
   async onRequest(req, res) {
+    console.log("[ZC coach] onRequest", req?.method)
     if (req.method === "GET_CONNECTION_STATE") {
       await completePairing()
       res(null, { enabled: STORAGE().getItem("paired") === "true" })
@@ -225,6 +233,7 @@ service.onInit = function (...args) {
     zmlInit.apply(this, args)
   } catch (error) {
     mark("service_init_error", error.message || String(error))
+    console.log("[ZC coach] errore nell'onInit di zml", String(error))
     noteServiceStart()
     completePairing()
   }
