@@ -19,7 +19,7 @@ import { formatDistance, formatDuration, formatPace } from "@/lib/format";
 import type { CoachMessage, PlanProposal, ProposedWorkout } from "@/lib/types";
 import type { WorkoutBrief } from "@/lib/plan/proposal-diff";
 import { WorkoutSteps } from "@/components/workout-steps";
-import { AiModelLine, AiProviderToggle, useAiSwitch, type AiSwitchState } from "@/components/ai-provider-switch";
+import { AiModelLine, type AiSwitchState } from "@/components/ai-provider-switch";
 import { workoutHeadline } from "@/lib/workout-guide";
 import { AiCost } from "@/components/ai-cost";
 import { readUsage } from "@/lib/ai/usage";
@@ -204,8 +204,7 @@ function SessionDivider({ item }: { item: CoachMessage }) {
 }
 
 export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: { messages: CoachMessage[]; proposals: PlanProposal[]; ai: AiSwitchState; analyzingActivities?: number }) {
-  const aiSwitch = useAiSwitch(ai);
-  const keyConfigured = aiSwitch.state.active !== null;
+  const keyConfigured = ai.active !== null;
   const searchParams = useSearchParams();
   const [message, setMessage] = useState(searchParams.get("prompt") ?? "");
   const [isExpanded, setIsExpanded] = useState(false);
@@ -338,9 +337,8 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary"><Sparkles size={16} /></span>
         <div className="ml-1 min-w-0 flex-1">
           <h2 className="text-body font-semibold leading-tight">Coach</h2>
-          <AiModelLine state={aiSwitch.state} />
+          <AiModelLine state={ai} />
         </div>
-        <AiProviderToggle state={aiSwitch.state} choose={aiSwitch.choose} pending={aiSwitch.pending} />
         <Button
           type="button"
           variant="ghost"
@@ -364,7 +362,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
           {isExpanded ? <Minimize2 /> : <Maximize2 />}
         </Button>
       </header>
-      {(aiSwitch.error || resetError) && <p className="border-b border-border/50 px-4 py-2 text-xs text-destructive">{aiSwitch.error ?? resetError}</p>}
+      {resetError && <p className="border-b border-border/50 px-4 py-2 text-xs text-destructive">{resetError}</p>}
       {analyzingActivities > 0 && (
         <div className="flex items-center gap-2 border-b border-border/50 bg-primary/5 px-4 py-2 text-xs text-muted-foreground">
           <LoaderCircle size={13} className="animate-spin text-primary" />

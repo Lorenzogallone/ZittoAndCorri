@@ -1,5 +1,6 @@
 import { TabBar } from "@/components/tab-bar";
 import { BackButton } from "@/components/back-button";
+import { cn } from "@/lib/utils";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -13,6 +14,8 @@ interface AppShellProps {
   backHref?: string;
   /** Etichetta del link indietro */
   backLabel?: string;
+  /** Contenuto a tutta altezza (home con la chat): margine minimo sopra la tab bar. */
+  fill?: boolean;
 }
 
 export function AppShell({
@@ -22,6 +25,7 @@ export function AppShell({
   hideTabBar = false,
   backHref,
   backLabel,
+  fill = false,
 }: AppShellProps) {
   return (
     // Colonna a tutta altezza: solo il contenuto scorre, tab bar sempre in
@@ -41,7 +45,7 @@ export function AppShell({
       )}
 
       <main className="min-h-0 flex-1 overflow-y-auto scroll-touch">
-        <div className="animate-enter mx-auto h-full w-full max-w-lg px-5 pb-8 pt-3">
+        <div className={cn("animate-enter mx-auto h-full w-full max-w-lg px-5 pt-3", fill ? "pb-2" : "pb-8")}>
           {title && (
             <div className="mb-5 flex items-center justify-between gap-3 pt-2">
               <h1 className="font-display text-display font-bold tracking-tight">{title}</h1>
