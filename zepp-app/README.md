@@ -1,7 +1,7 @@
 # Zitto e Corri for Zepp OS
 
 This directory contains the Zepp OS companion for Zitto e Corri (version
-1.0.7, version code 8). It runs on an Amazfit Balance 2 or Active 3 Premium and
+1.0.8, version code 9). It runs on an Amazfit Balance 2 or Active 3 Premium and
 sends health summaries to the main PWA through the Zepp phone app. On watches
 that support it, it also adds a **Today** widget with the planned workout and
 readiness.

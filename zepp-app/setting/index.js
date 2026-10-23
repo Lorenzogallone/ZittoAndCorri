@@ -125,8 +125,23 @@ AppSettingsPage({
           }),
         ])
 
+    const serviceStartedAt = storage.getItem("service_started_at") || "mai (nessun avvio registrato)"
+    const serviceReason = storage.getItem("service_launch_reason") || "—"
+    const pairRequestedAt = storage.getItem("pair_action")
+    const pairHandled = pairRequestedAt && storage.getItem("pair_handled") === pairRequestedAt
+    let pairResultText = "nessun tentativo"
+    try {
+      const parsed = JSON.parse(storage.getItem("pair_result") || "null")
+      if (parsed) pairResultText = parsed.ok ? `riuscito alle ${parsed.at}` : `fallito alle ${parsed.at}: ${parsed.error}`
+    } catch {}
+
     const diagnosticChildren = [
       heading("Diagnostica sincronizzazione"),
+      Text({ paragraph: true, style: { color: COLORS.ink, fontSize: "12px", lineHeight: "1.55", margin: "0 0 10px" } },
+        `Servizio telefono: avviato ${serviceStartedAt} (motivo: ${serviceReason})\n` +
+        `Pulsante Collega premuto: ${pairRequestedAt ? new Date(Number(pairRequestedAt)).toISOString() : "mai"}\n` +
+        `Richiesta presa in carico dal servizio: ${pairRequestedAt ? (pairHandled ? "sì" : "no") : "—"}\n` +
+        `Esito collegamento: ${pairResultText}`),
       Text({ paragraph: true, style: { color: COLORS.muted, fontSize: "12px", lineHeight: "1.45", margin: "0 0 10px" } },
         "Mostra ciò che il telefono ha ricevuto dall'orologio e la risposta del server. Il token non viene incluso."),
       Toggle({
