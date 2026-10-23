@@ -159,3 +159,11 @@ app and enable **Show technical details** under synchronization diagnostics.
 The panel shows the last endpoint, payload size, HTTP status, and server
 response. Share its contents only after reviewing the health information it may
 contain.
+
+### "Connect" does nothing
+
+The phone-side service runs inside the Zepp app and Zepp starts it together
+with the watch app. Open **Zitto e Corri on the watch**, keep it on screen and
+press **Collega a ZittoAndCorri** again. Since 1.0.6 a request made while the
+service was not running is completed automatically the next time the watch
+app opens, as long as the code has not expired (10 minutes).

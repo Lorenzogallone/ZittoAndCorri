@@ -5,7 +5,7 @@
     "appName": "Zitto e Corri Coach",
     "appType": "app",
     "extType": "workout",
-    "version": { "code": 2, "name": "1.0.1" },
+    "version": { "code": 3, "name": "1.0.2" },
     "icon": "icon.png",
     "vender": "ZittoAndCorri",
     "description": "Allenamenti di corsa guidati con fasi, target e avvisi"
