@@ -70,7 +70,7 @@ export function collectHealthPayload(trigger = "manual") {
       osVersion: system.osVersion,
       firmwareVersion: system.firmwareVersion,
       apiLevel: system.minAPI,
-      appVersion: "1.0.9",
+      appVersion: "1.0.10",
     },
     data: {
       workout: workout ? {

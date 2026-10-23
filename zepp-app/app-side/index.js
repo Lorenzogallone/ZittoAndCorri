@@ -11,6 +11,7 @@ function mark(key, value) {
   try { settings.settingsStorage.setItem(key, String(value ?? "")) } catch {}
 }
 mark("service_loaded_at", new Date().toISOString())
+console.log("[ZC salute] side service: modulo caricato", new Date().toISOString())
 try {
   const root = typeof globalThis !== "undefined" ? globalThis : null
   if (root && typeof Logger === "undefined") {
@@ -57,7 +58,10 @@ function noteServiceStart() {
       ? Object.keys(sideService.launchReasons).filter((key) => sideService.launchReasons[key])
       : []
     STORAGE().setItem("service_launch_reason", reasons.join(", ") || "sconosciuto")
-  } catch {}
+    console.log("[ZC salute] side service: onInit, motivo =", reasons.join(", ") || "sconosciuto")
+  } catch (error) {
+    console.log("[ZC salute] side service: onInit senza storage", String(error))
+  }
 }
 
 function parseBody(response) {
@@ -141,6 +145,7 @@ async function pair() {
     diagnostic: true,
     redact: ["accessToken"],
   })
+  console.log("[ZC salute] pairing riuscito")
   STORAGE().setItem("paired_origin", normalizedOrigin())
   STORAGE().setItem("access_token", result.accessToken)
   STORAGE().setItem("paired", "true")
@@ -232,6 +237,7 @@ function pairResult() {
 }
 
 async function completePairing(service) {
+  console.log("[ZC salute] pairing in sospeso?", pairingPending())
   if (!pairingPending()) return null
   markPairingHandled()
   const at = new Date().toISOString()
@@ -239,6 +245,7 @@ async function completePairing(service) {
     await pair()
   } catch (error) {
     const message = error.message || String(error)
+    console.log("[ZC salute] pairing fallito", message)
     STORAGE().setItem("connection_status", message)
     STORAGE().setItem("pair_result", JSON.stringify({ ok: false, at, error: message }))
     if (!error.status) {
@@ -266,6 +273,7 @@ const service = BaseSideService({
 
   async onSettingsChange(change) {
     const key = change?.key
+    console.log("[ZC salute] onSettingsChange", key)
     try {
       if (key === "pair_action") await completePairing(this)
       if (key === "sync_action") this.call({ method: "SYNC_NOW", params: {} })
@@ -279,6 +287,7 @@ const service = BaseSideService({
   },
 
   async onRequest(req, res) {
+    console.log("[ZC salute] onRequest", req?.method)
     if (req.method === "GET_CONNECTION_STATE") {
       const pairing = await completePairing(this)
       const enabled = STORAGE().getItem("paired") === "true"
@@ -328,6 +337,7 @@ service.onInit = function (...args) {
     zmlInit.apply(this, args)
   } catch (error) {
     mark("service_init_error", error.message || String(error))
+    console.log("[ZC salute] errore nell'onInit di zml", String(error))
     noteServiceStart()
     completePairing(this)
   }
