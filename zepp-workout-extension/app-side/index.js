@@ -16,6 +16,16 @@ function origin() {
   return value
 }
 
+function noteServiceStart() {
+  try {
+    STORAGE().setItem("service_started_at", new Date().toISOString())
+    const reasons = typeof sideService !== "undefined" && sideService.launchReasons
+      ? Object.keys(sideService.launchReasons).filter((key) => sideService.launchReasons[key])
+      : []
+    STORAGE().setItem("service_launch_reason", reasons.join(", ") || "sconosciuto")
+  } catch {}
+}
+
 function clientId() {
   let value = STORAGE().getItem("client_id")
   if (!value) {
@@ -48,7 +58,7 @@ async function pair() {
     code,
     clientId: clientId(),
     clientKind: "workout",
-    device: { appVersion: "1.0.3" },
+    device: { appVersion: "1.0.4" },
   })
   STORAGE().setItem("paired_origin", origin())
   STORAGE().setItem("access_token", result.accessToken)
@@ -131,11 +141,15 @@ function markPairingHandled() {
 async function completePairing() {
   if (!pairingPending()) return false
   markPairingHandled()
+  const at = new Date().toISOString()
   try {
     await pair()
+    STORAGE().setItem("pair_result", JSON.stringify({ ok: true, at }))
     return true
   } catch (error) {
-    STORAGE().setItem("connection_status", error.message || String(error))
+    const message = error.message || String(error)
+    STORAGE().setItem("connection_status", message)
+    STORAGE().setItem("pair_result", JSON.stringify({ ok: false, at, error: message }))
     if (!error.status) STORAGE().removeItem("pair_handled")
     return false
   }
@@ -144,6 +158,7 @@ async function completePairing() {
 AppSideService(
   BaseSideService({
     onInit() {
+      noteServiceStart()
       completePairing()
     },
 
