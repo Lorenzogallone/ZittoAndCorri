@@ -65,10 +65,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
     : null;
 
   return (
-    <AppShell>
+    <AppShell fill>
       <div className="flex h-full min-h-0 flex-col">
         {/* Niente titolo grande: l'H1 della home è la prossima seduta. */}
-        <div className="mb-5 flex shrink-0 items-center justify-between gap-3 pt-2">
+        <div className="mb-4 flex shrink-0 items-center justify-between gap-3 pt-1">
           <div className="min-w-0">
             <p className="eyebrow truncate">{greeting()}, {name}</p>
             <p className="mt-1 text-caption text-muted-foreground first-letter:uppercase">{longDate(today)}</p>
@@ -82,7 +82,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
             <Plus size={18} />
           </Link>
         </div>
-        <div className="mb-6 shrink-0">
+        <div className="mb-3 shrink-0">
           <TodayCard next={next} today={today} heat={heat} week={week} race={race} />
         </div>
         <Suspense fallback={<div className="skeleton min-h-0 flex-1 rounded-3xl" />}>

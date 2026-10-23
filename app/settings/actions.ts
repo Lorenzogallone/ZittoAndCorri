@@ -209,27 +209,6 @@ export async function deleteOpenRouterKey(): Promise<{ error?: string; ok?: bool
   return { ok: true };
 }
 
-/** Chi risponde in chat: lo switch nell'intestazione della chat. */
-export async function chooseAiProvider(provider: AiProvider): Promise<{ error?: string; ok?: boolean }> {
-  if (provider !== "gemini" && provider !== "openrouter") return { error: "Provider non valido." };
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  try {
-    await setAiRoute(user.id, "chat", { provider });
-  } catch (error) {
-    // Senza la migrazione 0024 si cambia il provider unico di prima.
-    try {
-      if (!notMigrated(error)) throw error;
-      await setAiProvider(user.id, provider);
-    } catch (fallbackError) {
-      console.error("chooseAiProvider:", fallbackError instanceof Error ? fallbackError.message : fallbackError);
-      return { error: notMigrated(fallbackError) ? MIGRATION_ERROR : "Impossibile cambiare modello. Riprova." };
-    }
-  }
-  return { ok: true };
-}
-
 /** Provider e modello predefiniti per la chat del coach o per l'analisi delle corse. */
 export async function saveAiRoute(task: AiTask, provider: AiProvider, model: string): Promise<{ error?: string; ok?: boolean }> {
   if (task !== "chat" && task !== "analysis") return { error: "Compito non valido." };
