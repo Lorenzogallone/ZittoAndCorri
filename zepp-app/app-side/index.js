@@ -17,6 +17,25 @@ function setDiagnostic(key, value) {
   STORAGE().setItem(`diagnostic_${key}`, String(value ?? ""))
 }
 
+function redacted(body, keys) {
+  if (!keys?.length || !body || typeof body !== "object") return body
+  const copy = { ...body }
+  for (const key of keys) if (key in copy) copy[key] = "[nascosto]"
+  return copy
+}
+
+// Traccia dell'avvio del servizio sul telefono, mostrata nelle impostazioni:
+// serve a capire se Zepp lo avvia davvero e per quale motivo.
+function noteServiceStart() {
+  try {
+    STORAGE().setItem("service_started_at", new Date().toISOString())
+    const reasons = typeof sideService !== "undefined" && sideService.launchReasons
+      ? Object.keys(sideService.launchReasons).filter((key) => sideService.launchReasons[key])
+      : []
+    STORAGE().setItem("service_launch_reason", reasons.join(", ") || "sconosciuto")
+  } catch {}
+}
+
 function parseBody(response) {
   if (typeof response.body === "string") {
     try { return JSON.parse(response.body) } catch { return { error: response.body } }
@@ -63,7 +82,7 @@ async function request(path, options = {}) {
   const body = parseBody(response)
   if (options.diagnostic) {
     setDiagnostic("http_status", response.status)
-    setDiagnostic("response", diagnosticJson(body))
+    setDiagnostic("response", diagnosticJson(redacted(body, options.redact)))
   }
   if (response.status < 200 || response.status >= 300) {
     const detail = Array.isArray(body.details) && body.details.length
@@ -95,6 +114,8 @@ async function pair() {
   STORAGE().setItem("connection_status", "Collegamento in corso…")
   const result = await request("/api/zepp/pair", {
     body: { code, clientId: clientId(), clientKind: "health", device: {} },
+    diagnostic: true,
+    redact: ["accessToken"],
   })
   STORAGE().setItem("paired_origin", normalizedOrigin())
   STORAGE().setItem("access_token", result.accessToken)
@@ -179,27 +200,43 @@ function markPairingHandled() {
   STORAGE().setItem("pair_handled", STORAGE().getItem("pair_action") || "")
 }
 
+// Esito dell'ultimo tentativo di collegamento, per impostazioni e orologio.
+function pairResult() {
+  const raw = STORAGE().getItem("pair_result")
+  if (!raw) return null
+  try { return JSON.parse(raw) } catch { return null }
+}
+
 async function completePairing(service) {
-  if (!pairingPending()) return false
+  if (!pairingPending()) return null
   markPairingHandled()
+  const at = new Date().toISOString()
   try {
     await pair()
   } catch (error) {
-    STORAGE().setItem("connection_status", error.message || String(error))
-    // Errore di rete (nessuna risposta HTTP): riprova al prossimo avvio o
-    // alla prossima apertura dell'app sull'orologio.
-    if (!error.status) STORAGE().removeItem("pair_handled")
-    return false
+    const message = error.message || String(error)
+    STORAGE().setItem("connection_status", message)
+    STORAGE().setItem("pair_result", JSON.stringify({ ok: false, at, error: message }))
+    if (!error.status) {
+      setDiagnostic("http_status", "Errore di rete")
+      setDiagnostic("response", message)
+      // Nessuna risposta HTTP: riprova al prossimo avvio o alla prossima
+      // apertura dell'app sull'orologio.
+      STORAGE().removeItem("pair_handled")
+    }
+    return { ok: false, error: message }
   }
+  STORAGE().setItem("pair_result", JSON.stringify({ ok: true, at }))
   try {
     service.call({ method: "CONNECTION_STATE", params: { enabled: true, schedule: storedSchedule() } })
   } catch {}
-  return true
+  return { ok: true }
 }
 
 AppSideService(
   BaseSideService({
     onInit() {
+      noteServiceStart()
       completePairing(this)
     },
 
@@ -219,9 +256,14 @@ AppSideService(
 
     async onRequest(req, res) {
       if (req.method === "GET_CONNECTION_STATE") {
-        await completePairing(this)
+        const pairing = await completePairing(this)
         const enabled = STORAGE().getItem("paired") === "true"
-        res(null, { enabled, schedule: enabled ? storedSchedule() : null })
+        res(null, {
+          enabled,
+          schedule: enabled ? storedSchedule() : null,
+          pairing: pairing || (enabled ? null : pairResult()),
+          pairingRequested: Boolean(STORAGE().getItem("pair_action")),
+        })
         return
       }
       if (req.method === "PULL_WORKOUTS") {

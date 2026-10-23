@@ -138,6 +138,17 @@ AppSettingsPage({
         onChange: (value) => storage.setItem("show_diagnostics", value ? "true" : "false"),
       }),
     ]
+    const pairRequestedAt = storage.getItem("pair_action")
+    let pairResultText = "nessun tentativo"
+    try {
+      const parsed = JSON.parse(storage.getItem("pair_result") || "null")
+      if (parsed) pairResultText = parsed.ok ? `riuscito alle ${parsed.at}` : `fallito alle ${parsed.at}: ${parsed.error}`
+    } catch {}
+    diagnostics.splice(1, 0, Text({ paragraph: true, style: { color: COLORS.ink, fontSize: "12px", lineHeight: "1.55", margin: "0 0 10px" } },
+      `Servizio telefono: avviato ${storage.getItem("service_started_at") || "mai"} (motivo: ${storage.getItem("service_launch_reason") || "—"})\n` +
+      `Pulsante Collega premuto: ${pairRequestedAt ? new Date(Number(pairRequestedAt)).toISOString() : "mai"}\n` +
+      `Presa in carico: ${pairRequestedAt ? (storage.getItem("pair_handled") === pairRequestedAt ? "sì" : "no") : "—"}\n` +
+      `Esito collegamento: ${pairResultText}`))
     if (showDiagnostics) {
       diagnostics.push(Text({ paragraph: true, style: { color: COLORS.muted, fontSize: "12px", lineHeight: "1.55", margin: "12px 0 0" } },
         `Client: workout\nRevisione: ${storage.getItem("last_revision") || "—"}\nCache offline: ${storage.getItem("workout_list") ? "disponibile" : "vuota"}\nSelezione: ${storage.getItem("override_workout_id") || "automatica"}`))
