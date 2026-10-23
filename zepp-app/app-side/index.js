@@ -76,6 +76,19 @@ async function request(path, options = {}) {
   return body
 }
 
+function scheduleHour(value) {
+  const match = /^(\d{1,2})(?::\d{2})?$/.exec(String(value ?? "").trim())
+  if (!match) return null
+  const hour = Number(match[1])
+  return hour >= 0 && hour <= 23 ? hour : null
+}
+
+function storedSchedule() {
+  const morning = scheduleHour(STORAGE().getItem("schedule_morning"))
+  const evening = scheduleHour(STORAGE().getItem("schedule_evening"))
+  return morning == null && evening == null ? null : { morning, evening }
+}
+
 async function pair() {
   const code = String(STORAGE().getItem("pairing_code") || "").trim()
   if (!/^\d{6}$/.test(code)) throw new Error("Il codice deve avere 6 cifre")
@@ -86,6 +99,8 @@ async function pair() {
   STORAGE().setItem("paired_origin", normalizedOrigin())
   STORAGE().setItem("access_token", result.accessToken)
   STORAGE().setItem("paired", "true")
+  if (result.schedule?.morning) STORAGE().setItem("schedule_morning", String(result.schedule.morning))
+  if (result.schedule?.evening) STORAGE().setItem("schedule_evening", String(result.schedule.evening))
   STORAGE().removeItem("pairing_code")
   STORAGE().setItem("connection_status", "Collegato. Apri l'app sull'orologio per la prima sync.")
   return result
@@ -117,6 +132,23 @@ async function postPayload(payload) {
   }
 }
 
+// Piano del giorno per il widget "Oggi". Il server accetta il token salute su
+// questa route. Niente diagnostica qui: la sezione diagnostica resta dedicata
+// all'ultimo invio dei dati salute. Un 401 non revoca il collegamento salute.
+async function pullWorkouts(params = {}) {
+  const token = STORAGE().getItem("access_token")
+  if (!token) throw new Error("Zepp OS non collegato")
+  return request("/api/zepp/workouts/pull", {
+    token,
+    body: {
+      localDate: params.localDate,
+      timezoneOffsetMinutes: params.timezoneOffsetMinutes,
+      knownRevision: params.knownRevision || null,
+      overrideWorkoutId: null,
+    },
+  })
+}
+
 async function disconnect() {
   const token = STORAGE().getItem("access_token")
   try {
@@ -135,7 +167,9 @@ AppSideService(
       STORAGE().addListener("change", async ({ key }) => {
         try {
           if (key === "pair_action") await pair()
-          if (key === "pair_action") this.call({ method: "CONNECTION_STATE", params: { enabled: true } })
+          if (key === "pair_action") {
+            this.call({ method: "CONNECTION_STATE", params: { enabled: true, schedule: storedSchedule() } })
+          }
           if (key === "sync_action") this.call({ method: "SYNC_NOW", params: {} })
           if (key === "disconnect_action") {
             await disconnect()
@@ -149,7 +183,21 @@ AppSideService(
 
     async onRequest(req, res) {
       if (req.method === "GET_CONNECTION_STATE") {
-        res(null, { enabled: STORAGE().getItem("paired") === "true" })
+        const enabled = STORAGE().getItem("paired") === "true"
+        res(null, { enabled, schedule: enabled ? storedSchedule() : null })
+        return
+      }
+      if (req.method === "PULL_WORKOUTS") {
+        try {
+          const result = await pullWorkouts(req.params || {})
+          res(null, { ok: true, ...result })
+        } catch (error) {
+          res(null, {
+            ok: false,
+            error: error.message || String(error),
+            revoked: error.status === 401,
+          })
+        }
         return
       }
       if (req.method !== "SYNC_PAYLOAD" || !req.params?.payload) {

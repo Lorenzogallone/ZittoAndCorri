@@ -2,6 +2,7 @@
 
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
+import { schedulePlanPublish } from "@/lib/intervals/sync";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -280,6 +281,7 @@ export async function applyPlanProposal(proposalId: string) {
   if (error) return { error: "Impossibile applicare la proposta." };
   if (data === "stale") return { error: "Il piano di quei giorni è cambiato o sono già passati: chiedi al coach una nuova proposta." };
   if (data !== "applied") return { error: "Proposta non più valida." };
+  schedulePlanPublish(user.id);
   revalidatePath("/plan");
   revalidatePath("/");
   return { ok: true };

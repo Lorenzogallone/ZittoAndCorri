@@ -5,8 +5,8 @@
     "appName": "Zitto e Corri",
     "appType": "app",
     "version": {
-      "code": 5,
-      "name": "1.0.4"
+      "code": 6,
+      "name": "1.0.5"
     },
     "icon": "icon.png",
     "vender": "ZittoAndCorri",
@@ -27,7 +27,8 @@
     "device:os.local_storage",
     "device:os.alarm",
     "device:os.bg_service",
-    "device:os.ble"
+    "device:os.ble",
+    "event:os.health.sleep_status"
   ],
   "runtime": {
     "apiVersion": {
@@ -50,13 +51,35 @@
         },
         "app-service": {
           "services": ["app-service/sync"]
+        },
+        "app-event": {
+          "path": "app-service/sync"
+        },
+        "secondary-widget": {
+          "widgets": [
+            {
+              "path": "secondary-widget/index",
+              "icon": "icon.png",
+              "name": "Zitto e Corri",
+              "runtime": {
+                "type": "js"
+              },
+              "i18n": {
+                "it-IT": { "name": "Zitto e Corri" },
+                "en-US": { "name": "Zitto e Corri" }
+              }
+            }
+          ]
         }
       },
       "platforms": [
         { "name": "Active 3 Premium", "deviceSource": 10944768, "st": "r", "dw": 466 },
         { "name": "Active 3 Premium", "deviceSource": 10944769, "st": "r", "dw": 466 },
         { "name": "Active 3 Premium", "deviceSource": 10944771, "st": "r", "dw": 466 },
-        { "name": "Active 3 Premium", "deviceSource": 10948867, "st": "r", "dw": 466 }
+        { "name": "Active 3 Premium", "deviceSource": 10948867, "st": "r", "dw": 466 },
+        { "name": "Balance 2", "deviceSource": 9568512, "st": "r", "dw": 480 },
+        { "name": "Balance 2", "deviceSource": 9568513, "st": "r", "dw": 480 },
+        { "name": "Balance 2", "deviceSource": 9568515, "st": "r", "dw": 480 }
       ],
       "designWidth": 466
     }

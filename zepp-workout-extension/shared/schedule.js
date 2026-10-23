@@ -1,7 +1,8 @@
-import { cancel, set } from "@zos/alarm"
-import { getAlarmId, setAlarmId } from "./storage"
+import { cancel, getAllAlarms, set, REPEAT_DAY } from "@zos/alarm"
+import { getAlarmHour, getAlarmId, setAlarmHour, setAlarmId } from "./storage"
 
 const SERVICE_PATH = "app-service/sync"
+const HOURS = { morning: 6, evening: 18 }
 
 function nextLocalOccurrence(hour) {
   const now = new Date()
@@ -11,18 +12,44 @@ function nextLocalOccurrence(hour) {
   return Math.floor(next.getTime() / 1000)
 }
 
-export function schedulePlanSync(trigger) {
-  const previous = getAlarmId(trigger)
-  if (previous > 0) {
-    try { cancel(previous) } catch {}
+// Elenco degli alarm di questa app; null se l'API non risponde.
+function existingAlarms() {
+  try {
+    const ids = getAllAlarms()
+    return Array.isArray(ids) ? ids : null
+  } catch {
+    return null
   }
-  const hour = trigger === "morning" ? 6 : 18
-  const id = set({ url: SERVICE_PATH, time: nextLocalOccurrence(hour), param: `trigger=${trigger}` })
-  if (id > 0) setAlarmId(trigger, id)
+}
+
+function safeCancel(id) {
+  if (!(id > 0)) return
+  try { cancel(id) } catch {}
+}
+
+function ensureAlarm(trigger, existing) {
+  const hour = HOURS[trigger]
+  const previous = getAlarmId(trigger)
+  // Alarm già presente, persistente e all'ora giusta: non lo tocchiamo.
+  if (previous > 0 && existing?.includes(previous) && getAlarmHour(trigger) === hour) return previous
+  safeCancel(previous)
+  const id = set({
+    url: SERVICE_PATH,
+    time: nextLocalOccurrence(hour),
+    repeat_type: REPEAT_DAY,
+    store: true,
+    param: `trigger=${trigger}`,
+  })
+  setAlarmId(trigger, id > 0 ? id : 0)
+  setAlarmHour(trigger, id > 0 ? hour : -1)
   return id
 }
 
 export function schedulePlanSyncs() {
-  schedulePlanSync("morning")
-  schedulePlanSync("evening")
+  const existing = existingAlarms()
+  const kept = Object.keys(HOURS).map((trigger) => ensureAlarm(trigger, existing))
+  // Gli unici alarm di questa app sono i due giornalieri: il resto va cancellato.
+  for (const id of existing || []) {
+    if (!kept.includes(id)) safeCancel(id)
+  }
 }

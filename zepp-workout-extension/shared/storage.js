@@ -29,6 +29,23 @@ export function getAlarmId(trigger) {
   return storage.getItem(`alarm_${trigger}`, 0)
 }
 
+export function setAlarmHour(trigger, hour) {
+  storage.setItem(`alarm_${trigger}_hour`, hour)
+}
+
+export function getAlarmHour(trigger) {
+  return storage.getItem(`alarm_${trigger}_hour`, -1)
+}
+
+export function setLastAlarm(value) {
+  storage.setItem("last_alarm", value)
+}
+
+export function getLastAlarm() {
+  const value = storage.getItem("last_alarm", null)
+  return value && typeof value === "object" ? value : null
+}
+
 export function settingsSnapshot() {
   return storage.getItem("runtime_settings", { vibrations: true, sounds: true })
 }

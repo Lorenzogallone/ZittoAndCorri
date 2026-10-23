@@ -40,7 +40,7 @@ export async function ingestActivity(
   const data = ActivityInput.parse(input);
 
   // 1b. dedupe/arricchimento per gli import da file
-  if (data.source === "file") {
+  if (data.source === "file" || data.source === "intervals") {
     const existing = await findNearbyActivity(data, ctx);
     if (existing) return enrichActivity(existing, data, ctx);
   }
@@ -103,6 +103,8 @@ export async function ingestActivity(
       rpe_source: data.rpe_source ?? null,
       calories: data.calories ?? null,
       source_title: data.source_title ?? null,
+      // Migrazione 0025: solo per gli import da Intervals.icu.
+      ...(data.external_id ? { external_id: data.external_id } : {}),
       // Colonne della migration 0007: incluse solo se valorizzate, così
       // l'ingest senza stream continua a funzionare anche su DB non migrato.
       ...(avg_cadence_spm != null ? { avg_cadence_spm } : {}),
@@ -276,6 +278,8 @@ async function enrichActivity(
     rpe_source: existing.rpe_source ?? data.rpe_source ?? null,
     source_title: existing.source_title ?? data.source_title ?? null,
     notes: existing.notes ?? data.notes ?? null,
+    // La stessa corsa vista da Intervals.icu: si ricorda l'id per non reimportarla.
+    ...(data.external_id ? { external_id: data.external_id } : {}),
   };
 
   // Passo: se il moving time è arrivato solo ora, il passo va ricalcolato.
