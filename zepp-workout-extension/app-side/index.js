@@ -2,6 +2,30 @@ import { BaseSideService } from "@zeppos/zml/base-side"
 
 const STORAGE = () => settings.settingsStorage
 
+// Marcatori di avvio e protezioni. Zeus avvolge il bundle in un try/catch che
+// scrive solo su console: un errore all'avvio sarebbe invisibile. zml usa i
+// globali Logger e sideService senza controllarli; se il runtime dell'app Zepp
+// non li espone, il servizio muore prima del nostro onInit. Qui lasciamo una
+// traccia del caricamento e forniamo dei sostituti minimi.
+function mark(key, value) {
+  try { settings.settingsStorage.setItem(key, String(value ?? "")) } catch {}
+}
+mark("service_loaded_at", new Date().toISOString())
+try {
+  const root = typeof globalThis !== "undefined" ? globalThis : null
+  if (root && typeof Logger === "undefined") {
+    const noop = () => {}
+    root.Logger = { getLogger: () => ({ log: noop, error: noop, debug: noop, warn: noop, info: noop }) }
+    mark("service_polyfill", "Logger")
+  }
+  if (root && typeof sideService === "undefined") {
+    root.sideService = { appInfo: { app: { appName: "Zitto e Corri Coach" } }, launchReasons: {}, launchArgs: null }
+    mark("service_polyfill", `${settings.settingsStorage.getItem("service_polyfill") || ""} sideService`.trim())
+  }
+} catch (error) {
+  mark("service_init_error", `polyfill: ${error.message || String(error)}`)
+}
+
 function parseBody(response) {
   if (typeof response.body === "string") {
     try { return JSON.parse(response.body) } catch { return { error: response.body } }
@@ -58,7 +82,7 @@ async function pair() {
     code,
     clientId: clientId(),
     clientKind: "workout",
-    device: { appVersion: "1.0.4" },
+    device: { appVersion: "1.0.5" },
   })
   STORAGE().setItem("paired_origin", origin())
   STORAGE().setItem("access_token", result.accessToken)
@@ -155,43 +179,55 @@ async function completePairing() {
   }
 }
 
-AppSideService(
-  BaseSideService({
-    onInit() {
-      noteServiceStart()
-      completePairing()
-    },
+const service = BaseSideService({
+  onInit() {
+    noteServiceStart()
+    mark("service_init_error", "")
+    completePairing()
+  },
 
-    async onSettingsChange(change) {
-      const key = change?.key
-      try {
-        if (key === "pair_action") await completePairing()
-        if (key === "sync_action" || key === "override_workout_id") await pullFromSettings.call(this)
-        if (key === "disconnect_action") await disconnect()
-      } catch (error) {
-        STORAGE().setItem("connection_status", error.message || String(error))
-      }
-    },
+  async onSettingsChange(change) {
+    const key = change?.key
+    try {
+      if (key === "pair_action") await completePairing()
+      if (key === "sync_action" || key === "override_workout_id") await pullFromSettings.call(this)
+      if (key === "disconnect_action") await disconnect()
+    } catch (error) {
+      STORAGE().setItem("connection_status", error.message || String(error))
+    }
+  },
 
-    async onRequest(req, res) {
-      if (req.method === "GET_CONNECTION_STATE") {
-        await completePairing()
-        res(null, { enabled: STORAGE().getItem("paired") === "true" })
-        return
+  async onRequest(req, res) {
+    if (req.method === "GET_CONNECTION_STATE") {
+      await completePairing()
+      res(null, { enabled: STORAGE().getItem("paired") === "true" })
+      return
+    }
+    if (req.method !== "PULL_WORKOUTS") {
+      res(new Error("Richiesta non supportata"), null)
+      return
+    }
+    try {
+      res(null, await pull(req.params || {}))
+    } catch (error) {
+      if (error.status === 401) {
+        STORAGE().removeItem("access_token")
+        STORAGE().setItem("paired", "false")
       }
-      if (req.method !== "PULL_WORKOUTS") {
-        res(new Error("Richiesta non supportata"), null)
-        return
-      }
-      try {
-        res(null, await pull(req.params || {}))
-      } catch (error) {
-        if (error.status === 401) {
-          STORAGE().removeItem("access_token")
-          STORAGE().setItem("paired", "false")
-        }
-        res(null, { ok: false, error: error.message || String(error), revoked: error.status === 401 })
-      }
-    },
-  }),
-)
+      res(null, { ok: false, error: error.message || String(error), revoked: error.status === 401 })
+    }
+  },
+})
+
+const zmlInit = service.onInit
+service.onInit = function (...args) {
+  try {
+    zmlInit.apply(this, args)
+  } catch (error) {
+    mark("service_init_error", error.message || String(error))
+    noteServiceStart()
+    completePairing()
+  }
+}
+
+AppSideService(service)

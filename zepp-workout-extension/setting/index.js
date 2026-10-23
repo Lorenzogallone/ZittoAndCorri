@@ -145,6 +145,8 @@ AppSettingsPage({
       if (parsed) pairResultText = parsed.ok ? `riuscito alle ${parsed.at}` : `fallito alle ${parsed.at}: ${parsed.error}`
     } catch {}
     diagnostics.splice(1, 0, Text({ paragraph: true, style: { color: COLORS.ink, fontSize: "12px", lineHeight: "1.55", margin: "0 0 10px" } },
+      `Codice del servizio caricato: ${storage.getItem("service_loaded_at") || "mai"}\n` +
+      (storage.getItem("service_init_error") ? `Errore all'avvio del servizio: ${storage.getItem("service_init_error")}\n` : "") +
       `Servizio telefono: avviato ${storage.getItem("service_started_at") || "mai"} (motivo: ${storage.getItem("service_launch_reason") || "—"})\n` +
       `Pulsante Collega premuto: ${pairRequestedAt ? new Date(Number(pairRequestedAt)).toISOString() : "mai"}\n` +
       `Presa in carico: ${pairRequestedAt ? (storage.getItem("pair_handled") === pairRequestedAt ? "sì" : "no") : "—"}\n` +
