@@ -79,6 +79,48 @@ test("descrizione completa con sezioni e ripetute", () => {
   ].join("\n"));
 });
 
+test("allunghi e ripetute: ogni blocco Nx è un paragrafo separato", () => {
+  const sprint = step({ kind: "work", label: "Allungo", completion_value: 20, variant: "sprint" });
+  const walk = (seconds: number) => step({ kind: "recovery", label: "Cammina", completion_value: seconds, variant: "walk" });
+  const rep = step({ kind: "work", label: "1000", completion_type: "distance", completion_value: 1000, pace_min_s_km: 298, pace_max_s_km: 312 });
+  const jog = step({ kind: "recovery", label: "Recupero", completion_value: 120, pace_min_s_km: 420, pace_max_s_km: 540, variant: "jog" });
+  const steps = [
+    step({ kind: "warmup", label: "Riscaldamento", completion_value: 600, hr_min_bpm: 100, hr_max_bpm: 135 }),
+    sprint, walk(40), sprint, walk(40), sprint, walk(60),
+    rep, jog, rep, jog, rep, jog, rep,
+    step({ kind: "cooldown", label: "Defaticamento", completion_value: 300, hr_max_bpm: 135 }),
+  ];
+  assert.equal(workoutDescription(steps, ctx), [
+    "Warmup",
+    "- Riscaldamento 10m 53-71% HR",
+    "",
+    "Main Set 2x",
+    "- Sprint 20s",
+    "- Cammina 40s",
+    "",
+    "- Sprint 20s",
+    "- Cammina 1m",
+    "",
+    "3x",
+    "- Ripetuta 1km 5:12-4:58/km Pace",
+    "- Recupero 2m 9:00-7:00/km Pace",
+    "",
+    "- Ripetuta 1km 5:12-4:58/km Pace",
+    "",
+    "Cooldown",
+    "- Defaticamento 5m 61-71% HR",
+  ].join("\n"));
+  const draft = workoutToIntervalsDraft({
+    id: "x", date: "2026-10-27", title: "Ripetute", target_distance_m: 7000, target_duration_s: 2700, steps,
+  }, ctx);
+  assert.equal(draft.name, "Ripetute · 4×1 km");
+  const stridesOnly = workoutToIntervalsDraft({
+    id: "y", date: "2026-10-27", title: "Corsa facile", target_distance_m: null, target_duration_s: null,
+    steps: [step({}), sprint, walk(40), sprint, walk(40)],
+  }, ctx);
+  assert.equal(stridesOnly.name, 'Corsa facile · 2×20"');
+});
+
 test("evento WORKOUT con id esterno riconoscibile", () => {
   const draft = workoutToIntervalsDraft({
     id: "abc", date: "2026-10-24", title: "Ripetute", target_distance_m: null, target_duration_s: null, steps: intervals,
