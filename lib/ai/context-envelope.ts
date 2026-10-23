@@ -142,7 +142,7 @@ export interface AiContextEnvelope {
         status: string | null;
         confidence: "low" | "medium" | "high";
         available: boolean;
-        origin: "zepp_assisted" | "internal";
+        origin: "zepp_assisted" | "wellness" | "internal";
       };
       latest: {
         date: string;
@@ -192,6 +192,28 @@ export interface AiContextEnvelope {
         calories: number | null;
         stand_hours: number | null;
         origin: "zepp";
+      }>;
+      note: string;
+    } | null;
+    /** Sonno, FC a riposo e HRV per giorno (Intervals.icu, migrazione 0025). */
+    wellness: {
+      readiness: {
+        score: number | null;
+        status: string | null;
+        confidence: "low" | "medium" | "high";
+        available: boolean;
+        origin: "zepp_assisted" | "wellness" | "internal";
+        components: Array<{ key: string; score: number; weight: number; detail: string }>;
+      };
+      daily_14d: Array<{
+        date: string;
+        sleep_min: number | null;
+        sleep_score: number | null;
+        resting_hr: number | null;
+        hrv_rmssd_ms: number | null;
+        spo2: number | null;
+        steps: number | null;
+        origin: "intervals" | "zepp" | "manual";
       }>;
       note: string;
     } | null;
@@ -647,6 +669,27 @@ export async function buildAiContext(
           origin: "zepp" as const,
         })),
         note: "Dati salute e recupero dal dispositivo; non sono attività e non vanno sommati una seconda volta al carico interno.",
+      } : null,
+      wellness: zepp && zepp.wellness.length ? {
+        readiness: {
+          score: zepp.readiness.score,
+          status: zepp.readiness.status,
+          confidence: zepp.readiness.confidence,
+          available: zepp.readiness.available,
+          origin: zepp.readiness.source,
+          components: zepp.readiness.components.map((part) => ({ key: part.key, score: part.score, weight: part.weight, detail: part.detail })),
+        },
+        daily_14d: zepp.wellness.slice(0, 14).map((day) => ({
+          date: day.date,
+          sleep_min: day.sleep_secs != null ? Math.round(day.sleep_secs / 60) : null,
+          sleep_score: day.sleep_score,
+          resting_hr: day.resting_hr,
+          hrv_rmssd_ms: day.hrv,
+          spo2: day.spo2,
+          steps: day.steps,
+          origin: day.source,
+        })),
+        note: "Dati notturni dall'orologio via Intervals.icu. HRV (rMSSD) sotto la propria mediana e FC a riposo sopra indicano recupero incompleto: valuta una seduta più leggera.",
       } : null,
     },
     history: {

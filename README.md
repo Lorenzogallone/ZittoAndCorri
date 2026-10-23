@@ -21,6 +21,9 @@ The interface is currently in Italian.
 - Provides a conversational coach that can suggest plan changes for approval.
 - Keeps each athlete's coach memory, preferences, and data separate.
 - Supports automatic imports through a personal access key.
+- Imports runs and nightly health data (sleep, resting HR, HRV) from Intervals.icu
+  and publishes the next 7 days of the plan there, so Amazfit watches receive
+  them as native structured workouts.
 - Optionally uses health summaries from a compatible Zepp OS watch.
 - Works as an installable PWA on mobile and desktop browsers.
 
@@ -51,7 +54,7 @@ SUPABASE_SECRET_KEY=your-server-side-secret-key
 
 Initialize the Supabase database with the SQL files in
 `supabase/migrations` (in order; on an existing database apply only the new
-ones, e.g. `0018`–`0019`), then enable Google as an authentication provider. Add
+ones, e.g. `0025`), then enable Google as an authentication provider. Add
 your application's `/auth/callback` URL to the allowed redirect URLs in
 Supabase.
 
@@ -93,10 +96,35 @@ screen. External services can use the personal import key generated in
 Send the key with `Authorization: Bearer <personal-import-key>`. Regenerating
 the key immediately invalidates the previous one.
 
+## Intervals.icu integration (recommended for Amazfit watches)
+
+Zepp has an official link with Intervals.icu (Amazfit Balance 2, T-Rex 3 Pro
+and newer). Zepp uploads completed workouts and wellness data to Intervals.icu
+and downloads planned workouts from it to the watch. Zitto e Corri uses the
+Intervals.icu public API with the athlete's personal key:
+
+- runs are imported as FIT files (GPS, heart rate, laps), deduplicated by
+  Intervals.icu activity id and analysed like any other import;
+- sleep, resting heart rate, HRV, SpO2 and steps go to `wellness_daily` and feed
+  the readiness score (HRV against the personal median);
+- the next 7 days of the plan are published as `WORKOUT` events (one target per
+  step: pace on work steps, heart rate elsewhere, or as chosen in settings),
+  updated after every plan change and removed when a session disappears.
+
+Setup: apply `supabase/migrations/0025_intervals_icu.sql`, link Intervals.icu in
+the Zepp app (Profile → Third-party accounts), enable wellness and HRV download
+in the Amazfit box of Intervals.icu settings, then paste the Intervals.icu API
+key in **Settings → Collegamenti → Intervals.icu**.
+
+The sync runs from `/api/cron/intervals` in the morning and again inside
+`/api/cron/daily` in the afternoon, so it happens twice a day even on the
+Vercel Hobby plan. Data leaves the watch only when the Zepp phone app syncs it.
+
 ## Zepp OS integration
 
-The optional Zepp OS companion sends health and recovery summaries from an
-Amazfit Active 3 Premium. It does not replace FIT/GPX activity imports and it
+The optional Zepp OS companion sends Zepp-only health and recovery summaries
+(training load, recovery time, VO₂max, heart-rate zones) from an Amazfit
+Balance 2 or Active 3 Premium, and shows today's session in a watch widget. It does not replace FIT/GPX activity imports and it
 does not create workouts automatically.
 
 Enable Zepp OS in Settings, generate the six-digit pairing code, and complete
@@ -122,7 +150,8 @@ The scheduled jobs are plain endpoints protected by `CRON_SECRET`:
 
 | Endpoint | Schedule (UTC) | Purpose |
 | --- | --- | --- |
-| `GET /api/cron/daily` | `30 16 * * *` | Reminder for tomorrow's planned workout |
+| `GET /api/cron/intervals` | `0 5 * * *` | Intervals.icu import and plan publishing |
+| `GET /api/cron/daily` | `30 16 * * *` | Reminder for tomorrow's planned workout and second Intervals.icu sync |
 | `GET /api/cron/weekly` | `0 6 * * 1` | Recap of the previous week, saved in the coach chat |
 
 On Vercel they run automatically from `vercel.json` (Vercel sends

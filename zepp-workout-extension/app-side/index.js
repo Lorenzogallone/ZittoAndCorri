@@ -48,13 +48,13 @@ async function pair() {
     code,
     clientId: clientId(),
     clientKind: "workout",
-    device: { appVersion: "1.0.0" },
+    device: { appVersion: "1.0.1" },
   })
   STORAGE().setItem("paired_origin", origin())
   STORAGE().setItem("access_token", result.accessToken)
   STORAGE().setItem("paired", "true")
   STORAGE().removeItem("pairing_code")
-  STORAGE().setItem("connection_status", "Collegato. Il piano si aggiornerà automaticamente.")
+  STORAGE().setItem("connection_status", "Collegato. Il piano si aggiorna quando apri la pagina Coach.")
   return result
 }
 

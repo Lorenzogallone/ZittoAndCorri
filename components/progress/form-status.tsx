@@ -1,8 +1,8 @@
-import { HeartPulse, Moon, Wind } from "lucide-react";
+import { Activity, HeartPulse, Moon, Wind } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Stat } from "@/components/stat";
 import type { ATLCTLResult } from "@/lib/types";
-import type { ZeppDailyMetric, ZeppReadinessResult } from "@/lib/zepp/types";
+import type { WellnessDay, ZeppDailyMetric, ZeppReadinessResult } from "@/lib/zepp/types";
 
 const INTERNAL = {
   calibrating: { label: "In calibrazione", text: "Ancora qualche corsa e la lettura diventa stabile.", tone: "text-foreground" },
@@ -56,24 +56,29 @@ export function FormStatus({
   load,
   readiness,
   latest,
+  wellness = null,
   stale,
   hasData,
 }: {
   load: ATLCTLResult;
   readiness: ZeppReadinessResult | null;
   latest: ZeppDailyMetric | null;
+  /** Giorno più recente da Intervals.icu: riempie i dati che Zepp non ha. */
+  wellness?: WellnessDay | null;
   stale: boolean;
   hasData: boolean;
 }) {
   const assisted = readiness?.available && readiness.status ? ZEPP[readiness.status] : null;
   const state = assisted ?? INTERNAL[load.status];
-  const metrics = latest
-    ? [
-        latest.sleep_total_min != null ? { label: "Sonno", value: sleepLabel(latest.sleep_total_min), icon: Moon } : null,
-        latest.resting_hr != null ? { label: "FC riposo", value: `${latest.resting_hr}`, unit: "bpm", icon: HeartPulse } : null,
-        latest.vo2_max != null ? { label: "VO₂max", value: `${latest.vo2_max}`, icon: Wind } : null,
-      ].filter((metric) => metric != null)
-    : [];
+  // Zepp quando c'è, altrimenti i dati notturni da Intervals.icu.
+  const sleepMin = latest?.sleep_total_min ?? (wellness?.sleep_secs != null ? Math.round(wellness.sleep_secs / 60) : null);
+  const restingHr = latest?.resting_hr ?? wellness?.resting_hr ?? null;
+  const metrics = [
+    sleepMin != null ? { label: "Sonno", value: sleepLabel(sleepMin), icon: Moon } : null,
+    restingHr != null ? { label: "FC riposo", value: `${restingHr}`, unit: "bpm", icon: HeartPulse } : null,
+    wellness?.hrv != null ? { label: "HRV", value: `${Math.round(wellness.hrv)}`, unit: "ms", icon: Activity } : null,
+    latest?.vo2_max != null ? { label: "VO₂max", value: `${latest.vo2_max}`, icon: Wind } : null,
+  ].filter((metric) => metric != null).slice(0, 3);
 
   if (!hasData) {
     return (

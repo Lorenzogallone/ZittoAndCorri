@@ -8,6 +8,7 @@ import { getAiStatus, type TaskStatus } from "@/lib/ai/ai-status";
 import { listOpenRouterModels } from "@/lib/ai/openrouter";
 import { summarizeUsage } from "@/lib/ai/usage";
 import { todayIso } from "@/lib/dates";
+import { getIntervalsConnection } from "@/lib/intervals/credentials";
 import { SettingsView } from "./settings-view";
 
 export default async function SettingsPage({
@@ -74,6 +75,10 @@ export default async function SettingsPage({
     .select("heat_adjust")
     .eq("id", user.id)
     .maybeSingle<{ heat_adjust: boolean | null }>();
+  const intervals = await getIntervalsConnection(supabase, user.id).catch((error) => {
+    console.error("settings intervals:", error instanceof Error ? error.message : error);
+    return null;
+  });
   const effectiveHr = await getEffectiveHrConfig(supabase, user.id, {
     max_hr: profile?.max_hr ?? null,
     resting_hr: profile?.resting_hr ?? null,
@@ -98,6 +103,7 @@ export default async function SettingsPage({
       focusGemini={focus === "gemini"}
       memories={memoriesRes.data ?? []}
       zeppConnection={zeppConnectionRes.data ?? null}
+      intervals={intervals}
       aiTasks={{
         perTask: aiStatus.perTask,
         keys: { gemini: aiStatus.keys.gemini.configured, openrouter: !!aiStatus.keys.openrouter?.configured },

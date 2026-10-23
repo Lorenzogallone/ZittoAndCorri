@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { schedulePlanPublish } from "@/lib/intervals/sync";
 import { redirect, RedirectType } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { parseDuration } from "@/lib/format";
@@ -70,6 +71,7 @@ export async function createPlannedWorkout(
     origin: "user",
   });
   if (error) return { error: error.message };
+  schedulePlanPublish(user.id);
   revalidatePath("/plan");
   redirect("/plan", RedirectType.replace);
 }
@@ -82,7 +84,7 @@ export async function updateWorkoutStatus(formData: FormData): Promise<void> {
   const status = String(formData.get("status") ?? "") as PlannedStatus;
   if (!id || !(["planned", "completed"] as PlannedStatus[]).includes(status)) return;
   await supabase.from("planned_workouts").update({ status }).eq("id", id).eq("user_id", user.id);
-  revalidatePlan();
+  revalidatePlan(user.id);
 }
 
 export async function deletePlannedWorkout(formData: FormData): Promise<void> {
@@ -93,11 +95,13 @@ export async function deletePlannedWorkout(formData: FormData): Promise<void> {
   if (!id) return;
   const { error } = await supabase.from("planned_workouts").delete().eq("id", id).eq("user_id", user.id);
   if (error) throw new Error(error.message);
+  schedulePlanPublish(user.id);
   revalidatePath("/plan");
   redirect("/plan", RedirectType.replace);
 }
 
-function revalidatePlan() {
+function revalidatePlan(userId: string) {
+  schedulePlanPublish(userId);
   revalidatePath("/plan", "layout");
   revalidatePath("/");
 }
@@ -116,7 +120,7 @@ export async function moveWorkout(id: string, date: string): Promise<{ error?: s
     .eq("id", id)
     .eq("user_id", user.id);
   if (error) return { error: "Impossibile spostare la seduta." };
-  revalidatePlan();
+  revalidatePlan(user.id);
   return {};
 }
 
@@ -177,7 +181,7 @@ export async function adaptPlan(reason: AdaptReason, days: number): Promise<{ er
       .eq("user_id", user.id);
     if (!updateError) count += 1;
   }
-  revalidatePlan();
+  revalidatePlan(user.id);
   return { count, until };
 }
 
@@ -212,7 +216,7 @@ export async function undoAdaptation(): Promise<{ error?: string }> {
   if (memories.size) {
     await supabase.from("coach_memories").update({ is_active: false }).in("id", [...memories]).eq("user_id", user.id);
   }
-  revalidatePlan();
+  revalidatePlan(user.id);
   return {};
 }
 
@@ -285,6 +289,6 @@ export async function planRecovery(): Promise<void> {
     .limit(1)
     .maybeSingle<{ id: string }>();
   if (next) await supabase.from("goals").update({ is_active: true }).eq("id", next.id).eq("user_id", user.id);
-  revalidatePlan();
+  revalidatePlan(user.id);
   redirect("/");
 }

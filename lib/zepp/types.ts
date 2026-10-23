@@ -60,6 +60,7 @@ export type ZeppReadinessComponentKey =
   | "sleep"
   | "resting_hr"
   | "stress"
+  | "hrv"
   | "internal_load";
 
 export interface ZeppReadinessComponent {
@@ -76,8 +77,23 @@ export interface ZeppReadinessResult {
   score: number | null;
   status: ZeppReadinessStatus | null;
   confidence: "low" | "medium" | "high";
-  source: "zepp_assisted" | "internal";
+  /** zepp_assisted: c'è almeno un segnale Zepp; wellness: solo sonno/FC/HRV (es. Intervals.icu). */
+  source: "zepp_assisted" | "wellness" | "internal";
   freshness_hours: number | null;
   components: ZeppReadinessComponent[];
   internal: ATLCTLResult;
+}
+
+/** Giorno di wellness_daily (migrazione 0025), per ora da Intervals.icu. */
+export interface WellnessDay {
+  date: string;
+  captured_at: string;
+  source: "intervals" | "zepp" | "manual";
+  sleep_secs: number | null;
+  sleep_score: number | null;
+  resting_hr: number | null;
+  /** rMSSD in ms. */
+  hrv: number | null;
+  spo2: number | null;
+  steps: number | null;
 }

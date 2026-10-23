@@ -128,8 +128,8 @@ export default async function ProfilePage() {
       goal={activeGoal ?? null}
       daysToRace={daysToRace}
       load={load}
-      zepp={{ latest: zepp.latest, readiness: zepp.readiness, stale: zepp.stale }}
-      hasData={list.length > 0 || zepp.latest != null}
+      zepp={{ latest: zepp.latest, readiness: zepp.readiness, stale: zepp.stale, wellness: zepp.wellness[0] ?? null }}
+      hasData={list.length > 0 || zepp.latest != null || zepp.wellness.length > 0}
       formPoints={formPoints}
       formTrend={formTrend(load.series)}
       weeks={weeks}

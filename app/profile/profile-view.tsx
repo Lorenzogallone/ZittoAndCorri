@@ -14,7 +14,7 @@ import { formatDistance, formatDuration } from "@/lib/format";
 import type { PersonalRecord } from "@/lib/metrics/best-efforts";
 import type { PredictionReference } from "@/lib/metrics/race-prediction";
 import type { ATLCTLResult, Goal } from "@/lib/types";
-import type { ZeppDailyMetric, ZeppReadinessResult } from "@/lib/zepp/types";
+import type { WellnessDay, ZeppDailyMetric, ZeppReadinessResult } from "@/lib/zepp/types";
 
 export interface ProfileViewProps {
   displayName: string;
@@ -22,7 +22,7 @@ export interface ProfileViewProps {
   goal: Pick<Goal, "race_name" | "race_date" | "distance_m" | "target_time_s"> | null;
   daysToRace: number | null;
   load: ATLCTLResult;
-  zepp: { latest: ZeppDailyMetric | null; readiness: ZeppReadinessResult | null; stale: boolean };
+  zepp: { latest: ZeppDailyMetric | null; readiness: ZeppReadinessResult | null; stale: boolean; wellness: WellnessDay | null };
   hasData: boolean;
   formPoints: FormPoint[];
   formTrend: string | null;
@@ -89,6 +89,7 @@ export function ProfileView(props: ProfileViewProps) {
             load={props.load}
             readiness={props.zepp.readiness}
             latest={props.zepp.latest}
+            wellness={props.zepp.wellness}
             stale={props.zepp.stale}
             hasData={props.hasData}
           />
