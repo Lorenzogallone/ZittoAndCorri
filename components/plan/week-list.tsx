@@ -83,7 +83,7 @@ function DayRow({ day, today }: { day: PlanDay; today: string }) {
           // -mx-2/px-2: la tinta della pressione arriva oltre il testo senza spostarlo.
           "-mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors active:bg-muted/60",
           // Oggi: tinta dell'accento e segno pieno a sinistra.
-          isToday && "bg-primary/10 shadow-[inset_3px_0_0_var(--primary)]",
+          isToday && "bg-primary/10",
         )}
       >
         <div className="w-9 shrink-0 text-center">

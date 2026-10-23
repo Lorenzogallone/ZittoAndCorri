@@ -9,7 +9,7 @@ import type { Activity, GpsPoint } from "@/lib/types";
 
 const WIDTH = 1080;
 const HEIGHT = 1350;
-const CORAL = "#e8765a";
+const CORAL = "#fc4c02";
 
 export type ShareActivity = Pick<Activity, "started_at" | "sport" | "type" | "distance_m" | "duration_s" | "moving_time_s" | "avg_pace_s_km" | "elevation_gain_m" | "source_title">;
 

@@ -20,18 +20,20 @@ const ZEPP = {
   rest: { label: "Riposo", text: "Riposo o attività molto leggera.", tone: "text-orange-400" },
 } as const;
 
-function ScoreRing({ value }: { value: number }) {
+/** Anello di prontezza: l'arco prende il colore dello stato (verde, ambra,
+ *  arancio) come l'etichetta accanto, non l'accento. */
+function ScoreRing({ value, tone }: { value: number; tone: string }) {
   const clamped = Math.max(0, Math.min(100, Math.round(value)));
   return (
     <div className="relative h-28 w-28 shrink-0" role="img" aria-label={`Prontezza ${clamped} su 100`}>
-      <svg viewBox="0 0 112 112" className="h-28 w-28 -rotate-90">
+      <svg viewBox="0 0 112 112" className={cn("h-28 w-28 -rotate-90", tone)}>
         <circle cx="56" cy="56" r="51" fill="none" strokeWidth="10" className="stroke-hero-foreground/12" />
         <circle
           cx="56"
           cy="56"
           r="51"
           fill="none"
-          stroke="var(--primary)"
+          stroke="currentColor"
           strokeWidth="10"
           strokeLinecap="round"
           pathLength={100}
@@ -88,7 +90,7 @@ export function FormStatus({
       <p className="eyebrow">Stato di forma</p>
       {ring != null ? (
         <div className="mt-4 flex items-center gap-5">
-          <ScoreRing value={ring} />
+          <ScoreRing value={ring} tone={state.tone} />
           <div className="min-w-0">
             <p className={cn("font-display text-title font-bold tracking-tight text-balance", state.tone)}>{state.label}</p>
             <p className="mt-1.5 text-caption text-hero-muted">{state.text}</p>
