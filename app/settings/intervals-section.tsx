@@ -202,8 +202,9 @@ export function IntervalsSection({
             <li>Sempre in Settings, in fondo (Developer): copia la API key e incollala qui.</li>
           </ol>
           <p className="mt-3">
-            Le corse arrivano due volte al giorno, dopo che l&apos;app Zepp ha sincronizzato l&apos;orologio. Il piano dei prossimi 7 giorni compare
-            sull&apos;orologio in Allenamento → Il mio piano.
+            Dopo una corsa, apri l&apos;app Zepp: la corsa passa a Intervals.icu in pochi secondi e da lì arriva qui entro un&apos;ora, oppure
+            subito quando apri Zitto e Corri. Tutto il piano futuro compare nel calendario di Intervals.icu; i prossimi 7 giorni arrivano
+            sull&apos;orologio nell&apos;app Allenamento, tra gli allenamenti del piano.
           </p>
           <a href="https://intervals.icu/settings" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 font-medium text-primary">
             Apri Intervals.icu <ExternalLink size={12} />
