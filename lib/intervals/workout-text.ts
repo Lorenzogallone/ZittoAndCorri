@@ -5,10 +5,14 @@
 // - durata "10m", "90s", "1m30", "1km", "400mtr";
 // - passo assoluto "5:00-4:40/km Pace", FC in percentuale "70-80% HR";
 // - un solo target per fase; ripetute con una riga "6x" (niente annidamenti);
-// - sezioni "Warmup", "Main Set", "Cooldown"; "Main Set 6x" ripete tutto il blocco.
+// - sezioni "Warmup", "Main Set", "Cooldown"; "Main Set 6x" ripete tutto il blocco;
+// - ogni blocco "Nx" è un paragrafo a sé: va separato da una riga vuota da ciò
+//   che segue, altrimenti Intervals fonde i blocchi (la riga "3x" finiva in coda
+//   alla fase precedente e tutto diventava un unico "2x").
 // I bpm assoluti non sono documentati: la FC viaggia in % della FC massima.
 
 import type { WorkoutStepInput, WorkoutStepKind } from "@/lib/types";
+import { formatStepAmount, groupWorkoutSteps } from "../workout-guide.ts";
 
 export type IntervalsTargetPreference = "auto" | "pace" | "hr";
 
@@ -181,17 +185,27 @@ export function workoutDescription(steps: WorkoutStepInput[], ctx: IntervalsTarg
   if (warmup.length) sections.push(["Warmup", ...warmup.map((step) => stepLine(step, ctx))].join("\n"));
 
   if (main.length) {
-    const blocks = groupRepeats(main);
-    if (blocks.length === 1 && blocks[0].repeat > 1) {
-      sections.push([`Main Set ${blocks[0].repeat}x`, ...blocks[0].steps.map((step) => stepLine(step, ctx))].join("\n"));
-    } else {
-      const lines = ["Main Set"];
-      for (const block of blocks) {
-        if (block.repeat > 1) lines.push(`${block.repeat}x`);
-        lines.push(...block.steps.map((step) => stepLine(step, ctx)));
+    // Un paragrafo per blocco ripetuto; le fasi singole consecutive stanno
+    // insieme in un paragrafo senza intestazione.
+    const paragraphs: string[][] = [];
+    let singles: string[] | null = null;
+    for (const block of groupRepeats(main)) {
+      const lines = block.steps.map((step) => stepLine(step, ctx));
+      if (block.repeat > 1) {
+        paragraphs.push([`${block.repeat}x`, ...lines]);
+        singles = null;
+      } else {
+        if (!singles) {
+          singles = [];
+          paragraphs.push(singles);
+        }
+        singles.push(...lines);
       }
-      sections.push(lines.join("\n"));
     }
+    const first = paragraphs[0];
+    if (/^\d+x$/.test(first[0])) first[0] = `Main Set ${first[0]}`;
+    else first.unshift("Main Set");
+    sections.push(paragraphs.map((lines) => lines.join("\n")).join("\n\n"));
   }
 
   if (cooldown.length) sections.push(["Cooldown", ...cooldown.map((step) => stepLine(step, ctx))].join("\n"));
@@ -203,16 +217,17 @@ function distanceLabel(meters: number): string {
 }
 
 export function workoutEventName(workout: IntervalsWorkoutSource): string {
-  const main = groupRepeats(workout.steps.filter((step) => step.kind === "work" || step.kind === "recovery" || step.kind === "steady"));
-  const repeat = main.find((block) => block.repeat > 1);
-  if (repeat) {
-    const work = repeat.steps.find((step) => step.kind === "work") ?? repeat.steps[0];
-    const unit = work.completion_type === "distance" && work.completion_value
-      ? distanceLabel(work.completion_value)
-      : work.completion_type === "time" && work.completion_value
-        ? `${Math.round(work.completion_value / 60)} min`
-        : null;
-    return unit ? `${workout.title} · ${repeat.repeat}×${unit}` : workout.title;
+  // Stesso raggruppamento della PWA (conta anche l'ultima ripetuta senza
+  // recupero). Nel titolo vanno le ripetute principali, non gli allunghi.
+  const repeats = groupWorkoutSteps(workout.steps).flatMap((block) => {
+    if (block.kind !== "repeat") return [];
+    const work = block.steps.find((step) => step.kind === "work");
+    return work ? [{ times: block.times, work }] : [];
+  });
+  const main = repeats.find((block) => block.work.variant !== "sprint") ?? repeats[0];
+  if (main) {
+    const unit = formatStepAmount(main.work);
+    return unit ? `${workout.title} · ${main.times}×${unit}` : workout.title;
   }
   if (workout.target_distance_m) return `${workout.title} · ${distanceLabel(workout.target_distance_m)}`;
   if (workout.target_duration_s) return `${workout.title} · ${Math.round(workout.target_duration_s / 60)} min`;
