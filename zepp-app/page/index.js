@@ -80,7 +80,13 @@ Page(
     async syncNow(trigger) {
       if (this.state.syncing) return
       if (!getIntegrationEnabled()) {
-        this.update("Collega prima dall'app Zepp")
+        // Il pulsante serve anche a completare un collegamento richiesto
+        // dall'app Zepp: la richiesta al telefono avvia il servizio.
+        this.update("Verifico il collegamento…")
+        const state = await this.refreshConnection()
+        if (state && !getIntegrationEnabled() && !state.pairing) {
+          this.update(state.pairingRequested ? "Codice scaduto o già usato: generane uno nuovo" : "Collega prima dall'app Zepp")
+        }
         return
       }
       this.state.syncing = true
@@ -120,15 +126,19 @@ Page(
       try {
         state = await this.request({ method: "GET_CONNECTION_STATE", params: {} })
       } catch {
-        this.update(getIntegrationEnabled() ? "Telefono non raggiungibile" : "Non collegato")
-        return
+        this.update(getIntegrationEnabled() ? "Telefono non raggiungibile" : "Telefono non raggiungibile: apri l'app Zepp")
+        return null
       }
       this.applyConnectionState(state?.enabled === true, state?.schedule)
-      if (state?.enabled !== true) return
+      if (state?.pairing && !state.pairing.ok) {
+        this.update(`Collegamento fallito:\n${state.pairing.error}`)
+      }
+      if (state?.enabled !== true) return state
       // Il telefono risponde: spediamo quello che gli alarm hanno accodato e
       // aggiorniamo il piano per il widget "Oggi".
       if (getPendingSyncs().length > 0) await this.syncNow("retry")
       await this.refreshPlan()
+      return state
     },
 
     applyConnectionState(enabled, schedule) {

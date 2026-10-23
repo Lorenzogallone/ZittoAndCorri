@@ -116,12 +116,37 @@ AppSettingsPage({
             label: "Collega a ZittoAndCorri",
             color: "primary",
             style: { width: "100%", borderRadius: "12px", background: COLORS.blue, marginTop: "8px" },
-            onClick: () => action(storage, "pair_action"),
+            onClick: () => {
+              // Feedback immediato: il servizio sul telefono può partire solo
+              // quando l'app sull'orologio è aperta e completa la richiesta dopo.
+              storage.setItem("connection_status", "Richiesta inviata. Se non cambia nulla entro pochi secondi, apri Zitto e Corri sull'orologio: il collegamento si completa da solo.")
+              action(storage, "pair_action")
+            },
           }),
         ])
 
+    const serviceLoadedAt = storage.getItem("service_loaded_at") || "mai"
+    const serviceInitError = storage.getItem("service_init_error") || ""
+    const servicePolyfill = storage.getItem("service_polyfill") || ""
+    const serviceStartedAt = storage.getItem("service_started_at") || "mai (nessun avvio registrato)"
+    const serviceReason = storage.getItem("service_launch_reason") || "—"
+    const pairRequestedAt = storage.getItem("pair_action")
+    const pairHandled = pairRequestedAt && storage.getItem("pair_handled") === pairRequestedAt
+    let pairResultText = "nessun tentativo"
+    try {
+      const parsed = JSON.parse(storage.getItem("pair_result") || "null")
+      if (parsed) pairResultText = parsed.ok ? `riuscito alle ${parsed.at}` : `fallito alle ${parsed.at}: ${parsed.error}`
+    } catch {}
+
     const diagnosticChildren = [
       heading("Diagnostica sincronizzazione"),
+      Text({ paragraph: true, style: { color: COLORS.ink, fontSize: "12px", lineHeight: "1.55", margin: "0 0 10px" } },
+        `Codice del servizio caricato: ${serviceLoadedAt}${servicePolyfill ? ` (sostituiti: ${servicePolyfill})` : ""}\n` +
+        (serviceInitError ? `Errore all'avvio del servizio: ${serviceInitError}\n` : "") +
+        `Servizio telefono: avviato ${serviceStartedAt} (motivo: ${serviceReason})\n` +
+        `Pulsante Collega premuto: ${pairRequestedAt ? new Date(Number(pairRequestedAt)).toISOString() : "mai"}\n` +
+        `Richiesta presa in carico dal servizio: ${pairRequestedAt ? (pairHandled ? "sì" : "no") : "—"}\n` +
+        `Esito collegamento: ${pairResultText}`),
       Text({ paragraph: true, style: { color: COLORS.muted, fontSize: "12px", lineHeight: "1.45", margin: "0 0 10px" } },
         "Mostra ciò che il telefono ha ricevuto dall'orologio e la risposta del server. Il token non viene incluso."),
       Toggle({

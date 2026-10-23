@@ -8,11 +8,13 @@ import { TotalsCard } from "@/components/totals-card";
 import { ActivitiesList, type ListActivity } from "@/components/activities-list";
 import { periodTotals } from "@/lib/metrics/totals";
 import { romeDay } from "@/lib/local-date";
+import { scheduleIntervalsImportIfStale } from "@/lib/intervals/sync";
 
 export default async function ActivitiesPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  scheduleIntervalsImportIfStale(user.id);
 
   const [{ data: activities }, { data: pendingEvaluationJobs }] = await Promise.all([
     supabase

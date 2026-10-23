@@ -1,7 +1,7 @@
 # Zitto e Corri for Zepp OS
 
 This directory contains the Zepp OS companion for Zitto e Corri (version
-1.0.5, version code 6). It runs on an Amazfit Balance 2 or Active 3 Premium and
+1.0.10, version code 11). It runs on an Amazfit Balance 2 or Active 3 Premium and
 sends health summaries to the main PWA through the Zepp phone app. On watches
 that support it, it also adds a **Today** widget with the planned workout and
 readiness.
@@ -159,3 +159,16 @@ app and enable **Show technical details** under synchronization diagnostics.
 The panel shows the last endpoint, payload size, HTTP status, and server
 response. Share its contents only after reviewing the health information it may
 contain.
+
+### "Connect" does nothing
+
+The phone-side service runs inside the Zepp app. Since 1.0.7 the request is
+completed in three independent ways: Zepp starts the service for the settings
+change (zml's `onSettingsChange` receives `sideService.launchArgs`), the
+service picks it up at `onInit`, and the watch app completes it when it asks
+for the connection state at every opening. So if the status stays on
+"Richiesta inviata…", open **Zitto e Corri on the watch**: the pairing finishes
+as long as the code has not expired (10 minutes). A network error is retried at
+the next opening; an invalid code needs a new code and a new press of
+**Collega a ZittoAndCorri**. The status line "Richiesta inviata…" appears only
+from 1.0.6: if it does not, the phone is still running an older build.

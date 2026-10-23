@@ -13,6 +13,7 @@ import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import type { Goal, Activity, Profile, PlannedWorkout } from "@/lib/types";
 import { activeDuration } from "@/lib/format";
 import { ProfileView } from "./profile-view";
+import { scheduleIntervalsImportIfStale } from "@/lib/intervals/sync";
 
 type ProfileActivity = Pick<
   Activity,
@@ -51,6 +52,7 @@ export default async function ProfilePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  scheduleIntervalsImportIfStale(user.id);
 
   const today = romeDay();
   const firstMonday = addDays(mondayOf(today), -WEEKS_BACK * 7);
