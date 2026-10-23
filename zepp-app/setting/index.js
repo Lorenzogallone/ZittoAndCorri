@@ -116,7 +116,12 @@ AppSettingsPage({
             label: "Collega a ZittoAndCorri",
             color: "primary",
             style: { width: "100%", borderRadius: "12px", background: COLORS.blue, marginTop: "8px" },
-            onClick: () => action(storage, "pair_action"),
+            onClick: () => {
+              // Feedback immediato: il servizio sul telefono può partire solo
+              // quando l'app sull'orologio è aperta e completa la richiesta dopo.
+              storage.setItem("connection_status", "Richiesta inviata. Se non cambia nulla entro pochi secondi, apri Zitto e Corri sull'orologio: il collegamento si completa da solo.")
+              action(storage, "pair_action")
+            },
           }),
         ])
 

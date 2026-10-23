@@ -161,15 +161,38 @@ async function disconnect() {
   }
 }
 
+
+// Il pulsante "Collega" scrive pair_action; se in quel momento il servizio sul
+// telefono non era attivo (succede finché l'app sull'orologio non è aperta), la
+// richiesta viene completata al prossimo avvio del servizio.
+function pairingPending() {
+  const requested = STORAGE().getItem("pair_action")
+  if (!requested || requested === STORAGE().getItem("pair_handled")) return false
+  if (STORAGE().getItem("paired") === "true" && STORAGE().getItem("access_token")) return false
+  return /^\d{6}$/.test(String(STORAGE().getItem("pairing_code") || "").trim())
+}
+
+function markPairingHandled() {
+  STORAGE().setItem("pair_handled", STORAGE().getItem("pair_action") || "")
+}
+
+async function pairAndNotify(service) {
+  markPairingHandled()
+  await pair()
+  try {
+    service.call({ method: "CONNECTION_STATE", params: { enabled: true, schedule: storedSchedule() } })
+  } catch {}
+}
+
 AppSideService(
   BaseSideService({
     onInit() {
+      if (pairingPending()) {
+        pairAndNotify(this).catch((error) => STORAGE().setItem("connection_status", error.message || String(error)))
+      }
       STORAGE().addListener("change", async ({ key }) => {
         try {
-          if (key === "pair_action") await pair()
-          if (key === "pair_action") {
-            this.call({ method: "CONNECTION_STATE", params: { enabled: true, schedule: storedSchedule() } })
-          }
+          if (key === "pair_action") await pairAndNotify(this)
           if (key === "sync_action") this.call({ method: "SYNC_NOW", params: {} })
           if (key === "disconnect_action") {
             await disconnect()
