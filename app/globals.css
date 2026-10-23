@@ -116,9 +116,9 @@
   --sidebar-accent: oklch(0.955 0.005 286);
   --sidebar-accent-foreground: oklch(0.262 0.007 286);
   --sidebar-border: oklch(0.915 0.008 286);
-  --hero: oklch(0.262 0.007 286);
-  --hero-foreground: oklch(0.985 0 0);
-  --hero-muted: oklch(0.74 0.012 286);
+  --hero: oklch(1 0 0);
+  --hero-foreground: oklch(0.262 0.007 286);
+  --hero-muted: oklch(0.539 0.017 286);
   --surface-2: oklch(0.965 0.004 286);
 
   /* Primary e brand: sovrascrivibili dall'utente (Impostazioni → App). */
@@ -147,7 +147,7 @@
   /* Ombra delle superfici: quasi impercettibile in chiaro, assente in scuro. */
   --surface-shadow: 0 1px 2px oklch(0 0 0 / 0.04), 0 4px 16px -8px oklch(0 0 0 / 0.08);
   --surface-hairline: color-mix(in oklch, var(--border) 70%, transparent);
-  --hero-shadow: 0 12px 32px -16px oklch(0 0 0 / 0.35);
+  --hero-shadow: var(--surface-shadow), inset 0 0 0 1px var(--surface-hairline);
 }
 
 /* Fallback scuro senza JS: vale solo in automatico (nessuna classe forzata). */
@@ -264,7 +264,8 @@
     box-shadow: var(--surface-shadow), inset 0 0 0 1px var(--surface-hairline);
   }
 
-  /* Card "inchiostro" (stile hero): scura in entrambi i temi, senza bordo. */
+  /* Card principale della schermata (hero): in chiaro è una card bianca come
+     le altre, in scuro una superficie un gradino più chiara delle card. */
   .surface-hero {
     background: var(--hero);
     color: var(--hero-foreground);

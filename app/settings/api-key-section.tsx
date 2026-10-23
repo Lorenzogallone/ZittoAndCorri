@@ -88,7 +88,7 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
               title="Copia negli appunti"
             >
               {copied ? (
-                <Check size={16} className="text-emerald-400" />
+                <Check size={16} className="text-emerald-600 dark:text-emerald-400" />
               ) : (
                 <Copy size={16} />
               )}

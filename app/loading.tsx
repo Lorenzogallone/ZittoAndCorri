@@ -17,9 +17,9 @@ export default function Loading() {
         <div className="mb-6 space-y-3">
           {/* Card inchiostro: segnaposto chiari fissi, lo shimmer è pensato per le superfici chiare. */}
           <div className="surface-hero space-y-3 p-5">
-            <div className="h-3 w-28 rounded-md bg-white/10" />
-            <div className="h-10 w-40 rounded-md bg-white/10" />
-            <div className="h-7 w-full rounded-md bg-white/10" />
+            <div className="h-3 w-28 rounded-md bg-hero-foreground/10" />
+            <div className="h-10 w-40 rounded-md bg-hero-foreground/10" />
+            <div className="h-7 w-full rounded-md bg-hero-foreground/10" />
           </div>
           <div className="surface space-y-3 px-4 py-3">
             <Skeleton className="h-3 w-28" />

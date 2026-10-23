@@ -17,8 +17,8 @@ export function intensityTone(step: WorkoutStepInput, type?: WorkoutType | null)
   return TONES.easy;
 }
 
-// Sulla card inchiostro i tratti chiari del tema scuro (corsetta, camminata)
-// sparirebbero: lì si usano versioni chiare fisse.
+// Sulla card hero (in scuro più chiara delle card) i tratti tenui del tema
+// scuro (corsetta, camminata) sparirebbero: lì si usano versioni fisse.
 const ON_DARK = new Map<StepTone, string>([
   [TONES.jog, "bg-sky-300"],
   [TONES.walk, "bg-hero-foreground/35"],

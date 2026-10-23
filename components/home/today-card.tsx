@@ -59,8 +59,8 @@ function NextWorkout({ next, today, heat }: Pick<Props, "next" | "today" | "heat
         </p>
         <div className="flex shrink-0 items-center gap-2">
           {heat && heat.pct > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-caption font-medium tabular-nums" title="Passi adattati al caldo">
-              <ThermometerSun size={14} className="text-amber-300" /> {heat.temp_c}°
+            <span className="inline-flex items-center gap-1 rounded-full bg-hero-foreground/10 px-2 py-0.5 text-caption font-medium tabular-nums" title="Passi adattati al caldo">
+              <ThermometerSun size={14} className="text-amber-600 dark:text-amber-300" /> {heat.temp_c}°
             </span>
           )}
           <ChevronRight size={18} className="text-hero-muted" />
