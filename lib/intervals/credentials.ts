@@ -98,6 +98,33 @@ export async function markIntervalsSync(
   if (error) console.error("markIntervalsSync:", error.message);
 }
 
+/**
+ * Prenota un import se l'ultimo è più vecchio di `minIntervalMs`: aggiorna
+ * last_import_at solo in quel caso, così due pagine aperte insieme non lanciano
+ * due import. Ritorna la connessione se la prenotazione è riuscita.
+ */
+export async function claimIntervalsImport(
+  userId: string,
+  minIntervalMs: number,
+): Promise<IntervalsConnectionView | null> {
+  const admin = createAdminClient();
+  const now = new Date();
+  const threshold = new Date(now.getTime() - minIntervalMs).toISOString();
+  const { data, error } = await admin
+    .from("user_intervals_credentials")
+    .update({ last_import_at: now.toISOString() })
+    .eq("user_id", userId)
+    .or(`last_import_at.is.null,last_import_at.lt."${threshold}"`)
+    .select(INTERVALS_COLUMNS)
+    .maybeSingle<IntervalsConnectionView>();
+  if (intervalsNotMigrated(error)) return null;
+  if (error) {
+    console.error("claimIntervalsImport:", error.message);
+    return null;
+  }
+  return data ?? null;
+}
+
 /** Utenti con una chiave Intervals.icu salvata: usato dal cron. */
 export async function listIntervalsUsers(): Promise<Array<{ user_id: string } & IntervalsConnectionView>> {
   const admin = createAdminClient();
