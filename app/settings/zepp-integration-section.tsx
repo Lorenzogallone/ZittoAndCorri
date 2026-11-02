@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Check, Link2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { useConfirm } from "@/components/ui/confirm-sheet";
 import { IntegrationCard, IntegrationHelp } from "./integration-card";
 import {
   deleteZeppConnectionData,
@@ -32,6 +33,7 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { confirm, element: confirmSheet } = useConfirm();
   const [now] = useState(() => Date.now());
   const stale = Boolean(connection?.last_sync_at) && now - new Date(connection!.last_sync_at!).getTime() > STALE_MS;
 
@@ -50,8 +52,16 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
     window.setTimeout(() => setCopied(false), 2_000);
   };
 
-  const disable = () => {
-    if (connection?.enabled && !window.confirm("Disattivare Zepp? Il token verrà revocato e per ricollegarlo servirà un nuovo codice.")) return;
+  const disable = async () => {
+    if (
+      connection?.enabled &&
+      !(await confirm({
+        title: "Disattivare i dati dell'orologio?",
+        description: "Il collegamento con Zepp viene revocato: per riattivarlo servirà un nuovo codice.",
+        action: "Disattiva",
+      }))
+    )
+      return;
     startTransition(async () => {
       const result = await disableZeppConnection();
       if (result.error) return setError(result.error);
@@ -65,15 +75,20 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
 
   const toggle = () => {
     if (enabled) {
-      disable();
+      void disable();
       return;
     }
     setEnabled(true);
     generate();
   };
 
-  const remove = () => {
-    if (!window.confirm("Eliminare definitivamente collegamento e storico Zepp? Questa operazione non è reversibile.")) return;
+  const remove = async () => {
+    const confirmed = await confirm({
+      title: "Scollegare l'orologio e cancellare i dati?",
+      description: "Collegamento e storico Zepp vengono eliminati. Non si può annullare.",
+      action: "Elimina",
+    });
+    if (!confirmed) return;
     startTransition(async () => {
       const result = await deleteZeppConnectionData();
       if (result.error) return setError(result.error);
@@ -150,6 +165,7 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
           </ol>
           <p className="mt-3 text-muted-foreground">Il codice può essere usato una volta per ciascuna app nello stesso intervallo di validità. Se scade prima di collegare la seconda app, genera un nuovo codice.</p>
         </IntegrationHelp>
+        {confirmSheet}
       </div>
     </IntegrationCard>
   );

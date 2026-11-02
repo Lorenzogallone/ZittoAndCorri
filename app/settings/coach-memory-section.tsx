@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-sheet";
 import { clearCoachHistory } from "@/app/coach/actions";
 import type { CoachMemory, CoachMemoryCategory } from "@/lib/types";
 
@@ -20,10 +21,23 @@ const CATEGORY_LABELS: Record<CoachMemoryCategory, string> = {
 export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const { confirm, element: confirmSheet } = useConfirm();
 
   async function clear(includeMemories: boolean) {
-    const label = includeMemories ? "chat e tutti i ricordi" : "la cronologia della chat";
-    if (!window.confirm(`Cancellare ${label}?`)) return;
+    const confirmed = await confirm(
+      includeMemories
+        ? {
+            title: "Cancellare chat e ricordi?",
+            description: "Il coach dimentica anche quello che ha imparato su di te. Non si può annullare.",
+            action: "Cancella tutto",
+          }
+        : {
+            title: "Cancellare la cronologia della chat?",
+            description: "I ricordi del coach restano.",
+            action: "Cancella chat",
+          },
+    );
+    if (!confirmed) return;
     setPending(true);
     await clearCoachHistory(includeMemories);
     router.refresh();
@@ -62,6 +76,7 @@ export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
           Cancella tutto
         </Button>
       </div>
+      {confirmSheet}
     </div>
   );
 }

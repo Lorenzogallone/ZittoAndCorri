@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useConfirm } from "@/components/ui/confirm-sheet";
 import { Eye, EyeOff, Copy, Check, RefreshCw } from "lucide-react";
 import { regenerateApiKey } from "./actions";
 import { IntegrationCard, IntegrationHelp } from "./integration-card";
@@ -18,6 +19,7 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, element: confirmSheet } = useConfirm();
   const handleCopy = async () => {
     if (!apiKey) return;
     try {
@@ -30,10 +32,16 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
   };
 
   const handleRegenerate = async () => {
-    const confirmRegen = window.confirm(
-      "Sei sicuro di voler rigenerare la tua chiave API? I Comandi Rapidi configurati con la vecchia chiave smetteranno di funzionare."
-    );
-    if (!confirmRegen) return;
+    // Conferma solo se esiste già una chiave: generare la prima non rompe nulla.
+    if (
+      apiKey &&
+      !(await confirm({
+        title: "Rigenerare la chiave personale?",
+        description: "I Comandi Rapidi configurati con la chiave attuale smetteranno di funzionare finché non li aggiorni.",
+        action: "Rigenera",
+      }))
+    )
+      return;
 
     setLoading(true);
     setError(null);
@@ -65,6 +73,10 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
               id="api_key"
               type={showKey ? "text" : "password"}
               readOnly
+              autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               value={apiKey ?? "Nessuna chiave configurata. Generala per iniziare."}
               className="pr-10 font-mono text-xs text-muted-foreground bg-muted/20"
             />
@@ -127,6 +139,7 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
         </div>
         <p className="mt-3">Se rigeneri la chiave, aggiorna tutti i Comandi Rapidi che usavano quella precedente.</p>
       </IntegrationHelp>
+      {confirmSheet}
     </div>
     </IntegrationCard>
   );

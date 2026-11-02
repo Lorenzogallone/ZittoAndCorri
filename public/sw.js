@@ -1,7 +1,7 @@
 // Service worker: precache degli asset statici dell'app shell + runtime cache
 // per gli asset immutabili di Next. I contenuti autenticati (pagine, payload
 // RSC, API, Supabase) NON vengono mai cachati. Gestisce anche le notifiche push.
-const VERSION = "v3";
+const VERSION = "v4";
 const STATIC_CACHE = `static-${VERSION}`;
 
 const PRECACHE_URLS = [
@@ -17,9 +17,15 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(STATIC_CACHE)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting()),
+      .then((cache) => cache.addAll(PRECACHE_URLS)),
+    // Niente skipWaiting automatico: il nuovo worker resta in attesa finché
+    // l'utente non tocca "Aggiorna" nel toast (components/update-toast.tsx).
   );
+});
+
+// Il client chiede di attivare subito il worker in attesa.
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
