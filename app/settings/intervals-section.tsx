@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useConfirm } from "@/components/ui/confirm-sheet";
 import type { IntervalsConnectionView } from "@/lib/intervals/credentials";
 import type { IntervalsTargetPreference } from "@/lib/intervals/workout-text";
 import { IntegrationCard, IntegrationHelp } from "./integration-card";
@@ -34,6 +35,7 @@ export function IntervalsSection({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { confirm, element: confirmSheet } = useConfirm();
 
   if (initial === undefined) {
     return (
@@ -66,8 +68,13 @@ export function IntervalsSection({
     setMessage("Chiave salvata. Tocca “Sincronizza ora” per il primo import.");
   });
 
-  const remove = () => {
-    if (!window.confirm("Scollegare Intervals.icu? Le corse già importate restano.")) return;
+  const remove = async () => {
+    const confirmed = await confirm({
+      title: "Scollegare Intervals.icu?",
+      description: "Le corse già importate restano.",
+      action: "Scollega",
+    });
+    if (!confirmed) return;
     startTransition(async () => {
       const result = await deleteIntervalsKey();
       if (result.error) return setError(result.error);
@@ -180,7 +187,7 @@ export function IntervalsSection({
           <div className="space-y-3">
             <div className="space-y-2">
               <Label htmlFor="intervals-key">Chiave API Intervals.icu</Label>
-              <Input id="intervals-key" type="password" autoComplete="off" value={key} onChange={(event) => setKey(event.target.value)} placeholder="La trovi in Settings → Developer" />
+              <Input id="intervals-key" type="password" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="done" value={key} onChange={(event) => setKey(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !pending && key.trim().length >= 8) save(); }} placeholder="La trovi in Settings → Developer" />
             </div>
             <div className="flex gap-2">
               <Button type="button" className="flex-1" disabled={pending || key.trim().length < 8} onClick={save}>
@@ -210,6 +217,7 @@ export function IntervalsSection({
             Apri Intervals.icu <ExternalLink size={12} />
           </a>
         </IntegrationHelp>
+        {confirmSheet}
       </div>
     </IntegrationCard>
   );
