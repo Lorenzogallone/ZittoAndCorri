@@ -1,5 +1,6 @@
 "use client";
 
+import { handleEnterKeyHint } from "@/lib/form-keys";
 import { useActionState } from "react";
 import { createGoal, type GoalFormState } from "../actions";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ export function GoalForm() {
   const [state, formAction, pending] = useActionState(createGoal, initialState);
 
   return (
-    <form action={formAction} className="flex flex-col gap-5">
+    <form action={formAction} onKeyDown={handleEnterKeyHint} className="flex flex-col gap-5">
       <GoalFields />
 
       <div className="flex items-center gap-3">

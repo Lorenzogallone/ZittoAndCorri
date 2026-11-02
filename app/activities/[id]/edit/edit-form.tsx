@@ -6,7 +6,8 @@ import { updateActivity, deleteActivity, type EditActivityFormState } from "../.
 import { navigateAfterMutation } from "@/lib/nav";
 import { ACTIVITY_TYPES, SPORTS } from "@/lib/types";
 import type { Activity, Sport } from "@/lib/types";
-import { formatDuration } from "@/lib/format";
+import { DECIMAL_PATTERN, DURATION_PATTERN, formatDuration } from "@/lib/format";
+import { handleEnterKeyHint } from "@/lib/form-keys";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,7 +51,7 @@ export function EditActivityForm({ activity }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <form action={formAction} className="flex flex-col gap-5">
+      <form action={formAction} onKeyDown={handleEnterKeyHint} className="flex flex-col gap-5">
         {/* Hidden input to pass activity ID to Server Action */}
         <input type="hidden" name="id" value={activity.id} />
 
@@ -111,10 +112,11 @@ export function EditActivityForm({ activity }: Props) {
             <Input
               id="distance_km"
               name="distance_km"
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
               inputMode="decimal"
+              pattern={DECIMAL_PATTERN}
+              enterKeyHint="next"
+              autoComplete="off"
               defaultValue={(activity.distance_m / 1000).toFixed(2)}
               readOnly={isImported}
               className={isImported ? "bg-muted/40 cursor-not-allowed opacity-80" : ""}
@@ -129,7 +131,10 @@ export function EditActivityForm({ activity }: Props) {
               id="duration"
               name="duration"
               type="text"
-              inputMode="text"
+              inputMode="decimal"
+              pattern={DURATION_PATTERN}
+              enterKeyHint="next"
+              autoComplete="off"
               defaultValue={formatDuration(activity.duration_s)}
               readOnly={isImported}
               className={isImported ? "bg-muted/40 cursor-not-allowed opacity-80" : ""}
@@ -150,6 +155,9 @@ export function EditActivityForm({ activity }: Props) {
               id="avg_hr"
               name="avg_hr"
               type="number"
+              inputMode="numeric"
+              enterKeyHint="next"
+              autoComplete="off"
               min="0"
               defaultValue={activity.avg_hr ?? ""}
               placeholder={isImported ? "—" : "150"}
@@ -163,6 +171,9 @@ export function EditActivityForm({ activity }: Props) {
               id="max_hr"
               name="max_hr"
               type="number"
+              inputMode="numeric"
+              enterKeyHint="next"
+              autoComplete="off"
               min="0"
               defaultValue={activity.max_hr ?? ""}
               placeholder={isImported ? "—" : "175"}
@@ -179,6 +190,9 @@ export function EditActivityForm({ activity }: Props) {
               id="elevation_gain_m"
               name="elevation_gain_m"
               type="number"
+              inputMode="numeric"
+              enterKeyHint="next"
+              autoComplete="off"
               min="0"
               defaultValue={activity.elevation_gain_m ?? ""}
               placeholder={isImported ? "—" : "120"}
@@ -192,6 +206,9 @@ export function EditActivityForm({ activity }: Props) {
               id="rpe"
               name="rpe"
               type="number"
+              inputMode="numeric"
+              enterKeyHint="next"
+              autoComplete="off"
               min="1"
               max="10"
               defaultValue={activity.rpe ?? ""}

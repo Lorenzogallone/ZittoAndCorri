@@ -8,6 +8,7 @@ import { computeATLCTL, sessionLoad } from "../lib/metrics/load.ts";
 import { generalGoalName, goalKind } from "../lib/goals.ts";
 import { COACH_METHODOLOGY } from "../lib/ai/methodology.ts";
 import { describeStep, groupWorkoutSteps, workoutHeadline } from "../lib/workout-guide.ts";
+import { parseDecimal, parseDuration as parseFormDuration } from "../lib/format.ts";
 
 test("il carico interno privilegia HR, poi RPE e infine la stima per sport", () => {
   assert.deepEqual(
@@ -353,4 +354,14 @@ test("lo splash PWA non viene reinserito dalle server action", () => {
   assert.match(splash, /^"use client";/);
   assert.match(splash, /^const SPLASH_MARKUP = \{ __html: PWA_SPLASH_HTML \};$/m);
   assert.match(splash, /dangerouslySetInnerHTML=\{SPLASH_MARKUP\}/);
+});
+
+test("form numbers accept the comma from the Italian iOS decimal keypad", () => {
+  assert.equal(parseDecimal("10,5"), 10.5);
+  assert.equal(parseDecimal(" 21.0975 "), 21.0975);
+  assert.ok(Number.isNaN(parseDecimal("dieci")));
+  assert.equal(parseFormDuration("5:30"), 330);
+  assert.equal(parseFormDuration("5,30"), 330);
+  assert.equal(parseFormDuration("1.45.00"), 6300);
+  assert.equal(parseFormDuration("5:75"), null);
 });

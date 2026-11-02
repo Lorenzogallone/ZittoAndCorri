@@ -24,11 +24,11 @@ export function BackButton({ fallbackHref, label = "Indietro" }: BackButtonProps
     router.back();
   }, [router]);
 
-  const className = "-ml-2 inline-flex items-center text-body font-medium text-primary transition-opacity active:opacity-50";
+  const className = "pressable -ml-2 inline-flex items-center text-body font-medium text-primary";
 
   if (fallbackHref) {
     return (
-      <Link href={fallbackHref} className={className}>
+      <Link href={fallbackHref} className={className} data-press="dim">
         <ChevronLeft size={22} strokeWidth={2.2} /> {label}
       </Link>
     );
@@ -39,6 +39,7 @@ export function BackButton({ fallbackHref, label = "Indietro" }: BackButtonProps
       type="button"
       onClick={handleBack}
       className={className}
+      data-press="dim"
     >
       <ChevronLeft size={22} strokeWidth={2.2} /> {label}
     </button>

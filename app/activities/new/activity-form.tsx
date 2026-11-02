@@ -10,7 +10,8 @@ import type { ActivityInput } from "@/lib/ingest/schema";
 import { parseGpx } from "@/lib/ingest/adapters/gpx";
 import { parseFit } from "@/lib/ingest/adapters/fit";
 import { mergeActivityInputs } from "@/lib/ingest/merge";
-import { formatDuration, parseDuration } from "@/lib/format";
+import { DECIMAL_PATTERN, DURATION_PATTERN, formatDuration, parseDecimal, parseDuration } from "@/lib/format";
+import { handleEnterKeyHint } from "@/lib/form-keys";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,7 +69,7 @@ function ManualForm() {
   }, [state.id, router]);
 
   return (
-    <form action={formAction} className="flex flex-col gap-5">
+    <form action={formAction} onKeyDown={handleEnterKeyHint} className="flex flex-col gap-5">
       <div className="grid gap-2.5">
         <Label htmlFor="started_at">Data e ora</Label>
         <Input id="started_at" name="started_at" type="datetime-local" required />
@@ -102,10 +103,11 @@ function ManualForm() {
           <Input
             id="distance_km"
             name="distance_km"
-            type="number"
-            step="0.01"
-            min="0"
+            type="text"
             inputMode="decimal"
+            pattern={DECIMAL_PATTERN}
+            enterKeyHint="next"
+            autoComplete="off"
             placeholder={isRunning ? "10.00" : "—"}
             required={isRunning}
           />
@@ -116,7 +118,10 @@ function ManualForm() {
             id="duration"
             name="duration"
             type="text"
-            inputMode="text"
+            inputMode="decimal"
+            pattern={DURATION_PATTERN}
+            enterKeyHint="next"
+            autoComplete="off"
             placeholder="50:00"
             required
           />
@@ -129,22 +134,22 @@ function ManualForm() {
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2.5">
           <Label htmlFor="avg_hr">HR media</Label>
-          <Input id="avg_hr" name="avg_hr" type="number" min="0" placeholder="150" />
+          <Input id="avg_hr" name="avg_hr" type="number" inputMode="numeric" enterKeyHint="next" autoComplete="off" min="0" placeholder="150" />
         </div>
         <div className="grid gap-2.5">
           <Label htmlFor="max_hr">HR max</Label>
-          <Input id="max_hr" name="max_hr" type="number" min="0" placeholder="175" />
+          <Input id="max_hr" name="max_hr" type="number" inputMode="numeric" enterKeyHint="next" autoComplete="off" min="0" placeholder="175" />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2.5">
           <Label htmlFor="elevation_gain_m">Dislivello + (m)</Label>
-          <Input id="elevation_gain_m" name="elevation_gain_m" type="number" min="0" placeholder="120" />
+          <Input id="elevation_gain_m" name="elevation_gain_m" type="number" inputMode="numeric" enterKeyHint="next" autoComplete="off" min="0" placeholder="120" />
         </div>
         <div className="grid gap-2.5">
           <Label htmlFor="rpe">RPE 1–10</Label>
-          <Input id="rpe" name="rpe" type="number" min="1" max="10" placeholder="4" />
+          <Input id="rpe" name="rpe" type="number" inputMode="numeric" enterKeyHint="next" autoComplete="off" min="1" max="10" placeholder="4" />
         </div>
       </div>
 
@@ -202,7 +207,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
     const type = isRunning ? (formData.get("type") as string) : "cross";
     const notes = formData.get("notes") as string;
     const startedAtLocal = formData.get("started_at") as string;
-    const distanceKm = Number(formData.get("distance_km"));
+    const distanceKm = parseDecimal(formData.get("distance_km"));
     const durationStr = formData.get("duration") as string;
     const avgHr = optIntClient(formData, "avg_hr");
     const maxHr = optIntClient(formData, "max_hr");
@@ -251,7 +256,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit} onKeyDown={handleEnterKeyHint} className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
         <h3 className="text-heading font-semibold text-foreground">Revisione attività</h3>
         <p className="text-xs text-muted-foreground">
@@ -270,6 +275,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
           id="notes"
           name="notes"
           type="text"
+          enterKeyHint="next"
           defaultValue={initialData.notes ?? ""}
           placeholder="Es. gambe pesanti, caldo, respirazione facile…"
         />
@@ -314,9 +320,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
           <Input
             id="distance_km"
             name="distance_km"
-            type="number"
-            step="0.01"
-            min="0"
+            type="text"
             inputMode="decimal"
             defaultValue={(initialData.distance_m / 1000).toFixed(2)}
             readOnly
@@ -330,7 +334,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
             id="duration"
             name="duration"
             type="text"
-            inputMode="numeric"
+            inputMode="decimal"
             defaultValue={formatDuration(initialData.duration_s)}
             readOnly
             className="bg-muted/40 cursor-not-allowed opacity-80"
@@ -349,6 +353,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
             id="avg_hr"
             name="avg_hr"
             type="number"
+            inputMode="numeric"
             min="0"
             defaultValue={initialData.avg_hr ?? ""}
             placeholder="—"
@@ -362,6 +367,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
             id="max_hr"
             name="max_hr"
             type="number"
+            inputMode="numeric"
             min="0"
             defaultValue={initialData.max_hr ?? ""}
             placeholder="—"
@@ -378,6 +384,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
             id="elevation_gain_m"
             name="elevation_gain_m"
             type="number"
+            inputMode="numeric"
             min="0"
             defaultValue={initialData.elevation_gain_m ?? ""}
             placeholder="—"
@@ -391,6 +398,9 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
             id="rpe"
             name="rpe"
             type="number"
+            inputMode="numeric"
+            enterKeyHint="done"
+            autoComplete="off"
             min="1"
             max="10"
             defaultValue={initialData.rpe ?? ""}
@@ -499,7 +509,7 @@ function GpxUploadForm() {
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-white/[0.12] bg-muted/20 p-10 transition-colors hover:border-white/25 hover:bg-muted/30 active:scale-[0.98]"
+          className="pressable flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-white/[0.12] bg-muted/20 p-10 hover:border-white/25 hover:bg-muted/30 [--press-scale:0.98]"
           disabled={isParsing}
         >
           <Upload size={32} className="text-muted-foreground" />

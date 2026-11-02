@@ -92,7 +92,7 @@ export function ActivityEvaluation({
       )}
 
       {!keyConfigured && !isAnalyzing && (
-        <Link href="/settings?tab=coach" className="mt-3 block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">
+        <Link href="/settings?tab=coach" className="pressable mt-3 block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">
           Aggiungi una chiave Gemini o OpenRouter per ricevere il commento
         </Link>
       )}

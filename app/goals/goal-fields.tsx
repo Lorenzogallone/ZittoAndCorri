@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { generalGoalName, type GoalKind } from "@/lib/goals";
+import { DECIMAL_PATTERN, DURATION_PATTERN, parseDecimal } from "@/lib/format";
 
 const DISTANCE_PRESETS = [
   { label: "5 km", km: 5 },
@@ -36,7 +37,7 @@ export function GoalFields({
   const [kind, setKind] = useState<GoalKind>(defaultKind);
   const [distanceKm, setDistanceKm] = useState(defaultDistanceKm);
   const general = kind === "general";
-  const distance = Number(distanceKm);
+  const distance = parseDecimal(distanceKm);
   const namePlaceholder = general
     ? Number.isFinite(distance) && distance > 0
       ? generalGoalName(Math.round(distance * 1000))
@@ -55,7 +56,7 @@ export function GoalFields({
               type="button"
               aria-pressed={kind === option.value}
               onClick={() => setKind(option.value)}
-              className={`rounded-xl border px-3 py-2.5 text-left transition-colors ${
+              className={`pressable rounded-xl border px-3 py-2.5 text-left ${
                 kind === option.value
                   ? "border-primary/60 bg-primary/10 text-foreground"
                   : "border-white/[0.08] bg-card text-muted-foreground hover:text-foreground"
@@ -75,7 +76,7 @@ export function GoalFields({
             <button
               key={p.km}
               type="button"
-              className="rounded-xl border border-white/[0.08] bg-card px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+              className="pressable rounded-xl border border-white/[0.08] bg-card px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:border-primary/40"
               onClick={() => setDistanceKm(String(p.km))}
             >
               {p.label}
@@ -85,10 +86,11 @@ export function GoalFields({
         <Input
           id="distance_km"
           name="distance_km"
-          type="number"
-          step="0.001"
-          min="0"
+          type="text"
           inputMode="decimal"
+          pattern={DECIMAL_PATTERN}
+          enterKeyHint="next"
+          autoComplete="off"
           placeholder="21.0975"
           value={distanceKm}
           onChange={(e) => setDistanceKm(e.target.value)}
@@ -102,6 +104,8 @@ export function GoalFields({
           id="race_name"
           name="race_name"
           type="text"
+          enterKeyHint="next"
+          autoComplete="off"
           placeholder={namePlaceholder}
           defaultValue={defaultName}
           required={!general}
@@ -124,7 +128,10 @@ export function GoalFields({
           id="target_time"
           name="target_time"
           type="text"
-          inputMode="text"
+          inputMode="decimal"
+          pattern={DURATION_PATTERN}
+          enterKeyHint="done"
+          autoComplete="off"
           placeholder="1:45:00"
           defaultValue={defaultTargetTime}
         />
