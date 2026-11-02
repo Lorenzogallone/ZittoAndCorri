@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Footprints, Plus } from "lucide-react";
+import { Footprints, Link2, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/empty-state";
 import { TotalsCard } from "@/components/totals-card";
 import { ActivitiesList, type ListActivity } from "@/components/activities-list";
 import { periodTotals } from "@/lib/metrics/totals";
@@ -41,16 +42,13 @@ export default async function ActivitiesPage() {
       }
     >
       {list.length === 0 ? (
-        <div className="flex flex-col items-center py-16 text-center">
-          <span className="flex h-18 w-18 items-center justify-center rounded-3xl bg-hero text-hero-foreground">
-            <Footprints size={30} strokeWidth={2.2} className="text-primary" />
-          </span>
-          <p className="mt-6 font-display text-title font-bold tracking-tight">Ancora nessuna corsa</p>
-          <p className="mt-2 max-w-xs text-body text-muted-foreground">Importa un file dall&apos;orologio o registrala a mano.</p>
-          <Button asChild className="mt-6">
-            <Link href="/activities/new"><Plus size={16} /> Nuova attività</Link>
-          </Button>
-        </div>
+        <EmptyState
+          icon={Footprints}
+          title="Qui vedrai le tue corse"
+          text="Distanza, passo e l'analisi del coach per ogni uscita. Importa un file dall'orologio o registrala a mano."
+          action={{ href: "/activities/new", label: "Importa una corsa", icon: Plus }}
+          secondary={{ href: "/settings?tab=links", label: "Collega Intervals.icu", icon: Link2 }}
+        />
       ) : (
         <div className="stagger">
           <TotalsCard periods={totals} />

@@ -1,4 +1,5 @@
-import { Activity, HeartPulse, Moon, Wind } from "lucide-react";
+import Link from "next/link";
+import { Activity, ChevronRight, HeartPulse, Moon, Wind } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Stat } from "@/components/stat";
 import type { ATLCTLResult } from "@/lib/types";
@@ -85,6 +86,12 @@ export function FormStatus({
       <section className="surface p-5">
         <p className="eyebrow">Stato di forma</p>
         <p className="mt-2 text-body text-muted-foreground">Registra le prime corse per vedere come stai.</p>
+        <Link
+          href="/activities/new"
+          className="mt-4 inline-flex items-center gap-1 rounded-full bg-primary py-2 pl-4 pr-3 text-caption font-semibold text-primary-foreground transition-transform active:scale-95"
+        >
+          Importa una corsa <ChevronRight size={16} />
+        </Link>
       </section>
     );
   }
