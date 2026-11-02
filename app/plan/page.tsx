@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, MessageCircle, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { PlanCalendar } from "@/components/plan-calendar";
@@ -8,6 +8,7 @@ import { PlanWeek, type PlanActivity } from "@/components/plan/week-list";
 import { PhaseBar } from "@/components/plan/phase-bar";
 import { AdaptSheet } from "@/components/plan/adapt-sheet";
 import { AdaptationBanner } from "@/components/plan/adaptation-banner";
+import { EmptyState } from "@/components/empty-state";
 import { Segmented } from "@/components/ui/segmented";
 import { Button } from "@/components/ui/button";
 import { formatDistance } from "@/lib/format";
@@ -44,7 +45,7 @@ export default async function PlanPage({ searchParams }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: workouts }, { data: activities }, { data: goal }, { data: adapted }] = await Promise.all([
+  const [{ data: workouts }, { data: activities }, { data: goal }, { data: adapted }, { count: upcoming }] = await Promise.all([
     supabase
       .from("planned_workouts")
       .select("*")
@@ -75,6 +76,7 @@ export default async function PlanPage({ searchParams }: Props) {
       .not("adapted_from", "is", null)
       .gte("date", today)
       .returns<Array<Pick<PlannedWorkout, "adapted_from" | "status">>>(),
+    supabase.from("planned_workouts").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("date", today),
   ]);
 
   const days = buildDays(rangeStart, dayCount, today, workouts ?? [], activities ?? []);
@@ -90,6 +92,10 @@ export default async function PlanPage({ searchParams }: Props) {
     today,
   }) : null;
   const daysToRace = goal?.race_date ? daysBetween(today, goal.race_date) : null;
+  // Niente in programma da oggi in poi (vista che include oggi): invito a
+  // chiedere un piano; senza nulla nemmeno nell'intervallo, solo l'invito.
+  const nothingPlanned = upcoming === 0 && rangeStart <= today && today <= rangeEnd;
+  const rangeEmpty = !workouts?.length && !activities?.length;
 
   return (
     <AppShell title="Piano" headerAction={<AdaptSheet />}>
@@ -122,60 +128,77 @@ export default async function PlanPage({ searchParams }: Props) {
         </Link>
       )}
 
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <Segmented
-          className="inline-grid"
-          ariaLabel="Vista"
-          value={view}
-          options={[
-            { key: "weeks", label: "Settimane", href: "/plan" },
-            { key: "month", label: "Mese", href: "/plan?view=month" },
-          ]}
+      {nothingPlanned && (
+        <EmptyState
+          icon={CalendarDays}
+          title="Nessuna seduta in programma"
+          text="Qui vedrai le sedute della settimana, giorno per giorno. Il coach può prepararti le prossime due settimane."
+          action={{ href: "/?prompt=Mi+prepari+il+piano+delle+prossime+due+settimane%3F", label: "Chiedi un piano al coach", icon: MessageCircle }}
+          secondary={{ href: "/plan/new", label: "Aggiungi una seduta", icon: Plus }}
+          className="mb-8"
         />
-        {view === "weeks" && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Link href={`/plan?week=${addDays(firstMonday, -14)}`} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted" aria-label="Settimane precedenti">
-              <ChevronLeft size={17} />
-            </Link>
-            {firstMonday === thisMonday ? (
-              <span className="tabular-nums">{rangeLabel(rangeStart, rangeEnd)}</span>
-            ) : (
-              <Link href="/plan" className="font-medium text-primary">Torna a oggi</Link>
-            )}
-            <Link href={`/plan?week=${addDays(firstMonday, 14)}`} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted" aria-label="Settimane successive">
-              <ChevronRight size={17} />
-            </Link>
-          </div>
-        )}
-      </div>
-
-      {view === "weeks" ? (
-        <>
-          {[days.slice(0, 7), days.slice(7, 14)].map((week, index) => {
-            const isCurrent = week[0].date === thisMonday;
-            const isNext = week[0].date === addDays(thisMonday, 7);
-            return (
-              <PlanWeek
-                key={week[0].date}
-                days={week}
-                today={today}
-                highlight={isCurrent}
-                title={isCurrent ? "Questa settimana" : isNext && index > 0 ? "Prossima settimana" : undefined}
-              />
-            );
-          })}
-        </>
-      ) : (
-        <div className="surface p-4">
-          <PlanCalendar days={days} month={month} today={today} raceDate={goal?.race_date ?? null} />
-        </div>
       )}
 
-      <Button asChild variant="outline" className="mt-2 w-full">
-        <Link href="/plan/new">
-          <Plus size={16} /> Aggiungi una seduta
-        </Link>
-      </Button>
+      {!(nothingPlanned && rangeEmpty) && (
+        <>
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <Segmented
+              className="inline-grid"
+              ariaLabel="Vista"
+              value={view}
+              options={[
+                { key: "weeks", label: "Settimane", href: "/plan" },
+                { key: "month", label: "Mese", href: "/plan?view=month" },
+              ]}
+            />
+            {view === "weeks" && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Link href={`/plan?week=${addDays(firstMonday, -14)}`} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted" aria-label="Settimane precedenti">
+                  <ChevronLeft size={17} />
+                </Link>
+                {firstMonday === thisMonday ? (
+                  <span className="tabular-nums">{rangeLabel(rangeStart, rangeEnd)}</span>
+                ) : (
+                  <Link href="/plan" className="font-medium text-primary">Torna a oggi</Link>
+                )}
+                <Link href={`/plan?week=${addDays(firstMonday, 14)}`} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted" aria-label="Settimane successive">
+                  <ChevronRight size={17} />
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {view === "weeks" ? (
+            <>
+              {[days.slice(0, 7), days.slice(7, 14)].map((week, index) => {
+                const isCurrent = week[0].date === thisMonday;
+                const isNext = week[0].date === addDays(thisMonday, 7);
+                return (
+                  <PlanWeek
+                    key={week[0].date}
+                    days={week}
+                    today={today}
+                    highlight={isCurrent}
+                    title={isCurrent ? "Questa settimana" : isNext && index > 0 ? "Prossima settimana" : undefined}
+                  />
+                );
+              })}
+            </>
+          ) : (
+            <div className="surface p-4">
+              <PlanCalendar days={days} month={month} today={today} raceDate={goal?.race_date ?? null} />
+            </div>
+          )}
+        </>
+      )}
+
+      {!nothingPlanned && (
+        <Button asChild variant="outline" className="mt-2 w-full">
+          <Link href="/plan/new">
+            <Plus size={16} /> Aggiungi una seduta
+          </Link>
+        </Button>
+      )}
     </AppShell>
   );
 }

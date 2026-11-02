@@ -119,6 +119,12 @@ export function ProfileView(props: ProfileViewProps) {
           <ChevronRight size={16} className="shrink-0 text-muted-foreground/60" />
         </Link>
 
+        {trends.length === 0 && performance.length === 0 && (
+          <p className="px-1 text-caption text-muted-foreground">
+            Con le prime corse qui compaiono l&apos;andamento della forma, i km a settimana, le previsioni di gara e i record.
+          </p>
+        )}
+
         {trends.length > 0 && (
           <Section title="Andamento">
             <div className="surface p-4">
