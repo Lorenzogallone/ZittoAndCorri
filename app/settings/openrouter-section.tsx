@@ -5,6 +5,7 @@ import { Check, ExternalLink, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useConfirm } from "@/components/ui/confirm-sheet";
 import { deleteOpenRouterKey, saveOpenRouterKey } from "./actions";
 import { IntegrationCard, IntegrationHelp } from "./integration-card";
 
@@ -20,6 +21,7 @@ export function OpenRouterSection({
   const [pending, setPending] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, element: confirmSheet } = useConfirm();
 
   if (initial === undefined) {
     return (
@@ -44,7 +46,12 @@ export function OpenRouterSection({
   }
 
   async function remove() {
-    if (!window.confirm("Rimuovere la chiave OpenRouter? Chat e analisi useranno Gemini.")) return;
+    const confirmed = await confirm({
+      title: "Rimuovere la chiave OpenRouter?",
+      description: "Chat e analisi useranno Gemini.",
+      action: "Rimuovi",
+    });
+    if (!confirmed) return;
     setPending(true);
     const result = await deleteOpenRouterKey();
     if (result.error) setError(result.error);
@@ -70,7 +77,7 @@ export function OpenRouterSection({
           <div className="space-y-3">
             <div className="space-y-2">
               <Label htmlFor="openrouter-key">Chiave OpenRouter</Label>
-              <Input id="openrouter-key" type="password" autoComplete="off" value={key} onChange={(event) => setKey(event.target.value)} placeholder="sk-or-…" />
+              <Input id="openrouter-key" type="password" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="done" value={key} onChange={(event) => setKey(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !pending && key.trim().length >= 16) void saveKey(); }} placeholder="sk-or-…" />
             </div>
             <div className="flex gap-2">
               <Button type="button" className="flex-1" disabled={pending || key.trim().length < 16} onClick={saveKey}>
@@ -94,6 +101,7 @@ export function OpenRouterSection({
             Apri OpenRouter <ExternalLink size={12} />
           </a>
         </IntegrationHelp>
+        {confirmSheet}
       </div>
     </IntegrationCard>
   );

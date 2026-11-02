@@ -5,6 +5,7 @@ import { Check, ExternalLink, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useConfirm } from "@/components/ui/confirm-sheet";
 import { deleteGeminiApiKey, saveGeminiApiKey } from "./actions";
 import { DEFAULT_GEMINI_MODEL } from "@/lib/ai/models";
 import type { AiCredentialMetadata } from "@/lib/types";
@@ -24,6 +25,7 @@ export function GeminiKeySection({
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const replaceRef = useRef<HTMLButtonElement>(null);
+  const { confirm, element: confirmSheet } = useConfirm();
 
   useEffect(() => {
     if (!focusRequested) return;
@@ -51,7 +53,12 @@ export function GeminiKeySection({
   }
 
   async function remove() {
-    if (!window.confirm("Rimuovere la chiave Gemini? Chat e feedback AI verranno disattivati.")) return;
+    const confirmed = await confirm({
+      title: "Rimuovere la chiave Gemini?",
+      description: "Chat e feedback AI si disattivano finché non aggiungi un'altra chiave.",
+      action: "Rimuovi",
+    });
+    if (!confirmed) return;
     setPending(true);
     const result = await deleteGeminiApiKey();
     if (result.error) setError(result.error);
@@ -89,8 +96,15 @@ export function GeminiKeySection({
               id="gemini-key"
               type="password"
               autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="done"
               value={key}
               onChange={(event) => setKey(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !pending && key.trim().length >= 16) void save();
+              }}
               placeholder="AIza…"
             />
             <Button type="button" disabled={pending || key.trim().length < 16} onClick={save}>
@@ -118,6 +132,7 @@ export function GeminiKeySection({
           Apri Google AI Studio <ExternalLink size={12} />
         </a>
       </IntegrationHelp>
+      {confirmSheet}
       </div>
     </IntegrationCard>
   );
