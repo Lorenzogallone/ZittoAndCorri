@@ -617,3 +617,28 @@ input[type="datetime-local"]::-webkit-date-and-time-value {
 .animate-pwa-loading {
   animation: pwa-loading-bar 1.5s infinite ease-in-out;
 }
+/* ============================================================
+   Solo verticale: in orizzontale su telefono l'app viene coperta
+   dall'invito a girare lo schermo (components/portrait-lock.tsx).
+   iOS ignora `orientation` del manifest, quindi serve il CSS.
+   ============================================================ */
+.portrait-lock {
+  display: none;
+}
+
+@media (orientation: landscape) and (max-height: 520px) and (hover: none) and (pointer: coarse) {
+  .portrait-lock {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: max(env(safe-area-inset-top, 0px), 1rem) max(env(safe-area-inset-right, 0px), 1.5rem)
+      max(env(safe-area-inset-bottom, 0px), 1rem) max(env(safe-area-inset-left, 0px), 1.5rem);
+    background: var(--background);
+    color: var(--foreground);
+  }
+}
