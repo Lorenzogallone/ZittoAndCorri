@@ -111,6 +111,7 @@ export function ProfileForm({
                 type="number"
                 min="0"
                 inputMode="numeric"
+                enterKeyHint="next"
                 placeholder="190 bpm"
                 defaultValue={profile?.max_hr ?? ""}
               />
@@ -123,6 +124,7 @@ export function ProfileForm({
                 type="number"
                 min="0"
                 inputMode="numeric"
+                enterKeyHint="next"
                 placeholder="50 bpm"
                 defaultValue={profile?.resting_hr ?? ""}
               />
@@ -135,6 +137,7 @@ export function ProfileForm({
               id="birthdate"
               name="birthdate"
               type="date"
+              enterKeyHint="done"
               defaultValue={profile?.birthdate ?? ""}
             />
           </div>
