@@ -125,7 +125,7 @@ export default async function PlannedWorkoutPage({ params }: Props) {
       {hot && <div className="mb-6"><HeatNote heat={hot} referencePace={fastestPace} /></div>}
 
       {doneActivity && (
-        <Link href={`/activities/${doneActivity.id}`} className="animate-enter mb-6 flex items-center gap-3 rounded-2xl bg-primary/[0.07] px-4 py-3">
+        <Link href={`/activities/${doneActivity.id}`} className="pressable animate-enter mb-6 flex items-center gap-3 rounded-2xl bg-primary/[0.07] px-4 py-3">
           <span className="animate-pop flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground"><Check size={15} strokeWidth={3} /></span>
           <span className="min-w-0 flex-1 text-sm">
             <span className="font-medium">Fatta</span>

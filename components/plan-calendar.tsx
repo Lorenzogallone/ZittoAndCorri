@@ -59,7 +59,7 @@ export function PlanCalendar({ days, month, today, raceDate }: Props) {
               key={day.date}
               href={day.workouts.length === 1 ? `/plan/${day.workouts[0].id}` : `/plan/day/${day.date}`}
               className={cn(
-                "flex aspect-square flex-col items-center justify-center gap-1 rounded-xl transition-colors active:scale-[0.97]",
+                "pressable flex aspect-square flex-col items-center justify-center gap-1 rounded-xl",
                 isToday ? "bg-primary/10 ring-1 ring-primary/40" : isRace ? "bg-primary/10" : "hover:bg-muted/50",
               )}
               aria-label={day.date}

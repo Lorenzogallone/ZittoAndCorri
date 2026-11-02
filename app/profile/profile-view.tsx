@@ -95,7 +95,7 @@ export function ProfileView(props: ProfileViewProps) {
           />
         </div>
 
-        <Link href="/goals" className="surface mb-8 flex items-center gap-3 px-4 py-4 transition-transform active:scale-[0.99]">
+        <Link href="/goals" className="pressable surface mb-8 flex items-center gap-3 px-4 py-4">
           <Flag size={20} strokeWidth={2.2} className="shrink-0 text-primary" />
           <div className="min-w-0 flex-1">
             <p className="eyebrow">Obiettivo</p>
