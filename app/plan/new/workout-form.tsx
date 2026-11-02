@@ -15,6 +15,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TYPE_LABELS } from "@/lib/activity-meta";
+import { DECIMAL_PATTERN, DURATION_PATTERN } from "@/lib/format";
+import { handleEnterKeyHint } from "@/lib/form-keys";
 
 interface GoalOption {
   id: string;
@@ -36,7 +38,7 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
   );
 
   return (
-    <form action={formAction} className="flex flex-col gap-5">
+    <form action={formAction} onKeyDown={handleEnterKeyHint} className="flex flex-col gap-5">
       <div className="grid gap-2.5">
         <Label htmlFor="date">Data</Label>
         <Input
@@ -94,10 +96,11 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
           <Input
             id="target_distance_km"
             name="target_distance_km"
-            type="number"
-            step="0.01"
-            min="0"
+            type="text"
             inputMode="decimal"
+            pattern={DECIMAL_PATTERN}
+            enterKeyHint="next"
+            autoComplete="off"
             placeholder="10.00"
           />
         </div>
@@ -107,7 +110,10 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
             id="target_pace"
             name="target_pace"
             type="text"
-            inputMode="text"
+            inputMode="decimal"
+            pattern={DURATION_PATTERN}
+            enterKeyHint="next"
+            autoComplete="off"
             placeholder="5:30"
           />
         </div>
@@ -120,7 +126,10 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
             id="target_duration"
             name="target_duration"
             type="text"
-            inputMode="text"
+            inputMode="decimal"
+            pattern={DURATION_PATTERN}
+            enterKeyHint="next"
+            autoComplete="off"
             placeholder="55:00"
           />
         </div>
@@ -133,6 +142,8 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
             min="80"
             max="220"
             inputMode="numeric"
+            enterKeyHint="next"
+            autoComplete="off"
             placeholder="150"
           />
         </div>

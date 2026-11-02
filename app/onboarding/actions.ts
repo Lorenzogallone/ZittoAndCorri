@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { parseDuration } from "@/lib/format";
+import { parseDecimal, parseDuration } from "@/lib/format";
 import { verifyGeminiApiKey } from "@/lib/ai/gemini";
 import { storeGeminiApiKey } from "@/lib/ai/credentials";
 import { generalGoalName } from "@/lib/goals";
@@ -46,7 +46,7 @@ export async function completeOnboarding(
   const raceName = String(formData.get("race_name") ?? "").trim();
   const distanceRaw = String(formData.get("distance_km") ?? "").trim();
   if (raceName || distanceRaw) {
-    const distanceKm = Number(distanceRaw);
+    const distanceKm = parseDecimal(distanceRaw);
     if (!Number.isFinite(distanceKm) || distanceKm <= 0) {
       return { error: "Per l'obiettivo inserisci una distanza valida." };
     }

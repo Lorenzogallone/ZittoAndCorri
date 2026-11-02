@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RunnerMark } from "@/components/runner-mark";
 import { cn } from "@/lib/utils";
+import { handleEnterKeyHint } from "@/lib/form-keys";
+import { DECIMAL_PATTERN, DURATION_PATTERN } from "@/lib/format";
 import { completeOnboarding, type OnboardingState } from "./actions";
 
 const initialState: OnboardingState = {};
@@ -46,7 +48,7 @@ export function OnboardingForm() {
   }
 
   return (
-    <form action={action} className="flex w-full flex-1 flex-col">
+    <form action={action} onKeyDown={handleEnterKeyHint} className="flex w-full flex-1 flex-col">
       <div className="flex h-9 items-center justify-between">
         {step > 0 ? (
           <Button type="button" variant="ghost" size="sm" className="-ml-3" onClick={() => setStep((value) => value - 1)}>
@@ -76,10 +78,10 @@ export function OnboardingForm() {
           <p className="mt-2 text-body text-muted-foreground">Questi dati rendono affidabili zone e suggerimenti. Puoi lasciare vuoto ciò che non conosci.</p>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2"><Label htmlFor="max_hr">HR massima</Label><Input id="max_hr" name="max_hr" type="number" min="100" max="240" placeholder="190" /></div>
-          <div className="space-y-2"><Label htmlFor="resting_hr">HR a riposo</Label><Input id="resting_hr" name="resting_hr" type="number" min="30" max="120" placeholder="50" /></div>
+          <div className="space-y-2"><Label htmlFor="max_hr">HR massima</Label><Input id="max_hr" name="max_hr" type="number" inputMode="numeric" enterKeyHint="next" autoComplete="off" min="100" max="240" placeholder="190" /></div>
+          <div className="space-y-2"><Label htmlFor="resting_hr">HR a riposo</Label><Input id="resting_hr" name="resting_hr" type="number" inputMode="numeric" enterKeyHint="next" autoComplete="off" min="30" max="120" placeholder="50" /></div>
         </div>
-        <div className="space-y-2"><Label htmlFor="birthdate">Data di nascita</Label><Input id="birthdate" name="birthdate" type="date" /></div>
+        <div className="space-y-2"><Label htmlFor="birthdate">Data di nascita</Label><Input id="birthdate" name="birthdate" type="date" autoComplete="bday" /></div>
       </div>
 
       <div className={step === 1 ? "animate-enter space-y-5" : "hidden"}>
@@ -87,7 +89,7 @@ export function OnboardingForm() {
           <h1 className="font-display text-display font-bold tracking-tight">Il tuo obiettivo</h1>
           <p className="mt-2 text-body text-muted-foreground">Facoltativo: non serve una gara. Puoi indicare solo la distanza su cui vuoi migliorare oppure una gara con la sua data.</p>
         </div>
-        <div className="space-y-2"><Label htmlFor="race_name">Nome gara (opzionale)</Label><Input id="race_name" name="race_name" placeholder="Vuoto = obiettivo generico" /></div>
+        <div className="space-y-2"><Label htmlFor="race_name">Nome gara (opzionale)</Label><Input id="race_name" name="race_name" enterKeyHint="next" autoComplete="off" placeholder="Vuoto = obiettivo generico" /></div>
         <div className="space-y-2">
           <Label id="distance_label">Distanza</Label>
           <input type="hidden" name="distance_km" value={distanceKm} />
@@ -101,7 +103,7 @@ export function OnboardingForm() {
                   aria-pressed={selected}
                   onClick={() => chooseDistance(option.key, option.km)}
                   className={cn(
-                    "h-9 rounded-full px-4 text-caption font-semibold transition-all duration-200 active:scale-95",
+                    "pressable h-9 rounded-full px-4 text-caption font-semibold",
                     selected ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "bg-muted text-foreground",
                   )}
                 >
@@ -116,10 +118,11 @@ export function OnboardingForm() {
               <Input
                 ref={otherRef}
                 id="distance_other"
-                type="number"
-                step="0.001"
-                min="0"
+                type="text"
                 inputMode="decimal"
+                pattern={DECIMAL_PATTERN}
+                enterKeyHint="next"
+                autoComplete="off"
                 placeholder="Distanza in km, es. 15"
                 value={distanceKm}
                 onChange={(event) => setDistanceKm(event.target.value)}
@@ -129,7 +132,7 @@ export function OnboardingForm() {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2"><Label htmlFor="race_date">Data gara</Label><Input id="race_date" name="race_date" type="date" /></div>
-          <div className="space-y-2"><Label htmlFor="target_time">Tempo target</Label><Input id="target_time" name="target_time" placeholder="1:45:00" /></div>
+          <div className="space-y-2"><Label htmlFor="target_time">Tempo target</Label><Input id="target_time" name="target_time" type="text" inputMode="decimal" pattern={DURATION_PATTERN} enterKeyHint="done" autoComplete="off" placeholder="1:45:00" /></div>
         </div>
       </div>
 
@@ -141,7 +144,7 @@ export function OnboardingForm() {
           <h1 className="font-display text-display font-bold tracking-tight">Attiva il Coach AI</h1>
           <p className="mt-2 text-body text-muted-foreground">Inserisci la tua chiave Gemini. Puoi saltare e configurarla più tardi dalle impostazioni.</p>
         </div>
-        <div className="space-y-2"><Label htmlFor="gemini_key">Chiave Gemini</Label><Input id="gemini_key" name="gemini_key" type="password" autoComplete="off" placeholder="AIza…" /></div>
+        <div className="space-y-2"><Label htmlFor="gemini_key">Chiave Gemini</Label><Input id="gemini_key" name="gemini_key" type="password" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="done" placeholder="AIza…" /></div>
         <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="inline-block text-sm font-medium text-primary">Crea una chiave in Google AI Studio ↗</a>
       </div>
 

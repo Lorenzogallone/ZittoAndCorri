@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { parseDuration } from "@/lib/format";
+import { parseDecimal, parseDuration } from "@/lib/format";
 import { generalGoalName } from "@/lib/goals";
 
 export interface GoalFormState {
@@ -31,7 +31,7 @@ interface GoalValues {
 function parseGoalForm(formData: FormData): GoalValues | { error: string } {
   const general = formData.get("goal_kind") === "general";
 
-  const distanceKm = Number(formData.get("distance_km"));
+  const distanceKm = parseDecimal(formData.get("distance_km"));
   if (!Number.isFinite(distanceKm) || distanceKm <= 0)
     return { error: "Distanza non valida." };
   const distance_m = Math.round(distanceKm * 1000);

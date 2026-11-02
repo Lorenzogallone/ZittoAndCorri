@@ -5,7 +5,7 @@ import { redirect, RedirectType } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ingestActivity } from "@/lib/ingest/ingest";
 import { parseGpx } from "@/lib/ingest/adapters/gpx";
-import { parseDuration } from "@/lib/format";
+import { parseDecimal, parseDuration } from "@/lib/format";
 import type { Activity, Profile } from "@/lib/types";
 import { avgPace } from "@/lib/metrics/pace";
 import { timeInZoneFromAverage, timeInZoneFromSeries } from "@/lib/metrics/zones";
@@ -51,7 +51,7 @@ export async function createActivity(
   // Distanza: obbligatoria per la corsa; opzionale per gli altri sport
   // (palestra, calcio, yoga… spesso non ne hanno una sensata).
   const distanceRaw = String(formData.get("distance_km") ?? "").trim();
-  const distanceKm = distanceRaw === "" ? 0 : Number(formData.get("distance_km"));
+  const distanceKm = distanceRaw === "" ? 0 : parseDecimal(distanceRaw);
   if (!Number.isFinite(distanceKm) || distanceKm < 0 || (isRunning && distanceKm <= 0)) {
     return { error: "Distanza non valida." };
   }
@@ -218,7 +218,7 @@ export async function updateActivity(
   const isRunning = sport === "running";
 
   const distanceRaw = String(formData.get("distance_km") ?? "").trim();
-  const distanceKm = distanceRaw === "" ? 0 : Number(formData.get("distance_km"));
+  const distanceKm = distanceRaw === "" ? 0 : parseDecimal(distanceRaw);
   if (!Number.isFinite(distanceKm) || distanceKm < 0 || (isRunning && distanceKm <= 0)) {
     return { error: "Distanza non valida." };
   }

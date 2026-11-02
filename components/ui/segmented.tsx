@@ -42,9 +42,9 @@ export function Segmented<K extends string = string>({
       {options.map((option) => {
         const active = option.key === value;
         const itemClass = cn(
-          "flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-1.5 transition-all duration-200",
+          "pressable flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-1.5 [--press-scale:0.95]",
           size === "sm" ? "px-1.5" : "px-3",
-          active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground active:scale-95",
+          active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
         );
         const content = (
           <>
