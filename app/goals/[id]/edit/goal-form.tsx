@@ -1,5 +1,6 @@
 "use client";
 
+import { handleEnterKeyHint } from "@/lib/form-keys";
 import { useActionState } from "react";
 import { updateGoal, type GoalFormState } from "../../actions";
 import type { Goal } from "@/lib/types";
@@ -23,7 +24,7 @@ export function EditGoalForm({ goal }: Props) {
   const defaultTargetTime = goal.target_time_s ? formatDuration(goal.target_time_s) : "";
 
   return (
-    <form action={formAction} className="flex flex-col gap-5">
+    <form action={formAction} onKeyDown={handleEnterKeyHint} className="flex flex-col gap-5">
       <GoalFields
         defaultKind={goalKind(goal)}
         defaultName={goal.race_name}

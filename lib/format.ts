@@ -96,11 +96,13 @@ export function countdownLabel(raceDate: string | null | undefined): string | nu
 
 /**
  * "h:mm:ss" | "mm:ss" | "ss" → secondi. Ritorna null se non parsabile.
+ * Come separatore valgono anche "." e ",": la tastiera decimale di iOS (campi
+ * con inputMode="decimal") non ha i due punti, quindi "5,30" vale 5:30.
  */
 export function parseDuration(input: string): number | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
-  const parts = trimmed.split(":").map((p) => p.trim());
+  const parts = trimmed.split(/[:.,]/).map((p) => p.trim());
   if (parts.some((p) => p === "" || !/^\d+$/.test(p))) return null;
   const nums = parts.map(Number);
   let h = 0;
@@ -113,3 +115,17 @@ export function parseDuration(input: string): number | null {
   if (s >= 60 || m >= 60) return null;
   return h * 3600 + m * 60 + s;
 }
+
+/**
+ * Numero decimale scritto da un utente: accetta la virgola (tastiera decimale
+ * italiana di iOS) oltre al punto. Stessa semantica di `Number()` per il resto
+ * ("" → 0, testo non valido → NaN).
+ */
+export function parseDecimal(input: unknown): number {
+  return Number(String(input ?? "").trim().replace(",", "."));
+}
+
+/** `pattern` HTML per i campi decimali (km): punto o virgola. */
+export const DECIMAL_PATTERN = "\\d+([.,]\\d+)?";
+/** `pattern` HTML per durate e passi ("5:30", "1:45:00", "5,30"): vedi parseDuration. */
+export const DURATION_PATTERN = "\\d+([:.,]\\d{1,2}){0,2}";
