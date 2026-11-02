@@ -44,11 +44,11 @@ export function TabBar() {
                 href={href}
                 role="tab"
                 aria-selected={active}
-                className="group flex flex-1 flex-col items-center gap-0.5 pt-1"
+                className="pressable flex flex-1 flex-col items-center gap-0.5 pt-1 [--press-scale:0.92]"
               >
                 <span
                   className={cn(
-                    "flex h-6 items-center justify-center transition-[color,transform] duration-200 ease-out group-active:scale-90",
+                    "flex h-6 items-center justify-center transition-colors duration-200 ease-out",
                     active ? "text-primary" : "text-muted-foreground",
                   )}
                 >

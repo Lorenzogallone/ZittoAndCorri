@@ -228,9 +228,71 @@
   html {
     @apply font-sans bg-background;
     color-scheme: light;
+    /* Niente lampo grigio di WebKit al tocco: il feedback lo dà `.pressable`. */
+    -webkit-tap-highlight-color: transparent;
   }
   html.dark {
     color-scheme: dark;
+  }
+
+  /* Tocco nativo: click immediato, senza attesa del doppio tap. */
+  a,
+  button,
+  [role="button"],
+  [role="tab"],
+  input,
+  select,
+  textarea,
+  label,
+  summary {
+    touch-action: manipulation;
+  }
+
+  /* I controlli non sono testo: la pressione lunga non seleziona l'etichetta.
+     Mai su input, textarea o testo dei contenuti. */
+  button,
+  [role="button"],
+  [role="tab"],
+  [role="tablist"],
+  [role="switch"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
+/* ============================================================
+   Feedback di pressione unico per bottoni, tab bar e card toccabili.
+   Scatta su :active (dito appoggiato, non al rilascio), solo transform e
+   opacity. `--press-scale` regola l'intensità (default 0.97);
+   `data-press="dim"` per i link testuali in stile iOS (opacità).
+   In @layer components: le utility Tailwind sull'elemento restano più forti.
+   ============================================================ */
+@layer components {
+  .pressable {
+    -webkit-user-select: none;
+    user-select: none;
+    /* Niente menu "Apri link / Condividi" sulla pressione lunga: è UI, non un link da copiare. */
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+    transition-property: scale, opacity, color, background-color, border-color, box-shadow, filter;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .pressable:active:not(:disabled, [aria-disabled="true"], [aria-haspopup]) {
+    scale: var(--press-scale, 0.97);
+    transition-duration: 100ms;
+  }
+  .pressable[data-press="dim"]:active:not(:disabled, [aria-disabled="true"]) {
+    scale: none;
+    opacity: 0.5;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* Nessun movimento: la pressione resta visibile come leggera dissolvenza. */
+    .pressable:active:not(:disabled, [aria-disabled="true"], [aria-haspopup]) {
+      scale: none;
+      opacity: 0.7;
+    }
   }
 }
 
@@ -435,7 +497,7 @@ input[type="datetime-local"]::-webkit-date-and-time-value {
 }
 
 .skeleton {
-  border-radius: 0.875rem;
+  border-radius: var(--radius-lg);
   background: linear-gradient(
     100deg,
     var(--muted) 30%,

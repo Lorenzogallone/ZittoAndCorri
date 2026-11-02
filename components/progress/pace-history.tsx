@@ -40,7 +40,7 @@ export function PaceHistory({ sessions }: { sessions: PaceSession[] }) {
         {ordered.map((session) => {
           const status = STATUS[session.check.status];
           return (
-            <Link key={session.id} href={`/activities/${session.id}`} className="flex flex-col items-center gap-1.5 rounded-xl py-2 hover:bg-muted/40">
+            <Link key={session.id} href={`/activities/${session.id}`} className="pressable flex flex-col items-center gap-1.5 rounded-xl py-2 hover:bg-muted/40">
               <span className={cn("h-2.5 w-2.5 rounded-full", status.tone)} title={status.label} />
               <span className="text-sm font-semibold tabular-nums">{deviationText(session.check.avg_deviation_s)}</span>
               <span className="text-micro text-muted-foreground">

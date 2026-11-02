@@ -81,7 +81,7 @@ export function ActivityView(props: ActivityViewProps) {
         <div className="-mr-2 flex items-center gap-1">
           <ShareActivityButton activityId={activity.id} title={title} />
           {/* replace: dopo il salvataggio "indietro" torna alla lista, non al form. */}
-          <Link href={`/activities/${activity.id}/edit`} replace className="px-2 text-body font-medium text-primary active:opacity-50">
+          <Link href={`/activities/${activity.id}/edit`} replace className="pressable px-2 text-body font-medium text-primary" data-press="dim">
             Modifica
           </Link>
         </div>

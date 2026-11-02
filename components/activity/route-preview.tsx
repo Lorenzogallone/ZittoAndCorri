@@ -40,7 +40,7 @@ export function RoutePreview({ gps }: { gps: GpsPoint[] }) {
     <button
       type="button"
       onClick={() => setInteractive(true)}
-      className="surface group relative block w-full overflow-hidden"
+      className="pressable surface relative block w-full overflow-hidden [--press-scale:0.98]"
       aria-label="Apri la mappa del percorso"
     >
       <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full bg-muted/40">
@@ -50,7 +50,7 @@ export function RoutePreview({ gps }: { gps: GpsPoint[] }) {
         <circle cx={startX} cy={startY} r={5} fill="#10b981" stroke="var(--card)" strokeWidth={2} />
         <circle cx={endX} cy={endY} r={5} fill="var(--foreground)" stroke="var(--card)" strokeWidth={2} />
       </svg>
-      <span className="absolute bottom-2.5 right-2.5 inline-flex items-center gap-1.5 rounded-full bg-background/90 px-3 py-1.5 text-xs font-medium shadow-sm transition-transform group-active:scale-95">
+      <span className="absolute bottom-2.5 right-2.5 inline-flex items-center gap-1.5 rounded-full bg-background/90 px-3 py-1.5 text-xs font-medium shadow-sm">
         <MapIcon size={13} /> Mappa
       </span>
       {colors && (
