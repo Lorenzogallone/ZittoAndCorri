@@ -3,7 +3,6 @@ import { Barlow_Condensed, Inter } from "next/font/google";
 import { Suspense } from "react";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { PwaRegister } from "@/components/pwa-register";
-import { PortraitLock } from "@/components/portrait-lock";
 import { PwaSplash } from "@/components/pwa-splash";
 import { PwaDiagnostics } from "@/components/pwa-diagnostics";
 import { ThemeWatcher } from "@/components/theme-watcher";
@@ -105,7 +104,6 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript(themeSeed) }} />
         <PwaSplash />
         <PwaRegister />
-        <PortraitLock />
         <PwaDiagnostics />
         <ThemeWatcher />
         <Suspense fallback={null}>
