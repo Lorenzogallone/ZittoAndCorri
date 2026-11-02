@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { CoachChat } from "@/components/coach-chat";
 import { TodayCard } from "@/components/home/today-card";
+import { GettingStarted } from "@/components/home/getting-started";
 import { addDays, daysBetween, mondayOf, romeDay, romeHour } from "@/lib/local-date";
 import { buildDays } from "@/lib/plan/day-status";
 import { heatForDates } from "@/lib/weather";
@@ -28,6 +29,20 @@ function longDate(iso: string): string {
   return new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 }
 
+/** Passi di "Inizia da qui": solo conteggi (head), nessuna riga letta.
+ *  Un errore (es. tabella Intervals non ancora migrata) vale "da fare". */
+async function firstRunSteps(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const count = { count: "exact", head: true } as const;
+  const [activities, intervals, zepp, planned] = await Promise.all([
+    supabase.from("activities").select("id", count).eq("user_id", userId),
+    supabase.from("user_intervals_credentials").select("user_id", count).eq("user_id", userId),
+    supabase.from("zepp_connections").select("id", count).eq("user_id", userId).eq("client_kind", "health").eq("enabled", true),
+    supabase.from("planned_workouts").select("id", count).eq("user_id", userId),
+  ]);
+  const some = (result: { error: unknown; count: number | null }) => !result.error && (result.count ?? 0) > 0;
+  return { hasActivity: some(activities), watchLinked: some(intervals) || some(zepp), hasPlan: some(planned) };
+}
+
 export default async function Home({ searchParams }: { searchParams: Promise<{ prompt?: string }> }) {
   const { prompt } = await searchParams;
   const supabase = await createClient();
@@ -38,7 +53,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   const today = romeDay();
   const monday = mondayOf(today);
   const sunday = addDays(monday, 6);
-  const [goalRes, nextRes, weekPlanRes, weekActivitiesRes, messagesRes, proposalsRes, aiStatus, pendingEvaluationsRes] = await Promise.all([
+  const [goalRes, nextRes, weekPlanRes, weekActivitiesRes, messagesRes, proposalsRes, aiStatus, pendingEvaluationsRes, firstRun] = await Promise.all([
     supabase.from("goals").select("race_name, race_date").eq("user_id", user.id).eq("is_active", true).maybeSingle<Pick<Goal, "race_name" | "race_date">>(),
     supabase.from("planned_workouts").select("*").eq("user_id", user.id).eq("status", "planned").gte("date", today).order("date").order("created_at").limit(1).maybeSingle<PlannedWorkout>(),
     supabase.from("planned_workouts").select("*").eq("user_id", user.id).gte("date", monday).lte("date", sunday).returns<PlannedWorkout[]>(),
@@ -47,6 +62,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
     supabase.from("plan_proposals").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10).returns<PlanProposal[]>(),
     getAiStatus(supabase, user.id),
     supabase.from("ai_jobs").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("kind", "evaluation").eq("status", "pending"),
+    firstRunSteps(supabase, user.id),
   ]);
 
   const authName = typeof user.user_metadata?.full_name === "string"
@@ -87,6 +103,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
         <div className="mb-3 shrink-0">
           <TodayCard next={next} today={today} heat={heat} week={week} race={race} />
         </div>
+        {/* Primo uso: tre passi sopra la chat; si nasconde da sola a passi fatti. */}
+        <GettingStarted {...firstRun} aiReady={aiStatus.chat.active !== null} className="mb-3 shrink-0" />
         <Suspense fallback={<div className="skeleton min-h-0 flex-1 rounded-3xl" />}>
           <CoachChat key={prompt ?? ""} messages={[...(messagesRes.data ?? [])].reverse()} proposals={proposalsRes.data ?? []} ai={aiStatus.chat} analyzingActivities={pendingEvaluationsRes.count ?? 0} />
         </Suspense>
