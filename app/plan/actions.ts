@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { schedulePlanPublish } from "@/lib/intervals/sync";
 import { redirect, RedirectType } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { parseDuration } from "@/lib/format";
+import { parseDecimal, parseDuration } from "@/lib/format";
 import type { CoachMemoryCategory, Goal, PlannedStatus, PlannedWorkout, Profile } from "@/lib/types";
 import { legacyWorkoutStep, workoutStepsOrLegacy } from "@/lib/workout-steps";
 import { addDays, romeDay } from "@/lib/local-date";
@@ -26,7 +26,7 @@ function optDuration(formData: FormData, key: string): number | null {
 function optFloat(formData: FormData, key: string): number | null {
   const raw = formData.get(key);
   if (typeof raw !== "string" || raw.trim() === "") return null;
-  const value = Number(raw);
+  const value = parseDecimal(raw);
   return Number.isFinite(value) ? value : null;
 }
 
