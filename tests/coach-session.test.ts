@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { currentSession, isSessionMarker, splitSessions } from "../lib/coach-session.ts";
 
 const msg = (id: string, kind = "chat", metadata: Record<string, unknown> = {}) => ({ id, kind, metadata, created_at: `2026-10-21T10:${id.padStart(2, "0")}:00Z` });
@@ -28,4 +29,16 @@ test("la chat mostra la conversazione corrente e conta le precedenti", () => {
   assert.deepEqual(splitSessions([msg("1"), msg("2")]).earlier, 0);
   assert.equal(isSessionMarker(marker("1")), true);
   assert.equal(isSessionMarker(msg("1", "status")), false);
+});
+
+test("il coach può escludere, ripristinare e annotare le corse registrate", () => {
+  // lib/ai/prompt.ts importa con alias "@/": qui si verifica il contratto sul sorgente.
+  const prompt = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
+  const actions = readFileSync(new URL("../app/coach/actions.ts", import.meta.url), "utf8");
+  assert.match(prompt, /activity_updates: z\.array/);
+  assert.match(prompt, /enum: \["exclude", "restore", "annotate"\]/);
+  assert.match(prompt, /"activity_updates", "workouts"\]/);
+  assert.match(prompt, /past=true/);
+  assert.match(actions, /applyActivityUpdates\(admin, userId, result\.activity_updates\)/);
+  assert.match(actions, /REMOVE_LOOKBACK_DAYS\)/);
 });

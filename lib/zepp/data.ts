@@ -438,6 +438,7 @@ export async function computeCurrentZeppReadiness(userId: string): Promise<ZeppR
     admin.from("activities")
       .select("started_at, duration_s, moving_time_s, rpe, avg_hr, time_in_zone, sport")
       .eq("user_id", userId)
+      .is("excluded_at", null)
       .gte("started_at", since)
       .returns<Array<Pick<Activity, "started_at" | "duration_s" | "moving_time_s" | "rpe" | "avg_hr" | "time_in_zone" | "sport">>>(),
     admin.from("profiles").select("max_hr, resting_hr").eq("id", userId)

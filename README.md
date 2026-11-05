@@ -54,7 +54,7 @@ SUPABASE_SECRET_KEY=your-server-side-secret-key
 
 Initialize the Supabase database with the SQL files in
 `supabase/migrations` (in order; on an existing database apply only the new
-ones, e.g. `0025`), then enable Google as an authentication provider. Add
+ones, e.g. `0025`–`0026`), then enable Google as an authentication provider. Add
 your application's `/auth/callback` URL to the allowed redirect URLs in
 Supabase.
 
@@ -130,6 +130,16 @@ does not create workouts automatically.
 Enable Zepp OS in Settings, generate the six-digit pairing code, and complete
 the connection from the Zepp phone app. Build and installation instructions are
 available in the [Zepp OS companion README](zepp-app/README.md).
+
+## What the coach can change
+
+The chat coach proposes plan changes for confirmation (new or changed sessions
+in the next 4 weeks, and sessions to remove, including a session from the last
+14 days that was not run: "I skipped it" or "I'll do it today"). It can also act
+on recorded runs right away, reversibly: exclude a run from totals, records and
+training load (illness, aborted session, duplicate file), restore it, or record
+the perceived effort. Excluded runs stay visible with their reason and can be
+restored from the run page. Requires `supabase/migrations/0026_coach_full_control.sql`.
 
 ## Notifications
 

@@ -176,6 +176,33 @@ export async function deleteActivity(formData: FormData): Promise<void> {
   // server, che in PWA standalone lascia la pagina appesa in loading.
 }
 
+/** Esclude (o ripristina) una corsa da totali, record e carico. Reversibile. */
+export async function setActivityExcluded(
+  id: string,
+  excluded: boolean,
+  reason: string | null,
+): Promise<{ ok?: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { error: "Corsa non valida." };
+  const { error } = await supabase
+    .from("activities")
+    .update(excluded
+      ? { excluded_at: new Date().toISOString(), excluded_reason: reason?.trim().slice(0, 200) || "Esclusa dall'atleta" }
+      : { excluded_at: null, excluded_reason: null })
+    .eq("id", id)
+    .eq("user_id", user.id);
+  if (error) {
+    return { error: error.code === "42703" ? "Serve aggiornare il database (migrazione 0026)." : "Impossibile aggiornare la corsa." };
+  }
+  revalidatePath("/activities");
+  revalidatePath(`/activities/${id}`);
+  revalidatePath("/profile");
+  revalidatePath("/");
+  return { ok: true };
+}
+
 export interface EditActivityFormState {
   error?: string;
   /** Id della corsa aggiornata: il client naviga al dettaglio. */

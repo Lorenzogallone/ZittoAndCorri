@@ -8,7 +8,7 @@ import type { Activity } from "@/lib/types";
 export type ListActivity = Pick<
   Activity,
   "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" | "moving_time_s" | "avg_pace_s_km" | "elevation_gain_m" | "source_title"
->;
+> & { excluded_at?: string | null };
 
 function monthLabel(day: string): string {
   return new Date(`${day}T12:00:00Z`).toLocaleDateString("it-IT", { month: "long", year: "numeric", timeZone: "UTC" });
@@ -28,7 +28,7 @@ function ActivityRow({ activity, analyzing }: { activity: ListActivity; analyzin
   const title = activity.source_title || (isRun ? TYPE_LABELS[activity.type] : SPORT_LABELS[activity.sport]);
   return (
     <li>
-      <Link href={`/activities/${activity.id}`} className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition-colors active:bg-muted/60">
+      <Link href={`/activities/${activity.id}`} className={cn("-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition-colors active:bg-muted/60", activity.excluded_at && "opacity-55")}>
         {/* Tessera nel colore del tipo di seduta (corse) o dello sport. */}
         <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", isRun ? TYPE_COLORS[activity.type] : SPORT_COLORS[activity.sport ?? "other"])}>
           <Icon size={18} strokeWidth={2.2} />
@@ -37,6 +37,7 @@ function ActivityRow({ activity, analyzing }: { activity: ListActivity; analyzin
           <p className="truncate text-body font-semibold">{title}</p>
           <p className="mt-0.5 truncate text-caption text-muted-foreground tabular-nums">
             {dayLabel(day)} · {formatDuration(activeDuration(activity))}
+            {activity.excluded_at && <span> · esclusa</span>}
             {analyzing && <span className="text-primary"> · analisi in corso…</span>}
           </p>
         </div>

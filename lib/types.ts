@@ -146,6 +146,9 @@ export interface Activity {
   /** Tratti della seduta (migration 0022: assente sui DB non migrati). */
   intervals?: IntervalAnalysis | null;
   notes: string | null;
+  /** Migrazione 0026: esclusa da totali, record e carico (resta visibile). */
+  excluded_at?: string | null;
+  excluded_reason?: string | null;
   raw_payload: unknown | null;
   created_at: string;
 }
