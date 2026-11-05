@@ -20,7 +20,7 @@ export default async function ActivitiesPage() {
   const [{ data: activities }, { data: pendingEvaluationJobs }] = await Promise.all([
     supabase
       .from("activities")
-      .select("id, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km, elevation_gain_m, source_title")
+      .select("id, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km, elevation_gain_m, source_title, excluded_at")
       .eq("user_id", user.id)
       .order("started_at", { ascending: false })
       .returns<ListActivity[]>(),
@@ -29,7 +29,8 @@ export default async function ActivitiesPage() {
 
   const list = activities ?? [];
   const pendingActivityIds = new Set((pendingEvaluationJobs ?? []).flatMap((job) => job.ref_id ? [job.ref_id] : []));
-  const totals = periodTotals(list, romeDay());
+  // Le corse escluse restano in elenco (con etichetta) ma fuori dai totali.
+  const totals = periodTotals(list.filter((activity) => !activity.excluded_at), romeDay());
   return (
     <AppShell
       title="Corse"

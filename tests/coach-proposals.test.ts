@@ -130,3 +130,33 @@ test("lo schema Gemini diventa JSON Schema e il JSON si estrae dalle risposte", 
   assert.deepEqual(extractJson('Ecco: {"reply":"ok","n":1} spero vada bene'), { reply: "ok", n: 1 });
   assert.throws(() => extractJson("nessun json"));
 });
+
+test("una seduta di ieri non corsa si può togliere e rifare oggi", () => {
+  const diff = planProposalDiff({
+    today, windowEnd, removeFrom: "2026-10-09",
+    existing: [...plan, session("2026-10-21", "tempo", 8)], // mercoledì, non corso
+    activityDates: ran,
+    proposed: [session("2026-10-23", "tempo", 8)],
+    removeDates: ["2026-10-21", "2026-10-22", "2026-10-20"],
+  });
+  // Ieri (22) e martedì (20) sono stati corsi: restano. Mercoledì (21) si svuota.
+  assert.deepEqual(diff.removeDates, ["2026-10-21"]);
+  assert.deepEqual(diff.touched, ["2026-10-21", "2026-10-23"]);
+  assert.deepEqual(diff.locked, ["2026-10-20", "2026-10-22"]);
+  assert.equal(diff.changes[0].after.length, 0);
+});
+
+test("nel passato non si aggiungono sedute e senza removeFrom nulla cambia", () => {
+  const existing = [...plan, session("2026-10-21", "tempo", 8)];
+  const added = planProposalDiff({
+    today, windowEnd, removeFrom: "2026-10-09", existing, activityDates: ran,
+    proposed: [session("2026-10-21", "easy", 5)], removeDates: [],
+  });
+  assert.deepEqual(added.touched, []);
+  assert.deepEqual(added.locked, ["2026-10-21"]);
+  const strict = planProposalDiff({
+    today, windowEnd, existing, activityDates: ran,
+    proposed: [], removeDates: ["2026-10-21"],
+  });
+  assert.deepEqual(strict.touched, []);
+});

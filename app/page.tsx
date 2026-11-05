@@ -57,7 +57,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
     supabase.from("goals").select("race_name, race_date").eq("user_id", user.id).eq("is_active", true).maybeSingle<Pick<Goal, "race_name" | "race_date">>(),
     supabase.from("planned_workouts").select("*").eq("user_id", user.id).eq("status", "planned").gte("date", today).order("date").order("created_at").limit(1).maybeSingle<PlannedWorkout>(),
     supabase.from("planned_workouts").select("*").eq("user_id", user.id).gte("date", monday).lte("date", sunday).returns<PlannedWorkout[]>(),
-    supabase.from("activities").select("started_at, sport, distance_m").eq("user_id", user.id).gte("started_at", `${addDays(monday, -1)}T12:00:00`).lte("started_at", `${addDays(sunday, 1)}T12:00:00`).returns<Array<Pick<Activity, "started_at" | "sport" | "distance_m">>>(),
+    supabase.from("activities").select("started_at, sport, distance_m").eq("user_id", user.id).is("excluded_at", null).gte("started_at", `${addDays(monday, -1)}T12:00:00`).lte("started_at", `${addDays(sunday, 1)}T12:00:00`).returns<Array<Pick<Activity, "started_at" | "sport" | "distance_m">>>(),
     supabase.from("coach_messages").select("*").eq("user_id", user.id).in("kind", ["chat", "plan_proposal", "status"]).order("created_at", { ascending: false }).limit(60).returns<CoachMessage[]>(),
     supabase.from("plan_proposals").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10).returns<PlanProposal[]>(),
     getAiStatus(supabase, user.id),

@@ -106,6 +106,7 @@ export async function runWeeklyRecap(
       .from("activities")
       .select("started_at, sport, distance_m")
       .eq("user_id", userId)
+      .is("excluded_at", null)
       .gte("started_at", `${shiftIsoDate(week.start, -1)}T00:00:00Z`)
       .lt("started_at", `${shiftIsoDate(week.end, 2)}T00:00:00Z`)
       .returns<WeeklyActivity[]>(),

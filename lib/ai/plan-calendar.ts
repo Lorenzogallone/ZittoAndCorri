@@ -13,8 +13,10 @@ export interface CalendarDay {
   date: string;
   weekday: string;
   week: string;
-  /** Passato, già corso o con seduta completata: il coach non lo tocca. */
+  /** Già corso o con seduta completata: il coach non lo tocca. */
   locked: boolean;
+  /** Giorno passato: una seduta rimasta qui non è stata fatta; si può solo togliere (remove_dates), non aggiungere. */
+  past: boolean;
   planned: Array<{ type: WorkoutType; status: string; what: string }>;
   done: Array<{ sport: string; km: number | null; minutes: number }>;
 }
@@ -55,7 +57,8 @@ export function planCalendar(input: {
       date,
       weekday: WEEKDAYS[new Date(`${date}T12:00:00Z`).getUTCDay()],
       week: weekLabel(offset),
-      locked: date < today || done.some((a) => a.sport === "running") || planned.some((w) => w.status === "completed"),
+      locked: done.some((a) => a.sport === "running") || planned.some((w) => w.status === "completed"),
+      past: date < today,
       planned: planned.map((w) => ({ type: w.type, status: w.status, what: what(w) })),
       done: done.map((a) => ({ sport: a.sport, km: a.distance_m > 0 ? Math.round(a.distance_m / 100) / 10 : null, minutes: Math.round(a.seconds / 60) })),
     });

@@ -16,13 +16,16 @@ export async function diffAgainstCalendar<W extends PlanDayWorkout>(
   end: string,
   proposed: W[],
   removeDates: string[],
+  /** Quanti giorni indietro una seduta non corsa si può ancora togliere. */
+  removeLookbackDays = 0,
 ) {
+  const removeFrom = addDays(start, -removeLookbackDays);
   const [{ data: existing, error: planError }, { data: runs, error: runsError }] = await Promise.all([
     supabase
       .from("planned_workouts")
       .select("date, type, status, target_distance_m, target_duration_s, target_pace_s_km, target_hr_bpm, workout_steps")
       .eq("user_id", userId)
-      .gte("date", addDays(start, -1))
+      .gte("date", addDays(removeFrom, -1))
       .lte("date", end)
       .returns<PlanDayWorkout[]>(),
     supabase
@@ -30,13 +33,15 @@ export async function diffAgainstCalendar<W extends PlanDayWorkout>(
       .select("started_at")
       .eq("user_id", userId)
       .eq("sport", "running")
-      .gte("started_at", `${addDays(start, -2)}T00:00:00Z`)
+      .gte("started_at", `${addDays(removeFrom, -2)}T00:00:00Z`)
+      .is("excluded_at", null)
       .returns<Array<{ started_at: string }>>(),
   ]);
   if (planError ?? runsError) throw planError ?? runsError;
   return planProposalDiff({
     today: start,
     windowEnd: end,
+    removeFrom,
     existing: existing ?? [],
     activityDates: new Set((runs ?? []).map((run) => romeDay(run.started_at))),
     proposed,

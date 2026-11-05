@@ -10,6 +10,7 @@ import { SeriesChart } from "@/components/activity/series-chart";
 import { SplitsChart } from "@/components/activity/splits-chart";
 import { ZonesBar } from "@/components/activity/zones-bar";
 import { IntervalsCard } from "@/components/activity/intervals-card";
+import { ExcludedBanner } from "@/components/activity/excluded-banner";
 import { Stat } from "@/components/stat";
 import { hasIntervals } from "@/lib/intervals-text";
 import type { IntervalAnalysis } from "@/lib/metrics/intervals";
@@ -111,6 +112,10 @@ export function ActivityView(props: ActivityViewProps) {
             </div>
           )}
         </header>
+
+        {activity.excluded_at && (
+          <ExcludedBanner activityId={activity.id} excludedAt={activity.excluded_at} reason={activity.excluded_reason ?? null} />
+        )}
 
         <div className="grid grid-cols-3 gap-x-3 gap-y-5">
           {stats.map((stat) => <Stat key={stat.label} {...stat} />)}

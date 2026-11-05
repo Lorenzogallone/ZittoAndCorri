@@ -220,6 +220,8 @@ export interface AiContextEnvelope {
   };
   history: {
     detailed_21d: ContextActivityForAi[];
+    /** Corse escluse da totali e carico (ultimi 60 giorni), col motivo: il coach le conosce ma non le somma. */
+    excluded_runs: Array<{ id: string; date: string; sport: string; km: number | null; minutes: number; reason: string | null; origin: "user" }>;
     weekly_12w: Array<{
       week_start: string;
       running_distance_m: number;
@@ -418,6 +420,7 @@ async function contextActivities(supabase: SupabaseClient, userId: string, since
     .select(columns)
     .eq("user_id", userId)
     .gte("started_at", `${since}T00:00:00`)
+    .is("excluded_at", null)
     .order("started_at")
     .returns<ContextActivity[]>();
   const full = await query(`${CONTEXT_ACTIVITY_COLUMNS}, pace_check, intervals`);
@@ -466,6 +469,16 @@ export async function buildAiContext(
     supabase.from("evaluations").select("summary, details, created_at, activity_id").eq("user_id", userId).order("created_at", { ascending: false }).limit(5).returns<Array<{ summary: string | null; details: string[] | null; created_at: string; activity_id: string }>>(),
     supabase.from("plan_proposals").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(10).returns<PlanProposal[]>(),
   ]);
+  // Corse escluse (migrazione 0026): senza la colonna la lista resta vuota.
+  const { data: excludedRows } = await supabase
+    .from("activities")
+    .select("id, started_at, sport, distance_m, duration_s, moving_time_s, excluded_reason")
+    .eq("user_id", userId)
+    .not("excluded_at", "is", null)
+    .gte("started_at", `${shiftDate(today, -60)}T00:00:00`)
+    .order("started_at", { ascending: false })
+    .returns<Array<{ id: string; started_at: string; sport: string; distance_m: number; duration_s: number; moving_time_s: number | null; excluded_reason: string | null }>>();
+  const excluded = excludedRows ?? [];
 
   const queryErrors = [
     authUserError, profileError, goalError, activitiesError, planError,
@@ -694,6 +707,15 @@ export async function buildAiContext(
     },
     history: {
       detailed_21d: acts.filter((a) => a.started_at.slice(0, 10) >= since21).map(activityForAi),
+      excluded_runs: excluded.map((a) => ({
+        id: a.id,
+        date: romeDate(new Date(a.started_at)),
+        sport: a.sport,
+        km: a.distance_m > 0 ? Math.round(a.distance_m / 100) / 10 : null,
+        minutes: Math.round((a.moving_time_s ?? a.duration_s) / 60),
+        reason: a.excluded_reason,
+        origin: "user" as const,
+      })),
       weekly_12w: weeklyHistory(acts),
     },
     pace_hr_calibration: calibration,

@@ -255,6 +255,12 @@ export const coachResponseSchemaZod = z.object({
   }).nullable().catch(null),
   plan_summary: z.string().nullable(),
   remove_dates: z.array(isoDate).max(40).catch([]).default([]),
+  activity_updates: z.array(z.object({
+    activity_id: z.string().uuid(),
+    action: z.enum(["exclude", "restore", "annotate"]),
+    reason: z.string().trim().max(200).nullable(),
+    rpe: z.number().int().min(1).max(10).nullable(),
+  })).max(10).catch([]).default([]),
   workouts: z.array(z.object({
     date: isoDate,
     type: z.enum(WORKOUT_TYPES as [typeof WORKOUT_TYPES[number], ...typeof WORKOUT_TYPES[number][]]),
@@ -336,13 +342,28 @@ export const coachResponseSchema: Schema = {
       description: "Giorni (YYYY-MM-DD) in cui togliere la seduta senza sostituirla. Vuoto se non togli nulla. Un giorno non citato qui né in workouts resta com'è.",
       items: { type: Type.STRING },
     },
+    activity_updates: {
+      type: Type.ARRAY,
+      description:
+        "Modifiche alle corse già registrate, applicate subito (reversibili). exclude = la corsa resta visibile ma esce da totali, record e carico (malessere, errore, allenamento interrotto, file doppio); restore = la riporta dentro; annotate = aggiorna solo lo sforzo percepito (rpe). Usa gli id di history.detailed_21d o history.excluded_runs. Vuoto se non cambi nulla.",
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          activity_id: { type: Type.STRING },
+          action: { type: Type.STRING, enum: ["exclude", "restore", "annotate"] },
+          reason: { type: Type.STRING, nullable: true, description: "Perché (es. 'Interrotta al km 3 per nausea'); mostrato sulla corsa." },
+          rpe: { type: Type.INTEGER, nullable: true, description: "Sforzo percepito 1-10 dichiarato dall'atleta, altrimenti null." },
+        },
+        required: ["activity_id", "action", "reason", "rpe"],
+      },
+    },
     workouts: {
       ...planSchema.properties!.workouts,
       description:
         "SOLO le sedute nuove o modificate, una per giorno toccato. Non ripetere le sedute che restano uguali: i giorni non citati non vengono toccati. Mai giorni con locked=true nel calendario.",
     },
   },
-  required: ["reply", "conversation_summary", "memories", "goal_update", "plan_summary", "remove_dates", "workouts"],
+  required: ["reply", "conversation_summary", "memories", "goal_update", "plan_summary", "remove_dates", "activity_updates", "workouts"],
 };
 
 export function buildCoachPrompt(contextJson: string, userMessage: string): string {
@@ -361,7 +382,8 @@ export function buildCoachPrompt(contextJson: string, userMessage: string): stri
     "- reply: 3-6 frasi, prima la decisione poi il perché. Se proponi modifiche, descrivi a parole semplici solo le sedute che cambiano.",
     "",
     "# Modificare il piano",
-    "- current_plan.calendar elenca giorno per giorno le sedute in calendario e le corse fatte. I giorni con locked=true (passati, già corsi o completati) NON si toccano mai.",
+    "- current_plan.calendar elenca giorno per giorno le sedute in calendario e le corse fatte. I giorni con locked=true (già corsi o con seduta completata) NON si toccano mai.",
+    "- I giorni con past=true sono passati: una seduta rimasta lì non è stata fatta. Non puoi aggiungere sedute nel passato, ma puoi toglierla con remove_dates (fino a 14 giorni indietro): fallo quando l'atleta dice che l'ha saltata, o che la fa oggi/un altro giorno. 'Ieri non l'ho fatta, la faccio oggi' = la stessa seduta in workouts con la data di oggi + la data di ieri in remove_dates, e il resto della settimana riequilibrato se serve (niente due sedute dure di fila).",
     "- In workouts metti SOLO le sedute nuove o modificate. Non ripetere quelle che restano uguali: i giorni che non citi restano esattamente come sono. Per togliere una seduta senza sostituirla metti la data in remove_dates.",
     "- Rispetta il perimetro richiesto: 'cambia solo gli ultimi due allenamenti della settimana' = solo quei due giorni; 'la settimana prossima' = solo i giorni da lunedì a domenica della settimana successiva a quella di meta.today. Se pensi che serva cambiare anche un altro giorno (es. per non avere due sedute dure di fila), dillo nella reply e includilo solo se è davvero necessario.",
     "- Se l'atleta chiede di rifare il piano da zero, proponi tutte le sedute del periodo richiesto e metti in remove_dates i giorni che diventano riposo.",
@@ -370,6 +392,11 @@ export function buildCoachPrompt(contextJson: string, userMessage: string): stri
     "- Una gara obiettivo NON è necessaria. Senza obiettivo attivo o con un obiettivo senza data allena per migliorare in modo continuativo sulle distanze lunghe (o sulla distanza dell'obiettivo) seguendo i blocchi aperti della metodologia: non chiedere di fissare una gara e non introdurre tapering.",
     "- Per ogni workout proposto compila sempre description e focus. Ogni seduta deve essere comprensibile senza gergo: description inizia con la spiegazione pratica dell'intera seduta con numeri reali (riscaldamento, cosa fare in ogni ripetuta e a che passo, come recuperare — camminando o corricchiando — e quante volte, defaticamento), poi l'obiettivo fisiologico o tecnico e perché serve ora. focus: su cosa concentrarsi, segnali da osservare, come adattarsi se passo, HR o sensazioni non tornano. Ogni label degli step dice come correre quella fase.",
     "- workout_steps sempre completi e già espansi: riscaldamento, ogni singola ripetuta, ogni recupero (con variant jog o walk), sprint con variant sprint, parte continua, defaticamento.",
+    "",
+    "# Corse già registrate",
+    "- Le corse sono in history.detailed_21d (con id). Se l'atleta dice che una corsa non va considerata (si è sentito male, l'ha interrotta, è un file doppio o sbagliato) metti in activity_updates exclude con il motivo: la corsa resta visibile ma esce da totali e carico. Se dice che è stata regolare o chiede di rimetterla, restore. Se dichiara quanto è stata dura, annotate con rpe.",
+    "- Una corsa esclusa per malessere o infortunio è comunque un fatto che conta per le decisioni dei giorni successivi: salvala anche come ricordo (fatigue o limitation, con data e cosa è successo) e tienine conto nel piano (giorni più leggeri, controllo dei sintomi). history.excluded_runs elenca quelle già escluse con il motivo.",
+    "- Le modifiche alle corse si applicano subito: dillo nella reply in una frase.",
     "",
     "# Memoria e obiettivo",
     "- Estrai solo ricordi nuovi e davvero utili (disponibilità, vacanze, caldo, fatica, limitazioni, preferenze, feedback passo-HR). Per correggere o prolungare un ricordo usa il suo memory_id; per uno nuovo null. Niente duplicati. Una condizione temporanea senza durata scade 7 giorni dopo meta.today.",

@@ -29,6 +29,7 @@ async function profileActivities(supabase: Awaited<ReturnType<typeof createClien
     .from("activities")
     .select(columns)
     .eq("user_id", userId)
+    .is("excluded_at", null)
     .order("started_at", { ascending: false })
     .returns<ProfileActivity[]>();
   const result = await query(`${BASE_COLUMNS}, best_efforts, pace_check`);

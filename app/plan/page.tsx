@@ -59,6 +59,7 @@ export default async function PlanPage({ searchParams }: Props) {
       .from("activities")
       .select("id, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km")
       .eq("user_id", user.id)
+      .is("excluded_at", null)
       .gte("started_at", `${addDays(rangeStart, -1)}T00:00:00`)
       .lte("started_at", `${addDays(rangeEnd, 1)}T23:59:59`)
       .order("started_at")

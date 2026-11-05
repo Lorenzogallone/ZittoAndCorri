@@ -120,6 +120,50 @@ async function applyGoalUpdate(
 
 /** Finestra in cui il coach può proporre modifiche: 4 settimane da oggi. */
 const PROPOSAL_WINDOW_DAYS = 28;
+/** Fino a quanti giorni indietro una seduta non corsa si può togliere (spostata o saltata). */
+const REMOVE_LOOKBACK_DAYS = 14;
+
+type ActivityUpdate = CoachResponse["activity_updates"][number];
+
+/**
+ * Modifiche alle corse decise in chat: subito applicate perché reversibili
+ * dalla pagina della corsa. Solo corse dell'atleta; un id sconosciuto si ignora.
+ */
+async function applyActivityUpdates(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  updates: ActivityUpdate[],
+): Promise<number> {
+  let applied = 0;
+  for (const update of updates.slice(0, 10)) {
+    const patch: Record<string, unknown> = {};
+    if (update.action === "exclude") {
+      patch.excluded_at = new Date().toISOString();
+      patch.excluded_reason = update.reason?.trim() || "Esclusa dal coach";
+    } else if (update.action === "restore") {
+      patch.excluded_at = null;
+      patch.excluded_reason = null;
+    }
+    if (update.rpe != null) {
+      patch.rpe = update.rpe;
+      patch.rpe_source = "user";
+    }
+    if (!Object.keys(patch).length) continue;
+    const { data, error } = await admin
+      .from("activities")
+      .update(patch)
+      .eq("id", update.activity_id)
+      .eq("user_id", userId)
+      .select("id")
+      .maybeSingle<{ id: string }>();
+    if (error) {
+      console.error("applyActivityUpdates:", error.message);
+      continue;
+    }
+    if (data) applied += 1;
+  }
+  return applied;
+}
 
 function dayLabel(iso: string): string {
   return new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", timeZone: "UTC" });
@@ -182,15 +226,20 @@ async function runCoachTurn(
       const updated = await applyGoalUpdate(admin, userId, result.goal_update, start);
       if (updated !== undefined) goalId = updated;
     }
+    if (result.activity_updates.length) {
+      await applyActivityUpdates(admin, userId, result.activity_updates);
+      revalidatePath("/activities");
+      revalidatePath("/profile");
+    }
     const proposed = result.workouts
       .map((workout) => cleanWorkout(workout, start, end, goalId))
       .filter((workout): workout is NonNullable<typeof workout> => workout !== null);
 
     // Solo ciò che cambia davvero, mai giorni passati o già corsi.
-    const diff = await diffAgainstCalendar(admin, userId, start, end, proposed, result.remove_dates.filter(isIsoDate));
+    const diff = await diffAgainstCalendar(admin, userId, start, end, proposed, result.remove_dates.filter(isIsoDate), REMOVE_LOOKBACK_DAYS);
     const hasProposal = diff.touched.length > 0 && !!result.plan_summary;
     const lockedNote = diff.locked.length
-      ? `\n\n_Non ho toccato ${diff.locked.map(dayLabel).join(", ")}: ${diff.locked.length === 1 ? "è un giorno già passato o già corso" : "sono giorni già passati o già corsi"}._`
+      ? `\n\n_Non ho toccato ${diff.locked.map(dayLabel).join(", ")}: ${diff.locked.length === 1 ? "è un giorno già corso o troppo indietro" : "sono giorni già corsi o troppo indietro"}._`
       : proposed.length && !diff.touched.length
         ? "\n\n_Nessuna modifica da confermare: il piano di quei giorni è già così._"
         : "";
