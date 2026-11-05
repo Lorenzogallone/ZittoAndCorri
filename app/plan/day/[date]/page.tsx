@@ -45,6 +45,7 @@ export default async function DayViewPage({ params }: Props) {
       .from("activities")
       .select("id, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km, avg_hr")
       .eq("user_id", user.id)
+      .is("excluded_at", null)
       .gte("started_at", `${addDays(date, -1)}T12:00:00`)
       .lte("started_at", `${addDays(date, 1)}T12:00:00`)
       .order("started_at")

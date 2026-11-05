@@ -57,6 +57,7 @@ export default async function PlannedWorkoutPage({ params }: Props) {
       .from("activities")
       .select("id, started_at, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km")
       .eq("user_id", user.id)
+      .is("excluded_at", null)
       .gte("started_at", `${addDays(workout.date, -1)}T12:00:00`)
       .lte("started_at", `${addDays(workout.date, 1)}T12:00:00`)
       .order("started_at")
@@ -94,6 +95,7 @@ export default async function PlannedWorkoutPage({ params }: Props) {
         .select("id, sport, distance_m, duration_s, moving_time_s, best_efforts")
         .eq("user_id", user.id)
         .eq("sport", "running")
+        .is("excluded_at", null)
         .gte("started_at", `${addDays(today, -120)}T00:00:00`)
         .returns<Array<Pick<Activity, "id" | "sport" | "distance_m" | "duration_s" | "moving_time_s" | "best_efforts">>>();
       const reference = predictionReference((recent ?? []).map((activity) => ({ ...activity, active_s: activeDuration(activity) })));

@@ -80,6 +80,8 @@ const sameDay = (a: PlanDayWorkout[], b: PlanDayWorkout[]) =>
 export function planProposalDiff<W extends PlanDayWorkout>(input: {
   today: string;
   windowEnd: string;
+  /** Primo giorno passato che si può ancora svuotare (seduta saltata o spostata). Default: oggi. */
+  removeFrom?: string;
   /** Sedute già in calendario nella finestra (qualsiasi stato). */
   existing: PlanDayWorkout[];
   /** Giorni con una corsa registrata (Europe/Rome). */
@@ -88,10 +90,14 @@ export function planProposalDiff<W extends PlanDayWorkout>(input: {
   removeDates: string[];
 }): ProposalDiff<W> {
   const { today, windowEnd, existing, activityDates } = input;
+  const removeFrom = input.removeFrom ?? today;
   const editable = (w: PlanDayWorkout) => w.status !== "completed";
-  const isLocked = (date: string) =>
-    date < today || date > windowEnd || activityDates.has(date) ||
-    existing.some((w) => w.date === date && w.status === "completed");
+  const doneOn = (date: string) =>
+    activityDates.has(date) || existing.some((w) => w.date === date && w.status === "completed");
+  // Nuove sedute solo da oggi in poi; un giorno passato non corso si può
+  // svuotare (seduta saltata, oppure spostata a oggi) fino a removeFrom.
+  const isLocked = (date: string) => date < today || date > windowEnd || doneOn(date);
+  const isRemoveLocked = (date: string) => date < removeFrom || date > windowEnd || doneOn(date);
   const existingOn = (date: string) => existing.filter((w) => w.date === date && editable(w));
 
   const byDate = new Map<string, W[]>();
@@ -114,7 +120,7 @@ export function planProposalDiff<W extends PlanDayWorkout>(input: {
   const removeDates: string[] = [];
   for (const date of [...new Set(input.removeDates)].sort()) {
     if (byDate.has(date)) continue;
-    if (isLocked(date)) {
+    if (isRemoveLocked(date)) {
       if (existingOn(date).length) locked.add(date);
       continue;
     }
