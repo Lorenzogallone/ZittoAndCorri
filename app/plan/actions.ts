@@ -245,7 +245,8 @@ export async function planRecovery(): Promise<void> {
     race_date: goal.race_date,
     distance_m: goal.distance_m,
     today,
-    hr_cap: zones ? zones.lower.z3 : null,
+    // Tetto = limite alto della Z1 (zona facile).
+    hr_cap: zones ? zones.lower.z2 - 1 : null,
   });
 
   if (workouts.length) {

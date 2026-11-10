@@ -197,16 +197,27 @@ test("l'audit Zepp non conserva serie grezze, temperatura o dati identificativi"
   assert.match(audit, /resting_hr/);
 });
 
-test("con FC a riposo nota le zone usano la riserva cardiaca e la FC max dell'orologio", () => {
+test("zone di fabbrica in % della FC max: l'app usa la riserva cardiaca con i tagli Zepp", () => {
   const zones = hrZones({
     max_hr: 180,
     resting_hr: 47,
     hr_zone_ranges: [98, 117, 137, 156, 176, 196],
   });
-  // Riserva 149 bpm: 156 bpm è il 73%, cioè Z3 e non la Z4 dell'orologio.
-  assert.deepEqual(zones?.lower, { z1: 47, z2: 136, z3: 151, z4: 166, z5: 181 });
+  // Stessi numeri della schermata Zepp "Zona frequenza cardiaca riservata".
+  assert.deepEqual(zones?.lower, { z1: 134, z2: 157, z3: 172, z4: 178, z5: 188 });
   assert.equal(zones?.max_hr, 196);
   assert.equal(zones?.method, "hrr");
+});
+
+test("zone impostate sull'orologio (riserva cardiaca o personalizzate) si usano così come sono", () => {
+  const zones = hrZones({
+    max_hr: 196,
+    resting_hr: 47,
+    hr_zone_ranges: [130, 150, 170, 180, 190, 198],
+  });
+  assert.deepEqual(zones?.lower, { z1: 130, z2: 150, z3: 170, z4: 180, z5: 190 });
+  assert.equal(zones?.max_hr, 198);
+  assert.equal(zones?.method, "watch");
 });
 
 test("senza FC a riposo restano le soglie dell'orologio", () => {

@@ -13,7 +13,7 @@ export const COACH_METHODOLOGY = [
   "## Settimana tipo",
   "- 3-4 uscite di corsa a settimana, mai giorni consecutivi di qualità. Il resto è riposo: 2-3 giorni di riposo completo sono normali.",
   "- 1 seduta di qualità (al massimo 2 nelle settimane di carico avanzato, es. qualità + progressivo), di solito a inizio/metà settimana.",
-  "- 1-2 corse EASY corte (4-8 km). Easy significa DAVVERO easy: passo conversazionale, HR in Z1-Z2 (nell'esempio 5:40-6:00/km, ~1:20-1:40/km più lento del passo 5 km). Ripetilo nel focus: la disciplina sulle easy è la priorità.",
+  "- 1-2 corse EASY corte (4-8 km). Easy significa DAVVERO easy: passo conversazionale, HR in Z1, la zona facile (nell'esempio 5:40-6:00/km, ~1:20-1:40/km più lento del passo 5 km). Ripetilo nel focus: la disciplina sulle easy è la priorità.",
   "- 1 lungo easy nel weekend, allo stesso passo delle easy, mai più veloce.",
   "- Niente sessioni di forza o palestra di default: il piano contiene solo corsa e riposo. Se l'atleta chiede di inserire palestra/forza (o un ricordo attivo lo indica), mettila a calendario con la frequenza richiesta come workout di tipo 'cross' con un solo step a tempo (es. 'Palestra' 45'), mai il giorno prima della seduta di qualità o del lungo.",
   "- Alle easy si possono aggiungere 4 x 20\" di allunghi (strides) a fine corsa se le gambe stanno bene.",

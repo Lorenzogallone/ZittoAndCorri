@@ -7,6 +7,7 @@
 // l'EPOC proprietario di Zepp non è riproducibile dai soli file esportati.
 
 import type { ATLCTLResult, Sport, TimeInZone, ZoneKey } from "@/lib/types";
+import { ZONE_LOWER_PCT } from "./zones.ts";
 
 export interface TrainingLoadActivity {
   started_at: string;
@@ -55,11 +56,12 @@ function weightFromAverageHr(
   if (avgHr == null || profile?.max_hr == null || profile.resting_hr == null) return null;
   const reserve = profile.max_hr - profile.resting_hr;
   if (reserve <= 0) return null;
+  // Stessi tagli delle zone (riserva cardiaca, come Zepp).
   const ratio = (avgHr - profile.resting_hr) / reserve;
-  if (ratio < 0.6) return 1;
-  if (ratio < 0.7) return 2;
-  if (ratio < 0.8) return 3;
-  if (ratio < 0.9) return 4;
+  if (ratio < ZONE_LOWER_PCT.z2) return 1;
+  if (ratio < ZONE_LOWER_PCT.z3) return 2;
+  if (ratio < ZONE_LOWER_PCT.z4) return 3;
+  if (ratio < ZONE_LOWER_PCT.z5) return 4;
   return 5;
 }
 

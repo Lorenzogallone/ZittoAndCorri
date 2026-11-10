@@ -2,17 +2,18 @@
 // Risponde alla domanda "il ritmo easy dell'atleta è davvero easy?" in modo
 // deterministico, confrontando la HR media delle corse recenti con la zona
 // attesa per quel tipo di seduta. Il risultato entra nel prompt del coach:
-// così se le easy escono in Z3/Z4 il piano successivo se lo ricorda.
+// così se le easy escono dalla Z1 il piano successivo se lo ricorda.
 
 import { zoneForHr, type HrConfig } from "@/lib/metrics/zones";
 import type { ActivityType, WorkoutType, ZoneKey } from "@/lib/types";
 
 /** Zona HR massima attesa per ciascun tipo di seduta di corsa. */
+// Zone come Zepp: Z1 facile, Z2 medio, Z3 soglia, Z4 ripetute, Z5 massimale.
 const EXPECTED_MAX_ZONE: Partial<Record<WorkoutType, ZoneKey>> = {
   recovery: "z1",
-  easy: "z2",
-  long: "z2",
-  tempo: "z4",
+  easy: "z1",
+  long: "z1",
+  tempo: "z3",
   interval: "z5",
   race: "z5",
 };

@@ -336,7 +336,7 @@ export async function buildAthleteContext(
 
   // Calibrazione ritmi ↔ HR (deterministico): dice se i ritmi correnti sono
   // davvero nella zona attesa per il tipo. Segnale chiave: se le easy escono
-  // in Z3/Z4, per l'atleta quel passo OGGI non è easy e i target del piano
+  // dalla Z1, per l'atleta quel passo OGGI non è easy e i target del piano
   // vanno adeguati.
   const hrConfig = {
     max_hr: profile?.max_hr ?? null,
