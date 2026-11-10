@@ -4,6 +4,7 @@ import test from "node:test";
 import type { ATLCTLResult } from "../lib/types.ts";
 import { compactZeppPayloadForAudit, normalizeZeppPayload } from "../lib/zepp/normalize.ts";
 import { hrZones } from "../lib/metrics/zones.ts";
+import { calibratePaces } from "../lib/metrics/pace-calibration.ts";
 import { computeZeppReadiness } from "../lib/zepp/readiness.ts";
 import { ZeppSyncPayloadSchema } from "../lib/zepp/schema.ts";
 import type { ZeppDailyMetric } from "../lib/zepp/types.ts";
@@ -273,4 +274,16 @@ test("la migrazione compatta aggiunge solo riepiloghi utili", () => {
     "step_target", "calorie_target", "stand_target",
   ]) assert.match(sql, new RegExp(`add column if not exists ${column}`));
   assert.doesNotMatch(sql, /add column if not exists .*temp/);
+});
+
+test("la calibrazione tollera pochi battiti sopra la zona facile", () => {
+  const profile = { max_hr: 196, resting_hr: 47, hr_zone_ranges: [98, 117, 137, 156, 176, 196] };
+  const easy = (avg_hr: number) => calibratePaces([
+    { type: "easy", sport: "running", avg_pace_s_km: 400, avg_hr },
+  ], profile)?.[0];
+  // Limite alto della Z1: 156 bpm.
+  assert.equal(easy(156)?.too_hard, false);
+  assert.equal(easy(158)?.over_bpm, 2);
+  assert.equal(easy(158)?.too_hard, false);
+  assert.equal(easy(160)?.too_hard, true);
 });

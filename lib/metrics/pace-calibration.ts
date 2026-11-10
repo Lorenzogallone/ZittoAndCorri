@@ -4,7 +4,7 @@
 // attesa per quel tipo di seduta. Il risultato entra nel prompt del coach:
 // così se le easy escono dalla Z1 il piano successivo se lo ricorda.
 
-import { zoneForHr, type HrConfig } from "@/lib/metrics/zones";
+import { hrZones, zoneForHr, type HrConfig } from "./zones.ts";
 import type { ActivityType, WorkoutType, ZoneKey } from "@/lib/types";
 
 /** Zona HR massima attesa per ciascun tipo di seduta di corsa. */
@@ -19,6 +19,13 @@ const EXPECTED_MAX_ZONE: Partial<Record<WorkoutType, ZoneKey>> = {
 };
 
 const ZONE_INDEX: Record<ZoneKey, number> = { z1: 1, z2: 2, z3: 3, z4: 4, z5: 5 };
+const NEXT_ZONE: Partial<Record<ZoneKey, ZoneKey>> = { z1: "z2", z2: "z3", z3: "z4", z4: "z5" };
+
+/**
+ * Battiti oltre il limite della zona attesa che restano un dettaglio: 2-3 bpm
+ * sopra la Z1 in una easy non rendono la corsa "troppo dura".
+ */
+export const HR_TOLERANCE_BPM = 3;
 
 export interface PaceCalibrationEntry {
   type: WorkoutType;
@@ -34,7 +41,9 @@ export interface PaceCalibrationEntry {
   expected_zone: ZoneKey;
   /** Deriva cardiaca media (%), se disponibile. */
   avg_drift_pct: number | null;
-  /** true = la HR osservata supera la zona attesa: quel ritmo è troppo per ora. */
+  /** Battiti medi oltre il limite alto della zona attesa (0 se dentro). */
+  over_bpm: number;
+  /** true = la HR supera la zona attesa di più della tolleranza: quel ritmo è troppo per ora. */
   too_hard: boolean;
 }
 
@@ -80,12 +89,17 @@ export function calibratePaces(
     byType.set(r.type, e);
   }
 
+  const zones = hrZones(profile);
   const out: PaceCalibrationEntry[] = [];
   for (const [type, e] of byType) {
     const avg_hr = Math.round(e.hr / e.n);
     const zone = zoneForHr(avg_hr, profile);
     if (!zone) continue;
     const expected_zone = EXPECTED_MAX_ZONE[type]!;
+    const next = NEXT_ZONE[expected_zone];
+    // Limite alto della zona attesa = soglia della zona successiva - 1.
+    const limit = zones && next ? zones.lower[next] - 1 : null;
+    const over_bpm = limit == null ? 0 : Math.max(0, avg_hr - limit);
     out.push({
       type,
       runs: e.n,
@@ -95,7 +109,10 @@ export function calibratePaces(
       expected_zone,
       avg_drift_pct:
         e.nDrift > 0 ? Math.round((e.drift / e.nDrift) * 10) / 10 : null,
-      too_hard: ZONE_INDEX[zone] > ZONE_INDEX[expected_zone],
+      over_bpm,
+      too_hard: limit == null
+        ? ZONE_INDEX[zone] > ZONE_INDEX[expected_zone]
+        : over_bpm > HR_TOLERANCE_BPM,
     });
   }
 
