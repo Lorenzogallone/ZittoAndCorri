@@ -67,6 +67,14 @@ const ZONE_TOLERANCE_RULE =
 const LOAD_READING_RULE =
   "- Fatica e recupero: il carico interno (load7, baseline7, load_ratio, TSB, status) dice solo quanto lavoro hai fatto rispetto alle tue settimane abituali, NON se l'atleta è stanco. Lo stato di recupero lo dicono readiness (recupero Zepp, HRV, sonno, FC a riposo) e le sensazioni dichiarate dall'atleta, e hanno la precedenza. Se readiness è buona e l'atleta dice di stare bene, non definirlo affaticato e non togliere qualità o volume per il solo rapporto di carico: al massimo segnala che la settimana è stata più piena del solito. Il carico interno e il training_load dell'orologio hanno scale diverse: non confrontarli e non scegliere date o valori che confermano la tua tesi. Le zone FC sono quelle a riserva cardiaca dell'orologio Zepp (athlete.hr_zones): Z1 facile (easy, lunghi, recuperi), Z2 medio / passo maratona, Z3 soglia, Z4 ripetute, Z5 massimale. Una easy o un lungo con la FC media nella parte alta della Z1 è corretto, non un errore.";
 
+/**
+ * Linee guida: regole di allenamento decise per questo atleta e questo periodo,
+ * salvate come ricordi 'guideline'. Cambiano con l'obiettivo, quindi non stanno
+ * nel codice: le scrive e le chiude il coach (o chi gestisce l'app) dalla chat.
+ */
+const GUIDELINE_RULE =
+  "- Linee guida: i ricordi con category 'guideline' (in memories) sono le regole di allenamento decise per questo atleta nel periodo in corso (volume, progressione dei lunghi, sedute chiave, forza, recupero, avvicinamento gara). Valgono più della metodologia generica: se sono in conflitto segui la linea guida, e la metodologia resta la base per tutto ciò che non coprono. Applicale a piani e valutazioni e citale quando motivi una scelta. Fanno eccezione dolore, malattia e segnali di recupero scarso, che hanno sempre la precedenza.";
+
 export function buildEvaluationPrompt(
   contextMarkdown: string,
   activityDetail: string,
@@ -87,6 +95,7 @@ export function buildEvaluationPrompt(
     "- Cita aderenza e TSB solo in modo qualitativo (es. 'sei un po' affaticato'), e tieni conto delle note dell'atleta e del contesto temporale (es. ripresa dopo uno stop).",
     LOAD_READING_RULE,
     ZONE_TOLERANCE_RULE,
+    GUIDELINE_RULE,
     "- Mantieni coerenza con le tue valutazioni precedenti: non contraddirti e non ripetere sempre le stesse frasi.",
     "",
     "# Contesto atleta",
@@ -210,6 +219,7 @@ export function buildPlanPrompt(
     "- I numeri di forma (passi, volumi, carico TSB, predizioni) sono già calcolati e te li fornisco: usali per dimensionare il piano, ma resta realistico e progressivo.",
     LOAD_READING_RULE,
     ZONE_TOLERANCE_RULE,
+    GUIDELINE_RULE,
     `- Pianifica SOLO date comprese tra ${windowStart} e ${windowEnd} (incluse).`,
     "- Segui fortemente la 'Metodologia di riferimento' qui sotto: struttura della settimana, progressione di volume e lungo, rotazione degli stimoli, formato delle sedute e dei recuperi, tono.",
     "- Non programmare ogni singolo giorno: includi riposo e alterna intensità e volume in modo sensato verso l'obiettivo.",
@@ -249,7 +259,7 @@ export function buildPlanPrompt(
 
 const memoryCategories = [
   "availability", "vacation", "weather", "preference", "fatigue",
-  "limitation", "pace_hr", "long_term",
+  "limitation", "pace_hr", "long_term", "guideline",
 ] as const;
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -394,6 +404,7 @@ export function buildCoachPrompt(contextJson: string, userMessage: string): stri
     "- Prima di rispondere valuta ogni richiesta rispetto a obiettivo, fase, carico recente (training_state, history), sensazioni dichiarate e metodologia.",
     LOAD_READING_RULE,
     ZONE_TOLERANCE_RULE,
+    GUIDELINE_RULE,
     "- Se la richiesta è sensata, falla e spiega in una frase perché funziona.",
     "- Se è sbagliata o rischiosa (troppo volume tutto insieme, due sedute dure di fila, saltare lo scarico, lungo troppo lungo, ripetute a gambe stanche, correre con dolore o malattia), dillo chiaramente, spiega il motivo con i suoi dati e proponi l'alternativa migliore. Se è solo una preferenza a basso rischio e l'atleta insiste, accontentalo dichiarando il compromesso. Su dolore, infortunio o malattia non cedere: proteggi l'atleta.",
     "- Niente complimenti automatici, niente 'ottima idea', niente scuse o frasi di circostanza. Riconosci i progressi solo quando i dati li mostrano.",
@@ -421,6 +432,7 @@ export function buildCoachPrompt(contextJson: string, userMessage: string): stri
     "",
     "# Memoria e obiettivo",
     "- Estrai solo ricordi nuovi e davvero utili (disponibilità, vacanze, caldo, fatica, limitazioni, preferenze, feedback passo-HR). Per correggere o prolungare un ricordo usa il suo memory_id; per uno nuovo null. Niente duplicati. Una condizione temporanea senza durata scade 7 giorni dopo meta.today.",
+    "- Linee guida (category 'guideline'): quando con l'atleta si decide come allenarsi per un obiettivo o un blocco (volume settimanale, progressione dei lunghi, seduta chiave, forza e allunghi, recupero, settimana della gara), salva ogni regola come ricordo 'guideline' separato: concreta, con numeri e date, comprensibile da sola. Se l'atleta, o chi gestisce l'app per lui, ti detta delle linee guida, salvale fedelmente adattando solo la forma. valid_until = data della gara o fine del blocco se sono legate a un obiettivo, null se valgono in generale. Quando cambiano obiettivo o fase, aggiorna le linee guida (stesso memory_id) o chiudi quelle superate (valid_until = meta.today) e dillo nella reply. Non salvare come linea guida le singole sedute del calendario.",
     "- Escursioni e altri sport dichiarati sono vincoli e carico atteso: non metterli a calendario. Eccezione: se l'atleta chiede palestra/forza nel piano, salvala come ricordo 'preference' senza scadenza con la frequenza richiesta e mettila a calendario come da metodologia; se poi non la vuole più, chiudi quel ricordo (stesso memory_id, valid_until = meta.today) e toglila.",
     "- Obiettivo: se l'atleta dichiara un cambio (nuova gara, altra distanza, nuovo tempo, rinuncia, solo miglioramento generale) compila goal_update ('set' con i dati dichiarati, race_date null se senza gara, distance_m sempre valorizzata; 'clear' se non vuole obiettivi). Non inventare date o tempi: se manca la data della gara chiedila e lascia goal_update null. Il cambio si applica subito: confermalo e, se cambia la direzione, proponi le modifiche al piano nello stesso turno. Altrimenti goal_update = null.",
     "- conversation_summary aggiorna in poche frasi il riassunto precedente con ciò che conta per le prossime conversazioni (decisioni prese, richieste ricorrenti, cosa ha rifiutato), senza ripetere i ricordi strutturati.",

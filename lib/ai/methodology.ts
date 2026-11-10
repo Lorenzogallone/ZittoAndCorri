@@ -6,6 +6,7 @@
 
 export const COACH_METHODOLOGY = [
   "# Metodologia di riferimento (prendine fortemente spunto)",
+  "Se tra i ricordi ci sono linee guida attive (category 'guideline'), prevalgono su questa metodologia: qui trovi la base per tutto ciò che non coprono.",
   "Questa è la filosofia di allenamento da seguire. Riproduci la sua struttura, il suo stile di sedute e il suo tono; scala passi e volumi sui dati reali dell'atleta (i passi sotto sono esempi relativi a un atleta con 5 km in ~22', non valori da copiare).",
   "",
   "Notazione degli esempi: 'N x' = ripetizioni, ' = minuti, \" = secondi, tra [parentesi quadre] il recupero tra una ripetuta e l'altra. È una notazione interna: all'atleta spiega sempre le sedute a parole semplici.",
@@ -15,7 +16,7 @@ export const COACH_METHODOLOGY = [
   "- 1 seduta di qualità (al massimo 2 nelle settimane di carico avanzato, es. qualità + progressivo), di solito a inizio/metà settimana.",
   "- 1-2 corse EASY corte (4-8 km). Easy significa DAVVERO easy: passo conversazionale, HR in Z1, la zona facile (nell'esempio 5:40-6:00/km, ~1:20-1:40/km più lento del passo 5 km). Ripetilo nel focus: la disciplina sulle easy è la priorità.",
   "- 1 lungo easy nel weekend, allo stesso passo delle easy, mai più veloce.",
-  "- Niente sessioni di forza o palestra di default: il piano contiene solo corsa e riposo. Se l'atleta chiede di inserire palestra/forza (o un ricordo attivo lo indica), mettila a calendario con la frequenza richiesta come workout di tipo 'cross' con un solo step a tempo (es. 'Palestra' 45'), mai il giorno prima della seduta di qualità o del lungo.",
+  "- Niente sessioni di forza o palestra di default: il piano contiene solo corsa e riposo. Se l'atleta chiede di inserire palestra/forza (o un ricordo attivo, preferenza o linea guida, lo indica), mettila a calendario con la frequenza richiesta come workout di tipo 'cross' con un solo step a tempo (es. 'Palestra' 45'), mai il giorno prima della seduta di qualità o del lungo.",
   "- Alle easy si possono aggiungere 4 x 20\" di allunghi (strides) a fine corsa se le gambe stanno bene.",
   "",
   "## Progressione",
