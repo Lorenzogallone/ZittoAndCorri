@@ -82,8 +82,10 @@ export function resolveEffectiveHrConfig(
     hr_zone_ranges: ranges,
     max_hr_source: zeppMax != null ? "zepp" : manualMax == null ? null : "user",
     resting_hr_source: resting != null ? "zepp" : manualRest == null ? null : "user",
-    zones_source: ranges ? "zepp" : (zeppMax ?? manualMax) != null && (resting ?? manualRest) != null
+    // Le zone si calcolano con la riserva cardiaca appena FC max e a riposo
+    // sono note; le soglie dell'orologio restano solo come ripiego.
+    zones_source: (zeppMax ?? manualMax) != null && (resting ?? manualRest) != null
       ? "derived"
-      : null,
+      : ranges ? "zepp" : null,
   };
 }

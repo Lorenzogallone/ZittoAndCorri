@@ -8,6 +8,7 @@ import type { Profile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { hrZones } from "@/lib/metrics/zones";
 
 const initialState: ProfileFormState = {};
 
@@ -32,6 +33,7 @@ export function ProfileForm({
   const [editing, setEditing] = useState(false);
   const router = useRouter();
   const zeppActive = effectiveHr.max_hr_source === "zepp" || effectiveHr.resting_hr_source === "zepp";
+  const zones = hrZones(effectiveHr);
 
   const save = (formData: FormData) => startTransition(async () => {
     const result = await updateProfile(initialState, formData);
@@ -81,9 +83,9 @@ export function ProfileForm({
               <dd className="mt-1 text-sm font-medium">{birthdate}</dd>
             </div>
           </dl>
-          {effectiveHr.hr_zone_ranges && (
+          {zones && (
             <p className="mt-3 text-xs text-muted-foreground">
-              Zone dall&apos;orologio: {effectiveHr.hr_zone_ranges.slice(0, 5).map((value, index) => `Z${index + 1} ${value}`).join(" · ")}
+              {zones.method === "hrr" ? "Zone (riserva cardiaca)" : "Zone dall’orologio"}: {(["z1", "z2", "z3", "z4", "z5"] as const).map((key, index) => `Z${index + 1} ${zones.lower[key]}`).join(" · ")}
             </p>
           )}
           <Button type="button" variant="ghost" size="sm" className="-ml-3 mt-2 text-primary" onClick={() => { setState(initialState); setEditing(true); }}>

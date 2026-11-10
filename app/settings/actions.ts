@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { refreshTimeInZones } from "@/lib/ingest/zone-refresh";
 import { sanitizePrefs, type ThemePrefs } from "@/lib/theme";
 import crypto from "crypto";
 import { verifyGeminiApiKey } from "@/lib/ai/gemini";
@@ -59,8 +60,17 @@ export async function updateProfile(
 
   if (error) return { error: error.message };
 
+  // FC max o a riposo cambiate: le zone delle corse salvate vanno ricalcolate,
+  // altrimenti il carico confronta settimane misurate con soglie diverse.
+  try {
+    await refreshTimeInZones(supabase, user.id);
+  } catch (refreshError) {
+    console.error("updateProfile zone refresh:", refreshError instanceof Error ? refreshError.message : refreshError);
+  }
+
   revalidatePath("/settings");
   revalidatePath("/profile");
+  revalidatePath("/activities");
   return { ok: true };
 }
 

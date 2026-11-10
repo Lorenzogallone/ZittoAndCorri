@@ -19,6 +19,8 @@ export interface HrZones {
   lower: Record<ZoneKey, number>;
   max_hr: number;
   resting_hr: number;
+  /** hrr = riserva cardiaca (Karvonen); watch = soglie dell'orologio, usate solo senza FC a riposo. */
+  method: "hrr" | "watch";
 }
 
 /** Config HR sufficiente al calcolo zone. */
@@ -27,45 +29,55 @@ export type HrConfig = Pick<Profile, "max_hr" | "resting_hr"> & {
   hr_zone_ranges?: number[] | null;
 };
 
+function watchRanges(configured: number[] | null | undefined): number[] | null {
+  if (!configured || configured.length < 6) return null;
+  const ranges = configured.slice(0, 6);
+  const valid = ranges.every((value, index) =>
+    Number.isFinite(value)
+    && value >= 25
+    && value <= 240
+    && (index === 0 || value > ranges[index - 1]),
+  );
+  return valid ? ranges : null;
+}
+
 /**
- * Calcola le soglie inferiori (bpm) delle 5 zone via HRR/Karvonen.
- * Ritorna null se manca una delle due misure (niente default fisiologici).
+ * Soglie inferiori (bpm) delle 5 zone con la riserva cardiaca (Karvonen).
+ *
+ * Le zone dell'orologio Zepp sono in % della FC massima (50/60/70/80/90%):
+ * con FC a riposo bassa mettono in "Z4" una corsa aerobica (es. 156 bpm con
+ * FC max 196 e riposo 47 è il 73% della riserva). Per analisi, carico e
+ * piani si usa quindi sempre la riserva cardiaca; dall'orologio si prende
+ * solo la FC massima. Le soglie Zepp servono solo se manca la FC a riposo.
+ * Ritorna null se mancano i dati (niente default fisiologici).
  */
 export function hrZones(profile: HrConfig): HrZones | null {
-  const configured = profile.hr_zone_ranges;
-  if (configured && configured.length >= 6) {
-    const ranges = configured.slice(0, 6);
-    const valid = ranges.every((value, index) =>
-      Number.isFinite(value)
-      && value >= 25
-      && value <= 240
-      && (index === 0 || value > ranges[index - 1]),
-    );
-    if (valid) {
-      return {
-        lower: {
-          z1: Math.round(ranges[0]),
-          z2: Math.round(ranges[1]),
-          z3: Math.round(ranges[2]),
-          z4: Math.round(ranges[3]),
-          z5: Math.round(ranges[4]),
-        },
-        max_hr: Math.round(ranges[5]),
-        resting_hr: profile.resting_hr ?? 0,
-      };
-    }
-  }
-  const max_hr = profile.max_hr;
+  const ranges = watchRanges(profile.hr_zone_ranges);
+  const max_hr = ranges ? Math.round(ranges[5]) : profile.max_hr;
   const resting_hr = profile.resting_hr;
-  if (max_hr == null || resting_hr == null) return null;
-  const reserve = max_hr - resting_hr;
-  if (reserve <= 0) return null;
-
-  const lower = {} as Record<ZoneKey, number>;
-  for (const key of ZONE_ORDER) {
-    lower[key] = Math.round(resting_hr + ZONE_LOWER_PCT[key] * reserve);
+  if (max_hr != null && resting_hr != null && max_hr - resting_hr > 0) {
+    const reserve = max_hr - resting_hr;
+    const lower = {} as Record<ZoneKey, number>;
+    for (const key of ZONE_ORDER) {
+      lower[key] = Math.round(resting_hr + ZONE_LOWER_PCT[key] * reserve);
+    }
+    return { lower, max_hr, resting_hr, method: "hrr" };
   }
-  return { lower, max_hr, resting_hr };
+  if (ranges) {
+    return {
+      lower: {
+        z1: Math.round(ranges[0]),
+        z2: Math.round(ranges[1]),
+        z3: Math.round(ranges[2]),
+        z4: Math.round(ranges[3]),
+        z5: Math.round(ranges[4]),
+      },
+      max_hr: Math.round(ranges[5]),
+      resting_hr: resting_hr ?? 0,
+      method: "watch",
+    };
+  }
+  return null;
 }
 
 /**
