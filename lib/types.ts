@@ -349,7 +349,8 @@ export type CoachMemoryCategory =
   | "fatigue"
   | "limitation"
   | "pace_hr"
-  | "long_term";
+  | "long_term"
+  | "guideline";
 
 export interface CoachMessage {
   id: string;

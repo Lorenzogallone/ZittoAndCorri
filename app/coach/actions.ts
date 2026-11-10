@@ -276,9 +276,15 @@ async function runCoachTurn(
           source_message_id: sourceMessageId,
           updated_at: new Date().toISOString(),
         };
-        const { error } = memory.memory_id && activeMemoryIds.has(memory.memory_id)
-          ? await admin.from("coach_memories").update(payload).eq("id", memory.memory_id).eq("user_id", userId)
-          : await admin.from("coach_memories").insert({ user_id: userId, ...payload });
+        const save = (row: typeof payload) => memory.memory_id && activeMemoryIds.has(memory.memory_id)
+          ? admin.from("coach_memories").update(row).eq("id", memory.memory_id).eq("user_id", userId)
+          : admin.from("coach_memories").insert({ user_id: userId, ...row });
+        let { error } = await save(payload);
+        // Database senza la migrazione 0027: la linea guida non va persa,
+        // la salva come ricordo di percorso finché la categoria non esiste.
+        if (error?.code === "23514" && payload.category === "guideline") {
+          ({ error } = await save({ ...payload, category: "long_term", content: `Linea guida: ${payload.content}` }));
+        }
         if (error) throw error;
       }
     }

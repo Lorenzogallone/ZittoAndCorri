@@ -141,6 +141,13 @@ training load (illness, aborted session, duplicate file), restore it, or record
 the perceived effort. Excluded runs stay visible with their reason and can be
 restored from the run page. Requires `supabase/migrations/0026_coach_full_control.sql`.
 
+The coach also keeps **training guidelines** (memory category `guideline`): the
+rules agreed for the current goal or block, such as weekly volume, long-run
+progression, the key session, strength and race week. They override the
+generic methodology in plans, evaluations and chat, expire with `valid_until`,
+and are written, updated or closed from the chat, by the athlete or whoever
+manages the app. Requires `supabase/migrations/0027_coach_guidelines.sql`.
+
 ## Notifications
 
 Push notifications are optional: workout reminder for tomorrow, "analysis

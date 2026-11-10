@@ -16,12 +16,17 @@ const CATEGORY_LABELS: Record<CoachMemoryCategory, string> = {
   limitation: "Limite",
   pace_hr: "Passo e cuore",
   long_term: "Percorso",
+  guideline: "Linea guida",
 };
 
 export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const { confirm, element: confirmSheet } = useConfirm();
+  // Le linee guida dicono come ci si allena adesso: in cima.
+  const sorted = [...memories].sort(
+    (a, b) => Number(b.category === "guideline") - Number(a.category === "guideline"),
+  );
 
   async function clear(includeMemories: boolean) {
     const confirmed = await confirm(
@@ -48,7 +53,7 @@ export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
     <div className="py-4">
       {memories.length ? (
         <ul className="space-y-3">
-          {memories.map((memory) => (
+          {sorted.map((memory) => (
             <li key={memory.id}>
               <p className="text-micro font-medium uppercase tracking-wide text-muted-foreground">
                 {CATEGORY_LABELS[memory.category] ?? memory.category}
