@@ -197,14 +197,26 @@ test("l'audit Zepp non conserva serie grezze, temperatura o dati identificativi"
   assert.match(audit, /resting_hr/);
 });
 
-test("le zone Zepp configurate prevalgono sulle zone HRR derivate", () => {
+test("con FC a riposo nota le zone usano la riserva cardiaca e la FC max dell'orologio", () => {
   const zones = hrZones({
     max_hr: 180,
     resting_hr: 47,
     hr_zone_ranges: [98, 117, 137, 156, 176, 196],
   });
-  assert.deepEqual(zones?.lower, { z1: 98, z2: 117, z3: 137, z4: 156, z5: 176 });
+  // Riserva 149 bpm: 156 bpm è il 73%, cioè Z3 e non la Z4 dell'orologio.
+  assert.deepEqual(zones?.lower, { z1: 47, z2: 136, z3: 151, z4: 166, z5: 181 });
   assert.equal(zones?.max_hr, 196);
+  assert.equal(zones?.method, "hrr");
+});
+
+test("senza FC a riposo restano le soglie dell'orologio", () => {
+  const zones = hrZones({
+    max_hr: null,
+    resting_hr: null,
+    hr_zone_ranges: [98, 117, 137, 156, 176, 196],
+  });
+  assert.deepEqual(zones?.lower, { z1: 98, z2: 117, z3: 137, z4: 156, z5: 176 });
+  assert.equal(zones?.method, "watch");
 });
 
 test("FC riposo, FC massima e zone Zepp prevalgono sui valori manuali", () => {
@@ -218,7 +230,7 @@ test("FC riposo, FC massima e zone Zepp prevalgono sui valori manuali", () => {
   assert.deepEqual(effective.hr_zone_ranges, [98, 117, 137, 156, 176, 196]);
   assert.equal(effective.max_hr_source, "zepp");
   assert.equal(effective.resting_hr_source, "zepp");
-  assert.equal(effective.zones_source, "zepp");
+  assert.equal(effective.zones_source, "derived");
 
   const fallback = resolveEffectiveHrConfig({ max_hr: 180, resting_hr: 60 }, [], false);
   assert.equal(fallback.max_hr_source, "user");

@@ -77,7 +77,8 @@ export function FormStatus({
   const metrics = [
     sleepMin != null ? { label: "Sonno", value: sleepLabel(sleepMin), icon: Moon } : null,
     restingHr != null ? { label: "FC riposo", value: `${restingHr}`, unit: "bpm", icon: HeartPulse } : null,
-    wellness?.hrv != null ? { label: "HRV", value: `${Math.round(wellness.hrv)}`, unit: "ms", icon: Activity } : null,
+    // Intervals.icu salva 0 quando la notte non ha HRV: non è una misura.
+    wellness?.hrv != null && wellness.hrv > 0 ? { label: "HRV", value: `${Math.round(wellness.hrv)}`, unit: "ms", icon: Activity } : null,
     latest?.vo2_max != null ? { label: "VO₂max", value: `${latest.vo2_max}`, icon: Wind } : null,
   ].filter((metric) => metric != null).slice(0, 3);
 

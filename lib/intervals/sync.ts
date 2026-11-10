@@ -15,6 +15,7 @@ import {
 } from "@/lib/intervals/credentials";
 import { describe, importFromIntervals, type IntervalsImportSummary } from "@/lib/intervals/import";
 import { publishPlanToIntervals, type IntervalsPublishSummary } from "@/lib/intervals/publish";
+import { refreshTimeInZones } from "@/lib/ingest/zone-refresh";
 
 export interface IntervalsSyncResult {
   import: IntervalsImportSummary | null;
@@ -41,6 +42,16 @@ export async function runIntervalsSync(
     });
     errors.push(...result.import.errors);
     await markIntervalsSync(userId, { last_import_at: now });
+  }
+
+  // Giro completo (cron del mattino, "Sincronizza ora"): riallinea il tempo in
+  // zona delle corse salvate alle zone correnti, se nel frattempo sono cambiate.
+  if (options.publish !== false) {
+    try {
+      await refreshTimeInZones(createAdminClient(), userId);
+    } catch (error) {
+      errors.push(`Zone: ${describe(error)}`);
+    }
   }
 
   if (options.publish !== false && connection.publish_plan) {

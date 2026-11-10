@@ -52,6 +52,14 @@ export const evaluationResponseSchemaZod = z.object({
   }),
 });
 
+/**
+ * Come leggere carico interno e stato di recupero. Il rapporto di carico è un
+ * indicatore di tendenza, non una diagnosi: senza questa regola il coach
+ * dichiarava "stanco" un atleta con sonno, HRV e FC a riposo ottimi.
+ */
+const LOAD_READING_RULE =
+  "- Fatica e recupero: il carico interno (load7, baseline7, load_ratio, TSB, status) dice solo quanto lavoro hai fatto rispetto alle tue settimane abituali, NON se l'atleta è stanco. Lo stato di recupero lo dicono readiness (recupero Zepp, HRV, sonno, FC a riposo) e le sensazioni dichiarate dall'atleta, e hanno la precedenza. Se readiness è buona e l'atleta dice di stare bene, non definirlo affaticato e non togliere qualità o volume per il solo rapporto di carico: al massimo segnala che la settimana è stata più piena del solito. Il carico interno e il training_load dell'orologio hanno scale diverse: non confrontarli e non scegliere date o valori che confermano la tua tesi. Le zone FC sono calcolate sulla riserva cardiaca (Karvonen): Z2 è la corsa aerobica facile, Z3 aerobico medio, Z4 vicino alla soglia.";
+
 export function buildEvaluationPrompt(
   contextMarkdown: string,
   activityDetail: string,
@@ -70,6 +78,7 @@ export function buildEvaluationPrompt(
     "- Se ci sono segnali sullo stile di corsa (cadenza bassa, deriva ricorrente), dai UN consiglio pratico e concreto su cosa curare la prossima volta (es. su cosa pensare, cosa privilegiare o sacrificare), senza trasformare la valutazione in una lezione.",
     "- Considera la fatica delle attività non di corsa recenti (calcio, bici, palestra…): possono spiegare gambe pesanti o un passo più lento, o motivare un giorno di corsa saltato.",
     "- Cita aderenza e TSB solo in modo qualitativo (es. 'sei un po' affaticato'), e tieni conto delle note dell'atleta e del contesto temporale (es. ripresa dopo uno stop).",
+    LOAD_READING_RULE,
     "- Mantieni coerenza con le tue valutazioni precedenti: non contraddirti e non ripetere sempre le stesse frasi.",
     "",
     "# Contesto atleta",
@@ -191,6 +200,7 @@ export function buildPlanPrompt(
     "Sei il coach di corsa personale di questo atleta: lo segui ciclo dopo ciclo e conosci il percorso fatto finora. Genera un piano di allenamento per le prossime 2 settimane, una review del periodo appena trascorso e l'aggiornamento della tua memoria di coach.",
     "Regole:",
     "- I numeri di forma (passi, volumi, carico TSB, predizioni) sono già calcolati e te li fornisco: usali per dimensionare il piano, ma resta realistico e progressivo.",
+    LOAD_READING_RULE,
     `- Pianifica SOLO date comprese tra ${windowStart} e ${windowEnd} (incluse).`,
     "- Segui fortemente la 'Metodologia di riferimento' qui sotto: struttura della settimana, progressione di volume e lungo, rotazione degli stimoli, formato delle sedute e dei recuperi, tono.",
     "- Non programmare ogni singolo giorno: includi riposo e alterna intensità e volume in modo sensato verso l'obiettivo.",
@@ -373,6 +383,7 @@ export function buildCoachPrompt(contextJson: string, userMessage: string): stri
     "# Come ti comporti",
     "- La 'Metodologia di riferimento' qui sotto (il piano dell'allenatore da cui è nata l'app) è la spina dorsale: struttura della settimana, progressione, tipi di seduta e recuperi. I commenti e le richieste dell'atleta la ADATTANO, non la sostituiscono.",
     "- Prima di rispondere valuta ogni richiesta rispetto a obiettivo, fase, carico recente (training_state, history), sensazioni dichiarate e metodologia.",
+    LOAD_READING_RULE,
     "- Se la richiesta è sensata, falla e spiega in una frase perché funziona.",
     "- Se è sbagliata o rischiosa (troppo volume tutto insieme, due sedute dure di fila, saltare lo scarico, lungo troppo lungo, ripetute a gambe stanche, correre con dolore o malattia), dillo chiaramente, spiega il motivo con i suoi dati e proponi l'alternativa migliore. Se è solo una preferenza a basso rischio e l'atleta insiste, accontentalo dichiarando il compromesso. Su dolore, infortunio o malattia non cedere: proteggi l'atleta.",
     "- Niente complimenti automatici, niente 'ottima idea', niente scuse o frasi di circostanza. Riconosci i progressi solo quando i dati li mostrano.",

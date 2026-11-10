@@ -85,6 +85,36 @@ function sumRange(values: number[], from: number, to: number): number {
   return sum;
 }
 
+/** Settimane complete che formano la baseline. */
+const BASELINE_WEEKS = 4;
+/** Settimane complete minime prima di confrontare il carico con la baseline. */
+const BASELINE_MIN_WEEKS = 3;
+
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+/**
+ * Carico settimanale abituale: mediana delle ultime 4 settimane complete che
+ * precedono i 7 giorni correnti. La mediana non si lascia trascinare in basso
+ * da una settimana anomala (malattia, viaggio, ripresa), che con la media
+ * gonfiava il rapporto e faceva sembrare "affaticato" un carico normale.
+ */
+function baselineWeekly(dailyLoads: number[], index: number): number | null {
+  const weeks: number[] = [];
+  for (let week = 1; week <= BASELINE_WEEKS; week++) {
+    const end = index - 7 * week;
+    const start = end - 6;
+    if (start < 0) break;
+    weeks.push(sumRange(dailyLoads, start, end));
+  }
+  if (weeks.length < BASELINE_MIN_WEEKS) return null;
+  const value = median(weeks);
+  return value > 0 ? value : null;
+}
+
 function statusFromRatio(
   ratio: number | null,
 ): ATLCTLResult["status"] {
@@ -137,9 +167,9 @@ export function sessionLoad(
 
 /**
  * Calcola il carico mobile a 7gg, ATL (media 7gg), CTL (media 42gg) e
- * TSB = CTL - ATL. La baseline confronta i 7 giorni correnti con le 3-6
- * settimane precedenti; prima di 21 giorni precedenti lo stato è esplicitamente
- * "in calibrazione" e non emette allarmi di fatica.
+ * TSB = CTL - ATL. La baseline è la mediana delle 4 settimane complete che
+ * precedono i 7 giorni correnti; con meno di 3 settimane precedenti lo stato è
+ * esplicitamente "in calibrazione" e non emette allarmi di fatica.
  */
 export function computeATLCTL(
   activities: TrainingLoadActivity[],
@@ -196,15 +226,7 @@ export function computeATLCTL(
     const ctl = historyDays < 42 ? atl : load42 / 42;
     const tsb = ctl - atl;
 
-    const baselineDays = Math.min(42, Math.max(0, index - 6));
-    const baselineStart = index - 6 - baselineDays;
-    const baselineEnd = index - 7;
-    const baselineTotal = baselineDays > 0
-      ? sumRange(dailyLoads, baselineStart, baselineEnd)
-      : 0;
-    const baseline7 = baselineDays >= 21 && baselineTotal > 0
-      ? (baselineTotal / baselineDays) * 7
-      : null;
+    const baseline7 = baselineWeekly(dailyLoads, index);
     const loadRatio = baseline7 != null && baseline7 > 0 ? load7 / baseline7 : null;
 
     series.push({

@@ -80,6 +80,32 @@ test("il carico 7gg viene confrontato con una baseline personale", () => {
   assert.equal(fatigued.status, "fatigued");
 });
 
+test("una settimana anomala nella baseline non fa sembrare affaticato un carico normale", () => {
+  // Carichi reali dal 23/9 al 10/11/2026: ripresa (69) e settimana col mal di
+  // gola (112) nelle 6 settimane prima. Con la media la baseline scendeva a 344
+  // e il rapporto a 1,40; con la mediana delle ultime 4 settimane è 1,16.
+  const asOf = "2026-11-10";
+  const runs: Array<[string, number]> = [
+    ["2026-09-24", 69], ["2026-09-30", 182], ["2026-10-02", 48], ["2026-10-03", 230],
+    ["2026-10-05", 133], ["2026-10-12", 112], ["2026-10-16", 79], ["2026-10-18", 295],
+    ["2026-10-20", 83], ["2026-10-22", 140], ["2026-10-25", 275], ["2026-10-28", 129],
+    ["2026-11-01", 287], ["2026-11-04", 117], ["2026-11-05", 59], ["2026-11-08", 304],
+  ];
+  const result = computeATLCTL(
+    runs.map(([date, load]) => ({
+      started_at: `${date}T08:00:00+01:00`,
+      duration_s: load * 30,
+      rpe: 4,
+      sport: "running" as const,
+    })),
+    asOf,
+  );
+  assert.equal(result.load7, 480);
+  assert.equal(result.baseline7, 416);
+  assert.equal(result.load_ratio, 1.16);
+  assert.equal(result.status, "balanced");
+});
+
 test("le attività vicino a mezzanotte usano la data Europe/Rome", () => {
   const result = computeATLCTL([
     { started_at: "2026-08-23T22:30:00Z", duration_s: 1800, rpe: 4, sport: "running" },
