@@ -2,10 +2,10 @@ import { formatDuration } from "@/lib/format";
 import type { TimeInZone, ZoneKey } from "@/lib/types";
 
 const ZONES: Array<{ key: ZoneKey; label: string; color: string }> = [
-  { key: "z1", label: "Recupero", color: "bg-sky-400" },
-  { key: "z2", label: "Fondo", color: "bg-emerald-400" },
-  { key: "z3", label: "Medio", color: "bg-amber-400" },
-  { key: "z4", label: "Soglia", color: "bg-orange-500" },
+  { key: "z1", label: "Facile", color: "bg-sky-400" },
+  { key: "z2", label: "Medio", color: "bg-emerald-400" },
+  { key: "z3", label: "Soglia", color: "bg-amber-400" },
+  { key: "z4", label: "Ripetute", color: "bg-orange-500" },
   { key: "z5", label: "Massimo", color: "bg-rose-500" },
 ];
 

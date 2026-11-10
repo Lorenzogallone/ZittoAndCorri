@@ -1,25 +1,34 @@
-// Funzioni pure: zone HR con metodo HRR (Karvonen). PLAN.md §7.
-// soglia_i = resting + pct_i * (max_hr - resting)
+// Funzioni pure: zone HR sulla riserva cardiaca (Karvonen), con gli stessi
+// tagli delle zone "riserva cardiaca" dell'app Zepp. PLAN.md §7.
+// soglia_i = floor(resting + pct_i * (max_hr - resting))
 
 import type { HrPoint, Profile, TimeInZone, ZoneKey } from "@/lib/types";
 
-/** Estremo inferiore (in % di HRR) di ogni zona. Default PLAN §7. */
-const ZONE_LOWER_PCT: Record<ZoneKey, number> = {
-  z1: 0.0,
-  z2: 0.6,
-  z3: 0.7,
-  z4: 0.8,
-  z5: 0.9,
+/**
+ * Estremo inferiore (in % della riserva cardiaca) di ogni zona: sono i tagli
+ * delle zone Zepp a riserva cardiaca (metodologia Daniels).
+ * Z1 facile (easy e lunghi; sotto il 59% conta comunque come Z1),
+ * Z2 medio / passo maratona, Z3 soglia, Z4 ripetute, Z5 massimale.
+ */
+export const ZONE_LOWER_PCT: Record<ZoneKey, number> = {
+  z1: 0.59,
+  z2: 0.74,
+  z3: 0.84,
+  z4: 0.88,
+  z5: 0.95,
 };
 
 const ZONE_ORDER: ZoneKey[] = ["z1", "z2", "z3", "z4", "z5"];
+
+/** Tagli generici in % della FC max: l'impostazione di fabbrica dell'orologio. */
+const PERCENT_OF_MAX = [0.5, 0.6, 0.7, 0.8, 0.9];
 
 export interface HrZones {
   /** Soglia inferiore in bpm per ogni zona. */
   lower: Record<ZoneKey, number>;
   max_hr: number;
   resting_hr: number;
-  /** hrr = riserva cardiaca (Karvonen); watch = soglie dell'orologio, usate solo senza FC a riposo. */
+  /** hrr = riserva cardiaca calcolata dall'app; watch = zone impostate sull'orologio. */
   method: "hrr" | "watch";
 }
 
@@ -41,43 +50,53 @@ function watchRanges(configured: number[] | null | undefined): number[] | null {
   return valid ? ranges : null;
 }
 
+/** True se le soglie dell'orologio sono quelle di fabbrica in % della FC max. */
+export function isPercentOfMaxRanges(ranges: number[]): boolean {
+  const max = ranges[5];
+  return PERCENT_OF_MAX.every((pct, index) => Math.abs(ranges[index] - pct * max) <= 1.5);
+}
+
 /**
- * Soglie inferiori (bpm) delle 5 zone con la riserva cardiaca (Karvonen).
+ * Soglie inferiori (bpm) delle 5 zone.
  *
- * Le zone dell'orologio Zepp sono in % della FC massima (50/60/70/80/90%):
- * con FC a riposo bassa mettono in "Z4" una corsa aerobica (es. 156 bpm con
- * FC max 196 e riposo 47 è il 73% della riserva). Per analisi, carico e
- * piani si usa quindi sempre la riserva cardiaca; dall'orologio si prende
- * solo la FC massima. Le soglie Zepp servono solo se manca la FC a riposo.
+ * - Zone impostate sull'orologio (riserva cardiaca, soglia del lattato o
+ *   personalizzate): si usano così come sono, così app e orologio coincidono.
+ * - Zone di fabbrica in % della FC max: non si usano, perché ignorano la FC a
+ *   riposo e mettono in "Z4" una corsa aerobica. Si calcola la riserva
+ *   cardiaca con i tagli Zepp, che dà gli stessi numeri della schermata
+ *   "Zona frequenza cardiaca riservata" dell'app Zepp.
+ * - Senza FC a riposo restano le soglie dell'orologio, se ci sono.
  * Ritorna null se mancano i dati (niente default fisiologici).
  */
 export function hrZones(profile: HrConfig): HrZones | null {
   const ranges = watchRanges(profile.hr_zone_ranges);
-  const max_hr = ranges ? Math.round(ranges[5]) : profile.max_hr;
   const resting_hr = profile.resting_hr;
+  const fromWatch = (values: number[]): HrZones => ({
+    lower: {
+      z1: Math.round(values[0]),
+      z2: Math.round(values[1]),
+      z3: Math.round(values[2]),
+      z4: Math.round(values[3]),
+      z5: Math.round(values[4]),
+    },
+    max_hr: Math.round(values[5]),
+    resting_hr: resting_hr ?? 0,
+    method: "watch",
+  });
+
+  if (ranges && !isPercentOfMaxRanges(ranges)) return fromWatch(ranges);
+
+  const max_hr = ranges ? Math.round(ranges[5]) : profile.max_hr;
   if (max_hr != null && resting_hr != null && max_hr - resting_hr > 0) {
     const reserve = max_hr - resting_hr;
     const lower = {} as Record<ZoneKey, number>;
     for (const key of ZONE_ORDER) {
-      lower[key] = Math.round(resting_hr + ZONE_LOWER_PCT[key] * reserve);
+      // Zepp tronca all'intero: floor per avere al battito gli stessi numeri.
+      lower[key] = Math.floor(resting_hr + ZONE_LOWER_PCT[key] * reserve + 1e-9);
     }
     return { lower, max_hr, resting_hr, method: "hrr" };
   }
-  if (ranges) {
-    return {
-      lower: {
-        z1: Math.round(ranges[0]),
-        z2: Math.round(ranges[1]),
-        z3: Math.round(ranges[2]),
-        z4: Math.round(ranges[3]),
-        z5: Math.round(ranges[4]),
-      },
-      max_hr: Math.round(ranges[5]),
-      resting_hr: resting_hr ?? 0,
-      method: "watch",
-    };
-  }
-  return null;
+  return ranges ? fromWatch(ranges) : null;
 }
 
 /**

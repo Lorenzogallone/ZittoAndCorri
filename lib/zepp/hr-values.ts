@@ -1,4 +1,5 @@
 import type { Profile } from "@/lib/types";
+import { hrZones } from "../metrics/zones.ts";
 
 export type HrValueSource = "zepp" | "user" | null;
 
@@ -75,6 +76,12 @@ export function resolveEffectiveHrConfig(
     if (ranges && resting != null) break;
   }
   const zeppMax = ranges ? ranges[ranges.length - 1] : null;
+  const method = hrZones({
+    max_hr: zeppMax ?? manualMax,
+    resting_hr: resting ?? manualRest,
+    hr_zone_ranges: ranges,
+  })?.method;
+  const zonesSource = method === "watch" ? "zepp" : method === "hrr" ? "derived" : null;
 
   return {
     max_hr: zeppMax ?? manualMax,
@@ -82,10 +89,8 @@ export function resolveEffectiveHrConfig(
     hr_zone_ranges: ranges,
     max_hr_source: zeppMax != null ? "zepp" : manualMax == null ? null : "user",
     resting_hr_source: resting != null ? "zepp" : manualRest == null ? null : "user",
-    // Le zone si calcolano con la riserva cardiaca appena FC max e a riposo
-    // sono note; le soglie dell'orologio restano solo come ripiego.
-    zones_source: (zeppMax ?? manualMax) != null && (resting ?? manualRest) != null
-      ? "derived"
-      : ranges ? "zepp" : null,
+    // "zepp" quando l'app usa le zone impostate sull'orologio, "derived" quando
+    // le calcola dalla riserva cardiaca (vedi hrZones).
+    zones_source: zonesSource,
   };
 }
