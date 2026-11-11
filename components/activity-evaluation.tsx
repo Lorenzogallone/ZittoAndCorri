@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { AiThinkingOverlay } from "@/components/ai-thinking-overlay";
 import { useAiJob } from "@/lib/use-ai-job";
+import { useRefreshWhile } from "@/lib/use-app-refresh";
 import type { Evaluation } from "@/lib/types";
 import { AiCost } from "@/components/ai-cost";
 import { readUsage } from "@/lib/ai/usage";
@@ -34,6 +35,12 @@ export function ActivityEvaluation({
   keyConfigured = true,
 }: Props) {
   const [displayedEvaluation, setDisplayedEvaluation] = useState(evaluation);
+  // Dopo un refresh (trascina-giù, analisi finita sul server) vale il dato nuovo.
+  const [serverEvaluation, setServerEvaluation] = useState(evaluation);
+  if (evaluation !== serverEvaluation) {
+    setServerEvaluation(evaluation);
+    if (evaluation) setDisplayedEvaluation(evaluation);
+  }
   const usage = readUsage(displayedEvaluation?.ai_usage);
   const router = useRouter();
   const showEvaluationResult = useCallback((status: AiJobStatus) => {
@@ -51,6 +58,9 @@ export function ActivityEvaluation({
   // Un errore terminale ricevuto dal polling deve prevalere sul valore server
   // iniziale `initialAnalyzing`, che può restare true fino al prossimo refresh.
   const isAnalyzing = pending || (initialAnalyzing && !done && !displayedError);
+  // Analisi avviata dal server (corsa appena importata): nessun job da
+  // interrogare qui, quindi si ricarica la pagina finché non arriva.
+  useRefreshWhile(initialAnalyzing && !pending && !done, 6_000, 40);
   // Con un'analisi già presente la nota resta nascosta finché non serve.
   const [showForm, setShowForm] = useState(false);
   const formVisible = !displayedEvaluation?.summary || showForm;

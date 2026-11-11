@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { pollAiJob, type AiJobStatus } from "@/app/actions/ai-jobs";
 import { clientLog } from "@/lib/clientlog";
+import { APP_REFRESH_EVENT } from "@/lib/use-app-refresh";
 
 const POLL_INTERVAL_MS = 2_000;
 // Oltre questo tempo smettiamo di interrogare il job: la chiamata AI ha un
@@ -105,13 +106,21 @@ export function useAiJob(
     runIdRef.current += 1;
   }, []);
 
+  // Job che il polling sta seguendo adesso (null a polling finito).
+  const pollingJobRef = useRef<string | null>(null);
+
   // Ciclo di polling riusato sia all'avvio sia alla ripresa post-reload.
   const runPoll = useCallback(
     (jobId: string, deadline: number, runId: number) => {
+      pollingJobRef.current = jobId;
+      const finish = () => {
+        if (persistKey) clearPersisted(persistKey);
+        if (pollingJobRef.current === jobId) pollingJobRef.current = null;
+      };
       const poll = async () => {
         if (runId !== runIdRef.current) return;
         if (Date.now() > deadline) {
-          if (persistKey) clearPersisted(persistKey);
+          finish();
           setError("L'AI ci sta mettendo troppo. Riprova tra poco.");
           setPending(false);
           return;
@@ -121,7 +130,7 @@ export function useAiJob(
           if (runId !== runIdRef.current) return;
           clientLog("aijob:poll", { key: persistKey, status: status.status });
           if (status.status === "done") {
-            if (persistKey) clearPersisted(persistKey);
+            finish();
             try {
               if (onDone) await onDone(status);
               else router.refresh();
@@ -134,13 +143,13 @@ export function useAiJob(
             return;
           }
           if (status.status === "error") {
-            if (persistKey) clearPersisted(persistKey);
+            finish();
             setError(status.error ?? "Richiesta AI non riuscita. Riprova.");
             setPending(false);
             return;
           }
           if (status.status === "missing") {
-            if (persistKey) clearPersisted(persistKey);
+            finish();
             setError("Richiesta AI non trovata. Riprova.");
             setPending(false);
             return;
@@ -155,6 +164,23 @@ export function useAiJob(
     },
     [onDone, persistKey, router],
   );
+
+  // Dopo il trascina-giù: se c'è un job salvato che questo hook non sta già
+  // seguendo (polling scaduto o fermato), riprende a interrogarlo.
+  useEffect(() => {
+    if (!persistKey) return;
+    const resume = () => {
+      const saved = readPersisted(persistKey);
+      if (!saved || pollingJobRef.current === saved.jobId) return;
+      const runId = ++runIdRef.current;
+      setError(null);
+      setDone(false);
+      setPending(true);
+      runPoll(saved.jobId, saved.deadline, runId);
+    };
+    window.addEventListener(APP_REFRESH_EVENT, resume);
+    return () => window.removeEventListener(APP_REFRESH_EVENT, resume);
+  }, [persistKey, runPoll]);
 
   // Ripresa al montaggio: se c'è un job persistito ancora valido (es. dopo un
   // reload della PWA su iOS), riattacca il polling e mostra di nuovo l'overlay.
