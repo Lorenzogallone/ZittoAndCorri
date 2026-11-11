@@ -281,8 +281,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
     }
   }
 
-  function submit(event: React.FormEvent) {
-    event.preventDefault();
+  function submit() {
     const text = message.trim();
     if (!text || pending) return;
     setMessage("");
@@ -315,6 +314,15 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
         throw requestError;
       }
     });
+  }
+
+  // Su desktop (tastiera fisica) Invio manda e Maiusc+Invio va a capo; sul
+  // telefono Invio resta un a capo.
+  function sendOnEnter(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    event.preventDefault();
+    submit();
   }
 
   const chat = (
@@ -406,15 +414,17 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
         })}
         {pending && <div className="mr-16 flex items-center gap-2 rounded-2xl rounded-bl-md bg-muted/55 px-4 py-3 text-sm text-muted-foreground"><LoaderCircle size={15} className="animate-spin" /> Sto ragionando sul tuo contesto…</div>}
       </div>
-      <form
-        onSubmit={submit}
+      {/* Niente <form> né name: Safari su iOS tratta il campo unico di un form
+          come un indirizzo da compilare (ignora autocomplete="off") e spegne il
+          correttore. L'invio passa dal pulsante e, con la tastiera fisica, da Invio. */}
+      <div
         className={cn("border-t border-border/60 p-3", isExpanded ? "bg-background" : "bg-card")}
         // A tutto schermo: sopra l'indicatore home, o attaccato alla tastiera quando è aperta.
         style={isExpanded ? { paddingBottom: viewport?.keyboard ? "0.5rem" : "max(env(safe-area-inset-bottom, 0px), 0.75rem)" } : undefined}
       >
-        {!keyConfigured ? <Link href="/settings?tab=coach" className="pressable block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">Aggiungi una chiave Gemini o OpenRouter per parlare con il coach</Link> : <div className="flex items-end gap-2"><Textarea name="message" value={message} onChange={(event) => setMessage(event.target.value)} rows={2} disabled={pending} aria-label="Messaggio per il coach" autoComplete="off" autoCorrect="on" autoCapitalize="sentences" spellCheck placeholder="Es. Sono in vacanza 2 giorni..." className="max-h-32 min-h-12 resize-none" /><Button type="submit" size="icon" disabled={pending || !message.trim()} aria-label="Invia"><Send size={17} /></Button></div>}
+        {!keyConfigured ? <Link href="/settings?tab=coach" className="pressable block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">Aggiungi una chiave Gemini o OpenRouter per parlare con il coach</Link> : <div className="flex items-end gap-2"><label htmlFor="coach-message" className="sr-only">Messaggio per il coach</label><Textarea id="coach-message" value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={sendOnEnter} rows={2} disabled={pending} autoComplete="off" autoCorrect="on" autoCapitalize="sentences" spellCheck data-1p-ignore data-lpignore="true" placeholder="Es. Sono in vacanza 2 giorni..." className="max-h-32 min-h-12 resize-none" /><Button type="button" size="icon" disabled={pending || !message.trim()} aria-label="Invia" onClick={submit}><Send size={17} /></Button></div>}
         {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
-      </form>
+      </div>
     </section>
   );
 

@@ -22,7 +22,7 @@ export interface ProfileViewProps {
   goal: Pick<Goal, "race_name" | "race_date" | "distance_m" | "target_time_s"> | null;
   daysToRace: number | null;
   load: ATLCTLResult;
-  zepp: { latest: ZeppDailyMetric | null; readiness: ZeppReadinessResult | null; stale: boolean; wellness: WellnessDay | null };
+  zepp: { latest: ZeppDailyMetric | null; readiness: ZeppReadinessResult | null; stale: boolean; wellness: WellnessDay | null; lastSync: string | null };
   hasData: boolean;
   formPoints: FormPoint[];
   formTrend: string | null;
@@ -91,6 +91,7 @@ export function ProfileView(props: ProfileViewProps) {
             latest={props.zepp.latest}
             wellness={props.zepp.wellness}
             stale={props.zepp.stale}
+            lastSync={props.zepp.lastSync}
             hasData={props.hasData}
           />
         </div>

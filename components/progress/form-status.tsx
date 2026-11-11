@@ -48,6 +48,18 @@ function ScoreRing({ value, tone }: { value: number; tone: string }) {
   );
 }
 
+/** "oggi alle 07:42", "ieri alle 22:10", "3 nov alle 08:00" (ora di Roma). */
+function syncLabel(iso: string, now = new Date()): string {
+  const day = (date: Date) => date.toLocaleDateString("en-CA", { timeZone: "Europe/Rome" });
+  const date = new Date(iso);
+  const time = date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
+  const yesterday = new Date(now.getTime() - 86_400_000);
+  if (day(date) === day(now)) return `oggi alle ${time}`;
+  if (day(date) === day(yesterday)) return `ieri alle ${time}`;
+  const dayLabel = date.toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "Europe/Rome" });
+  return `${dayLabel} alle ${time}`;
+}
+
 function sleepLabel(minutes: number): string {
   return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, "0")}′`;
 }
@@ -59,6 +71,7 @@ export function FormStatus({
   latest,
   wellness = null,
   stale,
+  lastSync = null,
   hasData,
 }: {
   load: ATLCTLResult;
@@ -67,6 +80,8 @@ export function FormStatus({
   /** Giorno più recente da Intervals.icu: riempie i dati che Zepp non ha. */
   wellness?: WellnessDay | null;
   stale: boolean;
+  /** Ultimo dato arrivato dall'orologio (Zepp o Intervals.icu). */
+  lastSync?: string | null;
   hasData: boolean;
 }) {
   const assisted = readiness?.available && readiness.status ? ZEPP[readiness.status] : null;
@@ -126,6 +141,11 @@ export function FormStatus({
       {stale && (
         <p className="mt-4 text-caption text-muted-foreground">
           L&apos;orologio non si sincronizza da qualche giorno: per ora conto solo le tue attività.
+        </p>
+      )}
+      {lastSync && (
+        <p className={cn("text-micro text-muted-foreground", stale ? "mt-1" : "mt-3")}>
+          Ultima sincronizzazione con l&apos;orologio: {syncLabel(lastSync)}
         </p>
       )}
     </section>

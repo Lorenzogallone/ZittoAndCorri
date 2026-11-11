@@ -284,3 +284,23 @@ test("i dati Zepp vecchi vengono ignorati", async () => {
   assert.equal(config.max_hr_source, "user");
   assert.equal(config.max_hr, 188);
 });
+
+test("easy, lunghi e recuperi: riscaldamento e defaticamento diventano parte della corsa", async () => {
+  const { withoutEasyWarmups } = await import("../lib/plan/easy-steps.ts");
+  const base = { completion_type: "distance" as const, hr_min_bpm: null, hr_max_bpm: 150, variant: null };
+  const steps: WorkoutStep[] = [
+    { ...base, id: "step-1", order: 0, kind: "warmup", label: "Riscaldamento lento", completion_value: 1000, pace_min_s_km: 380, pace_max_s_km: 400 },
+    { ...base, id: "step-2", order: 1, kind: "steady", label: "Easy", completion_value: 5000, pace_min_s_km: 345, pace_max_s_km: 360 },
+    { ...base, id: "step-3", order: 2, kind: "work", label: "Allungo", completion_type: "time", completion_value: 20, pace_min_s_km: null, pace_max_s_km: null, variant: "sprint" },
+    { ...base, id: "step-4", order: 3, kind: "cooldown", label: "Defaticamento", completion_value: 1000, pace_min_s_km: 380, pace_max_s_km: 400 },
+  ];
+  const easy = withoutEasyWarmups("easy", steps);
+  assert.deepEqual(easy.map((step) => [step.kind, step.completion_value, step.pace_min_s_km]), [
+    ["steady", 6000, 345],
+    ["work", 20, null],
+    ["steady", 1000, 345],
+  ]);
+  assert.deepEqual(easy.map((step) => step.id), ["step-1", "step-2", "step-3"]);
+  // Le sedute di qualità restano come sono.
+  assert.equal(withoutEasyWarmups("interval", steps), steps);
+});
