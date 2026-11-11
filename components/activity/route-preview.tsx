@@ -43,7 +43,7 @@ export function RoutePreview({ gps }: { gps: GpsPoint[] }) {
       className="pressable surface relative block w-full overflow-hidden [--press-scale:0.98]"
       aria-label="Apri la mappa del percorso"
     >
-      <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full bg-muted/40">
+      <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full bg-muted/40 lg:h-96">
         {segments.map((segment, index) => (
           <path key={index} d={segment.d} fill="none" stroke={segment.color} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />
         ))}

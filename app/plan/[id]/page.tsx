@@ -110,7 +110,12 @@ export default async function PlannedWorkoutPage({ params }: Props) {
   ].filter(Boolean).join(" · ");
 
   return (
-    <AppShell backHref="/plan" backLabel="Piano" hideTabBar>
+    <AppShell backHref="/plan" backLabel="Piano" hideTabBar wide>
+      {/* Desktop: titolo e grafico della seduta a sinistra, sotto le
+          indicazioni (in due colonne da 2xl); a destra corsa fatta e azioni.
+          Sul telefono i gruppi non generano box (contents): ordine invariato. */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_1fr_auto] lg:gap-x-8 2xl:grid-cols-[minmax(0,1fr)_24rem] 3xl:gap-x-10">
+      <div className="contents lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:block">
       <header className="mb-5">
         <p className="text-sm text-muted-foreground">
           <span className="capitalize">{relativeDayLabel(workout.date, today)}</span> · {TYPE_LABELS[workout.type]}
@@ -125,6 +130,9 @@ export default async function PlannedWorkoutPage({ params }: Props) {
 
       {steps.length > 0 && <WorkoutGraph steps={steps} type={workout.type} className="mb-6" />}
       {hot && <div className="mb-6"><HeatNote heat={hot} referencePace={fastestPace} /></div>}
+      </div>
+
+      <div className="contents lg:col-start-2 lg:row-start-1 lg:block">
 
       {doneActivity && (
         <Link href={`/activities/${doneActivity.id}`} className="pressable animate-enter mb-6 flex items-center gap-3 rounded-2xl bg-primary/[0.07] px-4 py-3">
@@ -139,6 +147,9 @@ export default async function PlannedWorkoutPage({ params }: Props) {
           <ChevronRight size={16} className="text-muted-foreground" />
         </Link>
       )}
+      </div>
+
+      <div className="contents lg:col-start-1 lg:row-start-3 lg:block 2xl:columns-2 2xl:gap-x-8 2xl:[&>*]:break-inside-avoid">
 
       {workout.description && (
         <Section title="Cosa fare e perché">
@@ -168,6 +179,9 @@ export default async function PlannedWorkoutPage({ params }: Props) {
           <p className="mt-2 leading-relaxed text-foreground/90">{WORKOUT_TYPE_GUIDE[workout.type]}</p>
         </details>
       )}
+      </div>
+
+      <div className="contents lg:col-start-2 lg:row-start-2 lg:block lg:self-start">
 
       {workout.status !== "skipped" && (
         <div className="grid grid-cols-2 gap-2">
@@ -187,6 +201,8 @@ export default async function PlannedWorkoutPage({ params }: Props) {
 
       <div className="mt-6">
         <DeleteWorkoutButton workoutId={workout.id} />
+      </div>
+      </div>
       </div>
     </AppShell>
   );

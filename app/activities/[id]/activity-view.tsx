@@ -12,6 +12,7 @@ import { ZonesBar } from "@/components/activity/zones-bar";
 import { IntervalsCard } from "@/components/activity/intervals-card";
 import { ExcludedBanner } from "@/components/activity/excluded-banner";
 import { Stat } from "@/components/stat";
+import { cn } from "@/lib/utils";
 import { hasIntervals } from "@/lib/intervals-text";
 import type { IntervalAnalysis } from "@/lib/metrics/intervals";
 import { activeDuration, formatDuration, formatPace } from "@/lib/format";
@@ -73,8 +74,11 @@ export function ActivityView(props: ActivityViewProps) {
       : null,
   ].filter((tab): tab is { key: string; label: string; content: React.ReactElement } => tab != null);
 
+  const hasZones = props.zones && Object.values(props.zones).some((seconds) => (seconds ?? 0) > 0);
+
   return (
     <AppShell
+      wide
       backHref="/activities"
       backLabel="Corse"
       hideTabBar
@@ -88,8 +92,12 @@ export function ActivityView(props: ActivityViewProps) {
         </div>
       }
     >
-      <div className="stagger space-y-6">
-        <header>
+      {/* Desktop: titolo in alto, poi mappa, ripetute e grafici a sinistra;
+          numeri, zone e commento del coach in una colonna a destra. Sul
+          telefono i gruppi non generano box (contents) e l'ordine resta:
+          titolo, numeri, mappa, ripetute, grafici, zone, commento. */}
+      <div className="stagger flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[auto_auto_1fr] lg:gap-x-8 2xl:grid-cols-[minmax(0,1fr)_28rem] 3xl:grid-cols-[minmax(0,1fr)_32rem] 3xl:gap-x-10">
+        <header className="lg:col-span-2">
           <p className="text-caption text-muted-foreground first-letter:uppercase">{date}</p>
           <p className="mt-1 text-body font-medium">{title}</p>
           <h1 className="mt-1 font-display text-display-xl font-bold tabular-nums tracking-tight">
@@ -113,14 +121,17 @@ export function ActivityView(props: ActivityViewProps) {
           )}
         </header>
 
-        {activity.excluded_at && (
-          <ExcludedBanner activityId={activity.id} excludedAt={activity.excluded_at} reason={activity.excluded_reason ?? null} />
-        )}
+        <div className="stagger contents lg:col-start-2 lg:row-start-2 lg:flex lg:flex-col lg:gap-6">
+          {activity.excluded_at && (
+            <ExcludedBanner activityId={activity.id} excludedAt={activity.excluded_at} reason={activity.excluded_reason ?? null} />
+          )}
 
-        <div className="grid grid-cols-3 gap-x-3 gap-y-5">
-          {stats.map((stat) => <Stat key={stat.label} {...stat} />)}
+          <div className="grid grid-cols-3 gap-x-3 gap-y-5 lg:rounded-2xl lg:bg-card lg:p-5 lg:shadow-[var(--surface-shadow),inset_0_0_0_1px_var(--surface-hairline)]">
+            {stats.map((stat) => <Stat key={stat.label} {...stat} />)}
+          </div>
         </div>
 
+        <div className="stagger contents lg:col-start-1 lg:row-span-2 lg:row-start-2 lg:flex lg:flex-col lg:gap-6">
         {props.gps && props.gps.length >= 2 && <RoutePreview gps={props.gps} />}
 
         {/* Le ripetute misurate includono già il confronto con il passo previsto. */}
@@ -131,15 +142,30 @@ export function ActivityView(props: ActivityViewProps) {
         )}
 
         {charts.length > 0 && (
-          <section className="surface p-4">
-            <SegmentedTabs tabs={charts} />
-          </section>
+          <>
+            {/* Da 2xl i grafici stanno affiancati invece che a schede. */}
+            <section className={cn("surface p-4", charts.length > 1 && "2xl:hidden")}>
+              <SegmentedTabs tabs={charts} />
+            </section>
+            {charts.length > 1 && (
+              <div className="hidden gap-6 2xl:grid 2xl:grid-cols-2 2xl:[&>*:last-child:nth-child(odd)]:col-span-2">
+                {charts.map((chart) => (
+                  <section key={chart.key} className="surface p-4">
+                    <h2 className="mb-4 text-body font-semibold">{chart.label}</h2>
+                    {chart.content}
+                  </section>
+                ))}
+              </div>
+            )}
+          </>
         )}
+        </div>
 
-        {props.zones && Object.values(props.zones).some((seconds) => (seconds ?? 0) > 0) && (
+        <div className="stagger contents lg:col-start-2 lg:row-start-3 lg:flex lg:flex-col lg:gap-6 lg:self-start">
+        {hasZones && (
           <section className="surface p-4">
             <h2 className="mb-3 text-body font-semibold">Zone cardiache</h2>
-            <ZonesBar zones={props.zones} />
+            <ZonesBar zones={props.zones!} />
           </section>
         )}
 
@@ -152,6 +178,7 @@ export function ActivityView(props: ActivityViewProps) {
           initialError={props.evaluationJob?.status === "error" ? props.evaluationJob.error : null}
           keyConfigured={props.keyConfigured}
         />
+        </div>
       </div>
     </AppShell>
   );
