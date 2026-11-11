@@ -33,6 +33,7 @@ export default async function ActivitiesPage() {
   const totals = periodTotals(list.filter((activity) => !activity.excluded_at), romeDay());
   return (
     <AppShell
+      wide
       title="Corse"
       headerAction={
         <Button asChild size="icon-sm" className="rounded-full" aria-label="Registra un'attività">
@@ -51,8 +52,10 @@ export default async function ActivitiesPage() {
           secondary={{ href: "/settings?tab=links", label: "Collega Intervals.icu", icon: Link2 }}
         />
       ) : (
-        <div className="stagger">
-          <TotalsCard periods={totals} />
+        // Desktop: totali fissi a sinistra (su tutte le righe), mesi a destra.
+        // Niente contenitori in più: sul telefono la sequenza animata resta uguale.
+        <div className="stagger lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-x-8 lg:[&>section:nth-of-type(2)]:mt-0">
+          <TotalsCard periods={totals} className="lg:sticky lg:top-0 lg:col-start-1 lg:row-span-[999] lg:row-start-1 lg:self-start" />
           <ActivitiesList activities={list} analyzing={pendingActivityIds} />
         </div>
       )}

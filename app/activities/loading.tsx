@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 // di corse in una card, una riga per uscita.
 export default function Loading() {
   return (
-    <AppShell title="Corse">
+    <AppShell title="Corse" wide>
       <div className="surface mb-8 p-4">
         <Skeleton className="h-8 w-full rounded-xl" />
         <Skeleton className="mt-5 h-3 w-24" />

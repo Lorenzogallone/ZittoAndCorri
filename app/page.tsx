@@ -83,10 +83,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
     : null;
 
   return (
-    <AppShell fill>
-      <div className="flex h-full min-h-0 flex-col">
+    <AppShell fill wide>
+      {/* Desktop: chat a sinistra a tutta altezza, saluto e seduta a destra. */}
+      <div className="flex h-full min-h-0 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_auto_minmax(0,1fr)] lg:gap-x-6">
         {/* Niente titolo grande: l'H1 della home è la prossima seduta. */}
-        <div className="mb-4 flex shrink-0 items-center justify-between gap-3 pt-1">
+        <div className="mb-4 flex shrink-0 items-center justify-between gap-3 pt-1 lg:col-start-2 lg:row-start-1">
           <div className="min-w-0">
             <p className="eyebrow truncate">{greeting()}, {name}</p>
             <p className="mt-1 text-caption text-muted-foreground first-letter:uppercase">{longDate(today)}</p>
@@ -100,14 +101,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
             <Plus size={18} />
           </Link>
         </div>
-        <div className="mb-3 shrink-0">
+        <div className="mb-3 shrink-0 lg:col-start-2 lg:row-start-2">
           <TodayCard next={next} today={today} heat={heat} week={week} race={race} />
         </div>
         {/* Primo uso: tre passi sopra la chat; si nasconde da sola a passi fatti. */}
-        <GettingStarted {...firstRun} aiReady={aiStatus.chat.active !== null} className="mb-3 shrink-0" />
-        <Suspense fallback={<div className="skeleton min-h-0 flex-1 rounded-3xl" />}>
-          <CoachChat key={prompt ?? ""} messages={[...(messagesRes.data ?? [])].reverse()} proposals={proposalsRes.data ?? []} ai={aiStatus.chat} analyzingActivities={pendingEvaluationsRes.count ?? 0} />
-        </Suspense>
+        <GettingStarted {...firstRun} aiReady={aiStatus.chat.active !== null} className="mb-3 shrink-0 lg:col-start-2 lg:row-start-3 lg:self-start" />
+        <div className="flex min-h-0 flex-1 basis-0 flex-col lg:col-start-1 lg:row-span-3 lg:row-start-1">
+          <Suspense fallback={<div className="skeleton min-h-0 flex-1 rounded-3xl" />}>
+            <CoachChat key={prompt ?? ""} messages={[...(messagesRes.data ?? [])].reverse()} proposals={proposalsRes.data ?? []} ai={aiStatus.chat} analyzingActivities={pendingEvaluationsRes.count ?? 0} />
+          </Suspense>
+        </div>
       </div>
     </AppShell>
   );

@@ -104,7 +104,7 @@ function MemoryEditor({
           rows={3}
           maxLength={600}
           autoCapitalize="sentences"
-          placeholder="Es. Riscaldamento e defaticamento al passo easy, oppure camminando."
+          placeholder="Es. Riscaldamento e defaticamento al passo easy, oppure camminando…"
           className="min-h-24"
         />
       </div>

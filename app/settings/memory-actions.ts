@@ -47,13 +47,13 @@ export async function saveCoachMemory(id: string | null, input: MemoryInput): Pr
     // Scritto dall'atleta: certezza piena, valido da oggi.
     : await supabase.from("coach_memories").insert({ ...row, user_id: userId, source: "chat", confidence: 1, valid_from: new Date().toISOString().slice(0, 10) });
   if (error?.code === "23514") return { error: "Questa categoria non è ancora disponibile sul database." };
-  if (error) return { error: "Non sono riuscito a salvare il ricordo." };
+  if (error) return { error: "Non sono riuscito a salvare il ricordo: riprova tra poco." };
   return done();
 }
 
 export async function deleteCoachMemory(id: string): Promise<MemoryActionResult> {
   const { supabase, userId } = await userClient();
   const { error } = await supabase.from("coach_memories").delete().eq("id", id).eq("user_id", userId);
-  if (error) return { error: "Non sono riuscito a eliminare il ricordo." };
+  if (error) return { error: "Non sono riuscito a eliminare il ricordo: riprova tra poco." };
   return done();
 }

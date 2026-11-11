@@ -362,6 +362,8 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
           type="button"
           variant="ghost"
           size="icon-sm"
+          // Su desktop la chat è già grande: niente tutto schermo.
+          className="lg:hidden"
           onClick={() => setIsExpanded((expanded) => !expanded)}
           aria-label={isExpanded ? "Riduci la chat" : "Espandi la chat a tutto schermo"}
           aria-pressed={isExpanded}
