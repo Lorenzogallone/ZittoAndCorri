@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { TextField } from "@/components/ui/text-field";
 import { Label } from "@/components/ui/label";
 import { generalGoalName, type GoalKind } from "@/lib/goals";
 import { DECIMAL_PATTERN, DURATION_PATTERN, parseDecimal } from "@/lib/format";
@@ -99,16 +100,16 @@ export function GoalFields({
       </div>
 
       <div className="grid gap-2.5">
-        <Label htmlFor="race_name">{general ? "Nome obiettivo" : "Nome gara"}</Label>
-        <Input
+        <Label id="race_name-label" htmlFor="race_name">{general ? "Nome obiettivo" : "Nome gara"}</Label>
+        {/* Non un input: Safari proponeva il nome della scheda contatto. */}
+        <TextField
           id="race_name"
+          aria-labelledby="race_name-label"
           name="race_name"
-          type="text"
+          singleLine
           enterKeyHint="next"
-          autoComplete="off"
           placeholder={namePlaceholder}
           defaultValue={defaultName}
-          required={!general}
         />
         {general && (
           <p className="text-xs text-muted-foreground">Opzionale — se vuoto usiamo “{namePlaceholder}”</p>

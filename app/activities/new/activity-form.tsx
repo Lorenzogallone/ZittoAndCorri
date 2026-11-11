@@ -15,7 +15,7 @@ import { handleEnterKeyHint } from "@/lib/form-keys";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { TextField } from "@/components/ui/text-field";
 import {
   Select,
   SelectContent,
@@ -154,8 +154,8 @@ function ManualForm() {
       </div>
 
       <div className="grid gap-2.5">
-        <Label htmlFor="notes">Note</Label>
-        <Textarea id="notes" name="notes" rows={3} placeholder="Gambe ok, fresco." />
+        <Label id="notes-label" htmlFor="notes">Note</Label>
+        <TextField id="notes" aria-labelledby="notes-label" name="notes" rows={3} placeholder="Gambe ok, fresco." />
       </div>
 
       {state.error && (
@@ -265,16 +265,17 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
       </div>
 
       <div className="grid gap-2.5">
-        <Label htmlFor="notes">Note per il coach</Label>
+        <Label id="import-notes-label" htmlFor="notes">Note per il coach</Label>
         {initialData.source_title && (
           <p className="rounded-lg bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             Titolo dal file: <span className="font-medium text-foreground">{initialData.source_title}</span>
           </p>
         )}
-        <Input
+        <TextField
           id="notes"
+          aria-labelledby="import-notes-label"
           name="notes"
-          type="text"
+          singleLine
           enterKeyHint="next"
           defaultValue={initialData.notes ?? ""}
           placeholder="Es. gambe pesanti, caldo, respirazione facile…"

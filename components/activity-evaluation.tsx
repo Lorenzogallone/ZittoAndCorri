@@ -7,7 +7,7 @@ import { Sparkles } from "lucide-react";
 import { startEvaluation } from "@/app/activities/ai-actions";
 import type { AiJobStatus } from "@/app/actions/ai-jobs";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { TextField } from "@/components/ui/text-field";
 import { AiThinkingOverlay } from "@/components/ai-thinking-overlay";
 import { useAiJob } from "@/lib/use-ai-job";
 import type { Evaluation } from "@/lib/types";
@@ -127,11 +127,12 @@ export function ActivityEvaluation({
           className="mt-4 flex flex-col gap-2.5"
         >
           <input type="hidden" name="activity_id" value={activityId} />
-          <label htmlFor="ai-notes" className="text-xs font-medium text-muted-foreground">
+          <label id="ai-notes-label" htmlFor="ai-notes" className="text-xs font-medium text-muted-foreground">
             Come è andata?
           </label>
-          <Textarea
+          <TextField
             id="ai-notes"
+            aria-labelledby="ai-notes-label"
             name="notes"
             rows={3}
             defaultValue={displayedEvaluation ? "" : initialNotes ?? ""}

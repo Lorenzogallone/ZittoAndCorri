@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import { Check, LoaderCircle, Maximize2, Minimize2, Send, Sparkles, SquarePen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { TextField } from "@/components/ui/text-field";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { cn } from "@/lib/utils";
 import { tap } from "@/lib/haptics";
@@ -318,7 +318,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
 
   // Su desktop (tastiera fisica) Invio manda e Maiusc+Invio va a capo; sul
   // telefono Invio resta un a capo.
-  function sendOnEnter(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+  function sendOnEnter(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
     if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
     event.preventDefault();
@@ -416,15 +416,16 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
         })}
         {pending && <div className="mr-16 flex items-center gap-2 rounded-2xl rounded-bl-md bg-muted/55 px-4 py-3 text-sm text-muted-foreground"><LoaderCircle size={15} className="animate-spin" /> Sto ragionando sul tuo contesto…</div>}
       </div>
-      {/* Niente <form> né name: Safari su iOS tratta il campo unico di un form
-          come un indirizzo da compilare (ignora autocomplete="off") e spegne il
-          correttore. L'invio passa dal pulsante e, con la tastiera fisica, da Invio. */}
+      {/* Il campo è un TextField (contenteditable), non un textarea: il
+          riempimento automatico di Safari su iOS ignora autocomplete="off" e
+          proponeva l'indirizzo di casa. L'invio passa dal pulsante e, con la
+          tastiera fisica, da Invio. */}
       <div
         className={cn("border-t border-border/60 p-3", isExpanded ? "bg-background" : "bg-card")}
         // A tutto schermo: sopra l'indicatore home, o attaccato alla tastiera quando è aperta.
         style={isExpanded ? { paddingBottom: viewport?.keyboard ? "0.5rem" : "max(env(safe-area-inset-bottom, 0px), 0.75rem)" } : undefined}
       >
-        {!keyConfigured ? <Link href="/settings?tab=coach" className="pressable block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">Aggiungi una chiave Gemini o OpenRouter per parlare con il coach</Link> : <div className="flex items-end gap-2"><label htmlFor="coach-message" className="sr-only">Messaggio per il coach</label><Textarea id="coach-message" value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={sendOnEnter} rows={2} disabled={pending} autoComplete="off" autoCorrect="on" autoCapitalize="sentences" spellCheck data-1p-ignore data-lpignore="true" placeholder="Es. Sono in vacanza 2 giorni..." className="max-h-32 min-h-12 resize-none" /><Button type="button" size="icon" disabled={pending || !message.trim()} aria-label="Invia" onClick={submit}><Send size={17} /></Button></div>}
+        {!keyConfigured ? <Link href="/settings?tab=coach" className="pressable block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">Aggiungi una chiave Gemini o OpenRouter per parlare con il coach</Link> : <div className="flex items-end gap-2"><TextField aria-label="Scrivi al coach" value={message} onValueChange={setMessage} onKeyDown={sendOnEnter} rows={1} disabled={pending} placeholder="Es. Sono in vacanza 2 giorni…" className="max-h-32" /><Button type="button" size="icon" disabled={pending || !message.trim()} aria-label="Invia" onClick={submit}><Send size={17} /></Button></div>}
         {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
       </div>
     </section>
