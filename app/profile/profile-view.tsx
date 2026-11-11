@@ -9,7 +9,7 @@ import { WeekBars, type WeekBar } from "@/components/charts/week-bars";
 import { Predictions } from "@/components/progress/predictions";
 import { Records } from "@/components/progress/records";
 import { PaceHistory, type PaceSession } from "@/components/progress/pace-history";
-import { FormStatus } from "@/components/progress/form-status";
+import { FormStatus, type FormHighlight } from "@/components/progress/form-status";
 import { formatDistance, formatDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { PersonalRecord } from "@/lib/metrics/best-efforts";
@@ -25,6 +25,8 @@ export interface ProfileViewProps {
   load: ATLCTLResult;
   zepp: { latest: ZeppDailyMetric | null; readiness: ZeppReadinessResult | null; stale: boolean; wellness: WellnessDay | null; lastSync: string | null };
   hasData: boolean;
+  /** VO₂max, carico e sonno in evidenza, con il verso del trend. */
+  highlights: FormHighlight[];
   formPoints: FormPoint[];
   formTrend: string | null;
   weeks: WeekBar[];
@@ -129,6 +131,8 @@ export function ProfileView(props: ProfileViewProps) {
             stale={props.zepp.stale}
             lastSync={props.zepp.lastSync}
             hasData={props.hasData}
+            highlights={props.highlights}
+            href="/profile/forma"
           />
         </div>
 

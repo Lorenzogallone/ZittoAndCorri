@@ -304,3 +304,44 @@ test("easy, lunghi e recuperi: riscaldamento e defaticamento diventano parte del
   // Le sedute di qualità restano come sono.
   assert.equal(withoutEasyWarmups("interval", steps), steps);
 });
+
+// ── Stato di forma: trend del corpo ─────────────────────────────────────────
+import { aerobicEfficiency, bodyTrends, trendFor } from "../lib/metrics/body-trends.ts";
+
+test("trend del corpo: confronta 2 settimane con 4 settimane prima", () => {
+  const today = "2026-11-11";
+  const days = (from: number, to: number, value: (age: number) => number) =>
+    Array.from({ length: to - from + 1 }, (_, i) => ({ date: addDays(today, -(from + i)), value: value(from + i) }));
+  const rhr = trendFor("restingHr", [...days(0, 13, () => 48), ...days(28, 41, () => 52)], today);
+  assert.equal(rhr.direction, "better");
+  assert.match(rhr.sentence, /^In miglioramento, da 52 a 48 bpm/);
+  const vo2 = trendFor("vo2max", [...days(0, 3, () => 44.2), ...days(30, 31, () => 44)], today);
+  assert.equal(vo2.direction, "stable");
+  const sleep = trendFor("sleep", [...days(0, 13, () => 380), ...days(28, 41, () => 430)], today);
+  assert.equal(sleep.direction, "worse");
+  assert.match(sleep.sentence, /da 7h 10′ a 6h 20′/);
+  const few = trendFor("hrv", days(0, 2, () => 60), today);
+  assert.equal(few.direction, null);
+  assert.match(few.sentence, /Servono ancora/);
+  const load = trendFor("load7", [...days(0, 0, () => 300), ...days(30, 30, () => 200)], today);
+  assert.equal(load.direction, "up");
+});
+
+test("trend del corpo: Zepp prima di Intervals, HRV 0 scartata, efficienza solo nelle corse facili", () => {
+  const today = "2026-11-11";
+  const zeppDay = { date: today, vo2_max: 45, training_load: null, sleep_total_min: null, sleep_deep_min: null, sleep_score: null, resting_hr: 50, stress_avg: null, spo2_avg: null, steps: null, pai_total: null };
+  const wellnessDay = { date: today, sleep_secs: 25_200, sleep_score: null, resting_hr: 55, hrv: 0, stress: null, spo2: null, steps: null, vo2max: 40, weight_kg: null };
+  const trends = bodyTrends({ today, zepp: [zeppDay], wellness: [wellnessDay], runs: [], load: [] });
+  assert.equal(trends.vo2max.latest?.value, 45);
+  assert.equal(trends.restingHr.latest?.value, 50);
+  assert.equal(trends.sleep.latest?.value, 420);
+  assert.equal(trends.hrv.series.length, 0);
+  const runs = [
+    { started_at: "2026-11-10T07:00:00Z", sport: "running", type: "easy", distance_m: 8000, moving_time_s: 2880, duration_s: 2900, avg_hr: 140 },
+    { started_at: "2026-11-09T07:00:00Z", sport: "running", type: "interval", distance_m: 8000, moving_time_s: 2400, duration_s: 2900, avg_hr: 160 },
+    { started_at: "2026-11-08T07:00:00Z", sport: "running", type: "easy", distance_m: 2000, moving_time_s: 600, duration_s: 600, avg_hr: 140 },
+  ];
+  const efficiency = aerobicEfficiency(runs);
+  assert.equal(efficiency.length, 1);
+  assert.ok(Math.abs(efficiency[0].value - (8000 / 48) / 140) < 1e-9);
+});
