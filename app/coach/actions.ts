@@ -18,6 +18,7 @@ import { generalGoalName } from "@/lib/goals";
 import { aiErrorMessage, generateAi } from "@/lib/ai/llm";
 import { WORKOUT_TYPES, type CoachMessage, type ProposedWorkout } from "@/lib/types";
 import { normalizeWorkoutSteps } from "@/lib/workout-steps";
+import { withoutEasyWarmups } from "@/lib/plan/easy-steps";
 import { insertPlanProposal } from "@/lib/plan/proposals";
 import { diffAgainstCalendar } from "@/lib/plan/proposal-calendar";
 import { NEW_SESSION } from "@/lib/coach-session";
@@ -47,7 +48,7 @@ function cleanWorkout(
   const positive = (value: number | null) =>
     typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.round(value) : null;
   const hr = positive(workout.target_hr_bpm);
-  const workoutSteps = normalizeWorkoutSteps(workout.workout_steps);
+  const workoutSteps = withoutEasyWarmups(workout.type, normalizeWorkoutSteps(workout.workout_steps));
   if (!workoutSteps.length) return null;
   return {
     goal_id: goalId,

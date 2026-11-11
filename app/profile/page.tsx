@@ -49,6 +49,16 @@ function formTrend(series: Array<{ date: string; ctl: number }>): string | null 
   return "La forma è stabile rispetto a un mese fa.";
 }
 
+/** Ultimo dato arrivato dall'orologio: sync Zepp o giorno di wellness (Intervals.icu). */
+function lastWatchSync(zepp: Awaited<ReturnType<typeof getZeppDashboard>>): string | null {
+  const times = [
+    zepp.connection?.enabled ? zepp.connection.last_sync_at : null,
+    zepp.latest?.captured_at ?? null,
+    zepp.wellness[0]?.captured_at ?? null,
+  ].filter((value): value is string => Boolean(value) && !Number.isNaN(Date.parse(value!)));
+  return times.length ? times.reduce((a, b) => (Date.parse(a) >= Date.parse(b) ? a : b)) : null;
+}
+
 export default async function ProfilePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -131,7 +141,7 @@ export default async function ProfilePage() {
       goal={activeGoal ?? null}
       daysToRace={daysToRace}
       load={load}
-      zepp={{ latest: zepp.latest, readiness: zepp.readiness, stale: zepp.stale, wellness: zepp.wellness[0] ?? null }}
+      zepp={{ latest: zepp.latest, readiness: zepp.readiness, stale: zepp.stale, wellness: zepp.wellness[0] ?? null, lastSync: lastWatchSync(zepp) }}
       hasData={list.length > 0 || zepp.latest != null || zepp.wellness.length > 0}
       formPoints={formPoints}
       formTrend={formTrend(load.series)}
