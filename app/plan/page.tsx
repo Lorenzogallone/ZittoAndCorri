@@ -99,7 +99,7 @@ export default async function PlanPage({ searchParams }: Props) {
   const rangeEmpty = !workouts?.length && !activities?.length;
 
   return (
-    <AppShell title="Piano" headerAction={<AdaptSheet />}>
+    <AppShell title="Piano" headerAction={<AdaptSheet />} wide>
       {adaptationUntil && (
         <AdaptationBanner until={adaptationUntil} paused={(adapted ?? []).some((row) => row.status === "skipped")} />
       )}
@@ -170,7 +170,7 @@ export default async function PlanPage({ searchParams }: Props) {
           </div>
 
           {view === "weeks" ? (
-            <>
+            <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
               {[days.slice(0, 7), days.slice(7, 14)].map((week, index) => {
                 const isCurrent = week[0].date === thisMonday;
                 const isNext = week[0].date === addDays(thisMonday, 7);
@@ -184,7 +184,7 @@ export default async function PlanPage({ searchParams }: Props) {
                   />
                 );
               })}
-            </>
+            </div>
           ) : (
             <div className="surface p-4">
               <PlanCalendar days={days} month={month} today={today} raceDate={goal?.race_date ?? null} />
@@ -194,7 +194,7 @@ export default async function PlanPage({ searchParams }: Props) {
       )}
 
       {!nothingPlanned && (
-        <Button asChild variant="outline" className="mt-2 w-full">
+        <Button asChild variant="outline" className="mt-2 w-full lg:w-auto">
           <Link href="/plan/new">
             <Plus size={16} /> Aggiungi una seduta
           </Link>

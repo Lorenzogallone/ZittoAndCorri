@@ -25,7 +25,7 @@ export function TabBar() {
   return (
     // Resta l'ultimo elemento della colonna di AppShell (niente position:
     // fixed): cambia solo l'aspetto, una pillola che galleggia sullo sfondo.
-    <nav className="z-50 shrink-0 bg-background" role="tablist">
+    <nav className="z-50 shrink-0 bg-background lg:hidden" role="tablist">
       {/* Solo una piccola parte della safe-area in basso: la barra siede vicino
           alla home-indicator senza il gap dell'intera env(safe-area-inset-bottom). */}
       <div

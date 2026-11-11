@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 // la settimana corrente in una card, un giorno per riga.
 export default function Loading() {
   return (
-    <AppShell title="Piano">
+    <AppShell title="Piano" wide>
       <div className="mb-8">
         <Skeleton className="h-7 w-48" />
         <Skeleton className="mb-4 mt-2 h-3 w-40" />

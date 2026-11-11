@@ -27,13 +27,13 @@ function comparison(period: PeriodTotals): { text: string; trend: "up" | "down" 
 const TREND_ICONS = { up: ArrowUpRight, down: ArrowDownRight, flat: ArrowRight } as const;
 
 /** Quanto hai corso: settimana, mese, anno e da sempre. */
-export function TotalsCard({ periods, initial = "month" }: { periods: PeriodTotals[]; initial?: TotalsPeriodKey }) {
+export function TotalsCard({ periods, initial = "month", className }: { periods: PeriodTotals[]; initial?: TotalsPeriodKey; className?: string }) {
   const [active, setActive] = useState<TotalsPeriodKey>(initial);
   const period = periods.find((candidate) => candidate.key === active) ?? periods[0];
   const note = comparison(period);
   const TrendIcon = TREND_ICONS[note?.trend ?? "flat"];
   return (
-    <section className="surface mb-8 p-4">
+    <section className={cn("surface mb-8 p-4", className)}>
       <Segmented
         size="sm"
         ariaLabel="Periodo"

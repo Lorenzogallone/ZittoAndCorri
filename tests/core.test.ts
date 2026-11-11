@@ -316,7 +316,7 @@ test("i riepiloghi includono corsa, camminata ed escursione", () => {
   // visibili come dato a parte nel riepilogo della pagina attività.
   const activities = readFileSync(new URL("../app/activities/page.tsx", import.meta.url), "utf8");
   const totals = readFileSync(new URL("../lib/metrics/totals.ts", import.meta.url), "utf8");
-  assert.match(activities, /<TotalsCard periods=\{totals\} \/>/);
+  assert.match(activities, /<TotalsCard periods=\{totals\}[^>]*\/>/);
   assert.match(totals, /activity\.sport === "walking" \|\| activity\.sport === "hiking"/);
 });
 

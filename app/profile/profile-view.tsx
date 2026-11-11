@@ -69,6 +69,7 @@ export function ProfileView(props: ProfileViewProps) {
 
   return (
     <AppShell
+      wide
       title="Profilo"
       headerAction={
         <Button asChild variant="ghost" size="icon-sm" className="-mr-2">
@@ -78,7 +79,11 @@ export function ProfileView(props: ProfileViewProps) {
         </Button>
       }
     >
-      <div className="stagger">
+      {/* Desktop: persona, stato di forma e obiettivo in una colonna fissa a
+          sinistra, grafici a destra. Sul telefono il contenitore della colonna
+          non genera box (contents) e la sequenza animata resta la stessa. */}
+      <div className="stagger lg:grid lg:grid-cols-[24rem_minmax(0,1fr)] lg:gap-x-8">
+        <div className="stagger contents lg:sticky lg:top-0 lg:col-start-1 lg:row-span-[999] lg:row-start-1 lg:block lg:self-start">
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-body font-bold text-primary-foreground">{props.initials}</div>
           <p className="min-w-0 truncate font-display text-heading font-bold tracking-tight">{props.displayName}</p>
@@ -119,6 +124,7 @@ export function ProfileView(props: ProfileViewProps) {
           )}
           <ChevronRight size={16} className="shrink-0 text-muted-foreground/60" />
         </Link>
+        </div>
 
         {trends.length === 0 && performance.length === 0 && (
           <p className="px-1 text-caption text-muted-foreground">
