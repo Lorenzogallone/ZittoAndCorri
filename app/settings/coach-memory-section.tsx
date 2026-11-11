@@ -6,7 +6,7 @@ import { Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { TextField } from "@/components/ui/text-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useConfirm } from "@/components/ui/confirm-sheet";
 import { clearCoachHistory } from "@/app/coach/actions";
@@ -96,14 +96,14 @@ function MemoryEditor({
         </Select>
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor={`memory-content-${fieldId}`}>Cosa deve ricordare</Label>
-        <Textarea
+        <Label id={`memory-content-${fieldId}-label`} htmlFor={`memory-content-${fieldId}`}>Cosa deve ricordare</Label>
+        <TextField
           id={`memory-content-${fieldId}`}
+          aria-labelledby={`memory-content-${fieldId}-label`}
           value={draft.content}
-          onChange={(event) => setDraft({ ...draft, content: event.target.value })}
+          onValueChange={(content) => setDraft({ ...draft, content })}
           rows={3}
           maxLength={600}
-          autoCapitalize="sentences"
           placeholder="Es. Riscaldamento e defaticamento al passo easy, oppure camminando…"
           className="min-h-24"
         />

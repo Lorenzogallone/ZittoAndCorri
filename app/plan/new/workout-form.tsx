@@ -6,7 +6,7 @@ import { WORKOUT_TYPES } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { TextField } from "@/components/ui/text-field";
 import {
   Select,
   SelectContent,
@@ -150,9 +150,10 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
       </div>
 
       <div className="grid gap-2.5">
-        <Label htmlFor="description">Note</Label>
-        <Textarea
+        <Label id="description-label" htmlFor="description">Note</Label>
+        <TextField
           id="description"
+          aria-labelledby="description-label"
           name="description"
           rows={3}
           placeholder="10km a ritmo facile, HR < 145."
@@ -160,9 +161,10 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
       </div>
 
       <div className="grid gap-2.5">
-        <Label htmlFor="focus">Focus (opzionale)</Label>
-        <Textarea
+        <Label id="focus-label" htmlFor="focus">Focus (opzionale)</Label>
+        <TextField
           id="focus"
+          aria-labelledby="focus-label"
           name="focus"
           rows={2}
           placeholder="Es. resta sotto la HR anche se il passo cala; pensa alla cadenza."

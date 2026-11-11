@@ -11,7 +11,7 @@ import { handleEnterKeyHint } from "@/lib/form-keys";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { TextField } from "@/components/ui/text-field";
 import {
   Select,
   SelectContent,
@@ -218,9 +218,10 @@ export function EditActivityForm({ activity }: Props) {
         </div>
 
         <div className="grid gap-2.5">
-          <Label htmlFor="notes">Note / Nome attività</Label>
-          <Textarea
+          <Label id="notes-label" htmlFor="notes">Note / Nome attività</Label>
+          <TextField
             id="notes"
+            aria-labelledby="notes-label"
             name="notes"
             rows={3}
             defaultValue={activity.notes ?? ""}

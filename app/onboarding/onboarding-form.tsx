@@ -4,6 +4,7 @@ import { useActionState, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TextField } from "@/components/ui/text-field";
 import { Label } from "@/components/ui/label";
 import { RunnerMark } from "@/components/runner-mark";
 import { cn } from "@/lib/utils";
@@ -89,7 +90,7 @@ export function OnboardingForm() {
           <h1 className="font-display text-display font-bold tracking-tight">Il tuo obiettivo</h1>
           <p className="mt-2 text-body text-muted-foreground">Facoltativo: non serve una gara. Puoi indicare solo la distanza su cui vuoi migliorare oppure una gara con la sua data.</p>
         </div>
-        <div className="space-y-2"><Label htmlFor="race_name">Nome gara (opzionale)</Label><Input id="race_name" name="race_name" enterKeyHint="next" autoComplete="off" placeholder="Vuoto = obiettivo generico" /></div>
+        <div className="space-y-2"><Label id="race_name-label" htmlFor="race_name">Nome gara (opzionale)</Label><TextField id="race_name" aria-labelledby="race_name-label" name="race_name" singleLine enterKeyHint="next" placeholder="Vuoto = obiettivo generico" /></div>
         <div className="space-y-2">
           <Label id="distance_label">Distanza</Label>
           <input type="hidden" name="distance_km" value={distanceKm} />
