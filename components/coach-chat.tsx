@@ -397,7 +397,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
           if (isSessionMarker(item)) return <SessionDivider key={item.id} item={item} />;
           const proposal = item.plan_proposal_id ? proposalsById.get(item.plan_proposal_id) : null;
           return (
-            <div key={item.id} className={item.role === "user" ? "ml-10" : "mr-3"}>
+            <div key={item.id} className={item.role === "user" ? "ml-10 lg:ml-[max(2.5rem,calc(100%-42rem))]" : "mr-3 lg:max-w-3xl"}>
               <div className={item.role === "user" ? "rounded-2xl rounded-br-md bg-primary px-4 py-3 text-sm text-primary-foreground" : "rounded-2xl rounded-bl-md bg-muted/55 px-4 py-3 text-sm leading-relaxed"}>
                 {item.role === "assistant"
                   ? <MarkdownMessage>{item.content}</MarkdownMessage>

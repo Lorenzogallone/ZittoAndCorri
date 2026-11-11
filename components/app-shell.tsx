@@ -33,7 +33,9 @@ export function AppShell({
 }: AppShellProps) {
   // Da lg in su: barra laterale al posto della tab bar e colonna più larga.
   // Tutte le classi desktop hanno il prefisso lg:, così il telefono resta com'è.
-  const width = wide ? "lg:max-w-6xl" : "lg:max-w-3xl";
+  // Le pagine "wide" crescono con lo schermo: 1152px, poi 1280px da 2xl,
+  // poi 1792px sui monitor grandi (3xl), dove le griglie passano a 3 colonne.
+  const width = wide ? "lg:max-w-6xl 2xl:max-w-7xl 3xl:max-w-8xl" : "lg:max-w-3xl";
   return (
     // Colonna a tutta altezza: solo il contenuto scorre, tab bar sempre in
     // fondo. La safe-area in alto è uno spazio pieno (niente vetro sfocato):

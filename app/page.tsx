@@ -7,6 +7,8 @@ import { AppShell } from "@/components/app-shell";
 import { CoachChat } from "@/components/coach-chat";
 import { TodayCard } from "@/components/home/today-card";
 import { GettingStarted } from "@/components/home/getting-started";
+import { GoalCard, UpcomingCard } from "@/components/home/desktop-cards";
+import { trainingPhases } from "@/lib/plan/phases";
 import { addDays, daysBetween, mondayOf, romeDay, romeHour } from "@/lib/local-date";
 import { buildDays } from "@/lib/plan/day-status";
 import { heatForDates } from "@/lib/weather";
@@ -54,8 +56,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   const monday = mondayOf(today);
   const sunday = addDays(monday, 6);
   const [goalRes, nextRes, weekPlanRes, weekActivitiesRes, messagesRes, proposalsRes, aiStatus, pendingEvaluationsRes, firstRun] = await Promise.all([
-    supabase.from("goals").select("race_name, race_date").eq("user_id", user.id).eq("is_active", true).maybeSingle<Pick<Goal, "race_name" | "race_date">>(),
-    supabase.from("planned_workouts").select("*").eq("user_id", user.id).eq("status", "planned").gte("date", today).order("date").order("created_at").limit(1).maybeSingle<PlannedWorkout>(),
+    supabase.from("goals").select("race_name, race_date, distance_m, target_time_s, created_at").eq("user_id", user.id).eq("is_active", true).maybeSingle<Pick<Goal, "race_name" | "race_date" | "distance_m" | "target_time_s" | "created_at">>(),
+    // La prima è la seduta in evidenza; le altre vanno nella colonna desktop.
+    supabase.from("planned_workouts").select("*").eq("user_id", user.id).eq("status", "planned").gte("date", today).order("date").order("created_at").limit(6).returns<PlannedWorkout[]>(),
     supabase.from("planned_workouts").select("*").eq("user_id", user.id).gte("date", monday).lte("date", sunday).returns<PlannedWorkout[]>(),
     supabase.from("activities").select("started_at, sport, distance_m").eq("user_id", user.id).is("excluded_at", null).gte("started_at", `${addDays(monday, -1)}T12:00:00`).lte("started_at", `${addDays(sunday, 1)}T12:00:00`).returns<Array<Pick<Activity, "started_at" | "sport" | "distance_m">>>(),
     supabase.from("coach_messages").select("*").eq("user_id", user.id).in("kind", ["chat", "plan_proposal", "status"]).order("created_at", { ascending: false }).limit(60).returns<CoachMessage[]>(),
@@ -71,8 +74,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
       ? user.user_metadata.name
       : null;
   const name = authName?.split(" ")[0] ?? user.email?.split("@")[0] ?? "Runner";
-  const next = nextRes.data;
+  const [next = null, ...upcoming] = nextRes.data ?? [];
   const goal = goalRes.data;
+  const phases = goal ? trainingPhases({ race_date: goal.race_date, distance_m: goal.distance_m, start_date: romeDay(goal.created_at), today }) : null;
   const week = buildDays(monday, 7, today, weekPlanRes.data ?? [], weekActivitiesRes.data ?? []);
   const heat = next && next.type !== "cross" && daysBetween(today, next.date) <= 2
     ? (await heatForDates(supabase, user.id, [next.date])).get(next.date) ?? null
@@ -84,29 +88,41 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
 
   return (
     <AppShell fill wide>
-      {/* Desktop: chat a sinistra a tutta altezza, saluto e seduta a destra. */}
-      <div className="flex h-full min-h-0 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_auto_minmax(0,1fr)] lg:gap-x-6">
-        {/* Niente titolo grande: l'H1 della home è la prossima seduta. */}
-        <div className="mb-4 flex shrink-0 items-center justify-between gap-3 pt-1 lg:col-start-2 lg:row-start-1">
-          <div className="min-w-0">
-            <p className="eyebrow truncate">{greeting()}, {name}</p>
-            <p className="mt-1 text-caption text-muted-foreground first-letter:uppercase">{longDate(today)}</p>
+      {/* Desktop: chat a sinistra a tutta altezza, colonna laterale a destra
+          (saluto, seduta, settimana, poi le sedute successive e l'obiettivo),
+          che sui monitor grandi si apre in due colonne. Sul telefono i
+          contenitori della colonna non generano box (contents): l'ordine resta
+          saluto, seduta, primi passi, chat. */}
+      <div className="flex h-full min-h-0 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[minmax(0,1fr)] lg:gap-x-6 3xl:grid-cols-[minmax(0,1fr)_45.5rem]">
+        <aside className="contents lg:col-start-2 lg:row-start-1 lg:-m-2 lg:flex lg:min-h-0 lg:flex-col lg:overflow-y-auto lg:p-2 3xl:grid 3xl:grid-cols-2 3xl:content-start 3xl:items-start 3xl:gap-x-6">
+          {/* Niente titolo grande: l'H1 della home è la prossima seduta. */}
+          <div className="mb-4 flex shrink-0 items-center justify-between gap-3 pt-1 3xl:col-span-2">
+            <div className="min-w-0">
+              <p className="eyebrow truncate">{greeting()}, {name}</p>
+              <p className="mt-1 text-caption text-muted-foreground first-letter:uppercase">{longDate(today)}</p>
+            </div>
+            <Link
+              href="/activities/new"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-90"
+              aria-label="Registra un'attività"
+              title="Registra un'attività"
+            >
+              <Plus size={18} />
+            </Link>
           </div>
-          <Link
-            href="/activities/new"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-90"
-            aria-label="Registra un'attività"
-            title="Registra un'attività"
-          >
-            <Plus size={18} />
-          </Link>
-        </div>
-        <div className="mb-3 shrink-0 lg:col-start-2 lg:row-start-2">
-          <TodayCard next={next} today={today} heat={heat} week={week} race={race} />
-        </div>
-        {/* Primo uso: tre passi sopra la chat; si nasconde da sola a passi fatti. */}
-        <GettingStarted {...firstRun} aiReady={aiStatus.chat.active !== null} className="mb-3 shrink-0 lg:col-start-2 lg:row-start-3 lg:self-start" />
-        <div className="flex min-h-0 flex-1 basis-0 flex-col lg:col-start-1 lg:row-span-3 lg:row-start-1">
+          <div className="contents 3xl:block">
+            <div className="mb-3 shrink-0">
+              <TodayCard next={next} today={today} heat={heat} week={week} race={race} />
+            </div>
+            {/* Primo uso: tre passi sopra la chat; si nasconde da sola a passi fatti. */}
+            <GettingStarted {...firstRun} aiReady={aiStatus.chat.active !== null} className="mb-3 shrink-0" />
+          </div>
+          <div className="hidden shrink-0 space-y-3 lg:block">
+            <UpcomingCard workouts={upcoming} today={today} />
+            <GoalCard goal={goal} today={today} phases={phases} />
+          </div>
+        </aside>
+        <div className="flex min-h-0 flex-1 basis-0 flex-col lg:col-start-1 lg:row-start-1">
           <Suspense fallback={<div className="skeleton min-h-0 flex-1 rounded-3xl" />}>
             <CoachChat key={prompt ?? ""} messages={[...(messagesRes.data ?? [])].reverse()} proposals={proposalsRes.data ?? []} ai={aiStatus.chat} analyzingActivities={pendingEvaluationsRes.count ?? 0} />
           </Suspense>

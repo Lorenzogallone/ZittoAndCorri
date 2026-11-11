@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function Loading() {
   return (
     <AppShell fill wide>
-      <div className="flex h-full flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_minmax(0,1fr)] lg:gap-x-6">
+      <div className="flex h-full flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_minmax(0,1fr)] lg:gap-x-6 3xl:grid-cols-[minmax(0,1fr)_45.5rem]">
         <div className="mb-4 flex items-center justify-between pt-1 lg:col-start-2 lg:row-start-1">
           <div className="space-y-2">
             <Skeleton className="h-3 w-36" />
@@ -14,7 +14,7 @@ export default function Loading() {
           </div>
           <Skeleton className="h-9 w-9 rounded-full" />
         </div>
-        <div className="mb-3 space-y-3 lg:col-start-2 lg:row-start-2 lg:self-start">
+        <div className="mb-3 space-y-3 lg:col-start-2 lg:row-start-2 lg:self-start 3xl:w-1/2 3xl:pr-3">
           {/* Card hero: segnaposto nel colore del testo della hero, validi in chiaro e in scuro. */}
           <div className="surface-hero space-y-3 p-5">
             <div className="h-3 w-28 rounded-md bg-hero-foreground/10" />

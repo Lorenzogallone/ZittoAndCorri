@@ -170,7 +170,9 @@ export default async function PlanPage({ searchParams }: Props) {
           </div>
 
           {view === "weeks" ? (
-            <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
+            // Da lg le due settimane affiancate; da 2xl una sopra l'altra, ognuna
+            // con i sette giorni in riga (vedi PlanWeek).
+            <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-6 2xl:grid-cols-1 2xl:gap-0">
               {[days.slice(0, 7), days.slice(7, 14)].map((week, index) => {
                 const isCurrent = week[0].date === thisMonday;
                 const isNext = week[0].date === addDays(thisMonday, 7);
