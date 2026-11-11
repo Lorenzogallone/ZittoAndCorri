@@ -12,6 +12,10 @@ import { getZeppDashboard } from "@/lib/zepp/data";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import type { Goal, Activity, Profile, PlannedWorkout } from "@/lib/types";
 import { activeDuration } from "@/lib/format";
+import { loadBodyTrends } from "@/lib/metrics/body-data";
+import { formatMetric } from "@/lib/metrics/body-trends";
+import type { FormHighlight } from "@/components/progress/form-status";
+import { Gauge, HeartPulse, Moon, Wind } from "lucide-react";
 import { ProfileView } from "./profile-view";
 import { scheduleIntervalsImportIfStale } from "@/lib/intervals/sync";
 
@@ -100,7 +104,27 @@ export default async function ProfilePage() {
     undefined,
     effectiveHr,
   );
-  const zepp = await getZeppDashboard(supabase, user.id, load);
+  const [zepp, trends] = await Promise.all([
+    getZeppDashboard(supabase, user.id, load),
+    loadBodyTrends(supabase, user.id, today, load.series),
+  ]);
+  // In evidenza: VO₂max, carico 7 giorni e sonno (media delle ultime 2
+  // settimane, la stessa del confronto); il resto è nella vista Stato di forma.
+  const ratio = load.load_ratio;
+  const vo2 = trends.vo2max.latest ? trends.vo2max : null;
+  const sleep = trends.sleep.latest ? trends.sleep : null;
+  const candidates: Array<FormHighlight | null | false | undefined> = [
+    vo2 && { label: "VO₂max", value: formatMetric("vo2max", vo2.latest!.value), icon: Wind, trend: vo2 },
+    !vo2 && trends.restingHr.latest && { label: "FC riposo", value: formatMetric("restingHr", trends.restingHr.latest.value), unit: "bpm", icon: HeartPulse, trend: trends.restingHr },
+    list.length > 0 && {
+      label: "Carico",
+      value: `${load.load7}`,
+      icon: Gauge,
+      note: ratio == null ? "7 gg · in calibrazione" : ratio > 1.15 ? "7 gg · sopra media" : ratio < 0.85 ? "7 gg · sotto media" : "7 gg · nella media",
+    },
+    sleep && { label: "Sonno", value: formatMetric("sleep", sleep.recent ?? sleep.latest!.value), icon: Moon, trend: sleep, note: sleep.recent != null ? "media 2 settimane" : "ultima notte" },
+  ];
+  const highlights = candidates.filter((item): item is FormHighlight => Boolean(item));
 
   // Le corse importate prima dei record vengono completate in background.
   if (list.some((activity) => activity.sport === "running" && activity.best_efforts == null)) {
@@ -142,6 +166,7 @@ export default async function ProfilePage() {
       daysToRace={daysToRace}
       load={load}
       zepp={{ latest: zepp.latest, readiness: zepp.readiness, stale: zepp.stale, wellness: zepp.wellness[0] ?? null, lastSync: lastWatchSync(zepp) }}
+      highlights={highlights}
       hasData={list.length > 0 || zepp.latest != null || zepp.wellness.length > 0}
       formPoints={formPoints}
       formTrend={formTrend(load.series)}

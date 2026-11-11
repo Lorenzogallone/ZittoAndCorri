@@ -53,6 +53,20 @@ function decimal(value: unknown): number | null {
   return Number.isFinite(number) ? number : null;
 }
 
+/** Campi già nelle colonne di wellness_daily: non si ripetono in `raw`. */
+const MAPPED_WELLNESS = new Set(["id", "updated", "sleepSecs", "sleepScore", "restingHR", "hrv", "hrvSDNN", "spO2", "steps", "stress", "readiness", "vo2max", "weight"]);
+
+/**
+ * Gli altri valori del giorno (es. FC media nel sonno, respirazione), solo
+ * numeri non nulli: restano in `raw` per capire cosa manda davvero l'orologio
+ * e usarli in futuro senza reimportare.
+ */
+export function wellnessExtras(day: IntervalsWellness): Record<string, number> | null {
+  const extras = Object.entries(day as unknown as Record<string, unknown>)
+    .filter(([key, value]) => !MAPPED_WELLNESS.has(key) && typeof value === "number" && Number.isFinite(value) && value !== 0);
+  return extras.length ? Object.fromEntries(extras) as Record<string, number> : null;
+}
+
 /** Riga wellness_daily da un giorno Intervals.icu; null se non porta niente. */
 export function wellnessRow(day: IntervalsWellness, userId: string) {
   const row = {
@@ -71,6 +85,7 @@ export function wellnessRow(day: IntervalsWellness, userId: string) {
     readiness: decimal(day.readiness),
     vo2max: decimal(day.vo2max),
     weight_kg: decimal(day.weight),
+    raw: wellnessExtras(day),
     updated_at: new Date().toISOString(),
   };
   const informative = [row.sleep_secs, row.sleep_score, row.resting_hr, row.hrv, row.hrv_sdnn, row.spo2, row.steps, row.stress, row.readiness, row.vo2max, row.weight_kg]

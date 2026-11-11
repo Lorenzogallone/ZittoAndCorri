@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { Activity, ChevronRight, HeartPulse, Moon, Wind } from "lucide-react";
+import { Activity, ChevronRight, HeartPulse, Moon, Wind, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Stat } from "@/components/stat";
+import { TrendBadge } from "@/components/progress/trend-badge";
+import type { MetricTrend } from "@/lib/metrics/body-trends";
 import type { ATLCTLResult } from "@/lib/types";
 import type { WellnessDay, ZeppDailyMetric, ZeppReadinessResult } from "@/lib/zepp/types";
 
-const INTERNAL = {
+export const LOAD_STATES = {
   calibrating: { label: "In calibrazione", text: "Ancora qualche corsa e la lettura diventa stabile.", tone: "text-foreground" },
   fresh: { label: "Ben recuperato", text: "Hai margine: buon momento per una seduta impegnativa.", tone: "text-emerald-600 dark:text-emerald-400" },
   balanced: { label: "In equilibrio", text: "Forma e fatica sono bilanciate.", tone: "text-emerald-600 dark:text-emerald-400" },
@@ -64,7 +66,18 @@ function sleepLabel(minutes: number): string {
   return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, "0")}′`;
 }
 
-/** Hero del profilo: stato di forma, prontezza dell'orologio e i pochi dati che contano. */
+/** Metrica in evidenza sotto lo stato: valore, e sotto il verso del trend o una nota. */
+export interface FormHighlight {
+  label: string;
+  value: string;
+  unit?: string;
+  icon: LucideIcon;
+  trend?: Pick<MetricTrend, "direction" | "recent" | "previous">;
+  note?: string;
+}
+
+/** Hero del profilo: stato di forma, prontezza dell'orologio e i pochi dati che contano.
+ *  Con `href` tutta la card apre la vista di analisi. */
 export function FormStatus({
   load,
   readiness,
@@ -73,6 +86,8 @@ export function FormStatus({
   stale,
   lastSync = null,
   hasData,
+  highlights,
+  href,
 }: {
   load: ATLCTLResult;
   readiness: ZeppReadinessResult | null;
@@ -83,9 +98,12 @@ export function FormStatus({
   /** Ultimo dato arrivato dall'orologio (Zepp o Intervals.icu). */
   lastSync?: string | null;
   hasData: boolean;
+  /** Metriche in evidenza (VO₂max, carico, sonno); senza, quelle del giorno. */
+  highlights?: FormHighlight[];
+  href?: string;
 }) {
   const assisted = readiness?.available && readiness.status ? ZEPP[readiness.status] : null;
-  const state = assisted ?? INTERNAL[load.status];
+  const state = assisted ?? LOAD_STATES[load.status];
   // Zepp quando c'è, altrimenti i dati notturni da Intervals.icu.
   const sleepMin = latest?.sleep_total_min ?? (wellness?.sleep_secs != null ? Math.round(wellness.sleep_secs / 60) : null);
   const restingHr = latest?.resting_hr ?? wellness?.resting_hr ?? null;
@@ -96,6 +114,7 @@ export function FormStatus({
     wellness?.hrv != null && wellness.hrv > 0 ? { label: "HRV", value: `${Math.round(wellness.hrv)}`, unit: "ms", icon: Activity } : null,
     latest?.vo2_max != null ? { label: "VO₂max", value: `${latest.vo2_max}`, icon: Wind } : null,
   ].filter((metric) => metric != null).slice(0, 3);
+  const shown: FormHighlight[] = highlights?.length ? highlights.slice(0, 3) : metrics;
 
   if (!hasData) {
     return (
@@ -113,9 +132,17 @@ export function FormStatus({
   }
 
   const ring = readiness?.available && readiness.score != null ? readiness.score : null;
+  const Wrapper = href ? Link : "section";
   return (
-    <section className="surface p-5">
-      <p className="eyebrow">Stato di forma</p>
+    <Wrapper href={href!} className={cn("surface block p-5", href && "pressable outline-none focus-visible:ring-3 focus-visible:ring-ring/30")}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="eyebrow">Stato di forma</p>
+        {href && (
+          <span className="-my-1 inline-flex items-center gap-0.5 text-caption font-medium text-primary">
+            Andamento <ChevronRight size={16} className="-mr-1" aria-hidden="true" />
+          </span>
+        )}
+      </div>
       {ring != null ? (
         <div className="mt-4 flex items-center gap-5">
           <ScoreRing value={ring} tone={state.tone} />
@@ -131,10 +158,17 @@ export function FormStatus({
           <p className="mt-2 text-body text-muted-foreground">{state.text}</p>
         </div>
       )}
-      {metrics.length > 0 && (
+      {shown.length > 0 && (
         <div className="mt-5 grid grid-cols-3 gap-3 border-t border-border/60 pt-4">
-          {metrics.map((metric) => (
-            <Stat key={metric.label} size="sm" {...metric} />
+          {shown.map(({ trend, note, ...metric }) => (
+            <div key={metric.label} className="min-w-0">
+              <Stat size="sm" {...metric} />
+              {trend?.direction ? (
+                <TrendBadge trend={trend} className="mt-0.5" />
+              ) : note ? (
+                <p className="mt-0.5 truncate text-micro text-muted-foreground">{note}</p>
+              ) : null}
+            </div>
           ))}
         </div>
       )}
@@ -148,6 +182,6 @@ export function FormStatus({
           Ultima sincronizzazione con l&apos;orologio: {syncLabel(lastSync)}
         </p>
       )}
-    </section>
+    </Wrapper>
   );
 }
