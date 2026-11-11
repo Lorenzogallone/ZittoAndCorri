@@ -262,7 +262,15 @@ async function runCoachTurn(
 
     if (result.memories.length) {
       const activeMemoryIds = new Set(context.memories.map((memory) => memory.id));
+      // Un ricordo nuovo uguale a uno già attivo (stesso tipo e testo) non si duplica.
+      const sameText = (text: string) => text.toLocaleLowerCase("it-IT").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+      const known = new Set(context.memories.map((memory) => `${memory.category}|${sameText(memory.content)}`));
       for (const memory of result.memories) {
+        if (!(memory.memory_id && activeMemoryIds.has(memory.memory_id))) {
+          const key = `${memory.category}|${sameText(memory.content)}`;
+          if (known.has(key)) continue;
+          known.add(key);
+        }
         const payload = {
           category: memory.category,
           content: memory.content.trim(),
