@@ -28,10 +28,18 @@ export async function GET(request: Request) {
     return { error: "sync Intervals.icu non riuscita" };
   });
 
-  const date = shiftIsoDate(romeDate(), 1);
-  if (!isPushConfigured()) return Response.json({ date, intervals, skipped: "push non configurato" });
-
+  // Ricordi del coach scaduti da più di 30 giorni: il coach non li legge più,
+  // restano visibili nelle impostazioni solo per un mese e poi si eliminano.
   const admin = createAdminClient();
+  const { count: prunedMemories, error: pruneError } = await admin
+    .from("coach_memories")
+    .delete({ count: "exact" })
+    .lt("valid_until", shiftIsoDate(romeDate(), -30));
+  if (pruneError) console.error("cron daily memories:", pruneError.message);
+
+  const date = shiftIsoDate(romeDate(), 1);
+  if (!isPushConfigured()) return Response.json({ date, intervals, prunedMemories, skipped: "push non configurato" });
+
   const [subsRes, workoutsRes] = await Promise.all([
     admin.from("push_subscriptions").select("user_id").returns<Array<{ user_id: string }>>(),
     admin
@@ -70,5 +78,5 @@ export async function GET(request: Request) {
     delivered += sent;
   }
 
-  return Response.json({ date, users: byUser.size, notified, delivered, intervals });
+  return Response.json({ date, users: byUser.size, notified, delivered, intervals, prunedMemories });
 }
