@@ -1,6 +1,7 @@
 import { TabBar } from "@/components/tab-bar";
 import { BackButton } from "@/components/back-button";
 import { SideNav } from "@/components/side-nav";
+import { PullToRefresh } from "@/components/pull-to-refresh";
 import { cn } from "@/lib/utils";
 
 interface AppShellProps {
@@ -54,7 +55,8 @@ export function AppShell({
         </header>
       )}
 
-      <main className="min-h-0 flex-1 overflow-y-auto scroll-touch">
+      {/* Il contenitore che scorre: trascina giù dalla cima per ricaricare. */}
+      <PullToRefresh className="min-h-0 flex-1 overflow-y-auto scroll-touch">
         <div className={cn("animate-enter mx-auto h-full w-full max-w-lg px-5 pt-3 lg:px-10", width, fill ? "pb-2 lg:pb-6 lg:pt-6" : "pb-8 lg:pb-12 lg:pt-8")}>
           {title && (
             <div className="mb-5 flex items-center justify-between gap-3 pt-2">
@@ -64,7 +66,7 @@ export function AppShell({
           )}
           {children}
         </div>
-      </main>
+      </PullToRefresh>
 
       {!hideTabBar && <TabBar />}
     </div>

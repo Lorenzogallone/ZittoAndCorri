@@ -11,6 +11,7 @@ import { MarkdownMessage } from "@/components/markdown-message";
 import { cn } from "@/lib/utils";
 import { tap } from "@/lib/haptics";
 import { useAiJob } from "@/lib/use-ai-job";
+import { useRefreshWhile } from "@/lib/use-app-refresh";
 import type { AiJobStatus } from "@/app/actions/ai-jobs";
 import { applyPlanProposal, rejectPlanProposal, sendCoachMessage, startNewCoachChat } from "@/app/coach/actions";
 import { isSessionMarker, splitSessions } from "@/lib/coach-session";
@@ -203,6 +204,14 @@ function SessionDivider({ item }: { item: CoachMessage }) {
   );
 }
 
+/** Lista del server più gli elementi locali più recenti che non contiene ancora. */
+function mergeServer<T extends { id: string; created_at: string }>(server: T[], local: T[]): T[] {
+  const ids = new Set(server.map((item) => item.id));
+  const newest = server.reduce((max, item) => (item.created_at > max ? item.created_at : max), "");
+  const extra = local.filter((item) => !ids.has(item.id) && (item.id.startsWith("pending-") || item.created_at > newest));
+  return extra.length ? [...server, ...extra] : server;
+}
+
 export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: { messages: CoachMessage[]; proposals: PlanProposal[]; ai: AiSwitchState; analyzingActivities?: number }) {
   const keyConfigured = ai.active !== null;
   const searchParams = useSearchParams();
@@ -210,11 +219,21 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
   const [isExpanded, setIsExpanded] = useState(false);
   const [displayMessages, setDisplayMessages] = useState(messages);
   const [displayProposals, setDisplayProposals] = useState(proposals);
+  // Dopo un refresh (trascina-giù, analisi finita) arrivano i dati nuovi dal
+  // server: valgono loro, più i messaggi locali che il server non ha ancora.
+  const [serverData, setServerData] = useState({ messages, proposals });
+  if (serverData.messages !== messages || serverData.proposals !== proposals) {
+    setServerData({ messages, proposals });
+    setDisplayMessages((current) => mergeServer(messages, current));
+    setDisplayProposals((current) => mergeServer(proposals, current));
+  }
   const [showEarlier, setShowEarlier] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const viewport = useVisibleViewport();
+  // Analisi di corse nuove in corso: la risposta compare da sola in chat.
+  useRefreshWhile(analyzingActivities > 0);
   const showCoachResult = useCallback((status: AiJobStatus) => {
     if (!status.coachResult) throw new Error("Risultato chat mancante");
     const { message: coachMessage, proposal } = status.coachResult;
