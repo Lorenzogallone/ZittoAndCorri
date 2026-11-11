@@ -11,6 +11,7 @@ import { Records } from "@/components/progress/records";
 import { PaceHistory, type PaceSession } from "@/components/progress/pace-history";
 import { FormStatus } from "@/components/progress/form-status";
 import { formatDistance, formatDuration } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { PersonalRecord } from "@/lib/metrics/best-efforts";
 import type { PredictionReference } from "@/lib/metrics/race-prediction";
 import type { ATLCTLResult, Goal } from "@/lib/types";
@@ -33,6 +34,30 @@ export interface ProfileViewProps {
   paceSessions: PaceSession[];
 }
 
+type Tab = { key: string; label: string; content: React.ReactElement };
+
+/** Una card con i tab sul telefono e fino a 2xl; sugli schermi larghi le
+ *  viste stanno affiancate, ognuna nella sua card con il proprio titolo. */
+function TabbedCard({ tabs }: { tabs: Tab[] }) {
+  return (
+    <>
+      <div className={cn("surface p-4", tabs.length > 1 && "2xl:hidden")}>
+        <SegmentedTabs tabs={tabs} />
+      </div>
+      {tabs.length > 1 && (
+        <div className="hidden gap-4 2xl:grid 2xl:grid-cols-2">
+          {tabs.map((tab) => (
+            <div key={tab.key} className="surface p-4">
+              <h3 className="mb-4 text-body font-semibold">{tab.label}</h3>
+              {tab.content}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 export function ProfileView(props: ProfileViewProps) {
   const { goal, daysToRace } = props;
   const trends = [
@@ -53,7 +78,7 @@ export function ProfileView(props: ProfileViewProps) {
       label: "Km a settimana",
       content: <WeekBars weeks={props.weeks} current={props.currentWeek} />,
     },
-  ].filter((tab): tab is { key: string; label: string; content: React.ReactElement } => Boolean(tab));
+  ].filter((tab): tab is Tab => Boolean(tab));
   const performance = [
     props.reference && {
       key: "predictions",
@@ -65,7 +90,12 @@ export function ProfileView(props: ProfileViewProps) {
       label: "Record",
       content: <Records records={props.records} />,
     },
-  ].filter((tab): tab is { key: string; label: string; content: React.ReactElement } => Boolean(tab));
+  ].filter((tab): tab is Tab => Boolean(tab));
+  const pace = props.paceSessions.length > 0 && (
+    <div className="surface p-4">
+      <PaceHistory sessions={props.paceSessions} />
+    </div>
+  );
 
   return (
     <AppShell
@@ -79,10 +109,11 @@ export function ProfileView(props: ProfileViewProps) {
         </Button>
       }
     >
-      {/* Desktop: persona, stato di forma e obiettivo in una colonna fissa a
-          sinistra, grafici a destra. Sul telefono il contenitore della colonna
-          non genera box (contents) e la sequenza animata resta la stessa. */}
-      <div className="stagger lg:grid lg:grid-cols-[24rem_minmax(0,1fr)] lg:gap-x-8">
+      {/* Desktop: persona, stato di forma, obiettivo e passo nelle sedute
+          veloci in una colonna fissa a sinistra, grafici a destra. Sul telefono
+          il contenitore della colonna non genera box (contents) e la sequenza
+          animata resta la stessa; il passo resta in fondo alla pagina. */}
+      <div className="stagger lg:grid lg:grid-cols-[24rem_minmax(0,1fr)] lg:gap-x-8 3xl:grid-cols-[28rem_minmax(0,1fr)] 3xl:gap-x-10">
         <div className="stagger contents lg:sticky lg:top-0 lg:col-start-1 lg:row-span-[999] lg:row-start-1 lg:block lg:self-start">
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-body font-bold text-primary-foreground">{props.initials}</div>
@@ -124,6 +155,12 @@ export function ProfileView(props: ProfileViewProps) {
           )}
           <ChevronRight size={16} className="shrink-0 text-muted-foreground/60" />
         </Link>
+
+        {pace && (
+          <Section title="Passo nelle sedute veloci" className="hidden lg:block">
+            {pace}
+          </Section>
+        )}
         </div>
 
         {trends.length === 0 && performance.length === 0 && (
@@ -134,25 +171,19 @@ export function ProfileView(props: ProfileViewProps) {
 
         {trends.length > 0 && (
           <Section title="Andamento">
-            <div className="surface p-4">
-              <SegmentedTabs tabs={trends} />
-            </div>
+            <TabbedCard tabs={trends} />
           </Section>
         )}
 
         {performance.length > 0 && (
           <Section title="Prestazioni">
-            <div className="surface p-4">
-              <SegmentedTabs tabs={performance} />
-            </div>
+            <TabbedCard tabs={performance} />
           </Section>
         )}
 
-        {props.paceSessions.length > 0 && (
-          <Section title="Passo nelle sedute veloci">
-            <div className="surface p-4">
-              <PaceHistory sessions={props.paceSessions} />
-            </div>
+        {pace && (
+          <Section title="Passo nelle sedute veloci" className="lg:hidden">
+            {pace}
           </Section>
         )}
       </div>

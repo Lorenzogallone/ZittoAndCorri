@@ -18,6 +18,12 @@ function dayLabel(day: string): string {
   return new Date(`${day}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", timeZone: "UTC" }).replace(".", "");
 }
 
+// Desktop largo: la riga diventa una tabella (tempo e passo da xl, dislivello
+// da 2xl) con le intestazioni sopra ogni mese. Sul telefono resta compatta.
+const COLUMN = "hidden shrink-0 text-right tabular-nums xl:block xl:w-20 3xl:w-28";
+const ELEVATION_COLUMN = "hidden shrink-0 text-right tabular-nums 2xl:block 2xl:w-20 3xl:w-28";
+const DISTANCE_COLUMN = "shrink-0 text-right xl:w-24 3xl:w-28";
+
 /** "12,34": come formatDistance, senza unità (resa a parte, più piccola). */
 const kmValue = (meters: number) => formatDistance(meters).replace(" km", "");
 
@@ -36,12 +42,19 @@ function ActivityRow({ activity, analyzing }: { activity: ListActivity; analyzin
         <div className="min-w-0 flex-1">
           <p className="truncate text-body font-semibold">{title}</p>
           <p className="mt-0.5 truncate text-caption text-muted-foreground tabular-nums">
-            {dayLabel(day)} · {formatDuration(activeDuration(activity))}
+            {dayLabel(day)}<span className="xl:hidden"> · {formatDuration(activeDuration(activity))}</span>
             {activity.excluded_at && <span> · esclusa</span>}
             {analyzing && <span className="text-primary"> · analisi in corso…</span>}
           </p>
         </div>
-        <div className="shrink-0 text-right">
+        <p className={cn(COLUMN, "text-body")}>{formatDuration(activeDuration(activity))}</p>
+        <p className={cn(ELEVATION_COLUMN, "text-body text-muted-foreground")}>
+          {activity.elevation_gain_m ? `${Math.round(activity.elevation_gain_m).toLocaleString("it-IT")} m` : "–"}
+        </p>
+        <p className={cn(COLUMN, "text-body text-muted-foreground")}>
+          {isRun && activity.avg_pace_s_km != null ? formatPace(activity.avg_pace_s_km) : "–"}
+        </p>
+        <div className={DISTANCE_COLUMN}>
           <p className="font-display text-heading font-bold tabular-nums tracking-tight">
             {activity.distance_m > 0 ? (
               <>
@@ -53,7 +66,7 @@ function ActivityRow({ activity, analyzing }: { activity: ListActivity; analyzin
             )}
           </p>
           {isRun && activity.avg_pace_s_km != null && (
-            <p className="text-caption text-muted-foreground tabular-nums">{formatPace(activity.avg_pace_s_km)}</p>
+            <p className="text-caption text-muted-foreground tabular-nums xl:hidden">{formatPace(activity.avg_pace_s_km)}</p>
           )}
         </div>
       </Link>
@@ -74,7 +87,13 @@ export function ActivitiesList({ activities, analyzing }: { activities: ListActi
     <>
       {months.map((month) => (
         <section key={month.key} className="mt-8">
-          <h2 className="eyebrow mb-2 px-1">{monthLabel(`${month.key}-01`)}</h2>
+          <div className="mb-2 flex items-baseline gap-3 px-1 xl:pr-4">
+            <h2 className="eyebrow min-w-0 flex-1">{monthLabel(`${month.key}-01`)}</h2>
+            <span className={cn(COLUMN, "eyebrow")} aria-hidden="true">Tempo</span>
+            <span className={cn(ELEVATION_COLUMN, "eyebrow")} aria-hidden="true">Dislivello</span>
+            <span className={cn(COLUMN, "eyebrow")} aria-hidden="true">Passo</span>
+            <span className={cn(DISTANCE_COLUMN, "eyebrow hidden xl:block")} aria-hidden="true">Distanza</span>
+          </div>
           <ul className="surface divide-y divide-border/60 px-4">
             {month.items.map((activity) => (
               <ActivityRow key={activity.id} activity={activity} analyzing={analyzing.has(activity.id)} />

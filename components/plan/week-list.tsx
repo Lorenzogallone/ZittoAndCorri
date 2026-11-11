@@ -21,12 +21,12 @@ function rangeLabel(start: string, end: string): string {
   return `${format(start, !sameMonth)} – ${format(end, true)}`;
 }
 
-function workoutTitle(workout: PlannedWorkout): string {
+export function workoutTitle(workout: PlannedWorkout): string {
   const detail = workoutHeadline(workout.workout_steps ?? []);
   return detail ? `${TYPE_LABELS[workout.type]} · ${detail}` : TYPE_LABELS[workout.type];
 }
 
-function workoutSubtitle(workout: PlannedWorkout): string {
+export function workoutSubtitle(workout: PlannedWorkout): string {
   if (workout.status === "skipped") return "In pausa";
   const meters = plannedMeters(workout);
   const seconds = workout.target_duration_s ?? (workout.workout_steps?.length ? estimateWorkout(workout.workout_steps).seconds : null);
@@ -81,12 +81,14 @@ function DayRow({ day, today }: { day: PlanDay; today: string }) {
         href={dayHref(day)}
         className={cn(
           // -mx-2/px-2: la tinta della pressione arriva oltre il testo senza spostarlo.
-          "-mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors active:bg-muted/60",
+          "-mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-muted/60 active:bg-muted/60",
+          // Da 2xl il giorno è una casella della settimana (sette in riga).
+          "2xl:relative 2xl:mx-0 2xl:h-full 2xl:min-h-24 2xl:flex-col 2xl:items-stretch 2xl:gap-2 2xl:rounded-xl 2xl:bg-surface-2 2xl:p-3",
           // Oggi: tinta dell'accento e segno pieno a sinistra.
-          isToday && "bg-primary/10",
+          isToday && "bg-primary/10 2xl:bg-primary/10",
         )}
       >
-        <div className="w-9 shrink-0 text-center">
+        <div className="w-9 shrink-0 text-center 2xl:flex 2xl:w-auto 2xl:items-baseline 2xl:gap-1.5 2xl:pr-7 2xl:text-left">
           <p className={cn("text-micro uppercase tracking-wide", isToday ? "font-semibold text-primary" : "text-muted-foreground")}>{weekday}</p>
           <p className={cn("font-display text-heading font-bold tabular-nums leading-tight", isToday && "text-primary")}>{date.getUTCDate()}</p>
         </div>
@@ -101,7 +103,9 @@ function DayRow({ day, today }: { day: PlanDay; today: string }) {
           </p>
           {subtitle && <p className="mt-0.5 truncate text-caption text-muted-foreground tabular-nums">{subtitle}</p>}
         </div>
-        <DayStateIcon state={day.state} />
+        <span className="flex shrink-0 2xl:absolute 2xl:right-2.5 2xl:top-2.5">
+          <DayStateIcon state={day.state} />
+        </span>
       </Link>
     </li>
   );
@@ -114,7 +118,7 @@ export function PlanWeek({ days, today, title, highlight = false }: { days: Plan
   const { done: sessionsDone, due } = adherence(days.map((day) => day.state));
   const progress = planned > 0 ? Math.min(1, done / planned) : 0;
   return (
-    <section className={cn("mb-6", highlight ? "surface px-4 pb-1 pt-4" : "px-1 opacity-90")}>
+    <section className={cn("mb-6", highlight ? "surface px-4 pb-1 pt-4 2xl:pb-4" : "px-1 opacity-90")}>
       <div className="mb-1 flex items-baseline justify-between gap-3">
         <h2 className={cn("text-body font-semibold", !highlight && "text-muted-foreground")}>
           {title ?? rangeLabel(days[0].date, days[days.length - 1].date)}
@@ -131,7 +135,7 @@ export function PlanWeek({ days, today, title, highlight = false }: { days: Plan
       {due > 0 && (
         <p className="mb-1 text-micro text-muted-foreground">{sessionsDone} su {due} sedute fatte</p>
       )}
-      <ul className="divide-y divide-border/60">
+      <ul className="divide-y divide-border/60 2xl:mt-3 2xl:grid 2xl:grid-cols-7 2xl:gap-2 2xl:divide-y-0">
         {days.map((day) => <DayRow key={day.date} day={day} today={today} />)}
       </ul>
     </section>

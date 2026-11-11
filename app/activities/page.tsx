@@ -54,7 +54,7 @@ export default async function ActivitiesPage() {
       ) : (
         // Desktop: totali fissi a sinistra (su tutte le righe), mesi a destra.
         // Niente contenitori in più: sul telefono la sequenza animata resta uguale.
-        <div className="stagger lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-x-8 lg:[&>section:nth-of-type(2)]:mt-0">
+        <div className="stagger lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-x-8 3xl:grid-cols-[24rem_minmax(0,1fr)] 3xl:gap-x-10 lg:[&>section:nth-of-type(2)]:mt-0">
           <TotalsCard periods={totals} className="lg:sticky lg:top-0 lg:col-start-1 lg:row-span-[999] lg:row-start-1 lg:self-start" />
           <ActivitiesList activities={list} analyzing={pendingActivityIds} />
         </div>

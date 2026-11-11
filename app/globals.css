@@ -37,6 +37,11 @@
   --text-micro: 0.6875rem;
   --text-micro--line-height: 1.2;
 
+  /* Desktop largo: oltre 2xl (1536px) un gradino per i monitor grandi, e la
+     colonna delle pagine "wide" che arriva fin lì. Il telefono non li usa. */
+  --breakpoint-3xl: 112rem;
+  --container-8xl: 112rem;
+
   /* Card "inchiostro" e superficie secondaria dentro le card. */
   --color-hero: var(--hero);
   --color-hero-foreground: var(--hero-foreground);
