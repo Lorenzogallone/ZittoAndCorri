@@ -1,8 +1,10 @@
 // Proposte del coach giorno per giorno. Il modello può restituire anche sedute
 // identiche a quelle già in calendario o giorni che non può toccare: qui si
 // tiene solo ciò che cambia davvero, e un giorno si svuota solo se la proposta
-// lo chiede esplicitamente. Funzioni pure (la stessa protezione è ripetuta in
-// SQL da apply_plan_proposal_v2).
+// lo chiede esplicitamente. Le sedute proposte per un giorno sostituiscono
+// tutte quelle in calendario quel giorno (che può averne più d'una); in un
+// giorno già corso, da oggi in poi, si aggiungono e basta. Funzioni pure (la
+// stessa protezione è ripetuta in SQL da apply_plan_proposal_v2).
 
 import type { WorkoutStepInput, WorkoutType } from "@/lib/types";
 import { estimateWorkout } from "../workout-estimate.ts";
@@ -43,6 +45,8 @@ export interface ProposalDiff<W extends PlanDayWorkout> {
   changes: ProposalChange[];
   /** Giorni chiesti ma intoccabili (passati, già corsi, fuori finestra). */
   locked: string[];
+  /** Giorni già corsi in cui le nuove sedute si aggiungono senza toccare le esistenti. */
+  added: string[];
 }
 
 export function briefOf(workout: PlanDayWorkout): WorkoutBrief {
@@ -96,25 +100,41 @@ export function planProposalDiff<W extends PlanDayWorkout>(input: {
     activityDates.has(date) || existing.some((w) => w.date === date && w.status === "completed");
   // Nuove sedute solo da oggi in poi; un giorno passato non corso si può
   // svuotare (seduta saltata, oppure spostata a oggi) fino a removeFrom.
-  const isLocked = (date: string) => date < today || date > windowEnd || doneOn(date);
+  const isLocked = (date: string) => date < today || date > windowEnd;
   const isRemoveLocked = (date: string) => date < removeFrom || date > windowEnd || doneOn(date);
   const existingOn = (date: string) => existing.filter((w) => w.date === date && editable(w));
+  const allOn = (date: string) => existing.filter((w) => w.date === date);
 
   const byDate = new Map<string, W[]>();
   for (const workout of input.proposed) byDate.set(workout.date, [...(byDate.get(workout.date) ?? []), workout]);
 
   const locked = new Set<string>();
+  const added = new Set<string>();
   const workouts: W[] = [];
   const changed = new Set<string>();
+  const after = new Map<string, PlanDayWorkout[]>();
   for (const [date, list] of byDate) {
     if (isLocked(date)) {
       locked.add(date);
+      continue;
+    }
+    if (doneOn(date)) {
+      // Giorno già corso: le sedute esistenti restano, si aggiungono solo
+      // quelle nuove (es. una seconda seduta la sera). Ripeterne una non conta.
+      const known = new Set(allOn(date).map(fingerprint));
+      const fresh = list.filter((w) => !known.has(fingerprint(w)));
+      if (!fresh.length) continue;
+      workouts.push(...fresh);
+      changed.add(date);
+      added.add(date);
+      after.set(date, [...allOn(date), ...fresh]);
       continue;
     }
     // Il modello ripete una seduta senza cambiarla: non è una modifica.
     if (sameDay(existingOn(date), list)) continue;
     workouts.push(...list);
     changed.add(date);
+    after.set(date, list);
   }
 
   const removeDates: string[] = [];
@@ -137,9 +157,10 @@ export function planProposalDiff<W extends PlanDayWorkout>(input: {
     touched,
     changes: touched.map((date) => ({
       date,
-      before: existingOn(date).map(briefOf),
-      after: (byDate.get(date) ?? []).map(briefOf),
+      before: (added.has(date) ? allOn(date) : existingOn(date)).map(briefOf),
+      after: (after.get(date) ?? []).map(briefOf),
     })),
     locked: [...locked].sort(),
+    added: [...added].sort(),
   };
 }

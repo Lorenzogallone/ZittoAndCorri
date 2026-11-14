@@ -61,12 +61,52 @@ test("modificare la settimana prossima non tocca quella attuale", () => {
 test("i giorni passati e quelli già corsi sono intoccabili", () => {
   const diff = planProposalDiff({
     today, windowEnd, existing: plan, activityDates: new Set([...ran, today]),
-    proposed: [session("2026-10-22", "easy", 5), session(today, "easy", 5), session("2026-10-24", "easy", 6)],
-    removeDates: ["2026-10-20"],
+    proposed: [session("2026-10-22", "easy", 5), session("2026-10-24", "easy", 6)],
+    removeDates: ["2026-10-20", today],
   });
-  // Sabato era già così: nessuna modifica. Ieri, oggi (già corso) e martedì bloccati.
+  // Sabato era già così: nessuna modifica. Ieri e martedì bloccati; oggi già corso non si svuota.
   assert.deepEqual(diff.touched, []);
-  assert.deepEqual(diff.locked, ["2026-10-20", "2026-10-22", today]);
+  assert.deepEqual(diff.locked, ["2026-10-20", "2026-10-22"]);
+});
+
+test("un giorno può avere due sedute: la proposta sostituisce tutte quelle del giorno", () => {
+  const diff = planProposalDiff({
+    today, windowEnd, existing: plan, activityDates: ran,
+    proposed: [session("2026-10-24", "easy", 6), session("2026-10-24", "recovery", 4)],
+    removeDates: [],
+  });
+  assert.deepEqual(diff.touched, ["2026-10-24"]);
+  assert.equal(diff.workouts.length, 2);
+  assert.deepEqual(diff.changes[0].before.map((b) => b.meters), [6000]);
+  assert.deepEqual(diff.changes[0].after.map((b) => b.meters), [6000, 4000]);
+  // Rimandare le stesse due sedute non è una modifica.
+  const twice = [...plan, session("2026-10-24", "recovery", 4)];
+  const same = planProposalDiff({
+    today, windowEnd, existing: twice, activityDates: ran,
+    proposed: [session("2026-10-24", "recovery", 4), session("2026-10-24", "easy", 6)],
+    removeDates: [],
+  });
+  assert.deepEqual(same.touched, []);
+});
+
+test("oggi già corso: una seconda seduta si aggiunge senza toccare la prima", () => {
+  const existing = [...plan, session(today, "easy", 6)];
+  const diff = planProposalDiff({
+    today, windowEnd, existing, activityDates: new Set([...ran, today]),
+    proposed: [session(today, "easy", 6), session(today, "recovery", 4)],
+    removeDates: [],
+  });
+  assert.deepEqual(diff.touched, [today]);
+  assert.deepEqual(diff.added, [today]);
+  assert.equal(diff.workouts.length, 1);
+  assert.equal(diff.workouts[0].type, "recovery");
+  assert.deepEqual(diff.changes[0].after.map((b) => b.meters), [6000, 4000]);
+  // Ripetere solo la seduta già fatta non cambia nulla.
+  const repeat = planProposalDiff({
+    today, windowEnd, existing, activityDates: new Set([...ran, today]),
+    proposed: [session(today, "easy", 6)], removeDates: [],
+  });
+  assert.deepEqual(repeat.touched, []);
 });
 
 test("un giorno si svuota solo se richiesto e se c'è qualcosa da togliere", () => {
@@ -79,11 +119,13 @@ test("un giorno si svuota solo se richiesto e se c'è qualcosa da togliere", () 
   assert.deepEqual(diff.touched, ["2026-10-24"]);
 });
 
-test("una seduta completata non viene sostituita", () => {
+test("una seduta completata non viene sostituita: la nuova si aggiunge", () => {
   const existing = [...plan, session("2026-10-28", "easy", 6, "completed")];
-  const diff = planProposalDiff({ today, windowEnd, existing, activityDates: ran, proposed: [session("2026-10-28", "tempo", 8)], removeDates: [] });
-  assert.deepEqual(diff.touched, []);
-  assert.deepEqual(diff.locked, ["2026-10-28"]);
+  const diff = planProposalDiff({ today, windowEnd, existing, activityDates: ran, proposed: [session("2026-10-28", "tempo", 8)], removeDates: ["2026-10-28"] });
+  assert.deepEqual(diff.removeDates, []);
+  assert.deepEqual(diff.added, ["2026-10-28"]);
+  assert.deepEqual(diff.changes[0].before.map((b) => b.type), ["easy"]);
+  assert.deepEqual(diff.changes[0].after.map((b) => b.type), ["easy", "tempo"]);
 });
 
 test("il calendario del coach dice settimana e giorni bloccati", async () => {
@@ -96,6 +138,7 @@ test("il calendario del coach dice settimana e giorni bloccati", async () => {
   const day = (date: string) => days.find((d) => d.date === date)!;
   assert.equal(day("2026-10-22").weekday, "giovedì");
   assert.equal(day("2026-10-22").locked, true);
+  assert.equal(day("2026-10-22").add_only, false);
   assert.equal(day("2026-10-22").done[0].km, 8.2);
   assert.equal(day("2026-10-24").locked, false);
   assert.equal(day("2026-10-24").week, "questa settimana");
