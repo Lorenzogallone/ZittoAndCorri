@@ -2,6 +2,7 @@
 // Se manca il GPS ritorna null — niente dati, niente numeri inventati.
 
 import type { GpsPoint, HrPoint, Split } from "@/lib/types";
+import { withoutPauses } from "./pauses.ts";
 
 /** Distanza Haversine tra due punti GPS (metri). */
 export function haversine(
@@ -22,14 +23,19 @@ export function haversine(
 
 /**
  * Calcola gli split per km da una serie GPS (e opzionalmente HR).
- * Accumula i metri con Haversine; ogni 1000 m registra km, tempo e HR media.
+ * Accumula i metri con Haversine; ogni 1000 m registra km, tempo (pause
+ * escluse) e HR media.
  * Ritorna null se la serie è vuota o ha meno di 2 punti.
  */
 export function computeSplits(
-  gps_series: GpsPoint[],
-  hr_series?: HrPoint[],
+  gps: GpsPoint[],
+  hr?: HrPoint[],
 ): Split[] | null {
-  if (!gps_series || gps_series.length < 2) return null;
+  if (!gps || gps.length < 2) return null;
+  // Tempi sul tempo in movimento: una pausa dell'orologio non allunga il km.
+  const moving = withoutPauses({ gps, hr });
+  const gps_series = moving.gps!;
+  const hr_series = moving.hr ?? undefined;
 
   const splits: Split[] = [];
   let kmAccum = 0;

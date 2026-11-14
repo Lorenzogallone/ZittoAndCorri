@@ -6,6 +6,7 @@
 
 import type { GpsPoint, WorkoutStepInput } from "@/lib/types";
 import { cumulativeDistance } from "./geo.ts";
+import { withoutPauses } from "./pauses.ts";
 
 export type PaceStatus = "on_target" | "fast" | "slow";
 
@@ -97,8 +98,9 @@ function deviation(pace: number, min: number | null, max: number | null): number
  * Confronta i tratti con passo target della seduta con la traccia GPS.
  * Null se la traccia non basta o la seduta non ha tratti con passo.
  */
-export function checkPace(gps: GpsPoint[] | null | undefined, steps: WorkoutStepInput[]): PaceCheck | null {
-  if (!gps || gps.length < 10) return null;
+export function checkPace(track: GpsPoint[] | null | undefined, steps: WorkoutStepInput[]): PaceCheck | null {
+  if (!track || track.length < 10) return null;
+  const gps = withoutPauses({ gps: track }).gps!;
   const targets = stepsToCheck(steps);
   if (!targets.length) return null;
 

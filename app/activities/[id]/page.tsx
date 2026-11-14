@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { timeInZoneFromSeries } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
-import { personalRecords } from "@/lib/metrics/best-efforts";
+import { computeHrDrift } from "@/lib/metrics/effort";
+import { bestEffortsForActivity, personalRecords } from "@/lib/metrics/best-efforts";
 import { cadencePoints, computeIntervals, intervalsUpToDate, paceCheckFor, persistDerived, persistIntervals } from "@/lib/derived";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { getAiStatus } from "@/lib/ai/ai-status";
@@ -95,7 +96,10 @@ export default async function ActivityDetailPage({
   const heldRecords = personalRecords(runEfforts ?? []).filter((record) => record.activity_id === activity.id);
   if (
     activity.sport === "running" &&
-    (activity.best_efforts == null || JSON.stringify(activity.pace_check ?? null) !== JSON.stringify(paceResult?.check ?? null))
+    (activity.best_efforts == null ||
+      JSON.stringify(activity.pace_check ?? null) !== JSON.stringify(paceResult?.check ?? null) ||
+      // Algoritmo cambiato (es. pause escluse): i best effort salvati sono superati.
+      JSON.stringify(activity.best_efforts) !== JSON.stringify(bestEffortsForActivity({ ...activity, gps: streams?.gps_series ?? null })))
   ) {
     const userId = user.id;
     const gps = streams?.gps_series ?? null;
@@ -127,12 +131,24 @@ export default async function ActivityDetailPage({
     streams?.hr_series && streams.hr_series.length >= 2
       ? timeInZoneFromSeries(streams.hr_series, profileCtx)
       : activity.time_in_zone;
-  // Split: le corse importate prima della Fase 2 li calcolano dagli stream.
-  const splits =
-    activity.splits ??
-    (streams?.gps_series && streams.gps_series.length >= 2
-      ? computeSplits(streams.gps_series, streams.hr_series ?? undefined)
-      : null);
+  // Split sempre dagli stream quando ci sono: così le corse importate prima
+  // valgono con l'algoritmo attuale (pause escluse). Se cambiano si salvano.
+  const freshSplits = streams?.gps_series && streams.gps_series.length >= 2
+    ? computeSplits(streams.gps_series, streams.hr_series ?? undefined)
+    : null;
+  const splits = freshSplits ?? activity.splits;
+  if (freshSplits && JSON.stringify(freshSplits) !== JSON.stringify(activity.splits ?? null)) {
+    const userId = user.id;
+    const drift = computeHrDrift(streams?.hr_series ?? undefined, streams?.gps_series ?? undefined);
+    after(async () => {
+      const { error } = await createAdminClient()
+        .from("activities")
+        .update({ splits: freshSplits, ...(drift != null ? { hr_drift_pct: drift } : {}) })
+        .eq("id", activity.id)
+        .eq("user_id", userId);
+      if (error) console.error("splits refresh:", error.message);
+    });
+  }
   // Serie ridotte per il client: migliaia di punti nel payload RSC rendono
   // lentissima la navigazione su rete mobile.
   const gps = streams?.gps_series && streams.gps_series.length >= 2 ? downsample(streams.gps_series, 500) : null;
