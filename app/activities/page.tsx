@@ -10,6 +10,9 @@ import { ActivitiesList, type ListActivity } from "@/components/activities-list"
 import { periodTotals } from "@/lib/metrics/totals";
 import { romeDay } from "@/lib/local-date";
 import { scheduleIntervalsImportIfStale } from "@/lib/intervals/sync";
+import { after } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { backfillMovingTime } from "@/lib/derived";
 
 export default async function ActivitiesPage() {
   const supabase = await createClient();
@@ -28,6 +31,11 @@ export default async function ActivitiesPage() {
   ]);
 
   const list = activities ?? [];
+  // Attività importate senza tempo in movimento: si ricava dalle pause, in background.
+  if (list.some((activity) => activity.moving_time_s == null)) {
+    const userId = user.id;
+    after(() => backfillMovingTime(createAdminClient(), userId));
+  }
   const pendingActivityIds = new Set((pendingEvaluationJobs ?? []).flatMap((job) => job.ref_id ? [job.ref_id] : []));
   // Le corse escluse restano in elenco (con etichetta) ma fuori dai totali.
   const totals = periodTotals(list.filter((activity) => !activity.excluded_at), romeDay());

@@ -18,6 +18,8 @@ import {
   type IntervalAnalysis,
 } from "@/lib/metrics/intervals";
 import { romeDay } from "@/lib/local-date";
+import { avgPace } from "@/lib/metrics/pace";
+import { movingTimeFromStreams } from "@/lib/metrics/pauses";
 import { workoutStepsOrLegacy } from "@/lib/workout-steps";
 import type { Activity, ActivityStream, GpsPoint, HrPoint, PlannedWorkout } from "@/lib/types";
 
@@ -216,5 +218,49 @@ export async function backfillDerived(supabase: SupabaseClient, userId: string, 
     }
   } catch (error) {
     console.error("backfillDerived:", error instanceof Error ? error.message : error);
+  }
+}
+
+/**
+ * Tempo in movimento per le attività salvate senza (file che non lo dicono):
+ * si ricava dalle pause negli stream e si ricalcola il passo. Senza pause il
+ * tempo in movimento è il tempo totale: si salva lo stesso, così l'attività
+ * non si ricontrolla a ogni visita.
+ */
+export async function backfillMovingTime(supabase: SupabaseClient, userId: string, limit = 30): Promise<void> {
+  try {
+    const { data: pending } = await supabase
+      .from("activities")
+      .select("id, distance_m, duration_s")
+      .eq("user_id", userId)
+      .is("moving_time_s", null)
+      .gt("duration_s", 0)
+      .order("started_at", { ascending: false })
+      .limit(limit)
+      .returns<Array<Pick<Activity, "id" | "distance_m" | "duration_s">>>();
+    if (!pending?.length) return;
+    const { data: streams } = await supabase
+      .from("activity_streams")
+      .select("*")
+      .in("activity_id", pending.map((activity) => activity.id))
+      .returns<ActivityStream[]>();
+    const byActivity = new Map((streams ?? []).map((stream) => [stream.activity_id, stream]));
+    for (const activity of pending) {
+      const stream = byActivity.get(activity.id);
+      const moving = stream
+        ? movingTimeFromStreams(activity.duration_s, { distance: stream.distance_series, gps: stream.gps_series })
+        : null;
+      const { error } = await supabase
+        .from("activities")
+        .update({
+          moving_time_s: moving ?? activity.duration_s,
+          ...(moving != null && activity.distance_m > 0 ? { avg_pace_s_km: avgPace(activity.distance_m, moving) } : {}),
+        })
+        .eq("id", activity.id)
+        .eq("user_id", userId);
+      if (error) throw error;
+    }
+  } catch (error) {
+    console.error("backfillMovingTime:", error instanceof Error ? error.message : error);
   }
 }

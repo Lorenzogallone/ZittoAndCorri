@@ -53,3 +53,17 @@ test("senza pause gli stream restano identici", () => {
   const streams = { gps };
   assert.equal(withoutPauses(streams), streams);
 });
+
+test("tempo in movimento dalle pause, quando il file non lo dice", async () => {
+  const { movingTimeFromStreams, bestMovingTime } = await import("../lib/metrics/pauses.ts");
+  const gps = track(1300, [[200, 50], [700, 10]]);
+  const duration = gps[gps.length - 1].t;
+  assert.equal(duration, 1360);
+  // Tolti esattamente i 50" e 10" di pausa: restano i 1300" di corsa.
+  assert.equal(movingTimeFromStreams(duration, { gps }), 1300);
+  assert.equal(movingTimeFromStreams(1300, { gps: track(1300) }), null);
+  // Vince il più corto sotto il totale; un valore pari al totale non conta.
+  assert.equal(bestMovingTime(1360, 1360, 1300), 1300);
+  assert.equal(bestMovingTime(1360, null, null), null);
+  assert.equal(bestMovingTime(1360, 1290, 1300), 1290);
+});

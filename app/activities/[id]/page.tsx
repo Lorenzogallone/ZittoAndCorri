@@ -5,6 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { timeInZoneFromSeries } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
 import { computeHrDrift } from "@/lib/metrics/effort";
+import { bestMovingTime, movingTimeFromStreams } from "@/lib/metrics/pauses";
+import { avgPace } from "@/lib/metrics/pace";
 import { bestEffortsForActivity, personalRecords } from "@/lib/metrics/best-efforts";
 import { cadencePoints, computeIntervals, intervalsUpToDate, paceCheckFor, persistDerived, persistIntervals } from "@/lib/derived";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
@@ -37,7 +39,7 @@ export default async function ActivityDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: activity }, { data: streams }, { data: profile }, { data: evaluation }, { data: evaluationJob }, aiStatus] =
+  const [{ data: stored }, { data: streams }, { data: profile }, { data: evaluation }, { data: evaluationJob }, aiStatus] =
     await Promise.all([
       supabase
         .from("activities")
@@ -76,7 +78,29 @@ export default async function ActivityDetailPage({
       getAiStatus(supabase, user.id),
     ]);
 
-  if (!activity) notFound();
+  if (!stored) notFound();
+
+  // Tempo in movimento: se il file non lo dice (o conta ancora le pause) si
+  // ricava dalle pause negli stream, si mostra subito e si salva con il passo.
+  const fromPauses = streams
+    ? movingTimeFromStreams(stored.duration_s, { distance: streams.distance_series, gps: streams.gps_series })
+    : null;
+  const best = bestMovingTime(stored.duration_s, stored.moving_time_s, fromPauses);
+  const derivedMoving = best != null && best !== stored.moving_time_s ? best : null;
+  const activity: Activity = derivedMoving != null
+    ? { ...stored, moving_time_s: derivedMoving, avg_pace_s_km: stored.distance_m > 0 ? avgPace(stored.distance_m, derivedMoving) : stored.avg_pace_s_km }
+    : stored;
+  if (derivedMoving != null) {
+    const userId = user.id;
+    after(async () => {
+      const { error } = await createAdminClient()
+        .from("activities")
+        .update({ moving_time_s: activity.moving_time_s, avg_pace_s_km: activity.avg_pace_s_km })
+        .eq("id", activity.id)
+        .eq("user_id", userId);
+      if (error) console.error("moving time refresh:", error.message);
+    });
+  }
 
   // Verifica del passo calcolata sul momento (il piano può essere cambiato) e
   // record personali: se il dato salvato è assente o superato, lo aggiorniamo
