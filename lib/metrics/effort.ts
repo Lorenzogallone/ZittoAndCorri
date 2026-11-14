@@ -3,6 +3,7 @@
 
 import type { GpsPoint, HrPoint } from "@/lib/types";
 import { haversine } from "@/lib/metrics/splits";
+import { withoutPauses } from "./pauses.ts";
 
 /** Punto cadenza normalizzato (dal parser FIT). */
 export interface CadencePoint {
@@ -66,10 +67,14 @@ function distanceInWindow(gps: GpsPoint[], t0: number, t1: number): number {
  * rumoroso.
  */
 export function computeHrDrift(
-  hr_series: HrPoint[] | undefined,
-  gps_series?: GpsPoint[],
+  hr: HrPoint[] | undefined,
+  gps?: GpsPoint[],
 ): number | null {
-  if (!hr_series || hr_series.length < 10) return null;
+  if (!hr || hr.length < 10) return null;
+  // Metà calcolate sul tempo in movimento: le pause non falsano il passo.
+  const moving = withoutPauses({ hr, gps });
+  const hr_series = moving.hr!;
+  const gps_series = moving.gps ?? undefined;
   const tStart = hr_series[0].t;
   const tEnd = hr_series[hr_series.length - 1].t;
   const total = tEnd - tStart;

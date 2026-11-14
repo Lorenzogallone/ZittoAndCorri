@@ -326,3 +326,36 @@ test("la struttura dichiarata con camminata, ma corricchiando: vale il misurato"
   assert.deepEqual(recoveries.map((s) => s.variant), ["jog", "walk", "jog", "walk", "jog", "walk", "jog"]);
   assert.equal(result.segments.filter((s) => s.variant === "sprint").length, 4);
 });
+
+/** Toglie i punti in un intervallo [da, a): l'orologio è in pausa, poi riparte dallo stesso punto. */
+function pauseWatch<P extends { t: number }>(series: P[], from: number, seconds: number): P[] {
+  return series.map((p) => (p.t > from ? { ...p, t: p.t + seconds } : p));
+}
+
+test("una pausa dell'orologio dentro una ripetuta non la fa sembrare più lenta", () => {
+  const { distance, hr, bounds } = run5x1000();
+  // 25" di pausa a metà della seconda ripetuta (fase 3: dopo riscaldamento e primo recupero).
+  const mid = Math.round((bounds[3] + bounds[4]) / 2);
+  const paused = analyzeIntervals({
+    distance: pauseWatch(distance, mid, 25),
+    hr: pauseWatch(hr, mid, 25),
+    structures: [{ source: "plan", steps: plan5x1000 }],
+  });
+  const plain = analyzeIntervals({ distance, hr, structures: [{ source: "plan", steps: plan5x1000 }] });
+  const pace = (result: typeof plain) => result.segments.filter((s) => s.kind === "work").map((s) => s.pace_s_km!);
+  pace(paused).forEach((value, i) => assert.ok(Math.abs(value - pace(plain)[i]) <= 3, `rep ${i + 1}: ${value} vs ${pace(plain)[i]}`));
+});
+
+test("un recupero fatto a orologio fermo resta un recupero con la sua durata", () => {
+  const { distance, hr, bounds } = run5x1000();
+  // Primo recupero: l'atleta mette in pausa per 60" all'inizio.
+  const at = bounds[2] + 5;
+  const result = analyzeIntervals({
+    distance: pauseWatch(distance, at, 60),
+    hr: pauseWatch(hr, at, 60),
+    structures: [{ source: "plan", steps: plan5x1000 }],
+  });
+  assert.equal(result.segments.filter((s) => s.kind === "work").length, 5);
+  const first = result.segments.find((s) => s.kind === "recovery")!;
+  assert.ok(first.duration_s >= 170, `recupero di ${first.duration_s}s`);
+});

@@ -13,8 +13,10 @@
 import type { GpsPoint, HrPoint, WorkoutStepInput, WorkoutStepKind } from "@/lib/types";
 import { cumulativeDistance } from "./geo.ts";
 import { formatStepAmount, groupWorkoutSteps } from "../workout-guide.ts";
+import { detectPauses } from "./pauses.ts";
 
-export const INTERVALS_VERSION = 2;
+// 3: tratti misurati sul tempo in movimento (pause dell'orologio escluse).
+export const INTERVALS_VERSION = 3;
 
 /** Distanza cumulativa registrata dall'orologio (m) a t secondi dall'inizio. */
 export interface DistancePoint {
@@ -149,6 +151,8 @@ interface Timeline {
   hr: Float64Array;
   /** Passi al minuto; NaN dove manca. */
   cadence: Float64Array;
+  /** 1 nei secondi in cui l'orologio era in pausa: non contano nel passo. */
+  paused: Uint8Array;
 }
 
 const MAX_SECONDS = 6 * 3600;
@@ -245,7 +249,14 @@ function buildTimeline(input: AnalyzeInput): Timeline | null {
   // FC: il sensore perde il segnale a tratti; fino a un minuto si interpola.
   const hr = resampleValues((input.hr ?? []).filter((p) => p.bpm > 0).map((p) => ({ t: p.t, v: p.bpm })), t0, n, 60, 20);
   const cadence = resampleValues((input.cadence ?? []).filter((p) => p.rpm > 0).map((p) => ({ t: p.t, v: p.rpm * 2 })), t0, n, 15, 5);
-  return { t0, n, dist, speed, hr, cadence };
+  // Pause dell'orologio: restano sulla linea del tempo (un recupero da fermo
+  // resta un recupero) ma i loro secondi non entrano nel passo dei tratti.
+  const paused = new Uint8Array(n);
+  for (const pause of detectPauses(points)) {
+    const to = Math.min(n, Math.round(pause.to) - t0);
+    for (let i = Math.max(0, to - Math.round(pause.removed)); i < to; i++) paused[i] = 1;
+  }
+  return { t0, n, dist, speed, hr, cadence, paused };
 }
 
 function meanSpeed(tl: Timeline, start: number, end: number): number {
@@ -399,10 +410,16 @@ function topSpeed(tl: Timeline, start: number, end: number): number | null {
 function measure(tl: Timeline, span: Span): IntervalSegment {
   const start = Math.max(0, Math.min(tl.n - 1, span.start));
   const end = Math.max(start + 1, Math.min(tl.n, span.end));
-  const duration = span.lap?.duration_s ?? end - start;
+  const elapsed = span.lap?.duration_s ?? end - start;
+  let pausedSeconds = 0;
+  for (let i = start; i < end; i++) pausedSeconds += tl.paused[i];
+  // Tempo in movimento: una pausa dentro il tratto non lo fa sembrare più lento.
+  const moving = Math.max(1, elapsed - pausedSeconds);
+  // Un recupero dura quanto ci si è fermati davvero, pausa compresa.
+  const duration = span.kind === "recovery" ? elapsed : moving;
   const seriesDistance = tl.dist[Math.min(end, tl.n - 1)] - tl.dist[start];
   const distance = span.lap?.distance_m ?? seriesDistance;
-  const pace = distance >= 30 ? Math.round((duration / distance) * 1000) : null;
+  const pace = distance >= 30 ? Math.round((moving / distance) * 1000) : null;
   const validPace = pace != null && pace >= 120 && pace <= 1_500 ? pace : null;
   const hr = hrStats(tl, start, end);
   const step = span.step;

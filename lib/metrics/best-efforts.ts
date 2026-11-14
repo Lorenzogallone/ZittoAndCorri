@@ -4,6 +4,7 @@
 
 import type { GpsPoint } from "@/lib/types";
 import { cumulativeDistance } from "./geo.ts";
+import { withoutPauses } from "./pauses.ts";
 
 export type EffortKey = "1k" | "5k" | "10k" | "half" | "marathon";
 
@@ -44,8 +45,9 @@ function fastestWindow(times: number[], cum: number[], meters: number): number |
 }
 
 /** Best effort dalla traccia GPS di una corsa. */
-export function bestEffortsFromGps(gps: GpsPoint[]): BestEfforts {
-  if (!gps || gps.length < 2) return {};
+export function bestEffortsFromGps(track: GpsPoint[]): BestEfforts {
+  if (!track || track.length < 2) return {};
+  const gps = withoutPauses({ gps: track }).gps!;
   const cum = cumulativeDistance(gps);
   const times = gps.map((p) => p.t);
   const out: BestEfforts = {};
