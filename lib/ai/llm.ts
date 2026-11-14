@@ -18,10 +18,17 @@ export interface AiResult<T> {
   usage: AiUsage;
 }
 
-export async function generateAi<T>(prompt: string, schema: Schema, config: AiConfig, purpose: AiPurpose): Promise<AiResult<T>> {
+export async function generateAi<T>(
+  prompt: string,
+  schema: Schema,
+  config: AiConfig,
+  purpose: AiPurpose,
+  /** Istante (ms) entro cui la risposta deve arrivare; default 3 minuti da ora. */
+  deadlineAt?: number,
+): Promise<AiResult<T>> {
   const result = config.provider === "openrouter"
-    ? await generateOpenRouter<T>(prompt, schema, { apiKey: config.apiKey, model: config.model })
-    : await generateGemini<T>(prompt, schema, { apiKey: config.apiKey, model: config.model });
+    ? await generateOpenRouter<T>(prompt, schema, { apiKey: config.apiKey, model: config.model, deadlineAt })
+    : await generateGemini<T>(prompt, schema, { apiKey: config.apiKey, model: config.model, deadlineAt });
   await recordAiUsage(config, purpose, result.usage);
   return result;
 }
@@ -58,6 +65,7 @@ export function aiErrorMessage(error: unknown): string {
     if (error.status === 404) return "Modello OpenRouter non disponibile: scegline un altro nelle impostazioni.";
     if (error.status === 429) return "Troppe richieste a OpenRouter: riprova tra poco o cambia modello.";
     if (error.status === 422) return "Il modello OpenRouter non ha risposto nel formato atteso: prova un altro modello.";
+    if (error.status === 504) return "Il modello ci ha messo troppo a rispondere. Riprova, oppure scegli un modello più veloce per la chat.";
     return "Richiesta a OpenRouter non riuscita. Riprova tra poco.";
   }
   return geminiErrorMessage(error);

@@ -35,7 +35,7 @@ test("il coach può escludere, ripristinare e annotare le corse registrate", () 
   // lib/ai/prompt.ts importa con alias "@/": qui si verifica il contratto sul sorgente.
   const prompt = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
   const actions = readFileSync(new URL("../app/coach/actions.ts", import.meta.url), "utf8");
-  assert.match(prompt, /activity_updates: z\.array/);
+  assert.match(prompt, /activity_updates: lenientArray/);
   assert.match(prompt, /enum: \["exclude", "restore", "annotate"\]/);
   assert.match(prompt, /"activity_updates", "workouts"\]/);
   assert.match(prompt, /past=true/);

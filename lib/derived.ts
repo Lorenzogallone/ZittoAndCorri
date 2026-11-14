@@ -17,7 +17,8 @@ import {
   type FitLap,
   type IntervalAnalysis,
 } from "@/lib/metrics/intervals";
-import { romeDay } from "@/lib/local-date";
+import { addDays, romeDay } from "@/lib/local-date";
+import { workoutForActivity } from "@/lib/plan/match-activities";
 import { avgPace } from "@/lib/metrics/pace";
 import { movingTimeFromStreams } from "@/lib/metrics/pauses";
 import { workoutStepsOrLegacy } from "@/lib/workout-steps";
@@ -25,30 +26,69 @@ import type { Activity, ActivityStream, GpsPoint, HrPoint, PlannedWorkout } from
 
 type DerivedActivity = Pick<Activity, "id" | "sport" | "started_at" | "distance_m" | "duration_s" | "moving_time_s">;
 
-/** Seduta pianificata dello stesso giorno con tratti a passo da verificare. */
+type DayActivity = Pick<Activity, "id" | "started_at" | "sport" | "distance_m" | "duration_s" | "moving_time_s">;
+
+/**
+ * Seduta pianificata abbinata a un'attività: con più sedute e più corse nello
+ * stesso giorno non è la prima, ma quella che le somiglia di più (distanza,
+ * durata, ordine, momento). Un'attività che non corrisponde a nessuna seduta
+ * (es. una corsa in più) non ha seduta.
+ */
+export async function plannedForActivity(
+  supabase: SupabaseClient,
+  userId: string,
+  activity: Pick<Activity, "id" | "started_at">,
+): Promise<PlannedWorkout | null> {
+  const day = romeDay(activity.started_at);
+  const [{ data: workouts }, { data: activities }] = await Promise.all([
+    supabase
+      .from("planned_workouts")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("date", day)
+      .returns<PlannedWorkout[]>(),
+    supabase
+      .from("activities")
+      .select("id, started_at, sport, distance_m, duration_s, moving_time_s")
+      .eq("user_id", userId)
+      .is("excluded_at", null)
+      .gte("started_at", `${addDays(day, -1)}T12:00:00Z`)
+      .lte("started_at", `${addDays(day, 1)}T12:00:00Z`)
+      .returns<DayActivity[]>(),
+  ]);
+  const plan = (workouts ?? []).map((workout) => ({ ...workout, workout_steps: workoutStepsOrLegacy(workout.workout_steps, workout) }));
+  if (!plan.length) return null;
+  const sameDay = (activities ?? []).filter((other) => romeDay(other.started_at) === day);
+  // L'attività stessa c'è sempre (anche se esclusa o appena salvata).
+  if (!sameDay.some((other) => other.id === activity.id)) {
+    const { data: self } = await supabase
+      .from("activities")
+      .select("id, started_at, sport, distance_m, duration_s, moving_time_s")
+      .eq("id", activity.id)
+      .maybeSingle<DayActivity>();
+    if (self) sameDay.push(self);
+  }
+  return workoutForActivity(activity.id, plan, sameDay);
+}
+
+/** Seduta abbinata all'attività, se ha tratti a passo da verificare. */
 async function plannedWithPace(
   supabase: SupabaseClient,
   userId: string,
-  day: string,
+  activity: Pick<Activity, "id" | "started_at">,
 ): Promise<PlannedWorkout | null> {
-  const { data } = await supabase
-    .from("planned_workouts")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("date", day)
-    .neq("type", "cross")
-    .returns<PlannedWorkout[]>();
-  return (data ?? []).find((workout) => stepsToCheck(workoutStepsOrLegacy(workout.workout_steps, workout)).length > 0) ?? null;
+  const workout = await plannedForActivity(supabase, userId, activity);
+  return workout && workout.type !== "cross" && stepsToCheck(workoutStepsOrLegacy(workout.workout_steps, workout)).length > 0 ? workout : null;
 }
 
 export async function paceCheckFor(
   supabase: SupabaseClient,
   userId: string,
-  activity: Pick<Activity, "sport" | "started_at">,
+  activity: Pick<Activity, "id" | "sport" | "started_at">,
   gps: GpsPoint[] | null | undefined,
 ): Promise<{ check: PaceCheck; workout: PlannedWorkout } | null> {
   if (activity.sport !== "running" || !gps || gps.length < 10) return null;
-  const workout = await plannedWithPace(supabase, userId, romeDay(activity.started_at));
+  const workout = await plannedWithPace(supabase, userId, activity);
   if (!workout) return null;
   const check = checkPace(gps, workoutStepsOrLegacy(workout.workout_steps, workout));
   return check ? { check, workout } : null;
@@ -95,16 +135,10 @@ export async function loadStreams(supabase: SupabaseClient, activityId: string):
   };
 }
 
-/** Seduta del giorno con una struttura da riconoscere (ripetute, progressivi…). */
-async function plannedStructure(supabase: SupabaseClient, userId: string, day: string): Promise<PlannedWorkout | null> {
-  const { data } = await supabase
-    .from("planned_workouts")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("date", day)
-    .neq("type", "cross")
-    .returns<PlannedWorkout[]>();
-  return (data ?? []).find((workout) => isStructured(workoutStepsOrLegacy(workout.workout_steps, workout))) ?? null;
+/** Seduta abbinata all'attività, se ha una struttura da riconoscere (ripetute, progressivi…). */
+async function plannedStructure(supabase: SupabaseClient, userId: string, activity: Pick<Activity, "id" | "started_at">): Promise<PlannedWorkout | null> {
+  const workout = await plannedForActivity(supabase, userId, activity);
+  return workout && workout.type !== "cross" && isStructured(workoutStepsOrLegacy(workout.workout_steps, workout)) ? workout : null;
 }
 
 /**
@@ -114,14 +148,14 @@ async function plannedStructure(supabase: SupabaseClient, userId: string, day: s
 export async function computeIntervals(
   supabase: SupabaseClient,
   userId: string,
-  activity: Pick<Activity, "sport" | "started_at">,
+  activity: Pick<Activity, "id" | "sport" | "started_at">,
   streams: DerivedStreams,
   declared: DeclaredIntervals | null,
 ): Promise<IntervalAnalysis | null> {
   if (activity.sport !== "running") return null;
   const structures: DeclaredStructure[] = [];
   if (declared?.steps.length) structures.push({ source: "notes", steps: declared.steps, description: declared.description });
-  const workout = await plannedStructure(supabase, userId, romeDay(activity.started_at));
+  const workout = await plannedStructure(supabase, userId, activity);
   if (workout) {
     const steps = workoutStepsOrLegacy(workout.workout_steps, workout);
     structures.push({ source: "plan", steps, description: describeStructure(steps) });

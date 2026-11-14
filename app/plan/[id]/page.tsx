@@ -24,6 +24,7 @@ import { adjustStepsForHeat } from "@/lib/metrics/heat";
 import { predictionReference, predictTime } from "@/lib/metrics/race-prediction";
 import { heatForDates } from "@/lib/weather";
 import type { Activity, Goal, PlannedWorkout } from "@/lib/types";
+import { matchDay } from "@/lib/plan/match-activities";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -46,7 +47,7 @@ export default async function PlannedWorkoutPage({ params }: Props) {
   if (!workout) notFound();
 
   const today = romeDay();
-  const [{ data: goal }, { data: dayActivities }, heat] = await Promise.all([
+  const [{ data: goal }, { data: dayActivities }, { data: dayWorkouts }, heat] = await Promise.all([
     supabase
       .from("goals")
       .select("race_date, distance_m, target_time_s")
@@ -62,6 +63,12 @@ export default async function PlannedWorkoutPage({ params }: Props) {
       .lte("started_at", `${addDays(workout.date, 1)}T12:00:00`)
       .order("started_at")
       .returns<Array<Pick<Activity, "id" | "started_at" | "sport" | "distance_m" | "duration_s" | "moving_time_s" | "avg_pace_s_km">>>(),
+    supabase
+      .from("planned_workouts")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("date", workout.date)
+      .returns<PlannedWorkout[]>(),
     workout.status === "planned" && workout.type !== "cross"
       ? heatForDates(supabase, user.id, [workout.date]).then((map) => map.get(workout.date) ?? null)
       : Promise.resolve(null),
@@ -79,8 +86,14 @@ export default async function PlannedWorkoutPage({ params }: Props) {
     .filter((pace): pace is number => pace != null)
     .sort((a, b) => a - b)[0] ?? null;
   const done = workout.status === "completed";
-  const doneActivity = (dayActivities ?? []).find((activity) =>
-    romeDay(activity.started_at) === workout.date && (workout.type === "cross" || activity.sport === "running"));
+  // Con più sedute e più corse nello stesso giorno, la corsa che somiglia di
+  // più a questa seduta (non per forza la prima del giorno).
+  const sameDayActivities = (dayActivities ?? []).filter((activity) => romeDay(activity.started_at) === workout.date);
+  const matchedId = matchDay(
+    (dayWorkouts?.length ? dayWorkouts : [workout]).map((w) => ({ ...w, workout_steps: workoutStepsOrLegacy(w.workout_steps, w) })),
+    sameDayActivities,
+  ).get(workout.id);
+  const doneActivity = sameDayActivities.find((activity) => activity.id === matchedId);
 
   // Strategia di gara: tempo obiettivo se è la gara dell'obiettivo, altrimenti previsione.
   const isGoalRace = goal?.race_date === workout.date;

@@ -20,6 +20,8 @@ import { intervalsForPrompt } from "@/lib/intervals-text";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { romeDay } from "@/lib/local-date";
 import { sortByDayOrder } from "@/lib/plan/day-sessions";
+import { workoutForActivity } from "@/lib/plan/match-activities";
+import { workoutStepsOrLegacy } from "@/lib/workout-steps";
 
 type EvalActivity = Pick<Activity,
   "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" |
@@ -31,7 +33,7 @@ type EvalActivity = Pick<Activity,
 type SameDayActivity = Pick<Activity, "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" | "moving_time_s" | "avg_pace_s_km" | "avg_hr">;
 
 /** Seduta pianificata per il prompt, con il suo posto nella giornata. */
-function planForPrompt(workout: PlannedWorkout) {
+function planForPrompt(workout: PlannedWorkout, matchedId: string | null) {
   return {
     date: workout.date,
     type: workout.type,
@@ -44,6 +46,8 @@ function planForPrompt(workout: PlannedWorkout) {
     order: workout.day_order ?? 1,
     part: workout.day_part ?? null,
     chained: workout.chained === true,
+    /** Seduta abbinata a questa attività (orario, distanza, durata, ordine). */
+    matched: workout.id === matchedId,
   };
 }
 
@@ -181,9 +185,20 @@ async function runActivityEvaluation(
         .order("started_at")
         .returns<SameDayActivity[]>(),
     ]);
-    const nearbyPlan = nearbyPlanResult.data ? sortByDayOrder(nearbyPlanResult.data).map(planForPrompt) : null;
+    const others = (sameDayResult.data ?? []).filter((other) => romeDay(other.started_at) === activityDay);
+    // Con più sedute e più corse nello stesso giorno: la seduta che somiglia di più a questa corsa.
+    const matched = workoutForActivity(
+      activity.id,
+      (nearbyPlanResult.data ?? [])
+        .filter((workout) => workout.date === activityDay)
+        .map((workout) => ({ ...workout, workout_steps: workoutStepsOrLegacy(workout.workout_steps, workout) })),
+      [activity, ...others],
+    );
+    const nearbyPlan = nearbyPlanResult.data
+      ? sortByDayOrder(nearbyPlanResult.data).map((workout) => planForPrompt(workout, matched?.id ?? null))
+      : null;
     const nearbyPlanError = nearbyPlanResult.error;
-    const sameDay = sameDayLines(activity, (sameDayResult.data ?? []).filter((other) => romeDay(other.started_at) === activityDay));
+    const sameDay = sameDayLines(activity, others);
     const { data: existingEvaluation, error: existingEvaluationError } = existingEvaluationResult;
     if (nearbyPlanError ?? existingEvaluationError) {
       throw nearbyPlanError ?? existingEvaluationError;
@@ -193,7 +208,7 @@ async function runActivityEvaluation(
     let declared: DeclaredIntervals | undefined;
     let structureUsage: AiUsage | null = null;
     if (activity.sport === "running" && mayDescribeStructure(activity.notes)) {
-      const planned = (nearbyPlan ?? []).filter((workout) => workout.date === activityDay);
+      const planned = (nearbyPlan ?? []).filter((workout) => workout.matched);
       const hint = planned.length ? planned.map((workout) => [workout.type, workout.description].filter(Boolean).join(": ")).join(" | ") : null;
       try {
         const structure = await extractDeclaredStructure(activity.notes, hint, ai);
