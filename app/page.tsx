@@ -15,8 +15,13 @@ import { heatForDates } from "@/lib/weather";
 import { getAiStatus } from "@/lib/ai/ai-status";
 import type { Activity, CoachMessage, Goal, PlanProposal, PlannedWorkout } from "@/lib/types";
 import { scheduleIntervalsImportIfStale } from "@/lib/intervals/sync";
+import { sortByDayOrder } from "@/lib/plan/day-sessions";
+import { matchDay } from "@/lib/plan/match-activities";
+import { workoutStepsOrLegacy } from "@/lib/workout-steps";
 
-export const maxDuration = 240;
+// 300 s: la chat del coach con modelli lenti (es. Opus) usa fino a 270 s
+// (COACH_BUDGET_MS in app/coach/actions.ts) più il salvataggio.
+export const maxDuration = 300;
 
 /** Saluto in base all'ora di adesso a Roma. */
 function greeting(): string {
@@ -58,9 +63,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   const [goalRes, nextRes, weekPlanRes, weekActivitiesRes, messagesRes, proposalsRes, aiStatus, pendingEvaluationsRes, firstRun] = await Promise.all([
     supabase.from("goals").select("race_name, race_date, distance_m, target_time_s, created_at").eq("user_id", user.id).eq("is_active", true).maybeSingle<Pick<Goal, "race_name" | "race_date" | "distance_m" | "target_time_s" | "created_at">>(),
     // La prima è la seduta in evidenza; le altre vanno nella colonna desktop.
-    supabase.from("planned_workouts").select("*").eq("user_id", user.id).eq("status", "planned").gte("date", today).order("date").order("created_at").limit(6).returns<PlannedWorkout[]>(),
+    supabase.from("planned_workouts").select("*").eq("user_id", user.id).eq("status", "planned").gte("date", today).order("date").order("created_at").limit(8).returns<PlannedWorkout[]>(),
     supabase.from("planned_workouts").select("*").eq("user_id", user.id).gte("date", monday).lte("date", sunday).returns<PlannedWorkout[]>(),
-    supabase.from("activities").select("started_at, sport, distance_m").eq("user_id", user.id).is("excluded_at", null).gte("started_at", `${addDays(monday, -1)}T12:00:00`).lte("started_at", `${addDays(sunday, 1)}T12:00:00`).returns<Array<Pick<Activity, "started_at" | "sport" | "distance_m">>>(),
+    supabase.from("activities").select("id, started_at, sport, distance_m, duration_s, moving_time_s").eq("user_id", user.id).is("excluded_at", null).gte("started_at", `${addDays(monday, -1)}T12:00:00`).lte("started_at", `${addDays(sunday, 1)}T12:00:00`).returns<Array<Pick<Activity, "id" | "started_at" | "sport" | "distance_m" | "duration_s" | "moving_time_s">>>(),
     supabase.from("coach_messages").select("*").eq("user_id", user.id).in("kind", ["chat", "plan_proposal", "status"]).order("created_at", { ascending: false }).limit(60).returns<CoachMessage[]>(),
     supabase.from("plan_proposals").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10).returns<PlanProposal[]>(),
     getAiStatus(supabase, user.id),
@@ -74,7 +79,22 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
       ? user.user_metadata.name
       : null;
   const name = authName?.split(" ")[0] ?? user.email?.split("@")[0] ?? "Runner";
-  const [next = null, ...upcoming] = nextRes.data ?? [];
+  // Tutte le sedute del prossimo giorno in programma (anche due o più), nel loro
+  // ordine. Oggi quelle già corse si segnano fatte e in evidenza va la prima da fare.
+  const nextSessions = sortByDayOrder(nextRes.data ?? []);
+  const nextDate = nextSessions[0]?.date ?? null;
+  const daySessions = nextSessions.filter((workout) => workout.date === nextDate);
+  const upcoming = nextSessions.filter((workout) => workout.date !== nextDate);
+  const doneToday = nextDate === today
+    ? new Set(matchDay(
+        daySessions.map((workout) => ({ ...workout, workout_steps: workoutStepsOrLegacy(workout.workout_steps, workout) })),
+        (weekActivitiesRes.data ?? []).filter((activity) => romeDay(activity.started_at) === today),
+      ).keys())
+    : new Set<string>();
+  const next = daySessions.find((workout) => !doneToday.has(workout.id)) ?? daySessions[0] ?? null;
+  const sameDay = daySessions
+    .filter((workout) => workout.id !== next?.id)
+    .map((workout) => ({ workout, done: doneToday.has(workout.id) }));
   const goal = goalRes.data;
   const phases = goal ? trainingPhases({ race_date: goal.race_date, distance_m: goal.distance_m, start_date: romeDay(goal.created_at), today }) : null;
   const week = buildDays(monday, 7, today, weekPlanRes.data ?? [], weekActivitiesRes.data ?? []);
@@ -112,7 +132,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
           </div>
           <div className="contents 3xl:block">
             <div className="mb-3 shrink-0">
-              <TodayCard next={next} today={today} heat={heat} week={week} race={race} />
+              <TodayCard next={next} sameDay={sameDay} sessionsThatDay={daySessions.length} today={today} heat={heat} week={week} race={race} />
             </div>
             {/* Primo uso: tre passi sopra la chat; si nasconde da sola a passi fatti. */}
             <GettingStarted {...firstRun} aiReady={aiStatus.chat.active !== null} className="mb-3 shrink-0" />

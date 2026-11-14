@@ -125,10 +125,10 @@ function withDeadline<T>(p: Promise<T>, deadlineAt: number): Promise<T> {
 export async function generateStructured<T>(
   prompt: string,
   schema: Schema,
-  opts: { apiKey: string; model?: string },
+  opts: { apiKey: string; model?: string; /** Istante (ms) entro cui finire; default fra 3 minuti. */ deadlineAt?: number },
 ): Promise<{ data: T; usage: AiUsage }> {
   const model = opts?.model ?? PRIMARY_MODEL;
-  const deadlineAt = Date.now() + DEADLINE_MS;
+  const deadlineAt = opts.deadlineAt ?? Date.now() + DEADLINE_MS;
   let lastErr: unknown;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {

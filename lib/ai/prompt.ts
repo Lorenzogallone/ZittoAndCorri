@@ -85,7 +85,7 @@ export function buildEvaluationPrompt(
     "Sei il coach di corsa personale di questo atleta: lo segui da settimane, conosci il suo piano, il suo storico e i feedback che gli hai già dato. Valuti una singola attività con tono diretto, concreto e incoraggiante, come farebbe un vero allenatore.",
     "Regole:",
     "- I numeri (passi, volumi, carico, predizioni) sono già calcolati e te li fornisco — NON inventarne di nuovi, puoi solo commentarli. Produci solo testo qualitativo in italiano.",
-    "- Piano e attività NON hanno un collegamento esplicito. Confronta l'attività con le sedute pianificate nei giorni vicini e deduci quale sia la corrispondenza più probabile usando data, distanza, durata, passo, HR, descrizione e note. Non forzare un abbinamento: se è incerto o non c'è, dillo.",
+    "- Piano e attività NON hanno un collegamento esplicito. La seduta con matched=true è quella abbinata a questa attività confrontando le sedute e le corse dello stesso giorno (distanza, durata, ordine, momento): con due sedute e due corse nello stesso giorno non è per forza la prima. Usala come riferimento, ma verifica con passo, HR, descrizione e note: se i dati dicono altro (o nessuna seduta ha matched=true), deduci tu la corrispondenza più probabile. Non forzare un abbinamento: se è incerto o non c'è, dillo.",
     "- Il tag 'unclassified' significa soltanto corsa importata e non classificata: NON trattarla automaticamente come easy. Deduci la natura dello sforzo dai dati reali e dall'eventuale seduta pianificata compatibile.",
     "- Trasforma le note libere dell'atleta nel campo details: massimo 5 punti telegrafici, preferibilmente 2-6 parole ciascuno, un'informazione per punto. Consolida i dettagli già catalogati, elimina duplicati, non riportare la frase originale e non inventare nulla. Nella summary non citare testualmente il commento grezzo. Se non ci sono informazioni personali aggiuntive, restituisci un array vuoto.",
     "- Inquadra la corsa nella fase di allenamento corrente (vedi memoria coach nel contesto): un easy in settimana di scarico si giudica diversamente da uno in piena fase di carico.",
@@ -280,17 +280,41 @@ export const memoryCategories = [
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
+/**
+ * Numero intero tollerante: i modelli via OpenRouter non sono vincolati allo
+ * schema come Gemini e scrivono 4.5 o "300". Fuori range diventa null.
+ */
+const looseInt = (min: number, max: number) =>
+  z.preprocess(
+    (value) => {
+      const n = typeof value === "string" && value.trim() !== "" ? Number(value) : value;
+      return typeof n === "number" && Number.isFinite(n) ? Math.round(n) : n;
+    },
+    z.number().int().min(min).max(max).nullable(),
+  ).catch(null);
+
+/** Testo tagliato alla lunghezza massima invece di far fallire tutta la risposta. */
+const clipped = (max: number) => z.string().trim().min(1).transform((text) => text.slice(0, max));
+
+/** Lista in cui un elemento non valido si scarta, senza perdere il resto. */
+const lenientArray = <T extends z.ZodTypeAny>(item: T) =>
+  z.array(z.unknown()).catch([]).default([]).transform((items) =>
+    items.flatMap((entry) => {
+      const parsed = item.safeParse(entry);
+      return parsed.success ? [parsed.data as z.infer<T>] : [];
+    }));
+
 export const coachResponseSchemaZod = z.object({
   reply: z.string().min(1),
   conversation_summary: z.string().min(1),
-  memories: z.array(z.object({
-    memory_id: z.string().uuid().nullable(),
+  memories: lenientArray(z.object({
+    memory_id: z.string().uuid().nullable().catch(null),
     category: z.enum(memoryCategories),
-    content: z.string().min(1),
-    valid_from: isoDate.nullable(),
-    valid_until: isoDate.nullable(),
-    confidence: z.number().min(0).max(1),
-  })).default([]),
+    content: z.string().trim().min(1),
+    valid_from: isoDate.nullable().catch(null),
+    valid_until: isoDate.nullable().catch(null),
+    confidence: z.number().min(0).max(1).catch(0.7),
+  })),
   goal_update: z.object({
     action: z.enum(["set", "clear"]),
     race_name: z.string().trim().max(120).nullable(),
@@ -298,37 +322,37 @@ export const coachResponseSchemaZod = z.object({
     distance_m: z.number().int().min(1000).max(250_000).nullable(),
     target_time_s: z.number().int().positive().nullable(),
   }).nullable().catch(null),
-  plan_summary: z.string().nullable(),
+  plan_summary: z.string().nullable().catch(null),
   remove_dates: z.array(isoDate).max(40).catch([]).default([]),
-  activity_updates: z.array(z.object({
+  activity_updates: lenientArray(z.object({
     activity_id: z.string().uuid(),
     action: z.enum(["exclude", "restore", "annotate"]),
-    reason: z.string().trim().max(200).nullable(),
-    rpe: z.number().int().min(1).max(10).nullable(),
-  })).max(10).catch([]).default([]),
-  workouts: z.array(z.object({
+    reason: z.string().trim().max(200).nullable().catch(null),
+    rpe: looseInt(1, 10),
+  })).transform((updates) => updates.slice(0, 10)),
+  workouts: lenientArray(z.object({
     date: isoDate,
     type: z.enum(WORKOUT_TYPES as [typeof WORKOUT_TYPES[number], ...typeof WORKOUT_TYPES[number][]]),
-    target_distance_m: z.number().int().positive().nullable(),
-    target_pace_s_km: z.number().int().positive().nullable(),
-    target_duration_s: z.number().int().positive().nullable(),
-    target_hr_bpm: z.number().int().min(80).max(220).nullable(),
-    workout_steps: z.array(z.object({
+    target_distance_m: looseInt(1, 500_000),
+    target_pace_s_km: looseInt(1, 3_600),
+    target_duration_s: looseInt(1, 86_400),
+    target_hr_bpm: looseInt(80, 220),
+    workout_steps: lenientArray(z.object({
       kind: z.enum(["warmup", "work", "recovery", "steady", "cooldown"]),
-      label: z.string().trim().min(1).max(48),
+      label: clipped(48),
       completion_type: z.enum(["time", "distance", "manual"]),
-      completion_value: z.number().int().positive().nullable(),
-      pace_min_s_km: z.number().int().min(120).max(1200).nullable(),
-      pace_max_s_km: z.number().int().min(120).max(1200).nullable(),
-      hr_min_bpm: z.number().int().min(80).max(220).nullable(),
-      hr_max_bpm: z.number().int().min(80).max(220).nullable(),
+      completion_value: looseInt(1, 500_000),
+      pace_min_s_km: looseInt(120, 1200),
+      pace_max_s_km: looseInt(120, 1200),
+      hr_min_bpm: looseInt(80, 220),
+      hr_max_bpm: looseInt(80, 220),
       variant: z.enum(["sprint", "jog", "walk"]).nullish().catch(null),
-    })).min(1).max(40),
-    description: z.string().nullable(),
-    focus: z.string().nullable(),
+    })).transform((steps) => steps.slice(0, 40)),
+    description: z.string().nullable().catch(null),
+    focus: z.string().nullable().catch(null),
     day_part: z.enum(["morning", "afternoon", "evening"]).nullish().catch(null),
     chained: z.boolean().nullish().catch(false),
-  })).default([]),
+  }).refine((workout) => workout.workout_steps.length > 0)),
 });
 
 export type CoachResponse = z.infer<typeof coachResponseSchemaZod>;

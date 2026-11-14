@@ -11,6 +11,8 @@ export interface OpenRouterModel {
   context: number | null;
   /** Data di uscita (secondi unix), per suggerire i modelli più recenti. */
   created: number | null;
+  /** Token massimi in risposta dichiarati dal provider; null se non noto. */
+  max_output?: number | null;
 }
 
 /** "Anthropic: Claude Sonnet 5.5" → "Anthropic"; senza prefisso usa l'id ("x-ai/…" → "x-ai"). */

@@ -23,6 +23,13 @@ import { insertPlanProposal } from "@/lib/plan/proposals";
 import { diffAgainstCalendar } from "@/lib/plan/proposal-calendar";
 import { NEW_SESSION } from "@/lib/coach-session";
 
+/**
+ * Tempo per una risposta del coach, dall'invio del messaggio: la funzione può
+ * durare `maxDuration` (300 s, app/page.tsx) e servono ancora una decina di
+ * secondi per salvare. I modelli lenti (es. Opus) usano tutto il margine.
+ */
+const COACH_BUDGET_MS = 270_000;
+
 export interface CoachActionResult { jobId?: string; error?: string; userMessage?: CoachMessage }
 
 function dateShift(iso: string, days: number): string {
@@ -174,6 +181,7 @@ function dayLabel(iso: string): string {
 }
 
 export async function sendCoachMessage(message: string): Promise<CoachActionResult> {
+  const startedAt = Date.now();
   const text = message.trim();
   if (!text) return { error: "Scrivi un messaggio per il coach." };
   if (text.length > 4000) return { error: "Il messaggio è troppo lungo." };
@@ -200,7 +208,7 @@ export async function sendCoachMessage(message: string): Promise<CoachActionResu
   if (jobError || !job) return { error: "Impossibile avviare il coach.", userMessage };
 
   const userId = user.id;
-  after(() => runCoachTurn(job.id, userId, userMessage.id, text, ai));
+  after(() => runCoachTurn(job.id, userId, userMessage.id, text, ai, startedAt + COACH_BUDGET_MS));
   return { jobId: job.id, userMessage };
 }
 
@@ -210,6 +218,7 @@ async function runCoachTurn(
   sourceMessageId: string,
   userText: string,
   ai: AiConfig,
+  deadlineAt: number,
 ) {
   const admin = createAdminClient();
   try {
@@ -221,6 +230,7 @@ async function runCoachTurn(
       coachResponseSchema,
       ai,
       "coach",
+      deadlineAt,
     );
     const result = coachResponseSchemaZod.parse(raw);
     const start = context.meta.today;
