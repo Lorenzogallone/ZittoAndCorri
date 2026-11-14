@@ -16,7 +16,7 @@ import {
 } from "@/lib/ai/prompt";
 import { generalGoalName } from "@/lib/goals";
 import { aiErrorMessage, generateAi } from "@/lib/ai/llm";
-import { WORKOUT_TYPES, type CoachMessage, type ProposedWorkout } from "@/lib/types";
+import { DAY_PARTS, WORKOUT_TYPES, type CoachMessage, type ProposedWorkout } from "@/lib/types";
 import { normalizeWorkoutSteps } from "@/lib/workout-steps";
 import { withoutEasyWarmups } from "@/lib/plan/easy-steps";
 import { insertPlanProposal } from "@/lib/plan/proposals";
@@ -61,6 +61,9 @@ function cleanWorkout(
     workout_steps: workoutSteps,
     description: workout.description?.trim() || null,
     focus: workout.focus?.trim() || null,
+    // Ordine nella giornata e legame si normalizzano nel confronto col calendario.
+    day_part: workout.day_part && DAY_PARTS.includes(workout.day_part) ? workout.day_part : null,
+    chained: workout.chained === true,
   };
 }
 

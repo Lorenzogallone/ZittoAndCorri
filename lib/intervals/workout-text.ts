@@ -25,6 +25,8 @@ export interface IntervalsTargetContext {
 export interface IntervalsWorkoutSource {
   id: string;
   date: string;
+  /** HH:MM:SS: mette in fila le sedute della stessa giornata. Default mezzanotte. */
+  start_time?: string;
   title: string;
   target_distance_m: number | null;
   target_duration_s: number | null;
@@ -238,7 +240,7 @@ export function workoutToIntervalsDraft(workout: IntervalsWorkoutSource, ctx: In
   return {
     category: "WORKOUT",
     type: "Run",
-    start_date_local: `${workout.date}T00:00:00`,
+    start_date_local: `${workout.date}T${workout.start_time ?? "00:00:00"}`,
     name: workoutEventName(workout),
     description: workoutDescription(workout.steps, ctx),
     external_id: intervalsExternalId(workout.id),

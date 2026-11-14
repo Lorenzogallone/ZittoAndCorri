@@ -19,6 +19,7 @@ import { TYPE_LABELS } from "@/lib/activity-meta";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
 import type { CoachMessage, PlanProposal, ProposedWorkout } from "@/lib/types";
 import type { WorkoutBrief } from "@/lib/plan/proposal-diff";
+import { DAY_PART_LABELS } from "@/lib/plan/day-sessions";
 import { WorkoutSteps } from "@/components/workout-steps";
 import { AiModelLine, type AiSwitchState } from "@/components/ai-provider-switch";
 import { workoutHeadline } from "@/lib/workout-guide";
@@ -30,7 +31,14 @@ const dayLabel = (iso: string) =>
 
 function briefText(brief: WorkoutBrief): string {
   const amount = brief.headline ?? (brief.meters ? formatDistance(brief.meters).replace(",00", "") : brief.minutes ? `${brief.minutes} min` : null);
-  return [TYPE_LABELS[brief.type], amount].filter(Boolean).join(" · ");
+  const part = brief.day_part && !brief.chained ? DAY_PART_LABELS[brief.day_part].toLowerCase() : null;
+  return [TYPE_LABELS[brief.type], amount, part].filter(Boolean).join(" · ");
+}
+
+/** Sedute di un giorno: quelle concatenate (un'unica uscita) unite da "+". */
+function briefsText(briefs: WorkoutBrief[]): string {
+  return briefs.reduce((text, brief, index) =>
+    index === 0 ? briefText(brief) : `${text}${brief.chained ? " + " : ", "}${briefText(brief)}`, "");
 }
 
 const messageTime = (iso: string) =>
@@ -69,10 +77,10 @@ function ChangeList({ proposal }: { proposal: PlanProposal }) {
           <span className="w-12 shrink-0 font-semibold capitalize">{dayLabel(change.date)}</span>
           <span className="min-w-0 flex-1">
             {change.before.length > 0 && (
-              <span className="text-muted-foreground line-through decoration-muted-foreground/60">{change.before.map(briefText).join(", ")}</span>
+              <span className="text-muted-foreground line-through decoration-muted-foreground/60">{briefsText(change.before)}</span>
             )}
             {change.before.length > 0 && <span className="px-1.5 text-muted-foreground">→</span>}
-            <span className="font-medium">{change.after.length ? change.after.map(briefText).join(", ") : "riposo"}</span>
+            <span className="font-medium">{change.after.length ? briefsText(change.after) : "riposo"}</span>
           </span>
         </li>
       ))}

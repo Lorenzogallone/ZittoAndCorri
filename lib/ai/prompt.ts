@@ -79,6 +79,7 @@ export function buildEvaluationPrompt(
   contextMarkdown: string,
   activityDetail: string,
   nearbyPlannedWorkouts?: string | null,
+  sameDayActivities?: string | null,
 ): string {
   return [
     "Sei il coach di corsa personale di questo atleta: lo segui da settimane, conosci il suo piano, il suo storico e i feedback che gli hai già dato. Valuti una singola attività con tono diretto, concreto e incoraggiante, come farebbe un vero allenatore.",
@@ -91,6 +92,7 @@ export function buildEvaluationPrompt(
     "- Giudica lo sforzo REALE, non solo il passo: usa HR media e relativa zona, tempo in zona, deriva cardiaca (decoupling) e cadenza quando presenti. Se una seduta easy/lungo esce nettamente dalla Z1 (zona facile) o ha deriva alta, dillo esplicitamente (flag easy_too_fast) e spiega la conseguenza: a oggi quel ritmo non è davvero easy e il piano dovrà tenerne conto. Se il workout previsto aveva una HR target, confronta HR reale vs target.",
     "- Se l'attività riporta i tratti misurati (ripetute), commenta come li ha corsi: regolarità tra le ripetute, calo o crescita verso la fine, passo rispetto al previsto, quanto scende il cuore nei recuperi. Distingui i tratti veloci dagli sprint (per questi conta la velocità di punta e la costanza tra uno e l'altro) e guarda come ha recuperato: corricchiando, camminando o da fermo. Se serve, suggerisci come impostare la prossima volta tratti e recuperi (es. recupero corricchiando invece che camminando, o sprint più distanziati). Cita solo i numeri forniti e al massimo 2-3 tratti significativi, senza elencarli tutti. Se la fonte è il rilevamento automatico, trattala come indicativa.",
     "- Se ci sono segnali sullo stile di corsa (cadenza bassa, deriva ricorrente), dai UN consiglio pratico e concreto su cosa curare la prossima volta (es. su cosa pensare, cosa privilegiare o sacrificare), senza trasformare la valutazione in una lezione.",
+    "- Sedute collegate: se la seduta pianificata dello stesso giorno è divisa in più parti (chained=true, es. riscaldamento e poi ripetute caricati separati sull'orologio) o l'atleta ha registrato altre attività a pochi minuti da questa (vedi 'Altre attività dello stesso giorno'), giudica l'insieme come un'unica seduta: un riscaldamento da solo non è un easy troppo corto, e la parte principale non è senza riscaldamento. Commenta la parte che stai valutando, ma aderenza, carico e sensazioni valgono per l'uscita intera. Se invece le sedute sono separate (mattina e sera), valutale come due stimoli e considera la fatica della prima nella seconda.",
     "- Considera la fatica delle attività non di corsa recenti (calcio, bici, palestra…): possono spiegare gambe pesanti o un passo più lento, o motivare un giorno di corsa saltato.",
     "- Cita aderenza e TSB solo in modo qualitativo (es. 'sei un po' affaticato'), e tieni conto delle note dell'atleta e del contesto temporale (es. ripresa dopo uno stop).",
     LOAD_READING_RULE,
@@ -104,6 +106,9 @@ export function buildEvaluationPrompt(
     "# Sedute pianificate nei ±3 giorni",
     nearbyPlannedWorkouts?.trim() ||
       "Nessuna seduta pianificata nei giorni vicini.",
+    "",
+    "# Altre attività dello stesso giorno",
+    sameDayActivities?.trim() || "Nessuna.",
     "",
     "# Attività da valutare",
     activityDetail,
@@ -199,8 +204,18 @@ export const planSchema: Schema = {
             description:
               "Indicazioni da coach per la seduta (2-3 frasi in italiano): su cosa concentrarsi mentre si corre, segnali da controllare, cosa privilegiare e cosa sacrificare se passo, HR o sensazioni divergono. Includi uno spunto tecnico, respiratorio o mentale concreto e pertinente.",
           },
+          day_part: {
+            type: Type.STRING,
+            enum: ["morning", "afternoon", "evening"],
+            nullable: true,
+            description: "Momento della giornata quando lo stesso giorno ha più sedute separate (mattina, pomeriggio, sera) o l'atleta lo chiede. null se non serve.",
+          },
+          chained: {
+            type: Type.BOOLEAN,
+            description: "true se la seduta si fa subito dopo la precedente dello stesso giorno, come un'unica uscita divisa in due allenamenti (es. riscaldamento e poi ripetute caricati separati sull'orologio). false per la prima seduta del giorno e per sedute separate (es. mattina e sera).",
+          },
         },
-        required: ["date", "type", "target_distance_m", "target_pace_s_km", "target_duration_s", "target_hr_bpm", "workout_steps", "description", "focus"],
+        required: ["date", "type", "target_distance_m", "target_pace_s_km", "target_duration_s", "target_hr_bpm", "workout_steps", "description", "focus", "day_part", "chained"],
       },
     },
   },
@@ -223,7 +238,7 @@ export function buildPlanPrompt(
     `- Pianifica SOLO date comprese tra ${windowStart} e ${windowEnd} (incluse).`,
     "- Segui fortemente la 'Metodologia di riferimento' qui sotto: struttura della settimana, progressione di volume e lungo, rotazione degli stimoli, formato delle sedute e dei recuperi, tono.",
     "- Non programmare ogni singolo giorno: includi riposo e alterna intensità e volume in modo sensato verso l'obiettivo.",
-    "- Di norma una seduta al giorno. Due sedute nello stesso giorno (stessa data, es. mattina e sera) solo se l'atleta lo chiede o i suoi vincoli lo richiedono.",
+    "- Di norma una seduta al giorno. Più sedute nello stesso giorno solo se l'atleta lo chiede o i suoi vincoli lo richiedono: una seduta divisa in più allenamenti (es. riscaldamento separato) ha chained=true dalla seconda; due uscite distinte (mattina e sera) hanno chained=false e day_part.",
     "- Una gara obiettivo NON è necessaria. Se non c'è un obiettivo attivo, o l'obiettivo non ha data (obiettivo generico), allena per migliorare in modo continuativo sulle distanze lunghe (mezza maratona e maratona, o la distanza indicata nell'obiettivo) seguendo i blocchi aperti della metodologia: non chiedere di fissare una gara e non introdurre tapering.",
     "- I passi target devono essere coerenti coi passi medi reali dell'atleta per ciascun tipo.",
     "- Usa la 'Calibrazione ritmi ↔ HR' nel contesto: se per un tipo di seduta la calibrazione segna too_hard (es. easy nettamente in Z2) o la deriva cardiaca è alta, quel ritmo OGGI non è sostenibile per quel tipo — rallenta i target di conseguenza e ricordalo nella review. Non riproporre lo stesso passo sperando che vada meglio.",
@@ -311,6 +326,8 @@ export const coachResponseSchemaZod = z.object({
     })).min(1).max(40),
     description: z.string().nullable(),
     focus: z.string().nullable(),
+    day_part: z.enum(["morning", "afternoon", "evening"]).nullish().catch(null),
+    chained: z.boolean().nullish().catch(false),
   })).default([]),
 });
 
@@ -418,7 +435,9 @@ export function buildCoachPrompt(contextJson: string, userMessage: string): stri
     "- current_plan.calendar elenca giorno per giorno le sedute in calendario e le corse fatte. I giorni con locked=true (già corsi o con seduta completata) hanno sedute che NON si toccano mai. Se però hanno add_only=true (oggi o un giorno futuro) puoi aggiungere sedute: quelle che metti in workouts per quel giorno si sommano alle esistenti. Fallo solo se l'atleta chiede un'altra seduta quel giorno, mai per correggere quella già fatta.",
     "- I giorni con past=true sono passati: una seduta rimasta lì non è stata fatta. Non puoi aggiungere sedute nel passato, ma puoi toglierla con remove_dates (fino a 14 giorni indietro): fallo quando l'atleta dice che l'ha saltata, o che la fa oggi/un altro giorno. 'Ieri non l'ho fatta, la faccio oggi' = la stessa seduta in workouts con la data di oggi + la data di ieri in remove_dates, e il resto della settimana riequilibrato se serve (niente due sedute dure di fila).",
     "- In workouts metti SOLO i giorni nuovi o modificati. Non ripetere i giorni che restano uguali: quelli che non citi restano esattamente come sono. Per togliere le sedute di un giorno senza sostituirle metti la data in remove_dates.",
-    "- Un giorno può avere più sedute (doppia seduta, es. easy al mattino e ripetute o forza la sera): mettile tutte in workouts con la stessa data. Le sedute che metti per un giorno sostituiscono tutte quelle già in calendario quel giorno: per aggiungere una seconda seduta a un giorno che ne ha già una, rimetti anche la prima invariata (salvo add_only). Se l'atleta chiede una doppia, valuta carico e recupero come per ogni richiesta; non proporla di tua iniziativa se non serve.",
+    "- Un giorno può avere più sedute: mettile tutte in workouts con la stessa data, nell'ordine in cui si fanno. Le sedute che metti per un giorno sostituiscono tutte quelle già in calendario quel giorno: per aggiungere una seconda seduta a un giorno che ne ha già una, rimetti anche la prima invariata (salvo add_only).",
+    "- Due casi diversi, dichiarali sempre: (1) seduta divisa, cioè un'unica uscita spezzata in più allenamenti per comodità (es. riscaldamento e poi ripetute, caricati separati sull'orologio): chained=true dalla seconda seduta in poi; il carico e la fatica sono quelli di un'unica seduta, e la parte principale non ripete il riscaldamento. (2) doppia seduta, cioè due uscite distinte (es. easy al mattino e ripetute o forza la sera): chained=false e day_part per ciascuna; conta come due stimoli, con il recupero tra le due. Se l'atleta chiede una doppia, valuta carico e recupero come per ogni richiesta; non proporla di tua iniziativa se non serve. Se ha chiesto di dividere le sedute (es. riscaldamento separato), salvalo come ricordo 'preference' e applicalo anche alle sedute future.",
+    "- Nel calendario ogni seduta riporta order, part e chained: rispetta i legami esistenti quando modifichi un giorno.",
     "- Rispetta il perimetro richiesto: 'cambia solo gli ultimi due allenamenti della settimana' = solo quei due giorni; 'la settimana prossima' = solo i giorni da lunedì a domenica della settimana successiva a quella di meta.today. Se pensi che serva cambiare anche un altro giorno (es. per non avere due sedute dure di fila), dillo nella reply e includilo solo se è davvero necessario.",
     "- Se l'atleta chiede di rifare il piano da zero, proponi tutte le sedute del periodo richiesto e metti in remove_dates i giorni che diventano riposo.",
     "- Date in Europe/Rome, tra meta.today e i 27 giorni successivi. Le modifiche non si applicano da sole: l'atleta le conferma nell'interfaccia. Se il messaggio non richiede modifiche, workouts e remove_dates vuoti e plan_summary null.",

@@ -216,6 +216,10 @@ export interface RacePredict {
 // "skipped" = seduta messa in pausa ("Non mi sento al 100%"), ripristinabile.
 export type PlannedStatus = "planned" | "completed" | "skipped";
 
+/** Momento della giornata di una seduta, quando un giorno ne ha più d'una. */
+export type DayPart = "morning" | "afternoon" | "evening";
+export const DAY_PARTS: DayPart[] = ["morning", "afternoon", "evening"];
+
 export type WorkoutStepKind = "warmup" | "work" | "recovery" | "steady" | "cooldown";
 export type WorkoutStepCompletion = "time" | "distance" | "manual";
 /** Come si corre la fase: sprint (a tutta) o recupero corricchiando/camminando. */
@@ -273,6 +277,12 @@ export interface PlannedWorkout {
   created_at: string;
   updated_at: string;
   origin: "user" | "ai";
+  /** Posizione nella giornata (1 = prima). Assente prima della migrazione 0029. */
+  day_order?: number;
+  /** Mattina, pomeriggio o sera; null se non specificato. */
+  day_part?: DayPart | null;
+  /** Si fa subito dopo la seduta precedente dello stesso giorno (un'unica uscita). */
+  chained?: boolean;
 }
 
 export interface AdherenceResult {
@@ -331,6 +341,8 @@ export interface ProposedWorkout {
   workout_steps: WorkoutStepInput[];
   description: string | null;
   focus: string | null;
+  day_part?: DayPart | null;
+  chained?: boolean | null;
 }
 
 /** Output strutturato della generazione piano (responseSchema Gemini). */

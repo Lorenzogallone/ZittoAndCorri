@@ -3,8 +3,9 @@
 // rispetto a oggi, così "la settimana prossima" vuol dire la stessa cosa per
 // l'atleta e per il modello. Funzioni pure.
 
-import type { WorkoutStepInput, WorkoutType } from "@/lib/types";
+import type { DayPart, WorkoutStepInput, WorkoutType } from "@/lib/types";
 import { addDays, mondayOf } from "../local-date.ts";
+import { sortByDayOrder } from "../plan/day-sessions.ts";
 import { workoutHeadline } from "../workout-guide.ts";
 
 const WEEKDAYS = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
@@ -19,7 +20,11 @@ export interface CalendarDay {
   add_only: boolean;
   /** Giorno passato: una seduta rimasta qui non è stata fatta; si può solo togliere (remove_dates), non aggiungere. */
   past: boolean;
-  planned: Array<{ type: WorkoutType; status: string; what: string }>;
+  /**
+   * Sedute nell'ordine della giornata. part: mattina/pomeriggio/sera; chained:
+   * si fa subito dopo la precedente, come un'unica uscita divisa in più allenamenti.
+   */
+  planned: Array<{ type: WorkoutType; status: string; what: string; order: number; part: DayPart | null; chained: boolean }>;
   done: Array<{ sport: string; km: number | null; minutes: number }>;
 }
 
@@ -44,7 +49,7 @@ export function planCalendar(input: {
   today: string;
   from: string;
   to: string;
-  workouts: Array<{ date: string; type: WorkoutType; status: string; target_distance_m: number | null; target_duration_s: number | null; workout_steps?: WorkoutStepInput[] | null }>;
+  workouts: Array<{ date: string; type: WorkoutType; status: string; target_distance_m: number | null; target_duration_s: number | null; workout_steps?: WorkoutStepInput[] | null; day_order?: number | null; day_part?: DayPart | null; chained?: boolean | null }>;
   /** Attività con giorno già in Europe/Rome. */
   activities: Array<{ day: string; sport: string; distance_m: number; seconds: number }>;
 }): CalendarDay[] {
@@ -52,7 +57,7 @@ export function planCalendar(input: {
   const thisMonday = mondayOf(today);
   const days: CalendarDay[] = [];
   for (let date = from; date <= to; date = addDays(date, 1)) {
-    const planned = input.workouts.filter((w) => w.date === date);
+    const planned = sortByDayOrder(input.workouts.filter((w) => w.date === date));
     const done = input.activities.filter((a) => a.day === date);
     const offset = Math.round((Date.parse(`${mondayOf(date)}T12:00:00Z`) - Date.parse(`${thisMonday}T12:00:00Z`)) / (7 * 86_400_000));
     const locked = done.some((a) => a.sport === "running") || planned.some((w) => w.status === "completed");
@@ -63,7 +68,7 @@ export function planCalendar(input: {
       locked,
       add_only: locked && date >= today,
       past: date < today,
-      planned: planned.map((w) => ({ type: w.type, status: w.status, what: what(w) })),
+      planned: planned.map((w) => ({ type: w.type, status: w.status, what: what(w), order: w.day_order ?? 1, part: w.day_part ?? null, chained: w.chained === true })),
       done: done.map((a) => ({ sport: a.sport, km: a.distance_m > 0 ? Math.round(a.distance_m / 100) / 10 : null, minutes: Math.round(a.seconds / 60) })),
     });
   }

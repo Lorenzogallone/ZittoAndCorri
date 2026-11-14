@@ -80,10 +80,10 @@ test("un giorno può avere due sedute: la proposta sostituisce tutte quelle del 
   assert.deepEqual(diff.changes[0].before.map((b) => b.meters), [6000]);
   assert.deepEqual(diff.changes[0].after.map((b) => b.meters), [6000, 4000]);
   // Rimandare le stesse due sedute non è una modifica.
-  const twice = [...plan, session("2026-10-24", "recovery", 4)];
+  const twice = [...plan, { ...session("2026-10-24", "recovery", 4), day_order: 2 }];
   const same = planProposalDiff({
     today, windowEnd, existing: twice, activityDates: ran,
-    proposed: [session("2026-10-24", "recovery", 4), session("2026-10-24", "easy", 6)],
+    proposed: [session("2026-10-24", "easy", 6), session("2026-10-24", "recovery", 4)],
     removeDates: [],
   });
   assert.deepEqual(same.touched, []);
@@ -202,4 +202,64 @@ test("nel passato non si aggiungono sedute e senza removeFrom nulla cambia", () 
     proposed: [], removeDates: ["2026-10-21"],
   });
   assert.deepEqual(strict.touched, []);
+});
+
+test("seduta divisa: la seconda parte è concatenata e segue la prima", async () => {
+  const { sessionStartTime, sessionPlacement } = await import("../lib/plan/day-sessions.ts");
+  const diff = planProposalDiff({
+    today, windowEnd, existing: plan, activityDates: ran,
+    proposed: [
+      { ...session("2026-10-29", "easy", 2), chained: true }, // la prima non può essere concatenata
+      { ...session("2026-10-29", "interval", 6), chained: true },
+    ],
+    removeDates: [],
+  });
+  assert.deepEqual(diff.workouts.map((w) => [w.day_order, w.chained]), [[1, false], [2, true]]);
+  assert.deepEqual(diff.changes[0].after.map((b) => b.chained), [false, true]);
+  assert.equal(sessionPlacement(diff.workouts[1], 2), "Subito dopo la precedente");
+  assert.equal(sessionPlacement(diff.workouts[0], 1), null);
+  // Sul calendario dell'orologio le due parti restano in fila.
+  assert.deepEqual(diff.workouts.map((w) => sessionStartTime(w)), ["00:00:00", "00:01:00"]);
+});
+
+test("doppia seduta: mattina e sera separate, la concatenata eredita il momento", async () => {
+  const { numberDaySessions, sessionStartTime } = await import("../lib/plan/day-sessions.ts");
+  const input: Array<{ date: string; day_part?: "morning" | "evening"; chained?: boolean }> = [
+    { date: "2026-10-29", day_part: "morning" },
+    { date: "2026-10-29", day_part: "evening" },
+    { date: "2026-10-29", chained: true },
+  ];
+  const day = numberDaySessions(input);
+  assert.deepEqual(day.map((s) => [s.day_order, s.day_part, s.chained]), [[1, "morning", false], [2, "evening", false], [3, "evening", true]]);
+  assert.deepEqual(day.map((s) => sessionStartTime(s)), ["07:00:00", "18:01:00", "18:02:00"]);
+});
+
+test("cambiare solo il legame tra due sedute è una modifica; ripeterlo no", () => {
+  const existing = [
+    ...plan.filter((w) => w.date !== "2026-10-29"),
+    { ...session("2026-10-29", "easy", 2), day_order: 1 },
+    { ...session("2026-10-29", "interval", 6), day_order: 2, chained: true },
+  ];
+  const same = planProposalDiff({
+    today, windowEnd, existing, activityDates: ran,
+    proposed: [session("2026-10-29", "easy", 2), { ...session("2026-10-29", "interval", 6), chained: true }],
+    removeDates: [],
+  });
+  assert.deepEqual(same.touched, []);
+  const split = planProposalDiff({
+    today, windowEnd, existing, activityDates: ran,
+    proposed: [{ ...session("2026-10-29", "easy", 2), day_part: "morning" }, { ...session("2026-10-29", "interval", 6), day_part: "evening" }],
+    removeDates: [],
+  });
+  assert.deepEqual(split.touched, ["2026-10-29"]);
+});
+
+test("oggi già corso: la seduta aggiunta va dopo quelle esistenti", () => {
+  const existing = [...plan, { ...session(today, "easy", 6), day_part: "morning" as const }];
+  const diff = planProposalDiff({
+    today, windowEnd, existing, activityDates: new Set([...ran, today]),
+    proposed: [{ ...session(today, "recovery", 4), day_part: "evening" }],
+    removeDates: [],
+  });
+  assert.deepEqual(diff.workouts.map((w) => [w.day_order, w.day_part, w.chained]), [[2, "evening", false]]);
 });

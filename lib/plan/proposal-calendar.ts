@@ -23,7 +23,8 @@ export async function diffAgainstCalendar<W extends PlanDayWorkout>(
   const [{ data: existing, error: planError }, { data: runs, error: runsError }] = await Promise.all([
     supabase
       .from("planned_workouts")
-      .select("date, type, status, target_distance_m, target_duration_s, target_pace_s_km, target_hr_bpm, workout_steps")
+      // "*": ordine, momento e legame delle sedute esistono solo dalla migrazione 0029.
+      .select("*")
       .eq("user_id", userId)
       .gte("date", addDays(removeFrom, -1))
       .lte("date", end)
