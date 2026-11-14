@@ -11,6 +11,7 @@ import type { ZeppWorkoutPullRequest } from "@/lib/zepp/schema";
 import { selectWorkoutForDate } from "@/lib/zepp/workout-selection";
 import { adjustPace, adjustStepsForHeat } from "@/lib/metrics/heat";
 import { heatForDates } from "@/lib/weather";
+import { sortByDayOrder } from "@/lib/plan/day-sessions";
 
 export interface ZeppWorkoutWire {
   id: string;
@@ -113,7 +114,8 @@ export async function pullZeppWorkoutPlan(
   const [workoutResult, hrZonesResult] = await Promise.all([
     admin
       .from("planned_workouts")
-      .select("id, user_id, goal_id, date, type, target_distance_m, target_pace_s_km, target_duration_s, target_hr_bpm, workout_steps, description, focus, status, created_at, updated_at, origin")
+      // "*": l'ordine nella giornata (day_order) esiste solo dalla migrazione 0029.
+      .select("*")
       .eq("user_id", connection.user_id)
       .eq("status", "planned")
       .gte("date", input.localDate)
@@ -127,7 +129,7 @@ export async function pullZeppWorkoutPlan(
 
   // Caldo previsto oggi: l'orologio riceve i passi già rallentati, come l'app.
   const heat = (await heatForDates(admin, connection.user_id, [input.localDate])).get(input.localDate);
-  const workouts = (workoutResult.data ?? []).map(wireWorkout).map((workout) =>
+  const workouts = sortByDayOrder(workoutResult.data ?? []).map(wireWorkout).map((workout) =>
     heat && heat.pct > 0 && workout.date === input.localDate
       ? {
           ...workout,

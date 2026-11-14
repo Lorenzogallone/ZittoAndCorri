@@ -4,6 +4,7 @@
 // Funzioni pure.
 
 import { addDays, romeDay } from "../local-date.ts";
+import { sortByDayOrder, type DaySession } from "./day-sessions.ts";
 
 export type DayState = "done" | "missed" | "today" | "planned" | "rest" | "extra" | "skipped";
 
@@ -59,7 +60,7 @@ export interface DayView<W, A> {
 }
 
 /** Giorni consecutivi da `start` con sedute, attività e stato. */
-export function buildDays<W extends DayPlanned & { date: string }, A extends DayActivity & { started_at: string }>(
+export function buildDays<W extends DayPlanned & DaySession, A extends DayActivity & { started_at: string }>(
   start: string,
   count: number,
   today: string,
@@ -68,7 +69,7 @@ export function buildDays<W extends DayPlanned & { date: string }, A extends Day
 ): DayView<W, A>[] {
   return Array.from({ length: count }, (_, index) => {
     const date = addDays(start, index);
-    const dayWorkouts = workouts.filter((workout) => workout.date === date);
+    const dayWorkouts = sortByDayOrder(workouts.filter((workout) => workout.date === date));
     const dayActivities = activities.filter((activity) => romeDay(activity.started_at) === date);
     return {
       date,

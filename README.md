@@ -154,6 +154,14 @@ planned that day; on a day already run, from today on, it can only add sessions
 and never touches the existing ones. Each session is its own Intervals.icu
 event. Requires `supabase/migrations/0028_same_day_workouts.sql`.
 
+Sessions on the same day carry their order, the part of the day (morning,
+afternoon, evening) and whether they are **chained**: done straight after the
+previous one, as a single outing split in two for the watch (e.g. warm-up, then
+intervals). The coach plans and reviews chained sessions as one workout and
+separate ones as two stimuli, run evaluations see the other activities of the
+same day, and Intervals.icu events are timed so they stay in order. Requires
+`supabase/migrations/0029_linked_sessions.sql`.
+
 ## Notifications
 
 Push notifications are optional: workout reminder for tomorrow, "analysis

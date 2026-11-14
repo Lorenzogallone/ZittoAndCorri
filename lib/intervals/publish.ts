@@ -14,6 +14,7 @@ import { workoutStepsOrLegacy } from "@/lib/workout-steps";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { isoDateShift } from "@/lib/dates";
 import type { PlannedWorkout, Profile } from "@/lib/types";
+import { sessionStartTime } from "@/lib/plan/day-sessions";
 import {
   createEvents,
   deleteEvents,
@@ -62,7 +63,7 @@ function romeToday(): string {
 function sameEvent(existing: { name?: string | null; description?: string | null; start_date_local: string }, draft: IntervalsEventInput): boolean {
   return (existing.name ?? "") === draft.name
     && (existing.description ?? "").trim() === draft.description.trim()
-    && existing.start_date_local.slice(0, 10) === draft.start_date_local.slice(0, 10);
+    && existing.start_date_local.slice(0, 16) === draft.start_date_local.slice(0, 16);
 }
 
 export async function publishPlanToIntervals(
@@ -78,7 +79,8 @@ export async function publishPlanToIntervals(
   const [{ data: rows, error }, { data: profile }] = await Promise.all([
     admin
       .from("planned_workouts")
-      .select("id, user_id, goal_id, date, type, target_distance_m, target_pace_s_km, target_duration_s, target_hr_bpm, workout_steps, description, focus, status, created_at, updated_at, origin")
+      // "*": ordine e momento della giornata esistono solo dalla migrazione 0029.
+      .select("*")
       .eq("user_id", userId)
       .eq("status", "planned")
       .neq("type", "cross")
@@ -102,6 +104,7 @@ export async function publishPlanToIntervals(
     const draft = workoutToIntervalsDraft({
       id: row.id,
       date: row.date,
+      start_time: sessionStartTime(row),
       title: TYPE_TITLES[row.type] ?? "Allenamento",
       target_distance_m: row.target_distance_m,
       target_duration_s: row.target_duration_s,

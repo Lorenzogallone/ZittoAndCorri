@@ -12,6 +12,7 @@ import { plannedMeters } from "@/lib/plan/planned-distance";
 import { addDays, relativeDayLabel, romeDay } from "@/lib/local-date";
 import { SPORT_LABELS, TYPE_DOTS, TYPE_LABELS } from "@/lib/activity-meta";
 import { cn } from "@/lib/utils";
+import { sessionPlacement, sortByDayOrder } from "@/lib/plan/day-sessions";
 import type { Activity, PlannedWorkout } from "@/lib/types";
 
 function isValidDate(d: string): boolean {
@@ -52,7 +53,7 @@ export default async function DayViewPage({ params }: Props) {
       .returns<DayActivity[]>(),
   ]);
 
-  const workouts = planned ?? [];
+  const workouts = sortByDayOrder(planned ?? []);
   const dayActivities = (activities ?? []).filter((activity) => romeDay(activity.started_at) === date);
   const today = romeDay();
 
@@ -69,6 +70,8 @@ export default async function DayViewPage({ params }: Props) {
             {workouts.map((workout) => {
               const steps = workoutStepsOrLegacy(workout.workout_steps, workout);
               const meters = plannedMeters({ ...workout, workout_steps: steps });
+              const placement = sessionPlacement(workout, workouts.length);
+              const details = [placement, meters > 0 ? `≈ ${formatDistance(meters)}` : null].filter(Boolean).join(" · ");
               return (
                 <li key={workout.id}>
                   <Link href={`/plan/${workout.id}`} className="flex items-center gap-3 py-3">
@@ -77,7 +80,7 @@ export default async function DayViewPage({ params }: Props) {
                         <span className={cn("h-2 w-2 shrink-0 rounded-full", TYPE_DOTS[workout.type])} />
                         {[TYPE_LABELS[workout.type], workoutHeadline(steps)].filter(Boolean).join(" · ")}
                       </p>
-                      {meters > 0 && <p className="mt-0.5 text-xs text-muted-foreground">≈ {formatDistance(meters)}</p>}
+                      {details && <p className="mt-0.5 text-xs text-muted-foreground">{details}</p>}
                       <WorkoutGraph steps={steps} type={workout.type} size="sm" className="mt-2" />
                     </div>
                     <ChevronRight size={16} className="shrink-0 text-muted-foreground/60" />

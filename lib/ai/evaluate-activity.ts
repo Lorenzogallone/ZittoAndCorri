@@ -18,6 +18,8 @@ import { intervalsUpToDate, isMissingColumn, persistIntervals, type DeclaredInte
 import type { IntervalAnalysis } from "@/lib/metrics/intervals";
 import { intervalsForPrompt } from "@/lib/intervals-text";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { romeDay } from "@/lib/local-date";
+import { sortByDayOrder } from "@/lib/plan/day-sessions";
 
 type EvalActivity = Pick<Activity,
   "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" |
@@ -25,6 +27,58 @@ type EvalActivity = Pick<Activity,
   "rpe_source" | "source_title" | "elevation_gain_m" | "hr_drift_pct" |
   "avg_cadence_spm" | "time_in_zone" | "splits" | "notes"
 >;
+
+type SameDayActivity = Pick<Activity, "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" | "moving_time_s" | "avg_pace_s_km" | "avg_hr">;
+
+/** Seduta pianificata per il prompt, con il suo posto nella giornata. */
+function planForPrompt(workout: PlannedWorkout) {
+  return {
+    date: workout.date,
+    type: workout.type,
+    target_distance_m: workout.target_distance_m,
+    target_pace_s_km: workout.target_pace_s_km,
+    target_duration_s: workout.target_duration_s,
+    target_hr_bpm: workout.target_hr_bpm,
+    description: workout.description,
+    focus: workout.focus,
+    order: workout.day_order ?? 1,
+    part: workout.day_part ?? null,
+    chained: workout.chained === true,
+  };
+}
+
+const romeTime = (iso: string) =>
+  new Date(iso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
+
+/**
+ * Altre attività dello stesso giorno, con la distanza in minuti da questa:
+ * un riscaldamento registrato a parte finisce pochi minuti prima della seduta.
+ */
+function sameDayLines(activity: Pick<Activity, "started_at" | "duration_s">, others: SameDayActivity[]): string | null {
+  if (!others.length) return null;
+  const start = Date.parse(activity.started_at);
+  const end = start + activity.duration_s * 1000;
+  return others.map((other) => {
+    const otherStart = Date.parse(other.started_at);
+    const otherEnd = otherStart + other.duration_s * 1000;
+    const gap = otherEnd <= start
+      ? `finita ${Math.round((start - otherEnd) / 60_000)} min prima di questa`
+      : otherStart >= end
+        ? `iniziata ${Math.round((otherStart - end) / 60_000)} min dopo questa`
+        : "sovrapposta a questa";
+    return JSON.stringify({
+      id: other.id,
+      start: romeTime(other.started_at),
+      when: gap,
+      sport: other.sport,
+      type: other.type,
+      distance_m: other.distance_m,
+      duration_s: other.moving_time_s ?? other.duration_s,
+      avg_pace_s_km: other.avg_pace_s_km,
+      avg_hr: other.avg_hr,
+    });
+  }).join("\n");
+}
 
 export async function enqueueActivityEvaluation(
   userId: string,
@@ -97,16 +151,17 @@ async function runActivityEvaluation(
     if (!activity) throw new Error("Attività non trovata");
     const effectiveHr = await getEffectiveHrConfig(admin, userId, profile ?? null);
 
-    const activityDay = activity.started_at.slice(0, 10);
-    const [nearbyPlanResult, existingEvaluationResult] = await Promise.all([
+    const activityDay = romeDay(activity.started_at);
+    const [nearbyPlanResult, existingEvaluationResult, sameDayResult] = await Promise.all([
+      // "*": ordine, momento e legame delle sedute esistono solo dalla migrazione 0029.
       admin
         .from("planned_workouts")
-        .select("date, type, target_distance_m, target_pace_s_km, target_duration_s, target_hr_bpm, description, focus")
+        .select("*")
         .eq("user_id", userId)
         .gte("date", isoDateShift(activityDay, -3))
         .lte("date", isoDateShift(activityDay, 3))
         .order("date")
-        .returns<Array<Pick<PlannedWorkout, "date" | "type" | "target_distance_m" | "target_pace_s_km" | "target_duration_s" | "target_hr_bpm" | "description" | "focus">>>(),
+        .returns<PlannedWorkout[]>(),
       admin
         .from("evaluations")
         .select("id, details")
@@ -115,8 +170,20 @@ async function runActivityEvaluation(
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle<{ id: string; details: string[] | null }>(),
+      admin
+        .from("activities")
+        .select("id, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km, avg_hr")
+        .eq("user_id", userId)
+        .is("excluded_at", null)
+        .neq("id", activityId)
+        .gte("started_at", `${isoDateShift(activityDay, -1)}T12:00:00Z`)
+        .lte("started_at", `${isoDateShift(activityDay, 1)}T12:00:00Z`)
+        .order("started_at")
+        .returns<SameDayActivity[]>(),
     ]);
-    const { data: nearbyPlan, error: nearbyPlanError } = nearbyPlanResult;
+    const nearbyPlan = nearbyPlanResult.data ? sortByDayOrder(nearbyPlanResult.data).map(planForPrompt) : null;
+    const nearbyPlanError = nearbyPlanResult.error;
+    const sameDay = sameDayLines(activity, (sameDayResult.data ?? []).filter((other) => romeDay(other.started_at) === activityDay));
     const { data: existingEvaluation, error: existingEvaluationError } = existingEvaluationResult;
     if (nearbyPlanError ?? existingEvaluationError) {
       throw nearbyPlanError ?? existingEvaluationError;
@@ -126,8 +193,8 @@ async function runActivityEvaluation(
     let declared: DeclaredIntervals | undefined;
     let structureUsage: AiUsage | null = null;
     if (activity.sport === "running" && mayDescribeStructure(activity.notes)) {
-      const sameDay = (nearbyPlan ?? []).find((workout) => workout.date === activityDay);
-      const hint = sameDay ? [sameDay.type, sameDay.description].filter(Boolean).join(": ") : null;
+      const planned = (nearbyPlan ?? []).filter((workout) => workout.date === activityDay);
+      const hint = planned.length ? planned.map((workout) => [workout.type, workout.description].filter(Boolean).join(": ")).join(" | ") : null;
       try {
         const structure = await extractDeclaredStructure(activity.notes, hint, ai);
         declared = structure.declared ?? undefined;
@@ -156,6 +223,7 @@ async function runActivityEvaluation(
         serializeAiContext(context),
         detail,
         nearbyPlan?.length ? JSON.stringify(nearbyPlan) : null,
+        sameDay,
       ),
       evaluationSchema,
       ai,

@@ -6,7 +6,8 @@
 // giorno già corso, da oggi in poi, si aggiungono e basta. Funzioni pure (la
 // stessa protezione è ripetuta in SQL da apply_plan_proposal_v2).
 
-import type { WorkoutStepInput, WorkoutType } from "@/lib/types";
+import type { DayPart, WorkoutStepInput, WorkoutType } from "@/lib/types";
+import { numberDaySessions, sortByDayOrder } from "./day-sessions.ts";
 import { estimateWorkout } from "../workout-estimate.ts";
 import { stepVariant, workoutHeadline } from "../workout-guide.ts";
 
@@ -21,6 +22,9 @@ export interface PlanDayWorkout {
   workout_steps: WorkoutStepInput[];
   description?: string | null;
   focus?: string | null;
+  day_order?: number | null;
+  day_part?: DayPart | null;
+  chained?: boolean | null;
 }
 
 /** Seduta in breve, per il prima/dopo in chat. */
@@ -29,6 +33,9 @@ export interface WorkoutBrief {
   headline: string | null;
   meters: number | null;
   minutes: number | null;
+  day_part?: DayPart | null;
+  /** Subito dopo la seduta precedente dello stesso giorno. */
+  chained?: boolean;
 }
 
 export interface ProposalChange {
@@ -59,12 +66,15 @@ export function briefOf(workout: PlanDayWorkout): WorkoutBrief {
     headline: steps.length ? workoutHeadline(steps) : null,
     meters: meters && meters > 0 ? meters : null,
     minutes: seconds && seconds > 0 ? Math.round(seconds / 60) : null,
+    day_part: workout.day_part ?? null,
+    chained: workout.chained === true,
   };
 }
 
-/** Impronta del contenuto di una seduta: uguale = nessuna modifica. */
-function fingerprint(workout: PlanDayWorkout): string {
+/** Impronta di una seduta (con o senza posto nella giornata): uguale = nessuna modifica. */
+function fingerprint(workout: PlanDayWorkout, withPlacement = true): string {
   return JSON.stringify([
+    withPlacement ? [workout.day_order ?? 1, workout.day_part ?? null, workout.chained === true] : null,
     workout.type,
     workout.target_distance_m ?? null,
     workout.target_duration_s ?? null,
@@ -79,7 +89,7 @@ function fingerprint(workout: PlanDayWorkout): string {
 }
 
 const sameDay = (a: PlanDayWorkout[], b: PlanDayWorkout[]) =>
-  a.length === b.length && a.map(fingerprint).sort().join("\n") === b.map(fingerprint).sort().join("\n");
+  a.length === b.length && a.map((w) => fingerprint(w)).sort().join("\n") === b.map((w) => fingerprint(w)).sort().join("\n");
 
 export function planProposalDiff<W extends PlanDayWorkout>(input: {
   today: string;
@@ -102,11 +112,13 @@ export function planProposalDiff<W extends PlanDayWorkout>(input: {
   // svuotare (seduta saltata, oppure spostata a oggi) fino a removeFrom.
   const isLocked = (date: string) => date < today || date > windowEnd;
   const isRemoveLocked = (date: string) => date < removeFrom || date > windowEnd || doneOn(date);
-  const existingOn = (date: string) => existing.filter((w) => w.date === date && editable(w));
-  const allOn = (date: string) => existing.filter((w) => w.date === date);
+  const existingOn = (date: string) => sortByDayOrder(existing.filter((w) => w.date === date && editable(w)));
+  const allOn = (date: string) => sortByDayOrder(existing.filter((w) => w.date === date));
 
-  const byDate = new Map<string, W[]>();
-  for (const workout of input.proposed) byDate.set(workout.date, [...(byDate.get(workout.date) ?? []), workout]);
+  // Le sedute di un giorno nell'ordine dato dal modello: 1, 2, … nella giornata.
+  const grouped = new Map<string, W[]>();
+  for (const workout of input.proposed) grouped.set(workout.date, [...(grouped.get(workout.date) ?? []), workout]);
+  const byDate = new Map<string, W[]>([...grouped].map(([date, list]) => [date, numberDaySessions(list)]));
 
   const locked = new Set<string>();
   const added = new Set<string>();
@@ -121,13 +133,19 @@ export function planProposalDiff<W extends PlanDayWorkout>(input: {
     if (doneOn(date)) {
       // Giorno già corso: le sedute esistenti restano, si aggiungono solo
       // quelle nuove (es. una seconda seduta la sera). Ripeterne una non conta.
-      const known = new Set(allOn(date).map(fingerprint));
-      const fresh = list.filter((w) => !known.has(fingerprint(w)));
+      const before = allOn(date);
+      const known = new Set(before.map((w) => fingerprint(w, false)));
+      const last = before[before.length - 1];
+      const fresh = numberDaySessions(
+        (grouped.get(date) ?? []).filter((w) => !known.has(fingerprint(w, false))),
+        Math.max(0, ...before.map((w) => w.day_order ?? 1)) + 1,
+        last?.day_part ?? null,
+      );
       if (!fresh.length) continue;
       workouts.push(...fresh);
       changed.add(date);
       added.add(date);
-      after.set(date, [...allOn(date), ...fresh]);
+      after.set(date, [...before, ...fresh]);
       continue;
     }
     // Il modello ripete una seduta senza cambiarla: non è una modifica.
@@ -152,7 +170,7 @@ export function planProposalDiff<W extends PlanDayWorkout>(input: {
 
   const touched = [...changed].sort();
   return {
-    workouts: workouts.sort((a, b) => a.date.localeCompare(b.date)),
+    workouts: sortByDayOrder(workouts),
     removeDates,
     touched,
     changes: touched.map((date) => ({
