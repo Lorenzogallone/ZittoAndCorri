@@ -9,6 +9,7 @@ import { avgCadenceSpm, computeHrDrift, type CadencePoint } from "@/lib/metrics/
 import { isMissingColumn, persistDerived } from "@/lib/derived";
 import type { Activity, ActivityStream } from "@/lib/types";
 import { ActivityInput } from "./schema";
+import { bestMovingTime, movingTimeFromStreams } from "@/lib/metrics/pauses";
 
 interface IngestContext {
   supabase: SupabaseClient;
@@ -52,7 +53,13 @@ export async function ingestActivity(
   // Niente passo per attività senza distanza (palestra, yoga, calcio…).
   // Passo sul tempo in movimento quando disponibile (pause escluse): è il passo
   // medio che mostra Strava. Senza moving_time si usa il tempo totale.
-  const paceTime = data.moving_time_s ?? data.duration_s;
+  // Se il file non lo dice, il tempo in movimento si ricava dalle pause negli stream.
+  const moving_time_s = bestMovingTime(
+    data.duration_s,
+    data.moving_time_s,
+    movingTimeFromStreams(data.duration_s, { distance: data.distance_series, gps: data.gps_series }),
+  );
+  const paceTime = moving_time_s ?? data.duration_s;
   const avg_pace_s_km =
     data.distance_m > 0 ? avgPace(data.distance_m, paceTime) : null;
 
@@ -94,7 +101,7 @@ export async function ingestActivity(
       started_at: data.started_at,
       distance_m: data.distance_m,
       duration_s: data.duration_s,
-      moving_time_s: data.moving_time_s ?? null,
+      moving_time_s,
       avg_pace_s_km,
       avg_hr: data.avg_hr ?? null,
       max_hr: data.max_hr ?? null,
@@ -267,7 +274,13 @@ async function enrichActivity(
   const laps = data.laps ?? streamRow?.laps ?? null;
 
   // Campi scalari: il nuovo file riempie solo i buchi.
-  const moving_time_s = existing.moving_time_s ?? data.moving_time_s ?? null;
+  // Tempo in movimento: il più corto tra salvato, file e pause rilevate negli stream.
+  const moving_time_s = bestMovingTime(
+    existing.duration_s,
+    existing.moving_time_s,
+    data.moving_time_s,
+    movingTimeFromStreams(existing.duration_s, { distance, gps }),
+  );
   const update: Record<string, unknown> = {
     moving_time_s,
     avg_hr: existing.avg_hr ?? data.avg_hr ?? null,
@@ -283,7 +296,7 @@ async function enrichActivity(
   };
 
   // Passo: se il moving time è arrivato solo ora, il passo va ricalcolato.
-  if (existing.moving_time_s == null && moving_time_s != null && existing.distance_m > 0) {
+  if (moving_time_s != null && moving_time_s !== existing.moving_time_s && existing.distance_m > 0) {
     update.avg_pace_s_km = avgPace(existing.distance_m, moving_time_s);
   }
 

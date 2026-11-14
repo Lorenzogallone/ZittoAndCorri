@@ -130,3 +130,23 @@ export function withoutPauses<S extends PauseStreams>(streams: S): S {
     }) ?? streams.laps,
   } as S;
 }
+
+/**
+ * Tempo in movimento ricavato dalle pause negli stream, per i file che non lo
+ * dicono (o lo danno uguale al tempo totale). Null se non ci sono pause.
+ */
+export function movingTimeFromStreams(
+  duration_s: number,
+  streams: { distance?: Array<{ t: number; d: number }> | null; gps?: TrackPoint[] | null },
+): number | null {
+  const track = referenceTrack(streams);
+  if (!track || duration_s <= 0) return null;
+  const moving = Math.round(duration_s - pausedSeconds(detectPauses(track)));
+  return moving > 0 && moving < duration_s ? moving : null;
+}
+
+/** Il tempo in movimento più affidabile tra quelli noti: il più corto sotto il totale. */
+export function bestMovingTime(duration_s: number, ...candidates: Array<number | null | undefined>): number | null {
+  const valid = candidates.filter((value): value is number => typeof value === "number" && value > 0 && value < duration_s);
+  return valid.length ? Math.min(...valid) : null;
+}
