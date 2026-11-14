@@ -148,6 +148,12 @@ generic methodology in plans, evaluations and chat, expire with `valid_until`,
 and are written, updated or closed from the chat, by the athlete or whoever
 manages the app. Requires `supabase/migrations/0027_coach_guidelines.sql`.
 
+A day can hold **more than one session** (e.g. easy in the morning and
+strength in the evening). A coach proposal for a day replaces all the sessions
+planned that day; on a day already run, from today on, it can only add sessions
+and never touches the existing ones. Each session is its own Intervals.icu
+event. Requires `supabase/migrations/0028_same_day_workouts.sql`.
+
 ## Notifications
 
 Push notifications are optional: workout reminder for tomorrow, "analysis

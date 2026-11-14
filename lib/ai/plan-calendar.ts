@@ -13,8 +13,10 @@ export interface CalendarDay {
   date: string;
   weekday: string;
   week: string;
-  /** Già corso o con seduta completata: il coach non lo tocca. */
+  /** Già corso o con seduta completata: le sedute esistenti non si toccano. */
   locked: boolean;
+  /** Già corso ma da oggi in poi: si possono aggiungere sedute (es. la seconda della giornata). */
+  add_only: boolean;
   /** Giorno passato: una seduta rimasta qui non è stata fatta; si può solo togliere (remove_dates), non aggiungere. */
   past: boolean;
   planned: Array<{ type: WorkoutType; status: string; what: string }>;
@@ -53,11 +55,13 @@ export function planCalendar(input: {
     const planned = input.workouts.filter((w) => w.date === date);
     const done = input.activities.filter((a) => a.day === date);
     const offset = Math.round((Date.parse(`${mondayOf(date)}T12:00:00Z`) - Date.parse(`${thisMonday}T12:00:00Z`)) / (7 * 86_400_000));
+    const locked = done.some((a) => a.sport === "running") || planned.some((w) => w.status === "completed");
     days.push({
       date,
       weekday: WEEKDAYS[new Date(`${date}T12:00:00Z`).getUTCDay()],
       week: weekLabel(offset),
-      locked: done.some((a) => a.sport === "running") || planned.some((w) => w.status === "completed"),
+      locked,
+      add_only: locked && date >= today,
       past: date < today,
       planned: planned.map((w) => ({ type: w.type, status: w.status, what: what(w) })),
       done: done.map((a) => ({ sport: a.sport, km: a.distance_m > 0 ? Math.round(a.distance_m / 100) / 10 : null, minutes: Math.round(a.seconds / 60) })),
