@@ -5,7 +5,7 @@ import { Pause } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/format";
 import { INTERVAL_SOURCE_LABELS } from "@/lib/intervals-text";
-import { TONES } from "@/lib/step-tones";
+import { segmentToneKey, TONES } from "@/lib/step-tones";
 import { useSegmentSelection } from "@/components/activity/segment-selection";
 import type { IntervalAnalysis, IntervalSegment, IntervalSource } from "@/lib/metrics/intervals";
 
@@ -16,15 +16,8 @@ const clock = (seconds: number | null) => {
   return `${m}:${String(s).padStart(2, "0")}`;
 };
 
-/** Colori coerenti con il profilo della seduta prevista (WorkoutGraph). */
-function tone(segment: IntervalSegment) {
-  if (segment.variant === "sprint") return TONES.sprint;
-  if (segment.variant === "walk" || segment.variant === "stop") return TONES.walk;
-  if (segment.kind === "work") return TONES.hard;
-  if (segment.kind === "steady") return TONES.tempo;
-  if (segment.kind === "recovery") return TONES.jog;
-  return TONES.easy;
-}
+/** Colori coerenti con il profilo della seduta prevista (WorkoutGraph) e con la mappa. */
+const tone = (segment: IntervalSegment) => TONES[segmentToneKey(segment)];
 
 /** Puntino del tratto: rispetto al range previsto se c'è, altrimenti il tipo. */
 function dotTone(segment: IntervalSegment): string {
@@ -189,7 +182,7 @@ export function IntervalsCard({
       </div>
       {spans.length > 0 && (
         <p className="mt-2 text-micro text-muted-foreground" aria-live="polite">
-          {selected == null ? "Le ripetute sono numerate sulla mappa. Tocca un tratto per metterlo in primo piano." : "Tratto in primo piano nel grafico e sulla mappa. Toccalo di nuovo per tornare a tutte."}
+          {selected == null ? "Sulla mappa il percorso ha gli stessi colori dei tratti. Tocca un tratto per metterlo in primo piano." : "Tratto in primo piano nel grafico e sulla mappa. Toccalo di nuovo per tornare a tutte."}
         </p>
       )}
 

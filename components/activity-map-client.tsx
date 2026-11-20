@@ -16,21 +16,21 @@ interface ActivityMapClientProps {
    */
   embedded?: boolean;
   onFail?: () => void;
-  /** Ripetute da disegnare sul percorso (secondi dall'inizio, orologio reale dei punti GPS). */
-  reps?: RepOnMap[];
-  /** Ripetuta scelta nella card: in primo piano, le altre attenuate. */
+  /** Tratti della seduta con il loro colore (come la card Ripetute): sostituiscono i colori del passo. */
+  parts?: RoutePart[] | null;
+  /** Tratto scelto nella card: in primo piano, gli altri attenuati. */
   selected?: number | null;
 }
 
-export interface RepOnMap {
+/** Tratto da colorare sul percorso (secondi dall'inizio, orologio reale dei punti GPS). */
+export interface RoutePart {
   index: number;
-  /** Numero della ripetuta; null per un tratto non veloce scelto nella card (niente numero). */
-  number: number | null;
   start: number;
   end: number;
+  color: string;
 }
 
-export default function ActivityMapClient({ gpsSeries, embedded = false, onFail, reps = [], selected = null }: ActivityMapClientProps) {
+export default function ActivityMapClient({ gpsSeries, embedded = false, onFail, parts = null, selected = null }: ActivityMapClientProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -134,28 +134,25 @@ export default function ActivityMapClient({ gpsSeries, embedded = false, onFail,
       });
       setColored(Boolean(stops));
 
-      // Ripetute: linea chiara con bordo scuro sopra il percorso colorato.
-      map.addSource("reps", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      // Tratti della seduta, con i colori della card Ripetute, sopra (e al posto) del passo.
+      map.addSource("parts", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addLayer({
-        id: "reps-casing",
+        id: "parts-casing",
         type: "line",
-        source: "reps",
+        source: "parts",
+        filter: ["==", ["get", "emphasis"], 2],
         layout: { "line-join": "round", "line-cap": "round" },
-        paint: {
-          "line-color": "black",
-          "line-opacity": ["match", ["get", "emphasis"], 2, 0.5, 1, 0.4, 0.1],
-          "line-width": ["match", ["get", "emphasis"], 2, 11, 8],
-        },
+        paint: { "line-color": "black", "line-opacity": 0.5, "line-width": 11 },
       });
       map.addLayer({
-        id: "reps-line",
+        id: "parts-line",
         type: "line",
-        source: "reps",
-        layout: { "line-join": "round", "line-cap": "round" },
+        source: "parts",
+        layout: { "line-join": "round", "line-cap": "round", "line-sort-key": ["get", "emphasis"] },
         paint: {
-          "line-color": "white",
-          "line-opacity": ["match", ["get", "emphasis"], 2, 1, 1, 0.9, 0.3],
-          "line-width": ["match", ["get", "emphasis"], 2, 6, 4],
+          "line-color": ["get", "color"],
+          "line-opacity": ["match", ["get", "emphasis"], 0, 0.35, 1],
+          "line-width": ["match", ["get", "emphasis"], 2, 7, 5],
         },
       });
 
@@ -185,31 +182,25 @@ export default function ActivityMapClient({ gpsSeries, embedded = false, onFail,
     };
   }, [gpsSeries, embedded, onFail]);
 
-  // Ripetute e numeri: si aggiornano quando cambia la scelta nella card.
-  const markersRef = useRef<maplibregl.Marker[]>([]);
+  // Colori per tratto: si aggiornano quando cambia la scelta nella card.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapLoaded) return;
-    const source = map.getSource("reps") as maplibregl.GeoJSONSource | undefined;
+    const source = map.getSource("parts") as maplibregl.GeoJSONSource | undefined;
     if (!source) return;
-    const features = reps.flatMap((rep) => {
-      const coordinates = gpsSeries.filter((p) => p.t >= rep.start && p.t <= rep.end).map((p) => [p.lon, p.lat]);
+    const list = parts ?? [];
+    // Con i tratti il gradiente del passo non si vede: due scale di colore insieme confondono.
+    if (map.getLayer("route-line")) map.setLayoutProperty("route-line", "visibility", list.length ? "none" : "visible");
+    const features = list.flatMap((part, i) => {
+      // Fino al primo punto del tratto dopo: niente buchi tra un tratto e l'altro.
+      const end = list[i + 1]?.start ?? part.end;
+      const coordinates = gpsSeries.filter((p) => p.t >= part.start && p.t <= end).map((p) => [p.lon, p.lat]);
       if (coordinates.length < 2) return [];
-      const emphasis = selected == null ? 1 : selected === rep.index ? 2 : 0;
-      return [{ type: "Feature" as const, properties: { emphasis }, geometry: { type: "LineString" as const, coordinates } }];
+      const emphasis = selected == null ? 1 : selected === part.index ? 2 : 0;
+      return [{ type: "Feature" as const, properties: { emphasis, color: part.color }, geometry: { type: "LineString" as const, coordinates } }];
     });
     source.setData({ type: "FeatureCollection", features });
-    for (const marker of markersRef.current) marker.remove();
-    markersRef.current = reps.flatMap((rep) => {
-      const first = rep.number == null ? null : gpsSeries.find((p) => p.t >= rep.start && p.t <= rep.end);
-      if (!first) return [];
-      const element = document.createElement("div");
-      element.textContent = String(rep.number);
-      element.setAttribute("aria-hidden", "true");
-      element.className = `grid h-5 w-5 place-items-center rounded-full border border-black/40 bg-white text-micro font-bold leading-none text-black shadow ${selected != null && selected !== rep.index ? "opacity-40" : ""}`;
-      return [new maplibregl.Marker({ element }).setLngLat([first.lon, first.lat]).addTo(map)];
-    });
-  }, [reps, selected, mapLoaded, gpsSeries]);
+  }, [parts, selected, mapLoaded, gpsSeries]);
 
   if (embedded) {
     return (
