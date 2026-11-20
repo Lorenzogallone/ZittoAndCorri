@@ -75,6 +75,12 @@ export interface WellnessDayInput {
   weight_kg: number | null;
 }
 
+/** Tratti riconosciuti nella corsa (solo quanto serve a capire se era una seduta di qualità). */
+export interface RunIntervalsInput {
+  source: string;
+  segments: Array<{ kind: string; variant: string | null; duration_s: number }>;
+}
+
 /** Corsa con quanto serve per l'efficienza aerobica. */
 export interface RunInput {
   started_at: string;
@@ -84,6 +90,7 @@ export interface RunInput {
   moving_time_s: number | null;
   duration_s: number | null;
   avg_hr: number | null;
+  intervals?: RunIntervalsInput | null;
 }
 
 /** Punto del carico interno (computeATLCTL().series). */
@@ -108,6 +115,10 @@ interface MetricSpec {
   /** Cosa vuol dire se migliora / peggiora. */
   good?: string;
   bad?: string;
+  /** Cos'è e cosa indica, in due righe. */
+  about: string;
+  /** Cosa è il numero grande, se non è un dato giornaliero. */
+  latestLabel?: string;
 }
 
 const decimal = (digits: number) => (value: number) =>
@@ -121,21 +132,75 @@ export function formatMinutes(value: number): string {
 }
 
 export const BODY_METRICS: Record<BodyMetricKey, MetricSpec> = {
-  vo2max: { label: "VO₂max", better: "up", stable: 0.5, minPoints: 1, format: (v) => decimal(Number.isInteger(v) ? 0 : 1)(v), good: "il motore aerobico cresce", bad: "spesso segue settimane con meno corsa o più fatica" },
-  fitness: { label: "Forma (CTL)", better: "up", stable: 0.06, relative: true, minPoints: 1, format: integer, good: "stai costruendo allenamento", bad: "stai facendo meno di prima" },
-  load7: { label: "Carico 7 giorni", better: "none", stable: 0.12, relative: true, minPoints: 1, format: integer },
-  sleep: { label: "Sonno", better: "up", stable: 12, minPoints: 3, format: formatMinutes, good: "più ore per recuperare", bad: "meno ore per recuperare" },
-  sleepDeep: { label: "Sonno profondo", better: "up", stable: 6, minPoints: 3, format: formatMinutes, good: "recupero fisico migliore", bad: "recupero fisico più corto" },
-  sleepScore: { label: "Punteggio sonno", better: "up", stable: 3, minPoints: 3, format: integer },
-  restingHr: { label: "FC a riposo", unit: "bpm", better: "down", stable: 1, minPoints: 3, format: integer, good: "segno di adattamento", bad: "può voler dire fatica, stress o un malanno in arrivo" },
-  hrv: { label: "HRV", unit: "ms", better: "up", stable: 0.05, relative: true, minPoints: 3, format: integer, good: "il sistema nervoso recupera bene", bad: "recupero più faticoso" },
-  stress: { label: "Stress", better: "down", stable: 3, minPoints: 3, format: integer, good: "giornate più tranquille", bad: "giornate più cariche" },
-  spo2: { label: "SpO₂", unit: "%", better: "up", stable: 0.6, minPoints: 3, format: integer },
-  efficiency: { label: "Metri per battito", better: "up", stable: 0.025, relative: true, minPoints: 2, format: decimal(2), good: "corri più veloce a parità di cuore", bad: "a parità di cuore corri più piano (caldo e fatica pesano)" },
-  steps: { label: "Passi", better: "none", stable: 0.1, relative: true, minPoints: 3, format: integer },
-  pai: { label: "PAI", better: "up", stable: 5, minPoints: 2, format: integer },
-  watchLoad: { label: "Carico dell'orologio", better: "none", stable: 0.12, relative: true, minPoints: 1, format: integer },
-  weight: { label: "Peso", unit: "kg", better: "none", stable: 0.5, minPoints: 2, format: decimal(1) },
+  vo2max: {
+    label: "VO₂max", better: "up", stable: 0.5, minPoints: 1, format: (v) => decimal(Number.isInteger(v) ? 0 : 1)(v),
+    good: "il motore aerobico cresce", bad: "spesso segue settimane con meno corsa o più fatica",
+    about: "Stima dell'orologio di quanto ossigeno riesci a usare al massimo sforzo (ml per kg al minuto). Più è alto, più è grande il motore aerobico. Cambia lentamente: conta l'andamento su settimane.",
+  },
+  fitness: {
+    label: "Forma (CTL)", better: "up", stable: 0.06, relative: true, minPoints: 1, format: integer,
+    good: "stai costruendo allenamento", bad: "stai facendo meno di prima",
+    about: "Media del carico di allenamento delle ultime 6 settimane. Sale se ti alleni con costanza, scende quando fai meno.",
+  },
+  load7: {
+    label: "Carico 7 giorni", better: "none", stable: 0.12, relative: true, minPoints: 1, format: integer,
+    about: "Somma del carico degli ultimi 7 giorni, da durata e intensità delle attività.",
+  },
+  sleep: {
+    label: "Sonno", better: "up", stable: 12, minPoints: 3, format: formatMinutes,
+    good: "più ore per recuperare", bad: "meno ore per recuperare",
+    about: "Ore dormite a notte secondo l'orologio. È il primo mattone del recupero dagli allenamenti.",
+  },
+  sleepDeep: {
+    label: "Sonno profondo", better: "up", stable: 6, minPoints: 3, format: formatMinutes,
+    good: "recupero fisico migliore", bad: "recupero fisico più corto",
+    about: "Minuti di sonno profondo: la fase in cui il corpo ripara muscoli e tessuti.",
+  },
+  sleepScore: {
+    label: "Punteggio sonno", better: "up", stable: 3, minPoints: 3, format: integer,
+    about: "Voto dell'orologio alla notte (0–100): mette insieme durata, fasi e risvegli.",
+  },
+  restingHr: {
+    label: "FC a riposo", unit: "bpm", better: "down", stable: 1, minPoints: 3, format: integer,
+    good: "segno di adattamento", bad: "può voler dire fatica, stress o un malanno in arrivo",
+    about: "Battiti al minuto a riposo, misurati di notte. Scende quando il cuore si allena; qualche battito in più per diversi giorni è un segnale di fatica, stress o malanno.",
+  },
+  hrv: {
+    label: "HRV", unit: "ms", better: "up", stable: 0.05, relative: true, minPoints: 3, format: integer,
+    good: "il sistema nervoso recupera bene", bad: "recupero più faticoso",
+    about: "Variabilità tra un battito e l'altro, misurata di notte. Più è alta rispetto ai tuoi valori soliti, meglio stai recuperando. Conta l'andamento, non il singolo numero.",
+  },
+  stress: {
+    label: "Stress", better: "down", stable: 3, minPoints: 3, format: integer,
+    good: "giornate più tranquille", bad: "giornate più cariche",
+    about: "Stress medio della giornata (0–100), stimato dall'orologio da battito e variabilità.",
+  },
+  spo2: {
+    label: "SpO₂", unit: "%", better: "up", stable: 0.6, minPoints: 3, format: integer,
+    about: "Ossigeno nel sangue misurato dall'orologio. Di norma tra 95 e 100%: conta solo se scende parecchio.",
+  },
+  efficiency: {
+    label: "Metri per battito", better: "up", stable: 0.025, relative: true, minPoints: 2, format: decimal(2),
+    good: "corri più veloce a parità di cuore", bad: "a parità di cuore corri più piano (caldo e fatica pesano)",
+    about: "Quanti metri percorri per ogni battito nelle corse facili: velocità (metri al minuto) divisa per la FC media. Se sale, con gli stessi battiti vai più veloce: il fiato migliora. Ripetute, test e soglie non contano; caldo e salite lo abbassano.",
+    latestLabel: "Ultima corsa facile",
+  },
+  steps: {
+    label: "Passi", better: "none", stable: 0.1, relative: true, minPoints: 3, format: integer,
+    about: "Passi della giornata, corsa compresa.",
+  },
+  pai: {
+    label: "PAI", better: "up", stable: 5, minPoints: 2, format: integer,
+    about: "Punteggio Zepp dell'attività degli ultimi 7 giorni, pesata sul battito. Da 100 in su è il livello consigliato per la salute.",
+  },
+  watchLoad: {
+    label: "Carico dell'orologio", better: "none", stable: 0.12, relative: true, minPoints: 1, format: integer,
+    about: "Carico di allenamento calcolato dall'orologio Zepp sugli ultimi 7 giorni.",
+  },
+  weight: {
+    label: "Peso", unit: "kg", better: "none", stable: 0.5, minPoints: 2, format: decimal(1),
+    about: "Peso registrato su Intervals.icu.",
+  },
 };
 
 const DAY_MS = 86_400_000;
@@ -194,30 +259,56 @@ export function trendFor(key: BodyMetricKey, series: DayValue[], today: string):
   };
 }
 
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
 function sentenceFor(spec: MetricSpec, direction: TrendDirection | null, recent: number | null, previous: number | null, latest: DayValue | null): string {
   const unit = spec.unit ? ` ${spec.unit}` : "";
-  const range = recent != null && previous != null ? `da ${spec.format(previous)} a ${spec.format(recent)}${unit}` : "";
+  // Le due medie confrontate, dette per esteso: il numero grande è l'ultimo dato, non una media.
+  const range = recent != null && previous != null
+    ? `media delle ultime 2 settimane ${spec.format(recent)}${unit}, un mese fa ${spec.format(previous)}${unit}`
+    : "";
   switch (direction) {
     case "better":
-      return `In miglioramento, ${range} in 4 settimane${spec.good ? `: ${spec.good}` : ""}.`;
+      return `In miglioramento: ${range}.${spec.good ? ` ${capitalize(spec.good)}.` : ""}`;
     case "worse":
-      return `In peggioramento, ${range} in 4 settimane${spec.bad ? `: ${spec.bad}` : ""}.`;
+      return `In peggioramento: ${range}.${spec.bad ? ` ${capitalize(spec.bad)}.` : ""}`;
     case "up":
-      return `In aumento, ${range} in 4 settimane.`;
+      return `In aumento: ${range}.`;
     case "down":
-      return `In calo, ${range} in 4 settimane.`;
+      return `In calo: ${range}.`;
     case "stable":
-      return `Stabile rispetto a 4 settimane fa (${spec.format(recent!)}${unit}).`;
+      return `Stabile: media delle ultime 2 settimane ${spec.format(recent!)}${unit}, come un mese fa.`;
     default:
       return latest ? "Servono ancora qualche settimana di dati per vedere un andamento." : "Nessun dato dall'orologio.";
   }
+}
+
+/** Sotto questa quota di tratti veloci (sul tempo della corsa) una corsa riconosciuta in automatico resta facile. */
+const AUTO_WORK_SHARE = 0.2;
+
+/**
+ * Seduta di qualità (ripetute, soglia, test): ha tratti veloci dichiarati dal
+ * piano, dalla nota o dai lap, oppure trovati in automatico per una parte
+ * consistente della corsa. Gli allunghi brevi (sprint) non la rendono tale.
+ */
+export function isQualityRun(run: Pick<RunInput, "intervals" | "moving_time_s" | "duration_s">): boolean {
+  const analysis = run.intervals;
+  if (!analysis || analysis.source === "none") return false;
+  // Allunghi e frammenti di pochi secondi non fanno una seduta di qualità.
+  const work = analysis.segments.filter((segment) => segment.kind === "work" && segment.variant !== "sprint" && segment.duration_s >= 30);
+  if (!work.length) return false;
+  if (analysis.source !== "auto") return true;
+  const seconds = run.moving_time_s ?? run.duration_s ?? 0;
+  return seconds > 0 && work.reduce((sum, segment) => sum + segment.duration_s, 0) >= seconds * AUTO_WORK_SHARE;
 }
 
 /** Metri percorsi per battito nelle corse facili: sale quando il fiato migliora. */
 export function aerobicEfficiency(runs: RunInput[]): DayValue[] {
   const easy = new Set(["easy", "long", "recovery", "unclassified"]);
   return runs
-    .filter((run) => run.sport === "running" && (run.type == null || easy.has(run.type)))
+    // Quasi tutte le corse arrivano "unclassified": le sedute di qualità si
+    // riconoscono dai tratti, altrimenti test e soglie falsano il confronto.
+    .filter((run) => run.sport === "running" && (run.type == null || easy.has(run.type)) && !isQualityRun(run))
     .flatMap((run) => {
       const seconds = run.moving_time_s ?? run.duration_s;
       if (!run.distance_m || !seconds || !run.avg_hr || seconds < 20 * 60 || run.avg_hr < 90) return [];

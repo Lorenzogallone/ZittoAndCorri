@@ -306,7 +306,7 @@ test("easy, lunghi e recuperi: riscaldamento e defaticamento diventano parte del
 });
 
 // ── Stato di forma: trend del corpo ─────────────────────────────────────────
-import { aerobicEfficiency, bodyTrends, trendFor } from "../lib/metrics/body-trends.ts";
+import { aerobicEfficiency, bodyTrends, isQualityRun, trendFor } from "../lib/metrics/body-trends.ts";
 
 test("trend del corpo: confronta 2 settimane con 4 settimane prima", () => {
   const today = "2026-11-11";
@@ -314,12 +314,12 @@ test("trend del corpo: confronta 2 settimane con 4 settimane prima", () => {
     Array.from({ length: to - from + 1 }, (_, i) => ({ date: addDays(today, -(from + i)), value: value(from + i) }));
   const rhr = trendFor("restingHr", [...days(0, 13, () => 48), ...days(28, 41, () => 52)], today);
   assert.equal(rhr.direction, "better");
-  assert.match(rhr.sentence, /^In miglioramento, da 52 a 48 bpm/);
+  assert.match(rhr.sentence, /^In miglioramento: media delle ultime 2 settimane 48 bpm, un mese fa 52 bpm/);
   const vo2 = trendFor("vo2max", [...days(0, 3, () => 44.2), ...days(30, 31, () => 44)], today);
   assert.equal(vo2.direction, "stable");
   const sleep = trendFor("sleep", [...days(0, 13, () => 380), ...days(28, 41, () => 430)], today);
   assert.equal(sleep.direction, "worse");
-  assert.match(sleep.sentence, /da 7h 10′ a 6h 20′/);
+  assert.match(sleep.sentence, /ultime 2 settimane 6h 20′, un mese fa 7h 10′/);
   const few = trendFor("hrv", days(0, 2, () => 60), today);
   assert.equal(few.direction, null);
   assert.match(few.sentence, /Servono ancora/);
@@ -344,4 +344,17 @@ test("trend del corpo: Zepp prima di Intervals, HRV 0 scartata, efficienza solo 
   const efficiency = aerobicEfficiency(runs);
   assert.equal(efficiency.length, 1);
   assert.ok(Math.abs(efficiency[0].value - (8000 / 48) / 140) < 1e-9);
+});
+
+test("metri per battito: le corse non classificate con ripetute o test non contano, gli allunghi sì", () => {
+  const base = { sport: "running", type: "unclassified", distance_m: 6000, moving_time_s: 2100, duration_s: 2100, avg_hr: 160 };
+  const seg = (kind: string, duration_s: number, variant: string | null = null) => ({ kind, variant, duration_s });
+  const runs = [
+    { ...base, started_at: "2026-11-19T18:00:00Z", intervals: { source: "laps", segments: [seg("warmup", 300), seg("work", 480), seg("recovery", 120), seg("work", 480)] } },
+    { ...base, started_at: "2026-11-16T07:00:00Z", intervals: { source: "laps", segments: [seg("steady", 1600), seg("work", 20, "sprint"), seg("recovery", 60), seg("work", 3)] } },
+    { ...base, started_at: "2026-11-12T07:00:00Z", intervals: { source: "auto", segments: [seg("warmup", 1500), seg("work", 40), seg("recovery", 200), seg("work", 30)] } },
+    { ...base, started_at: "2026-11-10T07:00:00Z", intervals: null },
+  ];
+  assert.equal(isQualityRun(runs[0]), true);
+  assert.deepEqual(aerobicEfficiency(runs).map((point) => point.date), ["2026-11-16", "2026-11-12", "2026-11-10"]);
 });
