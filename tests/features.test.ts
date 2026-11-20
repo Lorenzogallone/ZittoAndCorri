@@ -306,7 +306,7 @@ test("easy, lunghi e recuperi: riscaldamento e defaticamento diventano parte del
 });
 
 // ── Stato di forma: trend del corpo ─────────────────────────────────────────
-import { aerobicEfficiency, bodyTrends, isQualityRun, trendFor } from "../lib/metrics/body-trends.ts";
+import { aerobicEfficiency, bodyTrends, isQualityRun, trendFor, withoutOutliers } from "../lib/metrics/body-trends.ts";
 
 test("trend del corpo: confronta 2 settimane con 4 settimane prima", () => {
   const today = "2026-11-11";
@@ -357,4 +357,12 @@ test("metri per battito: le corse non classificate con ripetute o test non conta
   ];
   assert.equal(isQualityRun(runs[0]), true);
   assert.deepEqual(aerobicEfficiency(runs).map((point) => point.date), ["2026-11-16", "2026-11-12", "2026-11-10"]);
+});
+
+test("metri per battito: una lettura del cuore sballata resta fuori dal trend", () => {
+  const values = [0.98, 1.0, 0.97, 1.02, 1.3, 0.99, 0.6];
+  const points = values.map((value, i) => ({ date: `2026-10-${String(i + 1).padStart(2, "0")}`, value }));
+  assert.deepEqual(withoutOutliers(points).map((point) => point.value), [0.98, 1.0, 0.97, 1.02, 0.99]);
+  // Con pochi dati non si scarta nulla: non c'è ancora una mediana affidabile.
+  assert.equal(withoutOutliers(points.slice(0, 4)).length, 4);
 });

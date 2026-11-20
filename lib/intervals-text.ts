@@ -24,6 +24,8 @@ function segmentLine(segment: IntervalSegment, index: number): string {
     segment.variant === "sprint" && segment.max_speed_kmh ? `punta ${String(segment.max_speed_kmh).replace(".", ",")} km/h` : null,
     segment.avg_hr ? `FC ${segment.avg_hr}${segment.max_hr ? ` (max ${segment.max_hr})` : ""}` : null,
     segment.hr_drop != null && segment.hr_drop > 0 ? `FC −${segment.hr_drop} nel recupero` : null,
+    segment.cadence_spm ? `cadenza ${segment.cadence_spm} spm` : null,
+    (segment.paused_s ?? 0) >= 5 ? `più ${formatDuration(segment.paused_s!)} di pausa (fuori da tempo e passo)` : null,
     segment.pace_deviation_s ? `${segment.pace_deviation_s > 0 ? "+" : "−"}${Math.abs(segment.pace_deviation_s)}″/km dal range previsto` : null,
     segment.pace_deviation_s === 0 ? "nel range previsto" : null,
   ].filter(Boolean);
@@ -41,6 +43,23 @@ function recoveryMix(analysis: IntervalAnalysis): string | null {
   return counts.size ? `recuperi: ${[...counts].map(([name, count]) => `${count} ${name}`).join(", ")}` : null;
 }
 
+/** Cadenza nei tratti veloci, prima contro ultima: cala quando la tecnica cede alla fatica. */
+function cadenceTrend(analysis: IntervalAnalysis): string | null {
+  const work = analysis.segments.filter((segment) => segment.kind === "work" && segment.variant !== "sprint" && segment.cadence_spm);
+  if (!work.length) return null;
+  const first = work[0].cadence_spm!;
+  const last = work[work.length - 1].cadence_spm!;
+  return work.length > 1 && first !== last
+    ? `cadenza nei tratti veloci da ${first} a ${last} spm`
+    : `cadenza nei tratti veloci ${first} spm`;
+}
+
+/** Pause dentro i tratti (orologio fermo o soste), escluse da tempi e passi. */
+function pauseTotal(analysis: IntervalAnalysis): string | null {
+  const seconds = analysis.segments.reduce((sum, segment) => sum + (segment.paused_s ?? 0), 0);
+  return seconds >= 10 ? `${formatDuration(seconds)} di pause escluse da tempi e passi` : null;
+}
+
 /** Riepilogo in una riga, per il contesto del coach (storico recente). */
 export function intervalsOneLine(analysis: IntervalAnalysis | null | undefined): string | null {
   if (!hasIntervals(analysis)) return null;
@@ -56,6 +75,8 @@ export function intervalsOneLine(analysis: IntervalAnalysis | null | undefined):
       ? `${s.sprint.count} sprint${s.sprint.avg_pace_s_km ? ` a ${pace(s.sprint.avg_pace_s_km)}/km` : ""}${s.sprint.max_speed_kmh ? `, punta ${String(s.sprint.max_speed_kmh).replace(".", ",")} km/h` : ""}`
       : null,
     recoveryMix(analysis),
+    cadenceTrend(analysis),
+    pauseTotal(analysis),
   ].filter(Boolean);
   const head = analysis.description ?? `${s?.work_count ?? 0} tratti veloci`;
   return `${head} (${INTERVAL_SOURCE_LABELS[analysis.source as IntervalSource]})${bits.length ? `: ${bits.join(", ")}` : ""}`;

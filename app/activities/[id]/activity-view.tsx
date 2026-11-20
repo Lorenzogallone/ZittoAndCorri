@@ -7,6 +7,8 @@ import { PaceCheckCard } from "@/components/pace-check-card";
 import { ShareActivityButton } from "@/components/share-activity-button";
 import { RoutePreview } from "@/components/activity/route-preview";
 import { OverlayChart } from "@/components/activity/overlay-chart";
+import { SegmentSelectionProvider } from "@/components/activity/segment-selection";
+import type { SegmentSpan } from "@/lib/metrics/segment-times";
 import { SplitsChart } from "@/components/activity/splits-chart";
 import { ZonesBar } from "@/components/activity/zones-bar";
 import { IntervalsCard } from "@/components/activity/intervals-card";
@@ -35,6 +37,8 @@ export interface ActivityViewProps {
   records: PersonalRecord[];
   pace: { check: PaceCheck; workoutId: string } | null;
   intervals: IntervalAnalysis | null;
+  /** Tratti delle ripetute nel tempo: si evidenziano in grafico e mappa. */
+  segments?: SegmentSpan[];
   evaluation: Pick<Evaluation, "summary" | "details" | "created_at" | "ai_usage"> | null;
   evaluationJob: { status: "pending" | "done" | "error"; error: string | null } | null;
   keyConfigured: boolean;
@@ -80,6 +84,7 @@ export function ActivityView(props: ActivityViewProps) {
   const hasZones = props.zones && Object.values(props.zones).some((seconds) => (seconds ?? 0) > 0);
 
   return (
+    <SegmentSelectionProvider segments={props.segments ?? []}>
     <AppShell
       wide
       backHref="/activities"
@@ -184,5 +189,6 @@ export function ActivityView(props: ActivityViewProps) {
         </div>
       </div>
     </AppShell>
+    </SegmentSelectionProvider>
   );
 }
