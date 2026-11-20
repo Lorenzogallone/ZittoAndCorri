@@ -346,7 +346,7 @@ test("una pausa dell'orologio dentro una ripetuta non la fa sembrare più lenta"
   pace(paused).forEach((value, i) => assert.ok(Math.abs(value - pace(plain)[i]) <= 3, `rep ${i + 1}: ${value} vs ${pace(plain)[i]}`));
 });
 
-test("un recupero fatto a orologio fermo resta un recupero con la sua durata", () => {
+test("un recupero fatto a orologio fermo resta un recupero; la pausa si conta a parte", () => {
   const { distance, hr, bounds } = run5x1000();
   // Primo recupero: l'atleta mette in pausa per 60" all'inizio.
   const at = bounds[2] + 5;
@@ -357,5 +357,107 @@ test("un recupero fatto a orologio fermo resta un recupero con la sua durata", (
   });
   assert.equal(result.segments.filter((s) => s.kind === "work").length, 5);
   const first = result.segments.find((s) => s.kind === "recovery")!;
-  assert.ok(first.duration_s >= 170, `recupero di ${first.duration_s}s`);
+  // La pausa non entra nel tempo del tratto ma resta visibile accanto.
+  assert.ok(first.paused_s! >= 50, `pausa di ${first.paused_s}s`);
+  assert.ok(first.duration_s + first.paused_s! >= 170, `recupero di ${first.duration_s}s + ${first.paused_s}s`);
+});
+
+// Seduta a tempo come quella del 19/11: 5' facile, 3 × (8' + 2'), defaticamento
+// previsto ma non fatto; l'orologio chiude un lap a ogni step più un lap di 5".
+const tempoPlan: WorkoutStepInput[] = [
+  step("warmup", "Corsa facile per scaldarti", "time", 300),
+  step("work", "Sostenuto", "time", 480),
+  step("recovery", "Recupero corricchiando", "time", 120),
+  step("work", "Sostenuto", "time", 480),
+  step("recovery", "Recupero corricchiando", "time", 120),
+  step("work", "Sostenuto", "time", 480),
+  step("cooldown", "Chiudi al tuo passo facile", "time", 300),
+];
+
+function tempoRun() {
+  return simulate([
+    { seconds: 301, speed: 2.45, hr: 132 },
+    { seconds: 480, speed: 3.08, hr: 166 },
+    { seconds: 120, speed: 2.25, hr: 160 },
+    { seconds: 480, speed: 3.18, hr: 173 },
+    { seconds: 121, speed: 1.4, hr: 150 },
+    { seconds: 484, speed: 3.21, hr: 172 },
+  ]);
+}
+
+test("defaticamento non fatto: l'ultima ripetuta resta intera (lap del piano)", () => {
+  const { distance, hr, bounds } = tempoRun();
+  const durations = [301, 480, 120, 480, 121, 479, 5];
+  let start = 0;
+  const laps = durations.map((seconds) => {
+    const out = { ...lap(start, seconds, 0, ""), trigger: null, intensity: "active", distance_m: Math.round(distance[Math.min(distance.length - 1, start + seconds - 1)].d - (start ? distance[start - 1].d : 0)) };
+    start += seconds;
+    return out;
+  });
+  assert.equal(start, bounds[bounds.length - 1]);
+  const result = analyzeIntervals({ distance, hr, laps, structures: [{ source: "plan", steps: tempoPlan }] });
+  assert.equal(result.source, "laps");
+  const work = result.segments.filter((s) => s.kind === "work");
+  assert.deepEqual(work.map((s) => s.duration_s), [480, 480, 484]);
+  assert.equal(result.segments.some((s) => s.kind === "cooldown"), false);
+});
+
+test("defaticamento non fatto: l'ultima ripetuta resta intera (senza lap)", () => {
+  const { distance, hr } = tempoRun();
+  const result = analyzeIntervals({ distance, hr, structures: [{ source: "plan", steps: tempoPlan }] });
+  assert.equal(result.source, "plan");
+  const work = result.segments.filter((s) => s.kind === "work");
+  assert.equal(work.length, 3);
+  assert.ok(Math.abs(work[2].duration_s - 484) <= 15, `ultima ripetuta di ${work[2].duration_s}s`);
+  assert.equal(result.segments.some((s) => s.kind === "cooldown"), false);
+});
+
+test("riscaldamento saltato: i lap combaciano dal primo tratto", () => {
+  const { distance, hr } = simulate([
+    { seconds: 480, speed: 3.1, hr: 166 },
+    { seconds: 120, speed: 2.2, hr: 150 },
+    { seconds: 480, speed: 3.1, hr: 170 },
+    { seconds: 120, speed: 2.2, hr: 150 },
+    { seconds: 480, speed: 3.1, hr: 172 },
+  ]);
+  let start = 0;
+  const laps = [480, 120, 480, 120, 480].map((seconds) => {
+    const out = { ...lap(start, seconds, 0, ""), trigger: null, intensity: "active", distance_m: null };
+    start += seconds;
+    return out;
+  });
+  const result = analyzeIntervals({ distance, hr, laps, structures: [{ source: "plan", steps: tempoPlan }] });
+  assert.equal(result.source, "laps");
+  assert.equal(result.segments[0].kind, "work");
+  assert.equal(result.segments.filter((s) => s.kind === "work").length, 3);
+});
+
+test("cadenza media per tratto, senza i secondi in pausa", () => {
+  const { distance, hr } = tempoRun();
+  const cadence = distance.map((p) => ({ t: p.t, rpm: p.t > 301 && p.t <= 781 ? 84 : 78 }));
+  const result = analyzeIntervals({ distance, hr, cadence, structures: [{ source: "plan", steps: tempoPlan }] });
+  const first = result.segments.find((s) => s.kind === "work")!;
+  assert.ok(Math.abs(first.cadence_spm! - 168) <= 2, `cadenza ${first.cadence_spm}`);
+});
+
+test("una sosta con l'orologio che registra è una pausa, non un rallentamento", () => {
+  const { distance, hr } = simulate([
+    { seconds: 300, speed: 2.5, hr: 130 },
+    { seconds: 150, speed: 3.3, hr: 165 },
+    { seconds: 40, speed: 0, hr: 140 },
+    { seconds: 150, speed: 3.3, hr: 168 },
+    { seconds: 120, speed: 2.0, hr: 150 },
+    { seconds: 300, speed: 3.3, hr: 170 },
+  ]);
+  const steps = [
+    step("warmup", "Riscaldamento", "time", 300),
+    step("work", "5'", "time", 300),
+    step("recovery", "Recupero", "time", 120),
+    step("work", "5'", "time", 300),
+  ];
+  const result = analyzeIntervals({ distance, hr, structures: [{ source: "plan", steps }] });
+  const first = result.segments.find((s) => s.kind === "work")!;
+  assert.ok(first.paused_s! >= 30, `pausa ${first.paused_s}s`);
+  assert.ok(Math.abs(first.duration_s - 300) <= 15, `durata ${first.duration_s}s`);
+  assert.ok(Math.abs(first.pace_s_km! - 303) <= 10, `passo ${first.pace_s_km}`);
 });

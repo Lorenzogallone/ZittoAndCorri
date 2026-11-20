@@ -9,9 +9,16 @@ import { PACE_SCALE, paceGradientStops } from "@/lib/metrics/pace-colors";
 
 interface ActivityMapClientProps {
   gpsSeries: GpsPoint[];
+  /**
+   * Dentro la card dell'attività, sopra l'anteprima statica: riempie il
+   * riquadro, compare solo a mappa pronta e si sposta con due dita (con un
+   * dito si scorre la pagina). onFail riporta all'anteprima se WebGL cede.
+   */
+  embedded?: boolean;
+  onFail?: () => void;
 }
 
-export default function ActivityMapClient({ gpsSeries }: ActivityMapClientProps) {
+export default function ActivityMapClient({ gpsSeries, embedded = false, onFail }: ActivityMapClientProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -34,13 +41,30 @@ export default function ActivityMapClient({ gpsSeries }: ActivityMapClientProps)
       : "https://tiles.openfreemap.org/styles/positron";
 
     // Initialize MapLibre Map
+    // Memoria contenuta: su iOS in PWA una mappa WebGL pesante fa ricaricare la pagina.
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: styleUrl,
       attributionControl: false,
+      pixelRatio: Math.min(2, window.devicePixelRatio || 1),
+      maxTileCacheSize: 40,
+      fadeDuration: 0,
+      refreshExpiredTiles: false,
+      cooperativeGestures: embedded,
+      locale: {
+        "CooperativeGesturesHandler.MobileHelpText": "Usa due dita per spostare la mappa",
+        "CooperativeGesturesHandler.WindowsHelpText": "Usa Ctrl + rotella per lo zoom",
+        "CooperativeGesturesHandler.MacHelpText": "Usa ⌘ + rotella per lo zoom",
+        "NavigationControl.ZoomIn": "Ingrandisci",
+        "NavigationControl.ZoomOut": "Riduci",
+      },
+      dragRotate: false,
+      pitchWithRotate: false,
     });
 
     mapRef.current = map;
+    map.on("error", (event) => console.error("mappa:", event.error?.message));
+    map.getCanvas().addEventListener("webglcontextlost", () => onFail?.(), { once: true });
 
     // Add zoom controls
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
@@ -122,7 +146,15 @@ export default function ActivityMapClient({ gpsSeries }: ActivityMapClientProps)
         mapRef.current = null;
       }
     };
-  }, [gpsSeries]);
+  }, [gpsSeries, embedded, onFail]);
+
+  if (embedded) {
+    return (
+      <div className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${mapLoaded ? "opacity-100" : "pointer-events-none opacity-0"}`}>
+        <div ref={mapContainerRef} className="h-full w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full h-80 rounded-2xl overflow-hidden border border-border bg-muted/40">
