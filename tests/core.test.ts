@@ -225,7 +225,9 @@ test("il dettaglio attività è essenziale: grafici a schede e mappa leggera di 
   const view = readFileSync(new URL("../app/activities/[id]/activity-view.tsx", import.meta.url), "utf8");
   const route = readFileSync(new URL("../components/activity/route-preview.tsx", import.meta.url), "utf8");
   assert.match(view, /<SegmentedTabs tabs=\{charts\} \/>/);
-  for (const label of ["Passo", "Cuore", "Quota"]) assert.match(view, new RegExp(`label: "${label}"`));
+  for (const label of ["Andamento", "Km"]) assert.match(view, new RegExp(`label: "${label}"`));
+  // Cuore, passo, quota e cadenza sovrapposti nello stesso grafico.
+  assert.match(view, /<OverlayChart series=\{overlay\}/);
   assert.match(view, /<ZonesBar/);
   // La mappa WebGL c'è di base ma con cautele: su iOS standalone una mappa
   // pesante ricarica la PWA. Si carica a parte, solo vicino allo schermo, con

@@ -6,7 +6,7 @@ import { ActivityEvaluation } from "@/components/activity-evaluation";
 import { PaceCheckCard } from "@/components/pace-check-card";
 import { ShareActivityButton } from "@/components/share-activity-button";
 import { RoutePreview } from "@/components/activity/route-preview";
-import { SeriesChart } from "@/components/activity/series-chart";
+import { OverlayChart } from "@/components/activity/overlay-chart";
 import { SplitsChart } from "@/components/activity/splits-chart";
 import { ZonesBar } from "@/components/activity/zones-bar";
 import { IntervalsCard } from "@/components/activity/intervals-card";
@@ -26,6 +26,10 @@ export interface ActivityViewProps {
   gps: GpsPoint[] | null;
   hr: HrPoint[] | null;
   elevation: GpsPoint[] | null;
+  /** Passo (s/km) nel tempo in movimento. */
+  paceSeries?: Array<{ t: number; v: number }> | null;
+  /** Cadenza (passi al minuto) nel tempo in movimento. */
+  cadence?: Array<{ t: number; v: number }> | null;
   splits: Split[] | null;
   zones: TimeInZone | null;
   records: PersonalRecord[];
@@ -60,18 +64,17 @@ export function ActivityView(props: ActivityViewProps) {
     activity.rpe != null ? { label: "Fatica", value: `${activity.rpe}/10`, icon: Flame } : null,
   ].filter((stat): stat is { label: string; value: string; unit?: string; icon: LucideIcon } => stat != null);
 
+  // Andamento: cuore, passo, quota e cadenza sovrapposti sullo stesso tempo.
+  const overlay = {
+    hr: props.hr && props.hr.length >= 2 ? props.hr.map((p) => ({ t: p.t, v: p.bpm })) : null,
+    pace: props.paceSeries ?? null,
+    elevation: props.elevation ? props.elevation.filter((p) => p.ele != null).map((p) => ({ t: p.t, v: p.ele! })) : null,
+    cadence: props.cadence ?? null,
+  };
+  const hasOverlay = Object.values(overlay).some((series) => (series?.length ?? 0) >= 2);
   const charts = [
-    props.splits?.length ? { key: "pace", label: "Passo", content: <SplitsChart splits={props.splits} /> } : null,
-    props.hr && props.hr.length >= 2
-      ? { key: "hr", label: "Cuore", content: <SeriesChart points={props.hr.map((p) => ({ t: p.t, v: p.bpm }))} color="var(--viz-2)" unit="bpm" /> }
-      : null,
-    props.elevation && props.elevation.length >= 2
-      ? {
-          key: "ele",
-          label: "Quota",
-          content: <SeriesChart points={props.elevation.filter((p) => p.ele != null).map((p) => ({ t: p.t, v: Math.round(p.ele!) }))} color="var(--viz-1)" unit="m" />,
-        }
-      : null,
+    hasOverlay ? { key: "trend", label: "Andamento", content: <OverlayChart series={overlay} /> } : null,
+    props.splits?.length ? { key: "km", label: "Km", content: <SplitsChart splits={props.splits} /> } : null,
   ].filter((tab): tab is { key: string; label: string; content: React.ReactElement } => tab != null);
 
   const hasZones = props.zones && Object.values(props.zones).some((seconds) => (seconds ?? 0) > 0);
