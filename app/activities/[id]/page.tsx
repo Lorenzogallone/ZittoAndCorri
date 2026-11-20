@@ -5,7 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { timeInZoneFromSeries } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
 import { computeHrDrift } from "@/lib/metrics/effort";
-import { bestMovingTime, movingTimeFromStreams, withoutPauses } from "@/lib/metrics/pauses";
+import { bestMovingTime, movingTimeFromStreams, referenceTrack, withoutPauses } from "@/lib/metrics/pauses";
+import { paceSeries } from "@/lib/metrics/pace-series";
 import { avgPace } from "@/lib/metrics/pace";
 import { bestEffortsForActivity, personalRecords } from "@/lib/metrics/best-efforts";
 import { cadencePoints, computeIntervals, intervalsUpToDate, paceCheckFor, persistDerived, persistIntervals } from "@/lib/derived";
@@ -178,8 +179,13 @@ export default async function ActivityDetailPage({
   const gps = streams?.gps_series && streams.gps_series.length >= 2 ? downsample(streams.gps_series, 500) : null;
   // Grafici sul tempo in movimento: le pause dell'orologio non disegnano tratti piatti.
   const moving = streams
-    ? withoutPauses({ gps: streams.gps_series, hr: streams.hr_series, distance: streams.distance_series })
+    ? withoutPauses({ gps: streams.gps_series, hr: streams.hr_series, distance: streams.distance_series, cadence: cadencePoints(streams.cadence) })
     : null;
+  const movingTrack = moving ? referenceTrack(moving) : null;
+  const pace = activity.sport === "running" && movingTrack ? paceSeries(movingTrack) : [];
+  const cadence = activity.sport === "running"
+    ? (moving?.cadence ?? []).filter((p) => p.rpm > 0).map((p) => ({ t: p.t, v: p.rpm * 2 }))
+    : [];
 
   return (
     <ActivityView
@@ -187,6 +193,8 @@ export default async function ActivityDetailPage({
       gps={gps}
       hr={moving?.hr ? downsample(moving.hr, 300) : null}
       elevation={moving?.gps?.some((p) => p.ele != null) ? downsample(moving.gps, 300) : null}
+      paceSeries={pace.length >= 2 ? downsample(pace, 400) : null}
+      cadence={cadence.length >= 2 ? downsample(cadence, 300) : null}
       splits={splits}
       zones={zones}
       records={heldRecords}

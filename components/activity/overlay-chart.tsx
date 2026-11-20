@@ -1,0 +1,203 @@
+"use client";
+
+import { useState } from "react";
+import { useMeasuredWidth } from "@/components/charts/chart-utils";
+import { cn } from "@/lib/utils";
+import { formatDuration } from "@/lib/format";
+
+type Point = { t: number; v: number };
+type Key = "hr" | "pace" | "elevation" | "cadence";
+
+interface SeriesSpec {
+  label: string;
+  color: string;
+  format: (value: number) => string;
+  /** Asse rovesciato: per il passo, più in alto = più veloce. */
+  invert?: boolean;
+  /** Disegnata come area di sfondo (la quota, come il profilo del percorso). */
+  area?: boolean;
+  /** Valori estremi tagliati: un punto GPS saltato non deve schiacciare la linea. */
+  trim?: boolean;
+}
+
+const pace = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, "0")}`;
+
+const SPECS: Record<Key, SeriesSpec> = {
+  hr: { label: "Cuore", color: "var(--viz-2)", format: (v) => `${Math.round(v)} bpm` },
+  pace: { label: "Passo", color: "var(--viz-1)", format: (v) => `${pace(v)}/km`, invert: true, trim: true },
+  elevation: { label: "Quota", color: "var(--muted-foreground)", format: (v) => `${Math.round(v)} m`, area: true },
+  cadence: { label: "Cadenza", color: "var(--chart-3)", format: (v) => `${Math.round(v)} spm`, trim: true },
+};
+
+/** Ordine di disegno: la quota sotto, le linee sopra. */
+const ORDER: Key[] = ["elevation", "cadence", "pace", "hr"];
+
+const HEIGHT = 180;
+const PAD = { top: 12, right: 6, bottom: 20, left: 6 };
+
+function quantile(sorted: number[], q: number): number {
+  return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * q)))];
+}
+
+/** Punto più vicino a t (serie ordinata), se non è troppo lontano. */
+function nearest(points: Point[], t: number, tolerance: number): Point | null {
+  let lo = 0;
+  let hi = points.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (points[mid].t < t) lo = mid + 1;
+    else hi = mid;
+  }
+  const candidates = [points[lo - 1], points[lo]].filter((p): p is Point => !!p);
+  const best = candidates.sort((a, b) => Math.abs(a.t - t) - Math.abs(b.t - t))[0];
+  return best && Math.abs(best.t - t) <= tolerance ? best : null;
+}
+
+/**
+ * Andamento della corsa con più serie sovrapposte sullo stesso tempo (in
+ * movimento): ognuna con la sua scala, scelte con i chip. Al tocco una riga
+ * verticale e tutti i valori di quell'istante.
+ */
+export function OverlayChart({
+  series,
+  initial = ["hr", "elevation"],
+}: {
+  series: Partial<Record<Key, Point[] | null>>;
+  initial?: Key[];
+}) {
+  const { ref, width } = useMeasuredWidth<HTMLDivElement>();
+  const available = ORDER.filter((key) => (series[key]?.length ?? 0) >= 2);
+  const [shown, setShown] = useState<Key[]>(() => {
+    const start = initial.filter((key) => available.includes(key));
+    return start.length ? start : available.slice(-1);
+  });
+  const [cursor, setCursor] = useState<number | null>(null);
+  if (!available.length) return null;
+
+  const visible = ORDER.filter((key) => shown.includes(key) && available.includes(key));
+  const all = available.flatMap((key) => series[key]!);
+  const t0 = Math.min(...all.map((p) => p.t));
+  const t1 = Math.max(...all.map((p) => p.t));
+  const span = Math.max(1, t1 - t0);
+  const innerW = Math.max(0, width - PAD.left - PAD.right);
+  const innerH = HEIGHT - PAD.top - PAD.bottom;
+  const x = (t: number) => PAD.left + ((t - t0) / span) * innerW;
+
+  const drawn = visible.map((key) => {
+    const spec = SPECS[key];
+    const points = series[key]!;
+    const sorted = points.map((p) => p.v).sort((a, b) => a - b);
+    let min = spec.trim ? quantile(sorted, 0.02) : sorted[0];
+    let max = spec.trim ? quantile(sorted, 0.98) : sorted[sorted.length - 1];
+    const pad = Math.max((max - min) * 0.12, key === "elevation" ? 5 : 1);
+    min -= pad;
+    max += pad;
+    const y = (v: number) => {
+      const clamped = Math.min(max, Math.max(min, v));
+      const ratio = (clamped - min) / (max - min || 1);
+      return PAD.top + innerH * (spec.invert ? ratio : 1 - ratio);
+    };
+    // Interruzioni (camminate senza passo, buchi del sensore): nuovo tratto.
+    const steps = points.slice(1).map((p, i) => p.t - points[i].t).sort((a, b) => a - b);
+    const gap = Math.max(10, (steps[Math.floor(steps.length / 2)] ?? 1) * 4);
+    const d = points
+      .map((p, i) => `${i === 0 || p.t - points[i - 1].t > gap ? "M" : "L"}${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`)
+      .join(" ");
+    const fill = spec.area
+      ? `${d} L${x(points[points.length - 1].t).toFixed(1)},${PAD.top + innerH} L${x(points[0].t).toFixed(1)},${PAD.top + innerH} Z`
+      : null;
+    return { key, spec, points, y, d, fill, gap };
+  });
+
+  const pick = (clientX: number, rect: DOMRect) =>
+    setCursor(t0 + Math.min(1, Math.max(0, (clientX - rect.left - PAD.left) / Math.max(1, innerW))) * span);
+  const readings = cursor == null
+    ? []
+    : drawn.map((line) => ({ ...line, point: nearest(line.points, cursor, line.gap) })).filter((r) => r.point);
+
+  const toggle = (key: Key) =>
+    setShown((current) => current.includes(key)
+      ? current.length > 1 ? current.filter((k) => k !== key) : current
+      : [...current, key]);
+
+  return (
+    <div>
+      {available.length > 1 && (
+        <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="Serie nel grafico">
+          {[...available].reverse().map((key) => {
+            const on = shown.includes(key);
+            return (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggle(key)}
+                className={cn(
+                  "pressable inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium",
+                  on ? "border-transparent bg-muted text-foreground" : "border-border text-muted-foreground",
+                )}
+              >
+                <span className={cn("h-2 w-2 rounded-full", !on && "opacity-40")} style={{ background: SPECS[key].color }} aria-hidden />
+                {SPECS[key].label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div ref={ref} className="relative" style={{ height: HEIGHT }}>
+        {width > 0 && (
+          <svg
+            width={width}
+            height={HEIGHT}
+            className="touch-pan-y overflow-visible"
+            onPointerMove={(event) => pick(event.clientX, event.currentTarget.getBoundingClientRect())}
+            onPointerDown={(event) => pick(event.clientX, event.currentTarget.getBoundingClientRect())}
+            onPointerLeave={() => setCursor(null)}
+            role="img"
+            aria-label={`Andamento nel tempo: ${visible.map((key) => SPECS[key].label.toLowerCase()).join(", ")}`}
+          >
+            <line x1={PAD.left} x2={PAD.left + innerW} y1={PAD.top + innerH} y2={PAD.top + innerH} stroke="var(--border)" strokeWidth={1} />
+            <text x={PAD.left} y={HEIGHT - 4} className="fill-muted-foreground text-micro">0:00</text>
+            <text x={PAD.left + innerW} y={HEIGHT - 4} textAnchor="end" className="fill-muted-foreground text-micro tabular-nums">{formatDuration(span)}</text>
+            {drawn.map(({ key, spec, d, fill }) => (
+              <g key={key}>
+                {fill && <path d={fill} fill={spec.color} opacity={0.14} />}
+                <path
+                  d={d}
+                  fill="none"
+                  stroke={spec.color}
+                  strokeWidth={spec.area ? 1.25 : 1.75}
+                  strokeOpacity={spec.area ? 0.5 : 1}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+              </g>
+            ))}
+            {cursor != null && (
+              <g>
+                <line x1={x(cursor)} x2={x(cursor)} y1={PAD.top} y2={PAD.top + innerH} stroke="var(--muted-foreground)" strokeWidth={1} opacity={0.5} />
+                {readings.map(({ key, spec, point, y }) => (
+                  <circle key={key} cx={x(point!.t)} cy={y(point!.v)} r={3.5} fill={spec.color} stroke="var(--card)" strokeWidth={2} />
+                ))}
+              </g>
+            )}
+          </svg>
+        )}
+        {cursor != null && readings.length > 0 && (
+          <div
+            className="pointer-events-none absolute -top-1 rounded-lg border border-border bg-popover px-2.5 py-1.5 text-xs shadow-sm"
+            style={x(cursor) > width / 2 ? { right: Math.max(0, width - x(cursor) + 8) } : { left: x(cursor) + 8 }}
+          >
+            <p className="text-micro text-muted-foreground tabular-nums">{formatDuration(cursor - t0)}</p>
+            {[...readings].reverse().map(({ key, spec, point }) => (
+              <p key={key} className="flex items-center gap-1.5 whitespace-nowrap font-medium tabular-nums">
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: spec.color }} aria-hidden />
+                {spec.format(point!.v)}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
