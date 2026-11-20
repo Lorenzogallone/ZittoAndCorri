@@ -221,15 +221,22 @@ test("il piano usa la chat e ogni proposta spiega obiettivo e focus", () => {
   assert.match(chat, /Su cosa concentrarti/);
 });
 
-test("il dettaglio attività è essenziale: grafici a schede e mappa su richiesta", () => {
+test("il dettaglio attività è essenziale: grafici a schede e mappa leggera di base", () => {
   const view = readFileSync(new URL("../app/activities/[id]/activity-view.tsx", import.meta.url), "utf8");
   const route = readFileSync(new URL("../components/activity/route-preview.tsx", import.meta.url), "utf8");
   assert.match(view, /<SegmentedTabs tabs=\{charts\} \/>/);
   for (const label of ["Passo", "Cuore", "Quota"]) assert.match(view, new RegExp(`label: "${label}"`));
   assert.match(view, /<ZonesBar/);
-  // La mappa WebGL parte solo al tocco: su iOS standalone caricarla subito ricarica la PWA.
+  // La mappa WebGL c'è di base ma con cautele: su iOS standalone una mappa
+  // pesante ricarica la PWA. Si carica a parte, solo vicino allo schermo, con
+  // memoria ridotta e torna all'anteprima statica se WebGL cede.
+  const map = readFileSync(new URL("../components/activity-map-client.tsx", import.meta.url), "utf8");
   assert.match(route, /dynamic\(\(\) => import\("@\/components\/activity-map-client"\)/);
-  assert.match(route, /setInteractive\(true\)/);
+  assert.match(route, /IntersectionObserver/);
+  assert.match(route, /near && !failed && <ActivityMapClient/);
+  assert.match(map, /maxTileCacheSize: \d+/);
+  assert.match(map, /webglcontextlost/);
+  assert.match(map, /cooperativeGestures: embedded/);
 });
 
 test("le note del coach diventano dettagli strutturati senza chip diagnostici", () => {

@@ -16,7 +16,9 @@ import { formatStepAmount, groupWorkoutSteps } from "../workout-guide.ts";
 import { detectPauses } from "./pauses.ts";
 
 // 3: tratti misurati sul tempo in movimento (pause dell'orologio escluse).
-export const INTERVALS_VERSION = 3;
+// 4: lap che combaciano con il piano, riscaldamento e defaticamento facoltativi,
+//    soste da fermi come pause, cadenza per tratto.
+export const INTERVALS_VERSION = 4;
 
 /** Distanza cumulativa registrata dall'orologio (m) a t secondi dall'inizio. */
 export interface DistancePoint {
@@ -56,6 +58,10 @@ export interface IntervalSegment {
   max_speed_kmh: number | null;
   avg_hr: number | null;
   max_hr: number | null;
+  /** Cadenza media in movimento (passi al minuto). */
+  cadence_spm?: number | null;
+  /** Secondi in pausa dentro il tratto: non sono nella durata né nel passo. */
+  paused_s?: number;
   /** Battiti recuperati durante un recupero (inizio − fine). */
   hr_drop: number | null;
   /** Durata o distanza prevista dalla struttura. */
@@ -122,6 +128,14 @@ const FAST_RATIO = 1.15;
 const JOG_RATIO = 0.88;
 /** Uno sprint è breve. */
 const SPRINT_MAX_S = 75;
+/** Fermi almeno così a lungo (con l'orologio che registra) è una pausa. */
+const STILL_MIN_S = 10;
+/** Riscaldamento o defaticamento più corti di così non sono stati corsi. */
+const EDGE_MIN_S = 30;
+/** Lap finale più corto di così: è la chiusura dell'attività, non un tratto. */
+const STUB_LAP_S = 15;
+/** Lap e step coincidono se la durata (o la distanza) differisce al massimo così. */
+const LAP_MATCH_RATIO = 0.06;
 
 export const VARIANT_LABELS: Record<SegmentVariant, string> = {
   sprint: "Sprint",
@@ -151,8 +165,10 @@ interface Timeline {
   hr: Float64Array;
   /** Passi al minuto; NaN dove manca. */
   cadence: Float64Array;
-  /** 1 nei secondi in cui l'orologio era in pausa: non contano nel passo. */
+  /** 1 nei secondi in pausa (orologio fermo o atleta fermo): non contano nel tempo né nel passo. */
   paused: Uint8Array;
+  /** Somma cumulata di `paused`: pausedBefore[i] = secondi in pausa prima di i. */
+  pausedBefore: Int32Array;
 }
 
 const MAX_SECONDS = 6 * 3600;
@@ -256,12 +272,45 @@ function buildTimeline(input: AnalyzeInput): Timeline | null {
     const to = Math.min(n, Math.round(pause.to) - t0);
     for (let i = Math.max(0, to - Math.round(pause.removed)); i < to; i++) paused[i] = 1;
   }
-  return { t0, n, dist, speed, hr, cadence, paused };
+  // Soste con l'orologio che registra (semaforo, attesa): contano come pause.
+  for (let i = 0; i < n;) {
+    if (speed[i] >= STOP_SPEED) {
+      i++;
+      continue;
+    }
+    let j = i;
+    while (j < n && speed[j] < STOP_SPEED) j++;
+    if (j - i >= STILL_MIN_S) paused.fill(1, i, j);
+    i = j;
+  }
+  const pausedBefore = new Int32Array(n + 1);
+  for (let i = 0; i < n; i++) pausedBefore[i + 1] = pausedBefore[i] + paused[i];
+  return { t0, n, dist, speed, hr, cadence, paused, pausedBefore };
 }
 
-function meanSpeed(tl: Timeline, start: number, end: number): number {
+/** Secondi in movimento tra start ed end (pause escluse). */
+function movingSeconds(tl: Timeline, start: number, end: number): number {
+  const a = Math.max(0, Math.min(tl.n, start));
+  const b = Math.max(a, Math.min(tl.n, end));
+  return b - a - (tl.pausedBefore[b] - tl.pausedBefore[a]);
+}
+
+/**
+ * Velocità media sul tempo totale, soste comprese: per riconoscere i tratti
+ * senza struttura dichiarata (rilevamento automatico, tipo di recupero), dove
+ * stare fermi è proprio ciò che distingue un recupero.
+ */
+function elapsedSpeed(tl: Timeline, start: number, end: number): number {
   if (end <= start) return 0;
   return (tl.dist[Math.min(end, tl.n - 1)] - tl.dist[start]) / (end - start);
+}
+
+/** Velocità media in movimento: una pausa dentro il tratto non lo rallenta. */
+function meanSpeed(tl: Timeline, start: number, end: number): number {
+  if (end <= start) return 0;
+  const moving = movingSeconds(tl, start, end);
+  if (moving < 1) return 0;
+  return (tl.dist[Math.min(end, tl.n - 1)] - tl.dist[start]) / moving;
 }
 
 function meanOf(values: Float64Array, start: number, end: number): number | null {
@@ -304,7 +353,7 @@ function easySpeed(tl: Timeline): number | null {
 
 /** Recupero misurato: fermo, camminata o jogging. */
 function restVariant(tl: Timeline, start: number, end: number): SegmentVariant {
-  const v = meanSpeed(tl, start, end);
+  const v = elapsedSpeed(tl, start, end);
   if (v < STOP_SPEED) return "stop";
   const cad = meanOf(tl.cadence, start, end);
   if (cad != null ? cad < WALK_CADENCE : v < WALK_SPEED) return "walk";
@@ -332,7 +381,7 @@ interface Span {
 function refineVariants(tl: Timeline, spans: Span[]): Span[] {
   const base = easySpeed(tl);
   const work = spans.filter((s) => s.kind === "work");
-  const longWork = work.filter((s) => s.end - s.start > SPRINT_MAX_S).map((s) => meanSpeed(tl, s.start, s.end));
+  const longWork = work.filter((s) => s.end - s.start > SPRINT_MAX_S).map((s) => elapsedSpeed(tl, s.start, s.end));
   const reference = median(longWork);
   return spans.map((span) => {
     const out = { ...span };
@@ -342,7 +391,7 @@ function refineVariants(tl: Timeline, spans: Span[]): Span[] {
       out.label = VARIANT_LABELS[out.variant];
     } else if (span.kind === "work") {
       const duration = span.end - span.start;
-      const v = meanSpeed(tl, span.start, span.end);
+      const v = elapsedSpeed(tl, span.start, span.end);
       const fastest = (reference != null && v >= reference * 1.08) ||
         (reference == null && base != null && v >= base * 1.3) ||
         (base != null && v >= base * 1.5);
@@ -411,12 +460,20 @@ function measure(tl: Timeline, span: Span): IntervalSegment {
   const start = Math.max(0, Math.min(tl.n - 1, span.start));
   const end = Math.max(start + 1, Math.min(tl.n, span.end));
   const elapsed = span.lap?.duration_s ?? end - start;
-  let pausedSeconds = 0;
-  for (let i = start; i < end; i++) pausedSeconds += tl.paused[i];
-  // Tempo in movimento: una pausa dentro il tratto non lo fa sembrare più lento.
+  const pausedSeconds = Math.min(elapsed, end - start - movingSeconds(tl, start, end));
+  // Tempo in movimento: le pause non contano né nella durata né nel passo.
   const moving = Math.max(1, elapsed - pausedSeconds);
-  // Un recupero dura quanto ci si è fermati davvero, pausa compresa.
-  const duration = span.kind === "recovery" ? elapsed : moving;
+  // Tratto tutto da fermi (recupero in pausa): dura quanto la sosta.
+  const stillOnly = elapsed - pausedSeconds < 5;
+  const duration = stillOnly ? elapsed : moving;
+  let cadenceSum = 0;
+  let cadenceCount = 0;
+  for (let i = start; i < end; i++) {
+    if (tl.paused[i] || Number.isNaN(tl.cadence[i])) continue;
+    cadenceSum += tl.cadence[i];
+    cadenceCount++;
+  }
+  const cadence = cadenceCount >= Math.min(10, (end - start) / 2) && cadenceCount > 0 ? Math.round(cadenceSum / cadenceCount) : null;
   const seriesDistance = tl.dist[Math.min(end, tl.n - 1)] - tl.dist[start];
   const distance = span.lap?.distance_m ?? seriesDistance;
   const pace = distance >= 30 ? Math.round((moving / distance) * 1000) : null;
@@ -437,6 +494,8 @@ function measure(tl: Timeline, span: Span): IntervalSegment {
     max_speed_kmh: span.kind === "work" ? topSpeed(tl, start, end) : null,
     avg_hr: span.lap?.avg_hr ?? hr.avg,
     max_hr: span.lap?.max_hr ?? hr.max,
+    cadence_spm: stillOnly ? null : cadence,
+    paused_s: stillOnly ? 0 : Math.round(pausedSeconds),
     hr_drop: span.kind === "recovery" && hr.first != null && hr.last != null ? Math.round(hr.first - hr.last) : null,
     target: step && step.completion_type !== "manual" && step.completion_value
       ? { type: step.completion_type, value: step.completion_value }
@@ -528,7 +587,7 @@ function finalize(segments: IntervalSegment[], source: IntervalSource, descripti
 type Level = "stop" | "walk" | "jog" | "easy" | "fast";
 
 function levelOf(tl: Timeline, start: number, end: number, base: number): Level {
-  const v = meanSpeed(tl, start, end);
+  const v = elapsedSpeed(tl, start, end);
   if (v < STOP_SPEED) return "stop";
   const cad = meanOf(tl.cadence, start, end);
   if (cad != null ? cad < WALK_CADENCE : v < WALK_SPEED) return "walk";
@@ -574,7 +633,7 @@ function partition(tl: Timeline): Array<[number, number]> {
   const factor = Math.max(3, Math.ceil(tl.n / 1200));
   const m = Math.ceil(tl.n / factor);
   const block = new Float64Array(m);
-  for (let b = 0; b < m; b++) block[b] = meanSpeed(tl, b * factor, Math.min(tl.n, (b + 1) * factor));
+  for (let b = 0; b < m; b++) block[b] = elapsedSpeed(tl, b * factor, Math.min(tl.n, (b + 1) * factor));
   // Rumore stimato dalle differenze tra blocchi vicini (robusto ai cambi di ritmo).
   const diffs: number[] = [];
   for (let b = 1; b < m; b++) diffs.push(Math.abs(block[b] - block[b - 1]));
@@ -655,9 +714,9 @@ function autoSpans(tl: Timeline): Span[] | null {
   if (efforts.length < 2) return null;
   const effortTime = efforts.reduce((sum, s) => sum + s.end - s.start, 0);
   if (effortTime > tl.n * 0.8) return null;
-  const effortSpeed = efforts.reduce((sum, s) => sum + meanSpeed(tl, s.start, s.end) * (s.end - s.start), 0) / effortTime;
+  const effortSpeed = efforts.reduce((sum, s) => sum + elapsedSpeed(tl, s.start, s.end) * (s.end - s.start), 0) / effortTime;
   const gaps = spans.filter((s) => s.kind === "recovery");
-  const clearRest = gaps.filter((s) => meanSpeed(tl, s.start, s.end) <= base * 0.85).length;
+  const clearRest = gaps.filter((s) => elapsedSpeed(tl, s.start, s.end) <= base * 0.85).length;
   if (clearRest < Math.ceil((efforts.length - 1) / 2) && effortSpeed < base * 1.3) return null;
   return spans;
 }
@@ -690,12 +749,60 @@ export function areAutoLaps(laps: FitLap[]): boolean {
   return ref > 0 && distances.every((d) => Math.abs(d - ref) / ref < 0.03);
 }
 
-function lapSpans(laps: FitLap[], tl: Timeline): Span[] | null {
-  if (laps.length < 3 || areAutoLaps(laps)) return null;
-  const located = laps.map((lap) => {
-    const start = Math.round(lap.start_s - tl.t0);
-    return { lap, start, end: start + Math.round(lap.duration_s) };
+/**
+ * Il lap finale di pochi secondi (chiusura dell'attività dopo l'ultimo tratto)
+ * si unisce al precedente: non è un tratto a sé.
+ */
+export function withoutStubLap(laps: FitLap[]): FitLap[] {
+  if (laps.length < 2) return laps;
+  const last = laps[laps.length - 1];
+  if (last.duration_s >= STUB_LAP_S) return laps;
+  const previous = laps[laps.length - 2];
+  return [
+    ...laps.slice(0, -2),
+    {
+      ...previous,
+      duration_s: previous.duration_s + last.duration_s,
+      distance_m: previous.distance_m != null ? previous.distance_m + (last.distance_m ?? 0) : null,
+      max_hr: Math.max(previous.max_hr ?? 0, last.max_hr ?? 0) || null,
+    },
+  ];
+}
+
+function locateLaps(laps: FitLap[], tl: Timeline) {
+  return laps.map((lap) => {
+    const start = Math.max(0, Math.round(lap.start_s - tl.t0));
+    return { lap, start, end: Math.min(tl.n, start + Math.round(lap.duration_s)) };
   });
+}
+
+/**
+ * Soglia dei tratti veloci ricavata dai lap stessi: divide i lap corsi in due
+ * gruppi di velocità (pesati per durata) e la tiene solo se i due gruppi sono
+ * nettamente diversi. Serve quando quasi tutta la corsa è a ritmo sostenuto e
+ * il passo facile stimato sulla serie cade troppo in alto.
+ */
+function lapFastThreshold(speeds: Array<{ v: number; w: number }>): number | null {
+  const sorted = speeds.filter((s) => s.w > 0).sort((a, b) => a.v - b.v);
+  if (sorted.length < 2) return null;
+  let best: { score: number; threshold: number; ratio: number } | null = null;
+  for (let k = 1; k < sorted.length; k++) {
+    const low = sorted.slice(0, k);
+    const high = sorted.slice(k);
+    const wl = low.reduce((sum, s) => sum + s.w, 0);
+    const wh = high.reduce((sum, s) => sum + s.w, 0);
+    const ml = low.reduce((sum, s) => sum + s.v * s.w, 0) / wl;
+    const mh = high.reduce((sum, s) => sum + s.v * s.w, 0) / wh;
+    const score = wl * wh * (mh - ml) ** 2;
+    if (!best || score > best.score) best = { score, threshold: (sorted[k - 1].v + sorted[k].v) / 2, ratio: mh / ml };
+  }
+  return best && best.ratio >= FAST_RATIO ? best.threshold : null;
+}
+
+function lapSpans(rawLaps: FitLap[], tl: Timeline): Span[] | null {
+  const laps = withoutStubLap(rawLaps);
+  if (laps.length < 3 || areAutoLaps(laps)) return null;
+  const located = locateLaps(laps, tl);
   const hasIntensity = laps.some((lap) => lap.intensity && lap.intensity !== "active");
   if (hasIntensity) {
     const spans = located.map(({ lap, start, end }): Span => ({ start, end, kind: LAP_KINDS[lap.intensity ?? "active"] ?? "work", label: "", lap }));
@@ -704,7 +811,81 @@ function lapSpans(laps: FitLap[], tl: Timeline): Span[] | null {
   // Lap premuti a mano: ogni lap si classifica sul ritmo, a più livelli.
   const base = easySpeed(tl);
   if (!base) return null;
-  return levelsToSpans(located.map(({ lap, start, end }) => ({ start, end, lap, level: levelOf(tl, start, end, base) })), false);
+  const pieces = located.map(({ lap, start, end }) => ({ start, end, lap, level: levelOf(tl, start, end, base) }));
+  const running = pieces.filter((p) => p.level !== "stop" && p.level !== "walk");
+  const threshold = lapFastThreshold(running.map((p) => ({ v: meanSpeed(tl, p.start, p.end), w: movingSeconds(tl, p.start, p.end) })));
+  if (threshold != null) {
+    for (const piece of running) {
+      const v = meanSpeed(tl, piece.start, piece.end);
+      piece.level = v >= threshold ? "fast" : v <= base * JOG_RATIO ? "jog" : "easy";
+    }
+  }
+  return levelsToSpans(pieces, false);
+}
+
+/** Il lap ha la durata (o la distanza) dello step? Riscaldamento, defaticamento e step liberi vanno sempre bene. */
+function lapFitsStep(lap: FitLap, step: WorkoutStepInput): boolean {
+  if (step.kind === "warmup" || step.kind === "cooldown") return true;
+  const value = step.completion_value ?? 0;
+  if (step.completion_type === "manual" || value <= 0) return true;
+  if (step.completion_type === "time") return Math.abs(lap.duration_s - value) <= Math.max(4, value * LAP_MATCH_RATIO);
+  if (lap.distance_m == null) return false;
+  return Math.abs(lap.distance_m - value) <= Math.max(25, value * LAP_MATCH_RATIO);
+}
+
+/**
+ * Lap che seguono la seduta dichiarata: l'orologio ha chiuso un lap a ogni
+ * step (workout guidato o lap premuti al cambio). Si accettano un
+ * riscaldamento o un defaticamento non scritti o saltati e una seduta finita
+ * prima, purché i tratti a durata o distanza fissa combacino quasi tutti.
+ */
+function matchLapsToSteps(rawLaps: FitLap[], steps: WorkoutStepInput[], tl: Timeline): Span[] | null {
+  const laps = withoutStubLap(rawLaps);
+  if (laps.length < 3 || !steps.length) return null;
+  const located = locateLaps(laps, tl);
+  const fixed = (step: WorkoutStepInput) =>
+    step.kind !== "warmup" && step.kind !== "cooldown" && step.completion_type !== "manual" && (step.completion_value ?? 0) > 0;
+  // Inizio: dal primo step, oppure saltando il riscaldamento dichiarato.
+  const firstOptions = steps[0].kind === "warmup" ? [0, 1] : [0];
+  for (const first of firstOptions) {
+    // Un lap in più all'inizio fa da riscaldamento se il piano non lo scrive.
+    for (const leading of steps[first]?.kind === "warmup" ? [0] : [0, 1]) {
+      const spans: Span[] = [];
+      let s = first;
+      let ok = true;
+      let matchedFixed = 0;
+      located.forEach(({ lap, start, end }, index) => {
+        if (!ok) return;
+        if (index < leading) {
+          spans.push({ start, end, kind: "warmup", label: STEP_LABELS.warmup, lap });
+          return;
+        }
+        const step = steps[s];
+        if (step && lapFitsStep(lap, step)) {
+          if (fixed(step)) matchedFixed++;
+          spans.push({ start, end, kind: step.kind, label: step.label?.trim() || STEP_LABELS[step.kind], step, lap });
+          s++;
+          return;
+        }
+        // Un lap in più alla fine: defaticamento non scritto.
+        if (index === located.length - 1 && (!step || step.kind === "cooldown")) {
+          spans.push({ start, end, kind: "cooldown", label: step?.label?.trim() || STEP_LABELS.cooldown, step, lap });
+          s++;
+          return;
+        }
+        ok = false;
+      });
+      if (!ok) continue;
+      // Step rimasti senza lap: solo se la seduta è stata interrotta dopo
+      // gran parte del lavoro (es. defaticamento non fatto).
+      const remainingFixed = steps.slice(s).filter(fixed).length;
+      const totalFixed = steps.filter(fixed).length;
+      if (matchedFixed < 2 || remainingFixed > Math.floor(totalFixed / 3)) continue;
+      if (!spans.some((span) => span.kind === "work" || span.kind === "steady")) continue;
+      return spans;
+    }
+  }
+  return null;
 }
 
 // ── 2. Struttura dichiarata allineata sulla velocità ─────────────────────────
@@ -717,17 +898,25 @@ interface TemplateEntry {
   value: number;
   /** Costo per blocco di una parte libera: le pause non dichiarate costano un po'. */
   freeCost: number;
+  /** Riscaldamento/defaticamento dichiarato: durata o distanza indicativa, può andare a zero. */
+  soft?: { type: "time" | "distance"; value: number };
   step?: WorkoutStepInput;
 }
 
 function entryFor(step: WorkoutStepInput): TemplateEntry {
-  const fixed = step.completion_type !== "manual" && (step.completion_value ?? 0) > 0;
+  // Riscaldamento e defaticamento si accorciano o si saltano spesso: la loro
+  // durata pesa poco e può andare a zero (altrimenti si mangiano l'ultima
+  // ripetuta), ma a ritmo uguale al resto tiene il confine vicino al previsto.
+  const edge = step.kind === "warmup" || step.kind === "cooldown";
+  const declared = step.completion_type !== "manual" && (step.completion_value ?? 0) > 0;
+  const fixed = !edge && declared;
   return {
     kind: step.kind,
     label: step.label?.trim() || STEP_LABELS[step.kind],
     type: fixed ? step.completion_type as "time" | "distance" : "free",
     value: fixed ? step.completion_value! : 0,
     freeCost: 0,
+    soft: edge && declared ? { type: step.completion_type as "time" | "distance", value: step.completion_value! } : undefined,
     step,
   };
 }
@@ -753,35 +942,52 @@ function buildTemplate(steps: WorkoutStepInput[]): TemplateEntry[] {
 }
 
 const ALPHA = 2;
+/** La distanza misurata è un dato certo (GPS o orologio): un km dichiarato deve durare circa un km. */
+const ALPHA_DISTANCE = 30;
+/** Peso della durata indicativa di riscaldamento e defaticamento (le ripetute pesano ALPHA). */
+const EDGE_ALPHA = 0.3;
+/** Riscaldamento o defaticamento veloce almeno così rispetto alla ripetuta accanto: è la ripetuta. */
+const EDGE_AS_EFFORT = 0.93;
+/** Costo per blocco di pausa dentro uno sforzo: a parità, la sosta sta nel recupero. */
+const PAUSE_IN_EFFORT_COST = 0.3;
 
 /** Segmentazione ottima: confini dove cambia la velocità, durate vicine a quelle dichiarate. */
 function alignTemplate(tl: Timeline, template: TemplateEntry[]): number[] | null {
   const factor = Math.max(1, Math.ceil(tl.n / 1500));
   const m = Math.ceil(tl.n / factor);
+  // Ogni blocco pesa per i secondi in movimento: le pause non hanno velocità,
+  // così una sosta a metà ripetuta non sembra un cambio di ritmo.
   const speed = new Float64Array(m);
+  const weight = new Float64Array(m);
   for (let b = 0; b < m; b++) {
     let sum = 0;
     let count = 0;
+    let all = 0;
     for (let i = b * factor; i < Math.min(tl.n, (b + 1) * factor); i++) {
+      all++;
+      if (tl.paused[i]) continue;
       sum += tl.speed[i];
       count++;
     }
-    speed[b] = sum / count;
+    speed[b] = count ? sum / count : 0;
+    weight[b] = all ? count / all : 0;
   }
   const distAt = (block: number) => tl.dist[Math.min(tl.n - 1, block * factor)];
+  const s0 = new Float64Array(m + 1);
   const s1 = new Float64Array(m + 1);
   const s2 = new Float64Array(m + 1);
   for (let b = 0; b < m; b++) {
-    s1[b + 1] = s1[b] + speed[b];
-    s2[b + 1] = s2[b] + speed[b] ** 2;
+    s0[b + 1] = s0[b] + weight[b];
+    s1[b + 1] = s1[b] + weight[b] * speed[b];
+    s2[b + 1] = s2[b] + weight[b] * speed[b] ** 2;
   }
-  const avg = s1[m] / m;
-  const variance = Math.max(0.04, s2[m] / m - avg ** 2);
+  const avg = s0[m] > 0 ? s1[m] / s0[m] : 0;
+  const variance = Math.max(0.04, s0[m] > 0 ? s2[m] / s0[m] - avg ** 2 : 0);
   const sse = (i: number, j: number) => {
-    const len = j - i;
-    if (len <= 0) return 0;
+    const w = s0[j] - s0[i];
+    if (j <= i || w <= 0) return 0;
     const sum = s1[j] - s1[i];
-    return Math.max(0, s2[j] - s2[i] - (sum * sum) / len) / variance;
+    return Math.max(0, s2[j] - s2[i] - (sum * sum) / w) / variance;
   };
 
   const K = template.length;
@@ -815,16 +1021,30 @@ function alignTemplate(tl: Timeline, template: TemplateEntry[]): number[] | null
         const i = j - len;
         const base = prev[i];
         if (base === INF) continue;
+        // Sforzi misurati sul tempo in movimento; le pause al confine con un
+        // recupero vanno al recupero (lì sono riposo).
+        const still = len - (s0[j] - s0[i]);
+        const effort = entry.kind === "work" || entry.kind === "steady";
+        const active = len - still;
         let prior: number;
         if (entry.type === "time") {
           const nominal = entry.value / factor;
-          prior = (ALPHA * (len - nominal) ** 2) / nominal;
+          // Un recupero può contare la sosta come riposo oppure no: vale il più vicino.
+          const off = effort ? active - nominal : Math.min(Math.abs(len - nominal), Math.abs(active - nominal));
+          prior = (ALPHA * off ** 2) / nominal;
         } else if (entry.type === "distance") {
           const rel = (distAt(j) - distAt(i) - entry.value) / entry.value;
-          prior = ALPHA * rel * rel * len;
+          prior = ALPHA_DISTANCE * rel * rel * (effort ? active : len);
+        } else if (entry.soft?.type === "time") {
+          const nominal = entry.soft.value / factor;
+          prior = (EDGE_ALPHA * (len - nominal) ** 2) / nominal;
+        } else if (entry.soft) {
+          const rel = (distAt(j) - distAt(i) - entry.soft.value) / entry.soft.value;
+          prior = EDGE_ALPHA * rel * rel * Math.max(len, entry.soft.value / 3 / factor);
         } else {
           prior = entry.freeCost * len;
         }
+        if (effort) prior += PAUSE_IN_EFFORT_COST * still;
         const cost = base + sse(i, j) + prior;
         if (cost < cur[j]) {
           cur[j] = cost;
@@ -897,7 +1117,42 @@ function declaredSpans(tl: Timeline, steps: WorkoutStepInput[]): Span[] | null {
     }
     spans.push(span);
   });
-  return plausible(tl, spans) ? spans : null;
+  // Recupero non dichiarato che non è più lento degli sforzi accanto: non c'è
+  // stato. Si divide a metà tra i due tratti.
+  for (let index = spans.length - 2; index >= 1; index--) {
+    const span = spans[index];
+    if (span.kind !== "recovery" || span.step) continue;
+    const before = spans[index - 1];
+    const after = spans[index + 1];
+    const slowest = Math.min(meanSpeed(tl, before.start, before.end), meanSpeed(tl, after.start, after.end));
+    if (meanSpeed(tl, span.start, span.end) < slowest * 0.9) continue;
+    const mid = Math.round((span.start + span.end) / 2);
+    before.end = mid;
+    after.start = mid;
+    spans.splice(index, 1);
+  }
+  // Riscaldamento o defaticamento corso al ritmo della ripetuta accanto: non
+  // è stato fatto (la seduta inizia o finisce lì), quei secondi sono ripetuta.
+  for (let index = spans.length - 1; index >= 0; index--) {
+    const span = spans[index];
+    if (span.kind !== "warmup" && span.kind !== "cooldown") continue;
+    const neighbour = span.kind === "warmup" ? spans[index + 1] : spans[index - 1];
+    if (!neighbour || neighbour.kind !== "work") continue;
+    if (elapsedSpeed(tl, span.start, span.end) < meanSpeed(tl, neighbour.start, neighbour.end) * EDGE_AS_EFFORT) continue;
+    if (span.kind === "warmup") neighbour.start = span.start;
+    else neighbour.end = span.end;
+    spans.splice(index, 1);
+  }
+  // Riscaldamento o defaticamento di pochi secondi: rumore ai bordi, non una
+  // fase corsa. Finiscono nel tratto accanto.
+  const trimmed = spans.filter((span, index) => {
+    const edge = span.kind === "warmup" || span.kind === "cooldown";
+    if (!edge || span.end - span.start >= EDGE_MIN_S || spans.length < 2) return true;
+    if (index === 0) spans[1].start = span.start;
+    else spans[index - 1].end = span.end;
+    return false;
+  });
+  return plausible(tl, trimmed) ? trimmed : null;
 }
 
 // ── Descrizioni ──────────────────────────────────────────────────────────────
@@ -988,6 +1243,14 @@ export function analyzeIntervals(input: AnalyzeInput): IntervalAnalysis {
     const segments = tidyRecoveries(refineVariants(tl, spans)).map((span) => measure(tl, span));
     return finalize(segments, source, description ?? describeSegments(segments));
   };
+
+  // Lap che seguono la seduta dichiarata: la struttura più affidabile.
+  if (input.laps?.length) {
+    for (const structure of structures) {
+      const matched = matchLapsToSteps(input.laps, structure.steps, tl);
+      if (matched) return build(matched, "laps", structure.description ?? describeStructure(structure.steps));
+    }
+  }
 
   const laps = input.laps?.length ? lapSpans(input.laps, tl) : null;
   if (laps) {

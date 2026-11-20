@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Pause } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/format";
 import { INTERVAL_SOURCE_LABELS } from "@/lib/intervals-text";
@@ -85,6 +86,13 @@ function Row({ segment, muted }: { segment: IntervalSegment; muted: boolean }) {
         <span className={cn("h-2 w-2 shrink-0 rounded-full", dotTone(segment))} />
         <span className="truncate first-letter:uppercase">{displayLabel(segment)}</span>
         {segment.rep != null && <span className="shrink-0 text-xs font-normal text-muted-foreground tabular-nums">{segment.rep}/{segment.reps}</span>}
+        {(segment.paused_s ?? 0) >= 5 && (
+          <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-normal text-muted-foreground tabular-nums" title="Pausa: non conta nel tempo né nel passo">
+            <Pause size={10} aria-hidden />
+            <span className="sr-only">pausa</span>
+            {clock(segment.paused_s!)}
+          </span>
+        )}
         {segment.variant === "sprint" && segment.max_speed_kmh != null && (
           <span className="shrink-0 text-xs font-normal text-muted-foreground tabular-nums" title="Velocità di punta">
             {String(segment.max_speed_kmh).replace(".", ",")} km/h
@@ -101,11 +109,12 @@ function Row({ segment, muted }: { segment: IntervalSegment; muted: boolean }) {
           ? <span title="Battiti recuperati">↓{segment.hr_drop}</span>
           : segment.avg_hr ?? "—"}
       </div>
+      <div className="border-t border-border/50 py-2 text-right tabular-nums text-muted-foreground">{segment.cadence_spm ?? "—"}</div>
     </>
   );
 }
 
-/** Tratti della seduta con tempo, passo e cuore di ognuno. */
+/** Tratti della seduta con tempo, passo, cuore e cadenza di ognuno; le pause a parte. */
 export function IntervalsCard({
   analysis,
   workoutId,
@@ -149,11 +158,12 @@ export function IntervalsCard({
 
       <ExecutedProfile segments={analysis.segments} />
 
-      <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-4 text-sm">
+      <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_auto_auto_auto] gap-x-3 text-sm sm:gap-x-4">
         <div />
         <div className="pb-1 text-right text-micro text-muted-foreground">Tempo</div>
         <div className="pb-1 text-right text-micro text-muted-foreground">Passo</div>
         <div className="pb-1 text-right text-micro text-muted-foreground">FC</div>
+        <div className="pb-1 text-right text-micro text-muted-foreground" title="Passi al minuto">spm</div>
         {analysis.segments.map((segment, index) => (
           <Row key={index} segment={segment} muted={segment.kind !== "work" && segment.kind !== "steady"} />
         ))}

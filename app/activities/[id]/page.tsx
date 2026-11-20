@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { timeInZoneFromSeries } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
 import { computeHrDrift } from "@/lib/metrics/effort";
-import { bestMovingTime, movingTimeFromStreams } from "@/lib/metrics/pauses";
+import { bestMovingTime, movingTimeFromStreams, withoutPauses } from "@/lib/metrics/pauses";
 import { avgPace } from "@/lib/metrics/pace";
 import { bestEffortsForActivity, personalRecords } from "@/lib/metrics/best-efforts";
 import { cadencePoints, computeIntervals, intervalsUpToDate, paceCheckFor, persistDerived, persistIntervals } from "@/lib/derived";
@@ -176,13 +176,17 @@ export default async function ActivityDetailPage({
   // Serie ridotte per il client: migliaia di punti nel payload RSC rendono
   // lentissima la navigazione su rete mobile.
   const gps = streams?.gps_series && streams.gps_series.length >= 2 ? downsample(streams.gps_series, 500) : null;
+  // Grafici sul tempo in movimento: le pause dell'orologio non disegnano tratti piatti.
+  const moving = streams
+    ? withoutPauses({ gps: streams.gps_series, hr: streams.hr_series, distance: streams.distance_series })
+    : null;
 
   return (
     <ActivityView
       activity={activity}
       gps={gps}
-      hr={streams?.hr_series ? downsample(streams.hr_series, 300) : null}
-      elevation={streams?.gps_series?.some((p) => p.ele != null) ? downsample(streams.gps_series, 300) : null}
+      hr={moving?.hr ? downsample(moving.hr, 300) : null}
+      elevation={moving?.gps?.some((p) => p.ele != null) ? downsample(moving.gps, 300) : null}
       splits={splits}
       zones={zones}
       records={heldRecords}
