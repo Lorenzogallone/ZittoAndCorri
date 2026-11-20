@@ -1,13 +1,14 @@
-// Colori del percorso in base alla velocità (scala "calore": giallo = lento,
-// rosso = veloce), relativi alla corsa stessa. Funzioni pure.
+// Colori del percorso in base alla velocità (verde = lento, giallo, rosso =
+// veloce), relativi alla corsa stessa. Funzioni pure.
 
 import { cumulativeDistance, type TrackPoint } from "./geo.ts";
 
-const SLOW: [number, number, number] = [252, 211, 77]; // amber-300
-const MID: [number, number, number] = [249, 115, 22]; // orange-500
-const FAST: [number, number, number] = [220, 38, 38]; // red-600
+// Colori chiari e lontani tra loro: si leggono anche sulla mappa scura.
+const SLOW: [number, number, number] = [74, 222, 128]; // green-400
+const MID: [number, number, number] = [250, 204, 21]; // yellow-400
+const FAST: [number, number, number] = [239, 68, 68]; // red-500
 
-export const PACE_SCALE = { slow: "#fcd34d", mid: "#f97316", fast: "#dc2626" };
+export const PACE_SCALE = { slow: "#4ade80", mid: "#facc15", fast: "#ef4444" };
 
 function mix(a: [number, number, number], b: [number, number, number], t: number): string {
   const channel = (i: number) => Math.round(a[i] + (b[i] - a[i]) * t).toString(16).padStart(2, "0");
