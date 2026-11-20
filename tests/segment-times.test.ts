@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { segmentSpans } from "../lib/metrics/segment-times.ts";
 import { movingClock } from "../lib/metrics/pauses.ts";
+import type { IntervalSegment } from "../lib/metrics/intervals.ts";
 
 test("tratti nel tempo: fine al tratto dopo, pause dentro, orologio in movimento", () => {
-  const segments = [
+  const segments: Array<Pick<IntervalSegment, "kind" | "variant" | "label" | "start_s" | "duration_s" | "paused_s">> = [
     { kind: "warmup", variant: null, label: "Riscaldamento", start_s: 0, duration_s: 300, paused_s: 0 },
     { kind: "work", variant: null, label: "8'", start_s: 300, duration_s: 480, paused_s: 30 },
     { kind: "recovery", variant: "jog", label: "Jogging", start_s: 810, duration_s: 120, paused_s: 0 },

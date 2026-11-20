@@ -96,7 +96,7 @@ function Row({ segment, muted, selected, onSelect }: { segment: IntervalSegment;
     >
       <div className={cn("flex min-w-0 items-center gap-2 border-t border-border/50 py-2", muted ? "text-muted-foreground" : "font-medium")}>
         <span className={cn("h-2 w-2 shrink-0 rounded-full", dotTone(segment))} />
-        <span className="truncate first-letter:uppercase">{displayLabel(segment)}</span>
+        <span className="line-clamp-2 break-words leading-snug first-letter:uppercase">{displayLabel(segment)}</span>
         {segment.rep != null && <span className="shrink-0 text-xs font-normal text-muted-foreground tabular-nums">{segment.rep}/{segment.reps}</span>}
         {(segment.paused_s ?? 0) >= 5 && (
           <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-normal text-muted-foreground tabular-nums" title="Pausa: non conta nel tempo né nel passo">
