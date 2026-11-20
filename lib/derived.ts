@@ -21,6 +21,7 @@ import { addDays, romeDay } from "@/lib/local-date";
 import { workoutForActivity } from "@/lib/plan/match-activities";
 import { avgPace } from "@/lib/metrics/pace";
 import { movingTimeFromStreams } from "@/lib/metrics/pauses";
+import { classifyRun } from "@/lib/metrics/run-type";
 import { workoutStepsOrLegacy } from "@/lib/workout-steps";
 import type { Activity, ActivityStream, GpsPoint, HrPoint, PlannedWorkout } from "@/lib/types";
 
@@ -200,10 +201,50 @@ export async function persistIntervals(
       .eq("user_id", userId);
     if (isMissingColumn(error)) return analysis;
     if (error) throw error;
+    await persistRunType(supabase, userId, activity, analysis);
     return analysis;
   } catch (error) {
     console.error("persistIntervals:", error instanceof Error ? error.message : error);
     return null;
+  }
+}
+
+/**
+ * Tipo della corsa importata ("unclassified") dai tratti e dalla seduta del
+ * piano. Un tipo già scelto (a mano o in precedenza) non si tocca.
+ */
+export async function persistRunType(
+  supabase: SupabaseClient,
+  userId: string,
+  activity: Pick<Activity, "id" | "sport" | "started_at">,
+  analysis: IntervalAnalysis | null,
+): Promise<void> {
+  try {
+    if (activity.sport !== "running") return;
+    const { data: current } = await supabase
+      .from("activities")
+      .select("type, distance_m, moving_time_s, duration_s")
+      .eq("id", activity.id)
+      .eq("user_id", userId)
+      .maybeSingle<Pick<Activity, "type" | "distance_m" | "moving_time_s" | "duration_s">>();
+    if (!current || current.type !== "unclassified") return;
+    const planned = await plannedForActivity(supabase, userId, activity);
+    const type = classifyRun({
+      intervals: analysis,
+      planned: planned && planned.type !== "cross" ? planned.type : null,
+      distance_m: current.distance_m,
+      moving_time_s: current.moving_time_s,
+      duration_s: current.duration_s,
+    });
+    const { error } = await supabase
+      .from("activities")
+      .update({ type })
+      .eq("id", activity.id)
+      .eq("user_id", userId)
+      .eq("type", "unclassified");
+    if (error) throw error;
+  } catch (error) {
+    console.error("persistRunType:", error instanceof Error ? error.message : error);
   }
 }
 

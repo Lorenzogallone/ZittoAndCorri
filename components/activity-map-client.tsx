@@ -16,9 +16,11 @@ interface ActivityMapClientProps {
    */
   embedded?: boolean;
   onFail?: () => void;
+  /** Tratto da evidenziare (secondi dall'inizio, orologio reale dei punti GPS). */
+  highlight?: { start: number; end: number } | null;
 }
 
-export default function ActivityMapClient({ gpsSeries, embedded = false, onFail }: ActivityMapClientProps) {
+export default function ActivityMapClient({ gpsSeries, embedded = false, onFail, highlight = null }: ActivityMapClientProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -122,6 +124,23 @@ export default function ActivityMapClient({ gpsSeries, embedded = false, onFail 
       });
       setColored(Boolean(stops));
 
+      // Tratto scelto nella card Ripetute: linea chiara con bordo scuro, sopra il percorso.
+      map.addSource("selected", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addLayer({
+        id: "selected-casing",
+        type: "line",
+        source: "selected",
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: { "line-color": "black", "line-opacity": 0.45, "line-width": 10 },
+      });
+      map.addLayer({
+        id: "selected-line",
+        type: "line",
+        source: "selected",
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: { "line-color": "white", "line-width": 6 },
+      });
+
       // Create Custom Start Marker (Green circle)
       const startPoint = coordinates[0];
       const startEl = document.createElement("div");
@@ -147,6 +166,21 @@ export default function ActivityMapClient({ gpsSeries, embedded = false, onFail 
       }
     };
   }, [gpsSeries, embedded, onFail]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    const source = map.getSource("selected") as maplibregl.GeoJSONSource | undefined;
+    if (!source) return;
+    const coordinates = highlight
+      ? gpsSeries.filter((p) => p.t >= highlight.start && p.t <= highlight.end).map((p) => [p.lon, p.lat])
+      : [];
+    source.setData(
+      coordinates.length >= 2
+        ? { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } }
+        : { type: "FeatureCollection", features: [] },
+    );
+  }, [highlight, mapLoaded, gpsSeries]);
 
   if (embedded) {
     return (

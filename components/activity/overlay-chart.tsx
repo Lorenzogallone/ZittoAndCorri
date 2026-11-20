@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMeasuredWidth } from "@/components/charts/chart-utils";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/format";
+import { useSegmentSelection } from "@/components/activity/segment-selection";
 
 type Point = { t: number; v: number };
 type Key = "hr" | "pace" | "elevation" | "cadence";
@@ -72,6 +73,7 @@ export function OverlayChart({
     return start.length ? start : available.slice(-1);
   });
   const [cursor, setCursor] = useState<number | null>(null);
+  const { segments, selected } = useSegmentSelection();
   if (!available.length) return null;
 
   const visible = ORDER.filter((key) => shown.includes(key) && available.includes(key));
@@ -157,6 +159,26 @@ export function OverlayChart({
             aria-label={`Andamento nel tempo: ${visible.map((key) => SPECS[key].label.toLowerCase()).join(", ")}`}
           >
             <line x1={PAD.left} x2={PAD.left + innerW} y1={PAD.top + innerH} y2={PAD.top + innerH} stroke="var(--border)" strokeWidth={1} />
+            {/* Ripetute come fasce tenui; il tratto scelto nella card più marcato. */}
+            {segments
+              .filter((segment) => segment.kind === "work" || segment.index === selected)
+              .map((segment) => {
+                const left = x(Math.max(t0, segment.movingStart));
+                const right = x(Math.min(t1, segment.movingEnd));
+                const active = segment.index === selected;
+                return right > left ? (
+                  <rect
+                    key={segment.index}
+                    x={left}
+                    y={PAD.top}
+                    width={right - left}
+                    height={innerH}
+                    fill={active ? "var(--foreground)" : "var(--viz-1)"}
+                    opacity={active ? 0.1 : 0.06}
+                    rx={2}
+                  />
+                ) : null;
+              })}
             <text x={PAD.left} y={HEIGHT - 4} className="fill-muted-foreground text-micro">0:00</text>
             <text x={PAD.left + innerW} y={HEIGHT - 4} textAnchor="end" className="fill-muted-foreground text-micro tabular-nums">{formatDuration(span)}</text>
             {drawn.map(({ key, spec, d, fill }) => (

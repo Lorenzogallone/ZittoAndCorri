@@ -5,7 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { timeInZoneFromSeries } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
 import { computeHrDrift } from "@/lib/metrics/effort";
-import { bestMovingTime, movingTimeFromStreams, referenceTrack, withoutPauses } from "@/lib/metrics/pauses";
+import { bestMovingTime, detectPauses, movingClock, movingTimeFromStreams, referenceTrack, withoutPauses } from "@/lib/metrics/pauses";
+import { segmentSpans } from "@/lib/metrics/segment-times";
 import { paceSeries } from "@/lib/metrics/pace-series";
 import { avgPace } from "@/lib/metrics/pace";
 import { bestEffortsForActivity, personalRecords } from "@/lib/metrics/best-efforts";
@@ -186,6 +187,11 @@ export default async function ActivityDetailPage({
   const cadence = activity.sport === "running"
     ? (moving?.cadence ?? []).filter((p) => p.rpm > 0).map((p) => ({ t: p.t, v: p.rpm * 2 }))
     : [];
+  // Tratti delle ripetute su entrambi gli orologi: reale per la mappa, in movimento per il grafico.
+  const rawTrack = streams ? referenceTrack({ distance: streams.distance_series, gps: streams.gps_series }) : null;
+  const segments = intervals?.segments.length
+    ? segmentSpans(intervals.segments, movingClock(rawTrack ? detectPauses(rawTrack) : []))
+    : [];
 
   return (
     <ActivityView
@@ -200,6 +206,7 @@ export default async function ActivityDetailPage({
       records={heldRecords}
       pace={paceResult ? { check: paceResult.check, workoutId: paceResult.workout.id } : null}
       intervals={intervals}
+      segments={segments}
       evaluation={evaluation ?? null}
       evaluationJob={evaluationJob ?? null}
       keyConfigured={aiStatus.analysis.active !== null}

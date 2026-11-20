@@ -1,9 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { Pause } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/format";
 import { INTERVAL_SOURCE_LABELS } from "@/lib/intervals-text";
 import { TONES } from "@/lib/step-tones";
+import { useSegmentSelection } from "@/components/activity/segment-selection";
 import type { IntervalAnalysis, IntervalSegment, IntervalSource } from "@/lib/metrics/intervals";
 
 const clock = (seconds: number | null) => {
@@ -78,10 +81,19 @@ function ExecutedProfile({ segments }: { segments: IntervalSegment[] }) {
   );
 }
 
-function Row({ segment, muted }: { segment: IntervalSegment; muted: boolean }) {
+function Row({ segment, muted, selected, onSelect }: { segment: IntervalSegment; muted: boolean; selected: boolean; onSelect: () => void }) {
   const deviation = deviationText(segment);
+  // Riga intera toccabile (sottogriglia): evidenzia il tratto nel grafico e sulla mappa.
   return (
-    <>
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={cn(
+        "col-span-5 -mx-2 grid grid-cols-subgrid rounded-lg px-2 text-left transition-colors motion-reduce:transition-none",
+        selected ? "bg-muted" : "hover:bg-muted/50",
+      )}
+    >
       <div className={cn("flex min-w-0 items-center gap-2 border-t border-border/50 py-2", muted ? "text-muted-foreground" : "font-medium")}>
         <span className={cn("h-2 w-2 shrink-0 rounded-full", dotTone(segment))} />
         <span className="truncate first-letter:uppercase">{displayLabel(segment)}</span>
@@ -110,7 +122,7 @@ function Row({ segment, muted }: { segment: IntervalSegment; muted: boolean }) {
           : segment.avg_hr ?? "—"}
       </div>
       <div className="border-t border-border/50 py-2 text-right tabular-nums text-muted-foreground">{segment.cadence_spm ?? "—"}</div>
-    </>
+    </button>
   );
 }
 
@@ -126,6 +138,7 @@ export function IntervalsCard({
 }) {
   const s = analysis.summary;
   const source = analysis.source as IntervalSource;
+  const { selected, toggle, segments: spans } = useSegmentSelection();
   const summary = [
     s?.avg_pace_s_km ? `Media ${clock(s.avg_pace_s_km)}/km` : null,
     s?.fastest_pace_s_km && s.slowest_pace_s_km && s.fastest_pace_s_km !== s.slowest_pace_s_km
@@ -165,9 +178,20 @@ export function IntervalsCard({
         <div className="pb-1 text-right text-micro text-muted-foreground">FC</div>
         <div className="pb-1 text-right text-micro text-muted-foreground" title="Passi al minuto">spm</div>
         {analysis.segments.map((segment, index) => (
-          <Row key={index} segment={segment} muted={segment.kind !== "work" && segment.kind !== "steady"} />
+          <Row
+            key={index}
+            segment={segment}
+            muted={segment.kind !== "work" && segment.kind !== "steady"}
+            selected={selected === index}
+            onSelect={() => toggle(index)}
+          />
         ))}
       </div>
+      {spans.length > 0 && (
+        <p className="mt-2 text-micro text-muted-foreground" aria-live="polite">
+          {selected == null ? "Tocca un tratto per vederlo nel grafico e sulla mappa." : "Tratto evidenziato nel grafico e sulla mappa. Toccalo di nuovo per toglierlo."}
+        </p>
+      )}
 
       {canEditNote && (
         <a href="#nota" className="mt-3 block text-xs text-primary">

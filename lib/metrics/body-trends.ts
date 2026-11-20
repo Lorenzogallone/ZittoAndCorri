@@ -302,8 +302,27 @@ export function isQualityRun(run: Pick<RunInput, "intervals" | "moving_time_s" |
   return seconds > 0 && work.reduce((sum, segment) => sum + segment.duration_s, 0) >= seconds * AUTO_WORK_SHARE;
 }
 
+/**
+ * Oltre questo scarto dalla mediana dell'atleta il valore non è fisiologia ma
+ * una lettura sbagliata del cuore (sensore ottico che aggancia la cadenza o
+ * perde il battito): 1,30 quando di solito sei a 1,00 non è un giorno buono.
+ */
+const EFFICIENCY_OUTLIER = 0.25;
+
+/** Valori lontani dalla mediana: letture del cuore sospette, fuori dal trend. */
+export function withoutOutliers(points: DayValue[], tolerance = EFFICIENCY_OUTLIER): DayValue[] {
+  if (points.length < 5) return points;
+  const sorted = points.map((point) => point.value).sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  return points.filter((point) => Math.abs(point.value / median - 1) <= tolerance);
+}
+
 /** Metri percorsi per battito nelle corse facili: sale quando il fiato migliora. */
 export function aerobicEfficiency(runs: RunInput[]): DayValue[] {
+  return withoutOutliers(easyRunEfficiency(runs));
+}
+
+function easyRunEfficiency(runs: RunInput[]): DayValue[] {
   const easy = new Set(["easy", "long", "recovery", "unclassified"]);
   return runs
     // Quasi tutte le corse arrivano "unclassified": le sedute di qualità si

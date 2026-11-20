@@ -218,6 +218,23 @@ test("le righe per il coach riassumono le ripetute", async () => {
   assert.equal(intervalsOneLine({ ...result, source: "none", segments: [] }), null);
 });
 
+test("le righe per il coach dicono cadenza e pause dei tratti", async () => {
+  const { intervalsForPrompt, intervalsOneLine } = await import("../lib/intervals-text.ts");
+  const { distance, hr, bounds } = run5x1000();
+  const mid = Math.round((bounds[3] + bounds[4]) / 2);
+  const cadence = distance.map((p) => ({ t: p.t, rpm: p.t < bounds[5] ? 84 : 81 }));
+  const result = analyzeIntervals({
+    distance: pauseWatch(distance, mid, 25),
+    hr: pauseWatch(hr, mid, 25),
+    cadence: pauseWatch(cadence, mid, 25),
+    structures: [{ source: "plan", steps: plan5x1000 }],
+  });
+  assert.match(intervalsOneLine(result)!, /cadenza nei tratti veloci da 168 a 162 spm/);
+  assert.match(intervalsOneLine(result)!, /di pause escluse da tempi e passi/);
+  assert.match(intervalsForPrompt(result)!, /cadenza 168 spm/);
+  assert.match(intervalsForPrompt(result)!, /di pausa \(fuori da tempo e passo\)/);
+});
+
 // Sessione reale dell'atleta: riscaldamento, poi 4 × (3' veloce + 30" jogging
 // + 30" sprint + 2' camminata), FC con buchi. Va riconosciuta da sola.
 function athleteSession(seed = 21) {
