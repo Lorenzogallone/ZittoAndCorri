@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { mapView, type MapTile } from "@/lib/route-path";
 import { PACE_SCALE, pointSpeedColors } from "@/lib/metrics/pace-colors";
 import { useSegmentSelection } from "@/components/activity/segment-selection";
+import type { RepOnMap } from "@/components/activity-map-client";
 import type { GpsPoint } from "@/lib/types";
 
 // Mappa interattiva (WebGL) di base, ma solo quando la card entra nello schermo
@@ -65,8 +66,16 @@ export function RoutePreview({ gps }: { gps: GpsPoint[] }) {
   const [ref, near] = useNearViewport<HTMLDivElement>();
   const [failed, setFailed] = useState(false);
   const onFail = useCallback(() => setFailed(true), []);
-  const { current } = useSegmentSelection();
-  const highlight = useMemo(() => (current ? { start: current.start, end: current.end } : null), [current]);
+  const { segments: spans, selected } = useSegmentSelection();
+  // Ripetute sempre sul percorso, numerate; il tratto scelto nella card (anche
+  // un recupero) in primo piano.
+  const reps = useMemo<RepOnMap[]>(() => {
+    let number = 0;
+    return spans.flatMap<RepOnMap>((segment) => {
+      if (segment.kind === "work") return [{ index: segment.index, number: ++number, start: segment.start, end: segment.end }];
+      return segment.index === selected ? [{ index: segment.index, number: null, start: segment.start, end: segment.end }] : [];
+    });
+  }, [spans, selected]);
 
   const view = mapView(gps, W, H, 18);
   if (!view) return null;
@@ -84,10 +93,12 @@ export function RoutePreview({ gps }: { gps: GpsPoint[] }) {
     });
   }
   const outline = points.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-  const chosen = highlight
-    ? points.filter((_, i) => gps[i].t >= highlight.start && gps[i].t <= highlight.end)
-    : [];
-  const chosenPath = chosen.length >= 2 ? chosen.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ") : null;
+  const repPaths = reps.flatMap((rep) => {
+    const inside = points.filter((_, i) => gps[i].t >= rep.start && gps[i].t <= rep.end);
+    if (inside.length < 2) return [];
+    const emphasis = selected == null ? 1 : selected === rep.index ? 2 : 0;
+    return [{ ...rep, emphasis, d: inside.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" "), first: inside[0] }];
+  });
   const [startX, startY] = points[0];
   const [endX, endY] = points[points.length - 1];
 
@@ -114,16 +125,23 @@ export function RoutePreview({ gps }: { gps: GpsPoint[] }) {
         {segments.map((segment, index) => (
           <path key={index} d={segment.d} fill="none" stroke={segment.color} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />
         ))}
-        {chosenPath && (
-          <g>
-            <path d={chosenPath} fill="none" stroke="var(--foreground)" strokeOpacity={0.5} strokeWidth={9} strokeLinecap="round" strokeLinejoin="round" />
-            <path d={chosenPath} fill="none" stroke="var(--card)" strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" />
+        {/* Ripetute: linea chiara numerata; con un tratto scelto le altre si attenuano. */}
+        {repPaths.map((rep) => (
+          <g key={rep.index} opacity={rep.emphasis === 0 ? 0.35 : 1}>
+            <path d={rep.d} fill="none" stroke="black" strokeOpacity={0.45} strokeWidth={rep.emphasis === 2 ? 10 : 8} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={rep.d} fill="none" stroke="white" strokeWidth={rep.emphasis === 2 ? 6 : 4} strokeLinecap="round" strokeLinejoin="round" />
           </g>
-        )}
+        ))}
+        {repPaths.filter((rep) => rep.number != null).map((rep) => (
+          <g key={`n${rep.index}`} opacity={rep.emphasis === 0 ? 0.4 : 1}>
+            <circle cx={rep.first[0]} cy={rep.first[1]} r={7} fill="white" stroke="black" strokeOpacity={0.4} />
+            <text x={rep.first[0]} y={rep.first[1] + 3.5} textAnchor="middle" className="fill-black text-micro font-bold">{rep.number}</text>
+          </g>
+        ))}
         <circle cx={startX} cy={startY} r={5} fill="#10b981" stroke="var(--card)" strokeWidth={2} />
         <circle cx={endX} cy={endY} r={5} fill="var(--foreground)" stroke="var(--card)" strokeWidth={2} />
       </svg>
-      {near && !failed && <ActivityMapClient gpsSeries={gps} embedded onFail={onFail} highlight={highlight} />}
+      {near && !failed && <ActivityMapClient gpsSeries={gps} embedded onFail={onFail} reps={reps} selected={selected} />}
       {colors && (
         <span className="pointer-events-none absolute bottom-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-full bg-background/90 px-2.5 py-1.5 text-micro font-medium text-muted-foreground">
           lento

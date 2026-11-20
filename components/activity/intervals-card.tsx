@@ -189,7 +189,7 @@ export function IntervalsCard({
       </div>
       {spans.length > 0 && (
         <p className="mt-2 text-micro text-muted-foreground" aria-live="polite">
-          {selected == null ? "Tocca un tratto per vederlo nel grafico e sulla mappa." : "Tratto evidenziato nel grafico e sulla mappa. Toccalo di nuovo per toglierlo."}
+          {selected == null ? "Le ripetute sono numerate sulla mappa. Tocca un tratto per metterlo in primo piano." : "Tratto in primo piano nel grafico e sulla mappa. Toccalo di nuovo per tornare a tutte."}
         </p>
       )}
 

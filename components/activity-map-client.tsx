@@ -16,11 +16,21 @@ interface ActivityMapClientProps {
    */
   embedded?: boolean;
   onFail?: () => void;
-  /** Tratto da evidenziare (secondi dall'inizio, orologio reale dei punti GPS). */
-  highlight?: { start: number; end: number } | null;
+  /** Ripetute da disegnare sul percorso (secondi dall'inizio, orologio reale dei punti GPS). */
+  reps?: RepOnMap[];
+  /** Ripetuta scelta nella card: in primo piano, le altre attenuate. */
+  selected?: number | null;
 }
 
-export default function ActivityMapClient({ gpsSeries, embedded = false, onFail, highlight = null }: ActivityMapClientProps) {
+export interface RepOnMap {
+  index: number;
+  /** Numero della ripetuta; null per un tratto non veloce scelto nella card (niente numero). */
+  number: number | null;
+  start: number;
+  end: number;
+}
+
+export default function ActivityMapClient({ gpsSeries, embedded = false, onFail, reps = [], selected = null }: ActivityMapClientProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -124,21 +134,29 @@ export default function ActivityMapClient({ gpsSeries, embedded = false, onFail,
       });
       setColored(Boolean(stops));
 
-      // Tratto scelto nella card Ripetute: linea chiara con bordo scuro, sopra il percorso.
-      map.addSource("selected", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      // Ripetute: linea chiara con bordo scuro sopra il percorso colorato.
+      map.addSource("reps", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addLayer({
-        id: "selected-casing",
+        id: "reps-casing",
         type: "line",
-        source: "selected",
+        source: "reps",
         layout: { "line-join": "round", "line-cap": "round" },
-        paint: { "line-color": "black", "line-opacity": 0.45, "line-width": 10 },
+        paint: {
+          "line-color": "black",
+          "line-opacity": ["match", ["get", "emphasis"], 2, 0.5, 1, 0.4, 0.1],
+          "line-width": ["match", ["get", "emphasis"], 2, 11, 8],
+        },
       });
       map.addLayer({
-        id: "selected-line",
+        id: "reps-line",
         type: "line",
-        source: "selected",
+        source: "reps",
         layout: { "line-join": "round", "line-cap": "round" },
-        paint: { "line-color": "white", "line-width": 6 },
+        paint: {
+          "line-color": "white",
+          "line-opacity": ["match", ["get", "emphasis"], 2, 1, 1, 0.9, 0.3],
+          "line-width": ["match", ["get", "emphasis"], 2, 6, 4],
+        },
       });
 
       // Create Custom Start Marker (Green circle)
@@ -167,20 +185,31 @@ export default function ActivityMapClient({ gpsSeries, embedded = false, onFail,
     };
   }, [gpsSeries, embedded, onFail]);
 
+  // Ripetute e numeri: si aggiornano quando cambia la scelta nella card.
+  const markersRef = useRef<maplibregl.Marker[]>([]);
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapLoaded) return;
-    const source = map.getSource("selected") as maplibregl.GeoJSONSource | undefined;
+    const source = map.getSource("reps") as maplibregl.GeoJSONSource | undefined;
     if (!source) return;
-    const coordinates = highlight
-      ? gpsSeries.filter((p) => p.t >= highlight.start && p.t <= highlight.end).map((p) => [p.lon, p.lat])
-      : [];
-    source.setData(
-      coordinates.length >= 2
-        ? { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } }
-        : { type: "FeatureCollection", features: [] },
-    );
-  }, [highlight, mapLoaded, gpsSeries]);
+    const features = reps.flatMap((rep) => {
+      const coordinates = gpsSeries.filter((p) => p.t >= rep.start && p.t <= rep.end).map((p) => [p.lon, p.lat]);
+      if (coordinates.length < 2) return [];
+      const emphasis = selected == null ? 1 : selected === rep.index ? 2 : 0;
+      return [{ type: "Feature" as const, properties: { emphasis }, geometry: { type: "LineString" as const, coordinates } }];
+    });
+    source.setData({ type: "FeatureCollection", features });
+    for (const marker of markersRef.current) marker.remove();
+    markersRef.current = reps.flatMap((rep) => {
+      const first = rep.number == null ? null : gpsSeries.find((p) => p.t >= rep.start && p.t <= rep.end);
+      if (!first) return [];
+      const element = document.createElement("div");
+      element.textContent = String(rep.number);
+      element.setAttribute("aria-hidden", "true");
+      element.className = `grid h-5 w-5 place-items-center rounded-full border border-black/40 bg-white text-micro font-bold leading-none text-black shadow ${selected != null && selected !== rep.index ? "opacity-40" : ""}`;
+      return [new maplibregl.Marker({ element }).setLngLat([first.lon, first.lat]).addTo(map)];
+    });
+  }, [reps, selected, mapLoaded, gpsSeries]);
 
   if (embedded) {
     return (
