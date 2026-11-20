@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Section } from "@/components/section";
 import { Stat } from "@/components/stat";
@@ -7,7 +8,7 @@ import { TrendBadge } from "@/components/progress/trend-badge";
 import { LOAD_STATES } from "@/components/progress/form-status";
 import { daysBetween } from "@/lib/local-date";
 import { cn } from "@/lib/utils";
-import { formatMetric, type BodyMetricKey, type MetricTrend } from "@/lib/metrics/body-trends";
+import { BODY_METRICS, formatMetric, type BodyMetricKey, type MetricTrend } from "@/lib/metrics/body-trends";
 import type { ATLCTLResult } from "@/lib/types";
 
 const GROUPS: Array<{ title: string; keys: BodyMetricKey[] }> = [
@@ -41,6 +42,11 @@ function list(labels: string[]): string {
 function MetricCard({ trend, today }: { trend: MetricTrend; today: string }) {
   const latest = trend.latest!;
   const age = daysBetween(latest.date, today);
+  const spec = BODY_METRICS[trend.key];
+  // Il numero grande è un dato singolo (l'ultimo), la frase confronta medie: va detto.
+  const latestText = spec.latestLabel
+    ? `${spec.latestLabel}, ${shortDate(latest.date)}`
+    : age > 1 ? `Ultimo dato del ${shortDate(latest.date)}` : null;
   return (
     <div className="surface p-4">
       <div className="flex items-start justify-between gap-3">
@@ -50,7 +56,7 @@ function MetricCard({ trend, today }: { trend: MetricTrend; today: string }) {
             {formatMetric(trend.key, latest.value)}
             {trend.unit && <span className="font-sans text-caption font-medium tracking-normal text-muted-foreground">{trend.unit}</span>}
           </p>
-          {age > 1 && <p className="mt-1 text-micro text-muted-foreground">Ultimo dato del {shortDate(latest.date)}</p>}
+          {latestText && <p className="mt-1 text-micro text-muted-foreground">{latestText}</p>}
         </div>
         <TrendBadge trend={trend} className="mt-0.5 shrink-0" />
       </div>
@@ -58,6 +64,13 @@ function MetricCard({ trend, today }: { trend: MetricTrend; today: string }) {
         <TrendChart metric={trend.key} series={trend.series} today={today} label={trend.label} />
       </div>
       <p className="mt-2 text-caption text-muted-foreground">{trend.sentence}</p>
+      <details className="group mt-2 text-caption">
+        <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 font-medium text-primary [&::-webkit-details-marker]:hidden">
+          Cos&apos;è
+          <ChevronDown size={14} aria-hidden className="transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none" />
+        </summary>
+        <p className="text-muted-foreground">{spec.about}</p>
+      </details>
     </div>
   );
 }
@@ -156,7 +169,7 @@ export function FormaView({
             <li>I dati dell&apos;app Zepp arrivano quando sincronizzi dall&apos;orologio: i giorni senza sincronizzazione restano vuoti, non vengono stimati.</li>
             <li>L&apos;HRV arriva solo da Intervals.icu: l&apos;app sull&apos;orologio non la può leggere.</li>
             <li>Tempo di recupero Zepp, fasi REM e leggero del sonno e temperatura della pelle non sono qui: il primo ha un&apos;unità non ancora verificata, gli altri l&apos;app sull&apos;orologio non li invia.</li>
-            <li>Metri per battito: solo corse facili e lunghi da almeno 20 minuti; caldo e salite lo abbassano.</li>
+            <li>Metri per battito: solo corse facili e lunghi da almeno 20 minuti, senza ripetute, soglie e test; caldo e salite lo abbassano.</li>
           </ul>
         </Section>
       </div>

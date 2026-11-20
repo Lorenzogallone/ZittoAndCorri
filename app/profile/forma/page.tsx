@@ -10,7 +10,7 @@ import { FormaView } from "./forma-view";
 
 type FormaActivity = Pick<
   Activity,
-  "started_at" | "duration_s" | "moving_time_s" | "rpe" | "avg_hr" | "time_in_zone" | "sport" | "type" | "distance_m"
+  "started_at" | "duration_s" | "moving_time_s" | "rpe" | "avg_hr" | "time_in_zone" | "sport" | "type" | "distance_m" | "intervals"
 >;
 
 /** Storico delle attività: 42 giorni di CTL prima dei 120 mostrati. */
@@ -26,7 +26,8 @@ export default async function FormaPage() {
     supabase.from("profiles").select("max_hr, resting_hr").eq("id", user.id).maybeSingle<Pick<Profile, "max_hr" | "resting_hr">>(),
     supabase
       .from("activities")
-      .select("started_at, duration_s, moving_time_s, rpe, avg_hr, time_in_zone, sport, type, distance_m")
+      // intervals: per escludere ripetute, soglie e test dai metri per battito.
+      .select("started_at, duration_s, moving_time_s, rpe, avg_hr, time_in_zone, sport, type, distance_m, intervals")
       .eq("user_id", user.id)
       .is("excluded_at", null)
       .gte("started_at", `${addDays(today, -ACTIVITY_DAYS)}T00:00:00`)
