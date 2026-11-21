@@ -51,7 +51,7 @@ test("durate nel formato del workout builder", () => {
 test("un solo target per fase: passo nel lavoro, FC nel resto", () => {
   assert.equal(stepTarget(intervals[1], ctx), "4:20-4:10/km Pace");
   assert.equal(stepTarget(intervals[0], ctx), "63-76% HR");
-  assert.equal(stepTarget(intervals[1], { ...ctx, preference: "hr" }), "85-95% HR");
+  assert.equal(stepTarget(intervals[1], { ...ctx, preference: "hr" }), "50-95% HR");
   assert.equal(stepTarget(intervals[0], { ...ctx, preference: "pace" }), "63-76% HR");
   assert.equal(stepTarget(intervals[0], { max_hr: null, preference: "auto" }), null);
 });
@@ -72,11 +72,53 @@ test("descrizione completa con sezioni e ripetute", () => {
     "",
     "Main Set 6x",
     "- Ripetuta 1km 4:20-4:10/km Pace",
-    "- Recupero 2m 64-74% HR",
+    "- Recupero 2m 50-74% HR",
     "",
     "Cooldown",
-    "- Defaticamento 10m 64-74% HR",
+    "- Defaticamento 10m 50-74% HR",
   ].join("\n"));
+});
+
+test("un limite solo resta aperto: niente avvisi «FC bassa» o «troppo lento» inventati", () => {
+  assert.equal(stepTarget(step({ kind: "recovery", hr_max_bpm: 150 }), ctx), "50-79% HR");
+  assert.equal(stepTarget(step({ kind: "work", hr_min_bpm: 165 }), ctx), "87-100% HR");
+  assert.equal(stepTarget(step({ kind: "work", pace_max_s_km: 300 }), ctx), "5:00-3:30/km Pace");
+  assert.equal(stepTarget(step({ kind: "work", pace_min_s_km: 360 }), ctx), "7:30-6:00/km Pace");
+  assert.equal(stepTarget(step({ kind: "recovery", hr_max_bpm: 90 }), ctx), "37-47% HR");
+});
+
+test("3 × (8' + 2') senza l'ultimo recupero: «3x» pieno, recupero preso dal defaticamento", () => {
+  const warm = step({ kind: "warmup", label: "Riscaldamento", completion_value: 300, hr_min_bpm: 120, hr_max_bpm: 145 });
+  const threshold = step({ kind: "work", label: "Soglia", completion_value: 480, pace_min_s_km: 265, pace_max_s_km: 275 });
+  const jog = step({ kind: "recovery", label: "Corricchia", completion_value: 120, hr_max_bpm: 150, variant: "jog" });
+  const cool = step({ kind: "cooldown", label: "Defaticamento", completion_value: 600, hr_max_bpm: 145 });
+  const expected = [
+    "Warmup",
+    "- Riscaldamento 5m 63-76% HR",
+    "",
+    "Main Set 3x",
+    "- Ripetuta 8m 4:35-4:25/km Pace",
+    "- Recupero 2m 50-79% HR",
+    "",
+    "Cooldown",
+    "- Defaticamento 8m 50-76% HR",
+  ].join("\n");
+  assert.equal(workoutDescription([warm, threshold, jog, threshold, jog, threshold, cool], ctx), expected);
+  // Con l'ultimo recupero già scritto il defaticamento resta intero.
+  assert.equal(
+    workoutDescription([warm, threshold, jog, threshold, jog, threshold, jog, cool], ctx),
+    expected.replace("Defaticamento 8m", "Defaticamento 10m"),
+  );
+});
+
+test("ripetuta finale lasciata com'è senza un defaticamento abbastanza lungo", () => {
+  const threshold = step({ kind: "work", label: "Soglia", completion_value: 480, pace_min_s_km: 265, pace_max_s_km: 275 });
+  const jog = step({ kind: "recovery", label: "Corricchia", completion_value: 120, hr_max_bpm: 150, variant: "jog" });
+  const reps = [threshold, jog, threshold, jog, threshold];
+  const orphan = (text: string) => /Main Set 2x[\s\S]*\n\n- Ripetuta 8m/.test(text);
+  assert.ok(orphan(workoutDescription(reps, ctx)), "senza defaticamento");
+  assert.ok(orphan(workoutDescription([...reps, step({ kind: "cooldown", completion_value: 150 })], ctx)), "defaticamento troppo corto");
+  assert.ok(orphan(workoutDescription([...reps, step({ kind: "cooldown", completion_type: "distance", completion_value: 2000 })], ctx)), "unità diverse");
 });
 
 test("allunghi e ripetute: ogni blocco Nx è un paragrafo separato", () => {
@@ -101,14 +143,12 @@ test("allunghi e ripetute: ogni blocco Nx è un paragrafo separato", () => {
     "- Sprint 20s",
     "- Cammina 1m",
     "",
-    "3x",
+    "4x",
     "- Ripetuta 1km 5:12-4:58/km Pace",
     "- Recupero 2m 9:00-7:00/km Pace",
     "",
-    "- Ripetuta 1km 5:12-4:58/km Pace",
-    "",
     "Cooldown",
-    "- Defaticamento 5m 61-71% HR",
+    "- Defaticamento 3m 50-71% HR",
   ].join("\n"));
   const draft = workoutToIntervalsDraft({
     id: "x", date: "2026-10-27", title: "Ripetute", target_distance_m: 7000, target_duration_s: 2700, steps,
