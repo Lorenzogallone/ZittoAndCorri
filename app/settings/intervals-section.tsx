@@ -167,7 +167,7 @@ export function IntervalsSection({
                     ))}
                   </div>
                   <p className="text-[11px] leading-snug text-muted-foreground">
-                    Automatico usa il passo nelle ripetute e la frequenza nel resto. Se l&apos;orologio non mostra i passi, scegli Frequenza.
+                    Zepp accetta un solo tipo di target per seduta. Automatico usa il passo nelle sedute di soglia e ripetute, la frequenza in facili e lunghi.
                   </p>
                 </div>
               )}

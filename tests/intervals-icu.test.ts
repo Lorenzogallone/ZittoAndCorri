@@ -8,6 +8,7 @@ import {
   isZittoExternalId,
   stepTarget,
   workoutDescription,
+  workoutTargetKind,
   workoutToIntervalsDraft,
 } from "../lib/intervals/workout-text.ts";
 import { computeZeppReadiness, hrvScore } from "../lib/zepp/readiness.ts";
@@ -68,14 +69,14 @@ test("le ripetute identiche diventano un blocco Nx", () => {
 test("descrizione completa con sezioni e ripetute", () => {
   assert.equal(workoutDescription(intervals, ctx), [
     "Warmup",
-    "- Riscaldamento 15m 63-76% HR intensity=warmup",
+    "- Riscaldamento 15m intensity=warmup",
     "",
     "Main Set 6x",
     "- Ripetuta 1km 4:20-4:10/km Pace intensity=active",
-    "- Recupero 2m 50-74% HR intensity=recovery",
+    "- Recupero 2m intensity=recovery",
     "",
     "Cooldown",
-    "- Defaticamento 10m 50-74% HR intensity=cooldown",
+    "- Defaticamento 10m intensity=cooldown",
   ].join("\n"));
 });
 
@@ -94,14 +95,14 @@ test("3 × (8' + 2') senza l'ultimo recupero: «3x» pieno, recupero preso dal d
   const cool = step({ kind: "cooldown", label: "Defaticamento", completion_value: 600, hr_max_bpm: 145 });
   const expected = [
     "Warmup",
-    "- Riscaldamento 5m 63-76% HR intensity=warmup",
+    "- Riscaldamento 5m intensity=warmup",
     "",
     "Main Set 3x",
     "- Ripetuta 8m 4:35-4:25/km Pace intensity=active",
-    "- Recupero 2m 50-79% HR intensity=recovery",
+    "- Recupero 2m intensity=recovery",
     "",
     "Cooldown",
-    "- Defaticamento 8m 50-76% HR intensity=cooldown",
+    "- Defaticamento 8m intensity=cooldown",
   ].join("\n");
   assert.equal(workoutDescription([warm, threshold, jog, threshold, jog, threshold, cool], ctx), expected);
   // Con l'ultimo recupero già scritto il defaticamento resta intero.
@@ -134,7 +135,7 @@ test("allunghi e ripetute: ogni blocco Nx è un paragrafo separato", () => {
   ];
   assert.equal(workoutDescription(steps, ctx), [
     "Warmup",
-    "- Riscaldamento 10m 53-71% HR intensity=warmup",
+    "- Riscaldamento 10m intensity=warmup",
     "",
     "Main Set 2x",
     "- Sprint 20s intensity=active",
@@ -148,7 +149,7 @@ test("allunghi e ripetute: ogni blocco Nx è un paragrafo separato", () => {
     "- Recupero 2m 9:00-7:00/km Pace intensity=recovery",
     "",
     "Cooldown",
-    "- Defaticamento 3m 50-71% HR intensity=cooldown",
+    "- Defaticamento 3m intensity=cooldown",
   ].join("\n"));
   const draft = workoutToIntervalsDraft({
     id: "x", date: "2026-10-27", title: "Ripetute", target_distance_m: 7000, target_duration_s: 2700, steps,
@@ -159,6 +160,30 @@ test("allunghi e ripetute: ogni blocco Nx è un paragrafo separato", () => {
     steps: [step({}), sprint, walk(40), sprint, walk(40)],
   }, ctx);
   assert.equal(stridesOnly.name, 'Corsa facile · 2×20"');
+});
+
+test("un solo tipo di target per seduta: Zepp scarta il passo se c'è anche la FC", () => {
+  // Soglia e ripetute: passo ovunque ci sia, niente FC.
+  assert.equal(workoutTargetKind(intervals, ctx), "pace");
+  assert.ok(!workoutDescription(intervals, ctx).includes("% HR"));
+  // Facile con passo indicativo e tetto di FC: tutta a FC.
+  const easy = [
+    step({ kind: "warmup", completion_value: 300, hr_max_bpm: 140 }),
+    step({ kind: "steady", completion_value: 1800, pace_min_s_km: 380, pace_max_s_km: 410, hr_max_bpm: 150 }),
+  ];
+  assert.equal(workoutTargetKind(easy, ctx), "hr");
+  assert.equal(workoutDescription(easy, ctx), [
+    "Warmup",
+    "- Riscaldamento 5m 50-74% HR intensity=warmup",
+    "",
+    "Main Set",
+    "- Corsa 30m 50-79% HR intensity=active",
+  ].join("\n"));
+  // La preferenza dell'atleta vale per tutta la seduta, con ripiego se manca quel tipo.
+  assert.equal(workoutTargetKind(intervals, { ...ctx, preference: "hr" }), "hr");
+  assert.equal(workoutTargetKind(easy, { ...ctx, preference: "pace" }), "pace");
+  assert.equal(workoutTargetKind([step({ hr_max_bpm: 150 })], { ...ctx, preference: "pace" }), "hr");
+  assert.equal(workoutTargetKind([step({})], ctx), null);
 });
 
 test("evento WORKOUT con id esterno riconoscibile", () => {
