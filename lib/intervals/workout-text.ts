@@ -4,7 +4,8 @@
 // - ogni fase è una riga "- <cue> <durata> <target>";
 // - durata "10m", "90s", "1m30", "1km", "400mtr";
 // - passo assoluto "5:00-4:40/km Pace", FC in percentuale "70-80% HR";
-// - un solo target per fase; ripetute con una riga "6x" (niente annidamenti);
+// - un solo target per fase, e per Zepp un solo tipo (passo o FC) per seduta;
+// - ripetute con una riga "6x" (niente annidamenti);
 // - tipo di fase in coda: "intensity=warmup|active|recovery|cooldown";
 // - sezioni "Warmup", "Main Set", "Cooldown"; "Main Set 6x" ripete tutto il blocco;
 // - ogni blocco "Nx" è un paragrafo a sé: va separato da una riga vuota da ciò
@@ -115,14 +116,33 @@ function hrTarget(step: WorkoutStepInput, maxHr: number | null): string | null {
   return `${Math.min(low, high)}-${Math.max(low, high)}% HR`;
 }
 
-/** Un solo target per fase: passo per i tratti di lavoro, FC per il resto, salvo preferenza. */
-export function stepTarget(step: WorkoutStepInput, ctx: IntervalsTargetContext): string | null {
-  const pace = paceTarget(step);
-  const hr = hrTarget(step, ctx.max_hr);
-  if (ctx.preference === "pace") return pace ?? hr;
-  if (ctx.preference === "hr") return hr ?? pace;
-  const paceFirst = step.kind === "work" || step.kind === "steady";
-  return paceFirst ? pace ?? hr : hr ?? pace;
+export type IntervalsTargetKind = "pace" | "hr";
+
+/**
+ * Un solo tipo di target per tutta la seduta. Zepp, se FC e passo sono
+ * mescolati, tiene la FC e scarta il passo (verificato con un Balance 2,
+ * novembre 2026). In automatico: passo se un tratto di lavoro ha un passo
+ * (soglia, ripetute), altrimenti FC (facili, lunghi, recuperi).
+ */
+export function workoutTargetKind(steps: WorkoutStepInput[], ctx: IntervalsTargetContext): IntervalsTargetKind | null {
+  const anyPace = steps.some((step) => paceTarget(step) != null);
+  const anyHr = steps.some((step) => hrTarget(step, ctx.max_hr) != null);
+  if (!anyPace && !anyHr) return null;
+  if (ctx.preference === "pace") return anyPace ? "pace" : "hr";
+  if (ctx.preference === "hr") return anyHr ? "hr" : "pace";
+  if (steps.some((step) => step.kind === "work" && paceTarget(step) != null)) return "pace";
+  return anyHr ? "hr" : "pace";
+}
+
+/** Target della fase nel tipo scelto per la seduta; null se la fase non ne ha uno di quel tipo. */
+export function stepTarget(
+  step: WorkoutStepInput,
+  ctx: IntervalsTargetContext,
+  kind: IntervalsTargetKind | null = workoutTargetKind([step], ctx),
+): string | null {
+  if (kind === "pace") return paceTarget(step);
+  if (kind === "hr") return hrTarget(step, ctx.max_hr);
+  return null;
 }
 
 // Tipo di fase esplicito: Zepp ignora il nome della fase e mostra solo il tipo.
@@ -137,8 +157,8 @@ const INTENSITY: Record<WorkoutStepKind, string> = {
   cooldown: "cooldown",
 };
 
-export function stepLine(step: WorkoutStepInput, ctx: IntervalsTargetContext): string {
-  const target = stepTarget(step, ctx);
+export function stepLine(step: WorkoutStepInput, ctx: IntervalsTargetContext, kind?: IntervalsTargetKind | null): string {
+  const target = stepTarget(step, ctx, kind === undefined ? workoutTargetKind([step], ctx) : kind);
   return `- ${cueFor(step)} ${formatIntervalsDuration(step)}${target ? ` ${target}` : ""} intensity=${INTENSITY[step.kind]}`;
 }
 
@@ -228,13 +248,14 @@ export function closeTrailingRepeat(
 
 export function workoutDescription(steps: WorkoutStepInput[], ctx: IntervalsTargetContext): string {
   if (!steps.length) return "";
+  const kind = workoutTargetKind(steps, ctx);
   const warm = leadingKind(steps, "warmup");
   const cool = trailingKind(steps, "cooldown", warm);
   const warmup = steps.slice(0, warm);
   const { main, cooldown } = closeTrailingRepeat(steps.slice(warm, steps.length - cool), steps.slice(steps.length - cool));
   const sections: string[] = [];
 
-  if (warmup.length) sections.push(["Warmup", ...warmup.map((step) => stepLine(step, ctx))].join("\n"));
+  if (warmup.length) sections.push(["Warmup", ...warmup.map((step) => stepLine(step, ctx, kind))].join("\n"));
 
   if (main.length) {
     // Un paragrafo per blocco ripetuto; le fasi singole consecutive stanno
@@ -242,7 +263,7 @@ export function workoutDescription(steps: WorkoutStepInput[], ctx: IntervalsTarg
     const paragraphs: string[][] = [];
     let singles: string[] | null = null;
     for (const block of groupRepeats(main)) {
-      const lines = block.steps.map((step) => stepLine(step, ctx));
+      const lines = block.steps.map((step) => stepLine(step, ctx, kind));
       if (block.repeat > 1) {
         paragraphs.push([`${block.repeat}x`, ...lines]);
         singles = null;
@@ -260,7 +281,7 @@ export function workoutDescription(steps: WorkoutStepInput[], ctx: IntervalsTarg
     sections.push(paragraphs.map((lines) => lines.join("\n")).join("\n\n"));
   }
 
-  if (cooldown.length) sections.push(["Cooldown", ...cooldown.map((step) => stepLine(step, ctx))].join("\n"));
+  if (cooldown.length) sections.push(["Cooldown", ...cooldown.map((step) => stepLine(step, ctx, kind))].join("\n"));
   return sections.join("\n\n");
 }
 
