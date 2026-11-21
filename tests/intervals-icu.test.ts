@@ -68,14 +68,14 @@ test("le ripetute identiche diventano un blocco Nx", () => {
 test("descrizione completa con sezioni e ripetute", () => {
   assert.equal(workoutDescription(intervals, ctx), [
     "Warmup",
-    "- Riscaldamento 15m 63-76% HR",
+    "- Riscaldamento 15m 63-76% HR intensity=warmup",
     "",
     "Main Set 6x",
-    "- Ripetuta 1km 4:20-4:10/km Pace",
-    "- Recupero 2m 50-74% HR",
+    "- Ripetuta 1km 4:20-4:10/km Pace intensity=active",
+    "- Recupero 2m 50-74% HR intensity=recovery",
     "",
     "Cooldown",
-    "- Defaticamento 10m 50-74% HR",
+    "- Defaticamento 10m 50-74% HR intensity=cooldown",
   ].join("\n"));
 });
 
@@ -94,14 +94,14 @@ test("3 × (8' + 2') senza l'ultimo recupero: «3x» pieno, recupero preso dal d
   const cool = step({ kind: "cooldown", label: "Defaticamento", completion_value: 600, hr_max_bpm: 145 });
   const expected = [
     "Warmup",
-    "- Riscaldamento 5m 63-76% HR",
+    "- Riscaldamento 5m 63-76% HR intensity=warmup",
     "",
     "Main Set 3x",
-    "- Ripetuta 8m 4:35-4:25/km Pace",
-    "- Recupero 2m 50-79% HR",
+    "- Ripetuta 8m 4:35-4:25/km Pace intensity=active",
+    "- Recupero 2m 50-79% HR intensity=recovery",
     "",
     "Cooldown",
-    "- Defaticamento 8m 50-76% HR",
+    "- Defaticamento 8m 50-76% HR intensity=cooldown",
   ].join("\n");
   assert.equal(workoutDescription([warm, threshold, jog, threshold, jog, threshold, cool], ctx), expected);
   // Con l'ultimo recupero già scritto il defaticamento resta intero.
@@ -134,21 +134,21 @@ test("allunghi e ripetute: ogni blocco Nx è un paragrafo separato", () => {
   ];
   assert.equal(workoutDescription(steps, ctx), [
     "Warmup",
-    "- Riscaldamento 10m 53-71% HR",
+    "- Riscaldamento 10m 53-71% HR intensity=warmup",
     "",
     "Main Set 2x",
-    "- Sprint 20s",
-    "- Cammina 40s",
+    "- Sprint 20s intensity=active",
+    "- Cammina 40s intensity=recovery",
     "",
-    "- Sprint 20s",
-    "- Cammina 1m",
+    "- Sprint 20s intensity=active",
+    "- Cammina 1m intensity=recovery",
     "",
     "4x",
-    "- Ripetuta 1km 5:12-4:58/km Pace",
-    "- Recupero 2m 9:00-7:00/km Pace",
+    "- Ripetuta 1km 5:12-4:58/km Pace intensity=active",
+    "- Recupero 2m 9:00-7:00/km Pace intensity=recovery",
     "",
     "Cooldown",
-    "- Defaticamento 3m 50-71% HR",
+    "- Defaticamento 3m 50-71% HR intensity=cooldown",
   ].join("\n"));
   const draft = workoutToIntervalsDraft({
     id: "x", date: "2026-10-27", title: "Ripetute", target_distance_m: 7000, target_duration_s: 2700, steps,

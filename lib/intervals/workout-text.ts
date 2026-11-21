@@ -5,6 +5,7 @@
 // - durata "10m", "90s", "1m30", "1km", "400mtr";
 // - passo assoluto "5:00-4:40/km Pace", FC in percentuale "70-80% HR";
 // - un solo target per fase; ripetute con una riga "6x" (niente annidamenti);
+// - tipo di fase in coda: "intensity=warmup|active|recovery|cooldown";
 // - sezioni "Warmup", "Main Set", "Cooldown"; "Main Set 6x" ripete tutto il blocco;
 // - ogni blocco "Nx" è un paragrafo a sé: va separato da una riga vuota da ciò
 //   che segue, altrimenti Intervals fonde i blocchi (la riga "3x" finiva in coda
@@ -124,9 +125,21 @@ export function stepTarget(step: WorkoutStepInput, ctx: IntervalsTargetContext):
   return paceFirst ? pace ?? hr : hr ?? pace;
 }
 
+// Tipo di fase esplicito: Zepp ignora il nome della fase e mostra solo il tipo.
+// Senza tag ogni fase arriva come "Allenamento"; con il tag l'orologio scrive
+// Riscaldamento, Allenamento, Ripristina (recupero) e Rilassato (defaticamento).
+// Verificato nell'app Zepp con un Balance 2, novembre 2026.
+const INTENSITY: Record<WorkoutStepKind, string> = {
+  warmup: "warmup",
+  work: "active",
+  steady: "active",
+  recovery: "recovery",
+  cooldown: "cooldown",
+};
+
 export function stepLine(step: WorkoutStepInput, ctx: IntervalsTargetContext): string {
   const target = stepTarget(step, ctx);
-  return `- ${cueFor(step)} ${formatIntervalsDuration(step)}${target ? ` ${target}` : ""}`;
+  return `- ${cueFor(step)} ${formatIntervalsDuration(step)}${target ? ` ${target}` : ""} intensity=${INTENSITY[step.kind]}`;
 }
 
 function fingerprint(step: WorkoutStepInput): string {
