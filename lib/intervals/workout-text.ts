@@ -85,12 +85,20 @@ function paceClock(seconds: number): string {
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
 }
 
+// Un limite solo ("non più veloce di", "FC ≤ 150") è aperto dall'altra parte:
+// Intervals vuole un range, quindi il lato mancante va lontano, non a ridosso
+// del limite, altrimenti l'orologio avvisa "troppo lento" o "FC bassa" quando
+// l'atleta sta facendo esattamente ciò che il piano chiede.
+const OPEN_PACE_SPREAD_S = 90;
+const OPEN_HR_FLOOR_PCT = 50;
+const OPEN_HR_CEILING_PCT = 100;
+
 function paceTarget(step: WorkoutStepInput): string | null {
   const min = step.pace_min_s_km;
   const max = step.pace_max_s_km;
   if (min == null && max == null) return null;
-  const fast = min ?? Math.max(120, (max as number) - 10);
-  const slow = max ?? Math.min(1_200, (min as number) + 10);
+  const fast = min ?? Math.max(120, (max as number) - OPEN_PACE_SPREAD_S);
+  const slow = max ?? Math.min(1_200, (min as number) + OPEN_PACE_SPREAD_S);
   // Nel builder l'esempio scrive prima il passo lento: "5:00-4:40/km".
   return `${paceClock(Math.max(fast, slow))}-${paceClock(Math.min(fast, slow))}/km Pace`;
 }
@@ -101,8 +109,8 @@ function hrTarget(step: WorkoutStepInput, maxHr: number | null): string | null {
   const max = step.hr_max_bpm;
   if (min == null && max == null) return null;
   const pct = (bpm: number) => Math.min(100, Math.max(30, Math.round((bpm / maxHr) * 100)));
-  const low = min != null ? pct(min) : Math.max(30, pct(max as number) - 10);
-  const high = max != null ? pct(max) : Math.min(100, pct(min as number) + 10);
+  const low = min != null ? pct(min) : Math.max(30, Math.min(OPEN_HR_FLOOR_PCT, pct(max as number) - 10));
+  const high = max != null ? pct(max) : OPEN_HR_CEILING_PCT;
   return `${Math.min(low, high)}-${Math.max(low, high)}% HR`;
 }
 
@@ -175,13 +183,42 @@ function trailingKind(steps: WorkoutStepInput[], kind: WorkoutStepKind, from: nu
   return count;
 }
 
+/** Defaticamento minimo che resta dopo avergli preso il recupero finale. */
+const MIN_COOLDOWN_LEFT = { time: 60, distance: 200 } as const;
+
+/**
+ * "2x (lavoro + recupero) + lavoro" prima del defaticamento diventa "3x": il
+ * recupero mancante si prende dall'inizio del defaticamento, che è comunque
+ * corsa lenta, e la durata totale non cambia. Così sull'orologio il contatore
+ * dei giri torna con il titolo ("3×8'") e non spunta una ripetuta in più.
+ */
+export function closeTrailingRepeat(
+  main: WorkoutStepInput[],
+  cooldown: WorkoutStepInput[],
+): { main: WorkoutStepInput[]; cooldown: WorkoutStepInput[] } {
+  const blocks = groupRepeats(main);
+  const last = blocks[blocks.length - 1];
+  const previous = blocks[blocks.length - 2];
+  const cool = cooldown[0];
+  if (!last || !previous || !cool || last.repeat !== 1 || previous.repeat < 2 || previous.steps.length !== 2) return { main, cooldown };
+  const [work, recovery] = previous.steps;
+  if (recovery.kind !== "recovery" || fingerprint(work) !== fingerprint(last.steps[0])) return { main, cooldown };
+  const type = recovery.completion_type;
+  if (type === "manual" || cool.completion_type !== type) return { main, cooldown };
+  const left = (cool.completion_value ?? 0) - (recovery.completion_value ?? 0);
+  if (left < MIN_COOLDOWN_LEFT[type]) return { main, cooldown };
+  return {
+    main: [...main, recovery],
+    cooldown: [{ ...cool, completion_value: left }, ...cooldown.slice(1)],
+  };
+}
+
 export function workoutDescription(steps: WorkoutStepInput[], ctx: IntervalsTargetContext): string {
   if (!steps.length) return "";
   const warm = leadingKind(steps, "warmup");
   const cool = trailingKind(steps, "cooldown", warm);
   const warmup = steps.slice(0, warm);
-  const main = steps.slice(warm, steps.length - cool);
-  const cooldown = steps.slice(steps.length - cool);
+  const { main, cooldown } = closeTrailingRepeat(steps.slice(warm, steps.length - cool), steps.slice(steps.length - cool));
   const sections: string[] = [];
 
   if (warmup.length) sections.push(["Warmup", ...warmup.map((step) => stepLine(step, ctx))].join("\n"));
