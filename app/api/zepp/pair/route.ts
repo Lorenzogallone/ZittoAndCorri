@@ -8,10 +8,12 @@ export async function POST(request: Request): Promise<Response> {
     const parsed = ZeppPairRequestSchema.safeParse(body);
     if (!parsed.success) return Response.json({ error: "Richiesta di collegamento non valida." }, { status: 400 });
 
-    const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-    const attemptKey = `${forwarded}:${parsed.data.clientId}`;
+    // Freno per istanza e per IP, in aggiunta al conteggio nel database (che è
+    // quello che conta: vedi lib/zepp/pairing.ts). Il clientId non entra nella
+    // chiave perché lo sceglie il chiamante.
+    const attemptKey = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     if (!consumePairingAttempt(attemptKey)) {
-      return Response.json({ error: "Troppi tentativi. Riprova fra dieci minuti." }, { status: 429 });
+      return Response.json({ error: "Troppi tentativi. Riprova fra qualche minuto." }, { status: 429 });
     }
 
     try {

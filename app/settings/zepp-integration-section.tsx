@@ -154,7 +154,7 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
 
         <IntegrationHelp title="Come collegare l'orologio">
           <ol className="list-decimal space-y-1.5 pl-4">
-            <li>Genera il codice qui sopra (valido 10 minuti).</li>
+            <li>Genera il codice qui sopra (valido 5 minuti, si blocca dopo 5 tentativi).</li>
             <li>
               <strong>App Salute (sync dati):</strong> apri Zepp sul telefono → il tuo orologio → App → Zitto e Corri → Impostazioni → incolla il codice → <em>Collega</em>.
             </li>

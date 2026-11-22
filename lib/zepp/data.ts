@@ -12,6 +12,14 @@ import {
 import type { ZeppPairRequest, ZeppSyncPayload } from "@/lib/zepp/schema";
 import { computeZeppReadiness } from "@/lib/zepp/readiness";
 import { createPairingCode, createZeppToken, hashZeppCredential } from "@/lib/zepp/security";
+import {
+  findPairingMatch,
+  PAIRING_CODE_TTL_MS,
+  PAIRING_MAX_ATTEMPTS,
+  reservePairingAttempt,
+  type PairingCandidate,
+  type PairingStore,
+} from "@/lib/zepp/pairing";
 import type { WellnessDay, ZeppConnectionView, ZeppDailyMetric, ZeppReadinessResult } from "@/lib/zepp/types";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { isZeppFresh, ZEPP_DAILY_STALE_DAYS } from "@/lib/zepp/hr-values";
@@ -127,7 +135,7 @@ export async function generatePairingCodeForUser(userId: string): Promise<{ code
 
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = createPairingCode();
-    const expiresAt = new Date(Date.now() + 10 * 60_000).toISOString();
+    const expiresAt = new Date(Date.now() + PAIRING_CODE_TTL_MS).toISOString();
     const { error } = await admin.from("zepp_pairing_codes").insert({
       user_id: userId,
       code_hash: hashZeppCredential(code),
@@ -146,46 +154,57 @@ export async function pairZeppDevice(input: ZeppPairRequest): Promise<{
   const admin = createAdminClient();
   const now = new Date().toISOString();
   const codeHash = hashZeppCredential(input.code);
-  const { data: pairing, error: pairingError } = await admin
-    .from("zepp_pairing_codes")
-    .select("id, user_id, attempts, expires_at, used_at, used_kinds")
-    .eq("code_hash", codeHash)
-    .maybeSingle<{ id: string; user_id: string; attempts: number; expires_at: string; used_at: string | null; used_kinds: string[] }>();
-  if (pairingError) throw pairingError;
+  const store: PairingStore = {
+    async listActive(nowIso) {
+      const { data, error } = await admin
+        .from("zepp_pairing_codes")
+        .select("id, user_id, code_hash, attempts, expires_at, used_kinds")
+        .gt("expires_at", nowIso)
+        .is("used_at", null)
+        .lt("attempts", PAIRING_MAX_ATTEMPTS)
+        .returns<PairingCandidate[]>();
+      if (error) throw error;
+      return (data ?? []).map((row) => ({ ...row, used_kinds: row.used_kinds ?? [] }));
+    },
+    async bumpAttempts(id, from) {
+      const { data, error } = await admin
+        .from("zepp_pairing_codes")
+        .update({ attempts: from + 1 })
+        .eq("id", id)
+        .eq("attempts", from)
+        .select("id")
+        .maybeSingle<{ id: string }>();
+      // 23514: vincolo check su attempts, il codice è già al limite.
+      if (error && error.code !== "23514") throw error;
+      return Boolean(data);
+    },
+  };
 
-  // Il codice è invalido se: non esiste, è scaduto, ha troppi tentativi,
-  // oppure questo client_kind ha già fatto pairing con questo codice.
-  const usedKinds: string[] = pairing?.used_kinds ?? [];
-  if (
-    !pairing ||
-    pairing.expires_at <= now ||
-    pairing.attempts >= 5 ||
-    usedKinds.includes(input.clientKind)
-  ) {
-    throw new Error("PAIRING_CODE_INVALID");
-  }
+  // Ogni tentativo consuma prima un tentativo su tutti i codici attivi: il
+  // conteggio non dipende da IP o clientId, che il chiamante controlla.
+  const reserved = await reservePairingAttempt(store, now);
+  const pairing = findPairingMatch(reserved, codeHash, input.clientKind);
+  if (!pairing) throw new Error("PAIRING_CODE_INVALID");
 
-  // Claim atomico per questa kind: usa array_append per aggiungere la kind
-  // e fallisce se la kind è già presente (protezione da race condition).
+  const usedKinds = pairing.used_kinds;
   const newUsedKinds = [...usedKinds, input.clientKind];
   // Il codice è "esaurito" (used_at valorizzato) solo quando entrambe le kind
-  // supportate l'hanno usato, oppure se non ne manca nessun'altra.
+  // supportate l'hanno usato.
   const allKinds: string[] = ["health", "workout"];
   const fullyExhausted = allKinds.every((k) => newUsedKinds.includes(k));
 
+  // Claim atomico per questa kind: fallisce se nel frattempo un'altra
+  // richiesta l'ha già usata (protezione da race condition). Il tentativo è
+  // già stato contato nella prenotazione.
   const { data: claimed, error: claimError } = await admin
     .from("zepp_pairing_codes")
     .update({
-      attempts: pairing.attempts + 1,
       used_kinds: newUsedKinds,
-      // used_at rimane null finché il codice non è stato usato da tutte le kind.
-      // Solo a quel punto viene marcato come definitivamente esaurito.
       used_at: fullyExhausted ? now : null,
     })
     .eq("id", pairing.id)
-    .not("used_kinds", "cs", `{${input.clientKind}}`)  // la kind non deve essere già presente
+    .not("used_kinds", "cs", `{${input.clientKind}}`)
     .gt("expires_at", now)
-    .lt("attempts", 5)
     .select("id")
     .maybeSingle<{ id: string }>();
   if (claimError) throw claimError;
