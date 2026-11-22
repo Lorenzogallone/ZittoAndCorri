@@ -50,6 +50,11 @@ export function mondayOf(iso: string): string {
   return addDays(iso, -weekdayIndex(iso));
 }
 
+/** "mercoledì": il giorno della settimana per esteso. */
+export function weekdayName(iso: string): string {
+  return new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "long", timeZone: "UTC" });
+}
+
 /** "lun 14", "mar 15"… */
 export function shortDayLabel(iso: string): string {
   return new Date(`${iso.slice(0, 10)}T12:00:00Z`)

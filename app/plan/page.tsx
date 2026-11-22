@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { formatDistance } from "@/lib/format";
 import { addDays, daysBetween, mondayOf, romeDay } from "@/lib/local-date";
 import { buildDays } from "@/lib/plan/day-status";
+import { matchWindow } from "@/lib/plan/match-activities";
+import { workoutStepsOrLegacy } from "@/lib/workout-steps";
 import { trainingPhases } from "@/lib/plan/phases";
 import type { Goal, PlannedWorkout } from "@/lib/types";
 
@@ -40,6 +42,9 @@ export default async function PlanPage({ searchParams }: Props) {
     ? [`${month}-01`, daysBetween(`${month}-01`, addDays(`${month}-01`, 31).slice(0, 7) + "-01")]
     : [firstMonday, 14];
   const rangeEnd = addDays(rangeStart, dayCount - 1);
+  // Sedute e corse anche attorno all'intervallo: una seduta vale fatta con una
+  // corsa fino a due giorni prima o dopo, anche a cavallo dei bordi.
+  const matchRange = matchWindow(rangeStart, rangeEnd);
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -50,8 +55,8 @@ export default async function PlanPage({ searchParams }: Props) {
       .from("planned_workouts")
       .select("*")
       .eq("user_id", user.id)
-      .gte("date", rangeStart)
-      .lte("date", rangeEnd)
+      .gte("date", matchRange.from)
+      .lte("date", matchRange.to)
       .order("date")
       .order("created_at")
       .returns<PlannedWorkout[]>(),
@@ -60,8 +65,8 @@ export default async function PlanPage({ searchParams }: Props) {
       .select("id, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km")
       .eq("user_id", user.id)
       .is("excluded_at", null)
-      .gte("started_at", `${addDays(rangeStart, -1)}T00:00:00`)
-      .lte("started_at", `${addDays(rangeEnd, 1)}T23:59:59`)
+      .gte("started_at", `${addDays(matchRange.from, -1)}T00:00:00`)
+      .lte("started_at", `${addDays(matchRange.to, 1)}T23:59:59`)
       .order("started_at")
       .returns<PlanActivity[]>(),
     supabase
@@ -80,7 +85,7 @@ export default async function PlanPage({ searchParams }: Props) {
     supabase.from("planned_workouts").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("date", today),
   ]);
 
-  const days = buildDays(rangeStart, dayCount, today, workouts ?? [], activities ?? []);
+  const days = buildDays(rangeStart, dayCount, today, workouts ?? [], activities ?? [], (workout) => workoutStepsOrLegacy(workout.workout_steps, workout));
   const adaptationUntil = (adapted ?? [])
     .map((row) => String(row.adapted_from?.until ?? ""))
     .filter(Boolean)
@@ -96,7 +101,7 @@ export default async function PlanPage({ searchParams }: Props) {
   // Niente in programma da oggi in poi (vista che include oggi): invito a
   // chiedere un piano; senza nulla nemmeno nell'intervallo, solo l'invito.
   const nothingPlanned = upcoming === 0 && rangeStart <= today && today <= rangeEnd;
-  const rangeEmpty = !workouts?.length && !activities?.length;
+  const rangeEmpty = days.every((day) => !day.workouts.length && !day.activities.length);
 
   return (
     <AppShell title="Piano" headerAction={<AdaptSheet />} wide>

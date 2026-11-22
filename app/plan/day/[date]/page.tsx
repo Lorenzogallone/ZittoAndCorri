@@ -9,7 +9,9 @@ import { activeDuration, formatDistance, formatDuration, formatPace } from "@/li
 import { workoutHeadline } from "@/lib/workout-guide";
 import { workoutStepsOrLegacy } from "@/lib/workout-steps";
 import { plannedMeters } from "@/lib/plan/planned-distance";
-import { addDays, relativeDayLabel, romeDay } from "@/lib/local-date";
+import { addDays, relativeDayLabel, romeDay, weekdayName } from "@/lib/local-date";
+import { buildDays } from "@/lib/plan/day-status";
+import { matchWindow } from "@/lib/plan/match-activities";
 import { SPORT_LABELS, TYPE_DOTS, TYPE_LABELS } from "@/lib/activity-meta";
 import { cn } from "@/lib/utils";
 import { sessionPlacement, sortByDayOrder } from "@/lib/plan/day-sessions";
@@ -34,12 +36,16 @@ export default async function DayViewPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Sedute e corse attorno al giorno: una seduta vale fatta anche con una
+  // corsa fino a due giorni prima o dopo (matchPlan).
+  const range = matchWindow(date);
   const [{ data: planned }, { data: activities }] = await Promise.all([
     supabase
       .from("planned_workouts")
       .select("*")
       .eq("user_id", user.id)
-      .eq("date", date)
+      .gte("date", range.from)
+      .lte("date", range.to)
       .order("created_at")
       .returns<PlannedWorkout[]>(),
     supabase
@@ -47,15 +53,16 @@ export default async function DayViewPage({ params }: Props) {
       .select("id, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km, avg_hr")
       .eq("user_id", user.id)
       .is("excluded_at", null)
-      .gte("started_at", `${addDays(date, -1)}T12:00:00`)
-      .lte("started_at", `${addDays(date, 1)}T12:00:00`)
+      .gte("started_at", `${addDays(range.from, -1)}T12:00:00`)
+      .lte("started_at", `${addDays(range.to, 1)}T12:00:00`)
       .order("started_at")
       .returns<DayActivity[]>(),
   ]);
 
-  const workouts = sortByDayOrder(planned ?? []);
-  const dayActivities = (activities ?? []).filter((activity) => romeDay(activity.started_at) === date);
   const today = romeDay();
+  const [day] = buildDays(date, 1, today, planned ?? [], activities ?? [], (workout) => workoutStepsOrLegacy(workout.workout_steps, workout));
+  const workouts = sortByDayOrder(day.workouts);
+  const dayActivities = day.activities;
 
   return (
     <AppShell backHref="/plan" backLabel="Piano" hideTabBar>
@@ -71,7 +78,8 @@ export default async function DayViewPage({ params }: Props) {
               const steps = workoutStepsOrLegacy(workout.workout_steps, workout);
               const meters = plannedMeters({ ...workout, workout_steps: steps });
               const placement = sessionPlacement(workout, workouts.length);
-              const details = [placement, meters > 0 ? `≈ ${formatDistance(meters)}` : null].filter(Boolean).join(" · ");
+              const moved = day.doneOn[workout.id];
+              const details = [moved ? `Fatta ${weekdayName(moved.date)}` : null, placement, meters > 0 ? `≈ ${formatDistance(meters)}` : null].filter(Boolean).join(" · ");
               return (
                 <li key={workout.id}>
                   <Link href={`/plan/${workout.id}`} className="flex items-center gap-3 py-3">
@@ -111,6 +119,7 @@ export default async function DayViewPage({ params }: Props) {
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                       {[
+                        day.countsFor[activity.id] ? `Seduta di ${weekdayName(day.countsFor[activity.id])}` : null,
                         formatDuration(activeDuration(activity)),
                         activity.sport === "running" && activity.avg_pace_s_km != null ? formatPace(activity.avg_pace_s_km) : null,
                         activity.avg_hr != null ? `${activity.avg_hr} bpm` : null,
