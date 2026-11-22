@@ -16,6 +16,7 @@ import {
 import { describe, importFromIntervals, type IntervalsImportSummary } from "@/lib/intervals/import";
 import { publishPlanToIntervals, type IntervalsPublishSummary } from "@/lib/intervals/publish";
 import { refreshTimeInZones } from "@/lib/ingest/zone-refresh";
+import { nextIntervalsError } from "@/lib/intervals/sync-errors";
 
 export interface IntervalsSyncResult {
   import: IntervalsImportSummary | null;
@@ -29,24 +30,34 @@ export async function runIntervalsSync(
   options: { import?: boolean; publish?: boolean } = {},
 ): Promise<IntervalsSyncResult> {
   const apiKey = await getIntervalsApiKey(userId);
-  if (!apiKey) return { import: null, publish: null, error: "Chiave Intervals.icu assente." };
+  if (!apiKey) {
+    const error = "Chiave Intervals.icu assente.";
+    await markIntervalsSync(userId, { last_error: error });
+    return { import: null, publish: null, error };
+  }
   const client = { apiKey, athleteId: connection.athlete_id };
   const result: IntervalsSyncResult = { import: null, publish: null, error: null };
   const errors: string[] = [];
   const now = new Date().toISOString();
+  const importRan = options.import !== false && (connection.import_activities || connection.import_wellness);
+  const publishRan = options.publish !== false;
 
-  if (options.import !== false && (connection.import_activities || connection.import_wellness)) {
+  // last_import_at e last_publish_at segnano solo i giri riusciti; gli errori
+  // restano in last_error finché la stessa parte non riesce di nuovo.
+  // Eccezione: l'import all'apertura della PWA prenota last_import_at prima di
+  // partire (claimIntervalsImport), per non lanciarne due insieme.
+  if (importRan) {
     result.import = await importFromIntervals(client, userId, {
       activities: connection.import_activities,
       wellness: connection.import_wellness,
     });
     errors.push(...result.import.errors);
-    await markIntervalsSync(userId, { last_import_at: now });
+    if (!result.import.errors.length) await markIntervalsSync(userId, { last_import_at: now });
   }
 
   // Giro completo (cron del mattino, "Sincronizza ora"): riallinea il tempo in
   // zona delle corse salvate alle zone correnti, se nel frattempo sono cambiate.
-  if (options.publish !== false) {
+  if (publishRan) {
     try {
       await refreshTimeInZones(createAdminClient(), userId);
     } catch (error) {
@@ -58,14 +69,15 @@ export async function runIntervalsSync(
     try {
       result.publish = await publishPlanToIntervals(client, userId, connection.target_preference);
       errors.push(...result.publish.errors);
-      await markIntervalsSync(userId, { last_publish_at: now });
+      if (!result.publish.errors.length) await markIntervalsSync(userId, { last_publish_at: now });
     } catch (error) {
       errors.push(`Piano: ${describe(error)}`);
     }
   }
 
   result.error = errors.length ? errors.slice(0, 3).join(" · ") : null;
-  await markIntervalsSync(userId, { last_error: result.error });
+  const lastError = nextIntervalsError(connection.last_error, { importRan, publishRan, errors });
+  if (lastError !== connection.last_error) await markIntervalsSync(userId, { last_error: lastError });
   return result;
 }
 
@@ -87,9 +99,12 @@ export async function syncAllIntervalsUsers(options: { publish?: boolean } = {})
       const message = error instanceof Error ? error.message : String(error);
       console.error("cron intervals:", user.user_id, message);
       results.push({ user: user.user_id, imported: 0, wellnessDays: 0, published: 0, error: message });
+      await markIntervalsSync(user.user_id, { last_error: `Sincronizzazione: ${message}`.slice(0, 500) });
     }
   }
-  return { users: users.length, results };
+  const failed = results.filter((result) => result.error).length;
+  // Lo status HTTP resta 200 (lo scheduler non deve riprovare): l'esito vero è qui.
+  return { ok: failed === 0, users: users.length, failed, results };
 }
 
 /** Intervallo minimo tra due import lanciati dall'apertura della PWA. */

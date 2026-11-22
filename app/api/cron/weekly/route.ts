@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     .returns<Array<{ id: string }>>();
   if (error) {
     console.error("cron weekly:", error.message);
-    return Response.json({ error: "Query non riuscita." }, { status: 500 });
+    return Response.json({ ok: false, error: "Query non riuscita." }, { status: 500 });
   }
 
   const counts = { sent: 0, exists: 0, empty: 0, failed: 0, delivered: 0 };
@@ -44,5 +44,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return Response.json({ week_start: week.start, week_end: week.end, users: profiles?.length ?? 0, ...counts });
+  return Response.json({ ok: counts.failed === 0, week_start: week.start, week_end: week.end, users: profiles?.length ?? 0, ...counts });
 }

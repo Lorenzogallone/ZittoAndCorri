@@ -1,6 +1,9 @@
 // Cron giornaliero: promemoria della seduta di domani (ora di Roma) e seconda
 // sincronizzazione Intervals.icu del giorno (la prima è /api/cron/intervals al
 // mattino): su Vercel Hobby ogni cron gira al massimo una volta al giorno.
+// Manda anche gli avvisi "dati fermi" (lib/push/sync-alerts): questo cron gira
+// una volta al giorno, quindi al massimo un avviso al giorno per problema.
+// Lo status resta 200 anche con errori per utente: l'esito è in `ok` e nel corpo.
 // Auth: Authorization: Bearer ${CRON_SECRET} (vedi vercel.json).
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -11,6 +14,7 @@ import { romeDate, shiftIsoDate } from "@/lib/push/weekly-stats";
 import { TYPE_LABELS } from "@/lib/activity-meta";
 import type { PlannedWorkout } from "@/lib/types";
 import { syncAllIntervalsUsers } from "@/lib/intervals/sync";
+import { sendSyncAlerts } from "@/lib/push/sync-alerts";
 
 export const maxDuration = 300;
 
@@ -25,7 +29,7 @@ export async function GET(request: Request) {
 
   const intervals = await syncAllIntervalsUsers().catch((error) => {
     console.error("cron daily intervals:", error instanceof Error ? error.message : error);
-    return { error: "sync Intervals.icu non riuscita" };
+    return { ok: false, error: "sync Intervals.icu non riuscita" };
   });
 
   // Ricordi del coach scaduti da più di 30 giorni: il coach non li legge più,
@@ -38,7 +42,10 @@ export async function GET(request: Request) {
   if (pruneError) console.error("cron daily memories:", pruneError.message);
 
   const date = shiftIsoDate(romeDate(), 1);
-  if (!isPushConfigured()) return Response.json({ date, intervals, prunedMemories, skipped: "push non configurato" });
+  const baseOk = intervals.ok && !pruneError;
+  if (!isPushConfigured()) {
+    return Response.json({ ok: baseOk, date, intervals, prunedMemories, skipped: "push non configurato" });
+  }
 
   const [subsRes, workoutsRes] = await Promise.all([
     admin.from("push_subscriptions").select("user_id").returns<Array<{ user_id: string }>>(),
@@ -53,7 +60,7 @@ export async function GET(request: Request) {
   const queryError = subsRes.error ?? workoutsRes.error;
   if (queryError) {
     console.error("cron daily:", queryError.message);
-    return Response.json({ error: "Query non riuscita." }, { status: 500 });
+    return Response.json({ ok: false, error: "Query non riuscita.", intervals }, { status: 500 });
   }
 
   const subscribed = new Set((subsRes.data ?? []).map((row) => row.user_id));
@@ -78,5 +85,17 @@ export async function GET(request: Request) {
     delivered += sent;
   }
 
-  return Response.json({ date, users: byUser.size, notified, delivered, intervals, prunedMemories });
+  // Dopo la sync appena fatta: lo stato letto è quello aggiornato.
+  const syncAlerts = await sendSyncAlerts(admin, [...subscribed], romeDate());
+
+  return Response.json({
+    ok: baseOk && syncAlerts.failed === 0,
+    date,
+    users: byUser.size,
+    notified,
+    delivered,
+    intervals,
+    syncAlerts,
+    prunedMemories,
+  });
 }
