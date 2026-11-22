@@ -18,7 +18,7 @@ import {
   type IntervalAnalysis,
 } from "@/lib/metrics/intervals";
 import { addDays, romeDay } from "@/lib/local-date";
-import { workoutForActivity } from "@/lib/plan/match-activities";
+import { matchWindow, planWorkoutForActivity, withinWindow } from "@/lib/plan/match-activities";
 import { avgPace } from "@/lib/metrics/pace";
 import { movingTimeFromStreams } from "@/lib/metrics/pauses";
 import { classifyRun } from "@/lib/metrics/run-type";
@@ -27,13 +27,15 @@ import type { Activity, ActivityStream, GpsPoint, HrPoint, PlannedWorkout } from
 
 type DerivedActivity = Pick<Activity, "id" | "sport" | "started_at" | "distance_m" | "duration_s" | "moving_time_s">;
 
-type DayActivity = Pick<Activity, "id" | "started_at" | "sport" | "distance_m" | "duration_s" | "moving_time_s">;
+type DayActivity = Pick<Activity, "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" | "moving_time_s">;
 
 /**
  * Seduta pianificata abbinata a un'attività: con più sedute e più corse nello
  * stesso giorno non è la prima, ma quella che le somiglia di più (distanza,
- * durata, ordine, momento). Un'attività che non corrisponde a nessuna seduta
- * (es. una corsa in più) non ha seduta.
+ * durata, ordine, momento). Se la corsa non serve a una seduta del suo giorno
+ * può valere per una seduta dello stesso tipo rimasta senza corsa fino a due
+ * giorni prima o dopo (matchPlan). Un'attività che non corrisponde a nessuna
+ * seduta (es. una corsa in più) non ha seduta.
  */
 export async function plannedForActivity(
   supabase: SupabaseClient,
@@ -41,35 +43,38 @@ export async function plannedForActivity(
   activity: Pick<Activity, "id" | "started_at">,
 ): Promise<PlannedWorkout | null> {
   const day = romeDay(activity.started_at);
+  const range = matchWindow(day);
+  const select = "id, started_at, type, sport, distance_m, duration_s, moving_time_s";
   const [{ data: workouts }, { data: activities }] = await Promise.all([
     supabase
       .from("planned_workouts")
       .select("*")
       .eq("user_id", userId)
-      .eq("date", day)
+      .gte("date", range.from)
+      .lte("date", range.to)
       .returns<PlannedWorkout[]>(),
     supabase
       .from("activities")
-      .select("id, started_at, sport, distance_m, duration_s, moving_time_s")
+      .select(select)
       .eq("user_id", userId)
       .is("excluded_at", null)
-      .gte("started_at", `${addDays(day, -1)}T12:00:00Z`)
-      .lte("started_at", `${addDays(day, 1)}T12:00:00Z`)
+      .gte("started_at", `${addDays(range.from, -1)}T12:00:00Z`)
+      .lte("started_at", `${addDays(range.to, 1)}T12:00:00Z`)
       .returns<DayActivity[]>(),
   ]);
   const plan = (workouts ?? []).map((workout) => ({ ...workout, workout_steps: workoutStepsOrLegacy(workout.workout_steps, workout) }));
   if (!plan.length) return null;
-  const sameDay = (activities ?? []).filter((other) => romeDay(other.started_at) === day);
+  const nearby = withinWindow(activities ?? [], range);
   // L'attività stessa c'è sempre (anche se esclusa o appena salvata).
-  if (!sameDay.some((other) => other.id === activity.id)) {
+  if (!nearby.some((other) => other.id === activity.id)) {
     const { data: self } = await supabase
       .from("activities")
-      .select("id, started_at, sport, distance_m, duration_s, moving_time_s")
+      .select(select)
       .eq("id", activity.id)
       .maybeSingle<DayActivity>();
-    if (self) sameDay.push(self);
+    if (self) nearby.push(self);
   }
-  return workoutForActivity(activity.id, plan, sameDay);
+  return planWorkoutForActivity(activity.id, plan, nearby);
 }
 
 /** Seduta abbinata all'attività, se ha tratti a passo da verificare. */

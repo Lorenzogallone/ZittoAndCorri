@@ -14,14 +14,12 @@ import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { sendPushToUser } from "@/lib/push/send";
 import { analysisPushBody } from "@/lib/push/messages";
 import { extractDeclaredStructure, mayDescribeStructure } from "@/lib/ai/interval-structure";
-import { intervalsUpToDate, isMissingColumn, persistIntervals, type DeclaredIntervals } from "@/lib/derived";
+import { intervalsUpToDate, isMissingColumn, persistIntervals, plannedForActivity, type DeclaredIntervals } from "@/lib/derived";
 import type { IntervalAnalysis } from "@/lib/metrics/intervals";
 import { intervalsForPrompt } from "@/lib/intervals-text";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { romeDay } from "@/lib/local-date";
 import { sortByDayOrder } from "@/lib/plan/day-sessions";
-import { workoutForActivity } from "@/lib/plan/match-activities";
-import { workoutStepsOrLegacy } from "@/lib/workout-steps";
 
 type EvalActivity = Pick<Activity,
   "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" |
@@ -186,14 +184,8 @@ async function runActivityEvaluation(
         .returns<SameDayActivity[]>(),
     ]);
     const others = (sameDayResult.data ?? []).filter((other) => romeDay(other.started_at) === activityDay);
-    // Con più sedute e più corse nello stesso giorno: la seduta che somiglia di più a questa corsa.
-    const matched = workoutForActivity(
-      activity.id,
-      (nearbyPlanResult.data ?? [])
-        .filter((workout) => workout.date === activityDay)
-        .map((workout) => ({ ...workout, workout_steps: workoutStepsOrLegacy(workout.workout_steps, workout) })),
-      [activity, ...others],
-    );
+    // La seduta che somiglia di più a questa corsa nel suo giorno o, se spostata, fino a due giorni prima o dopo.
+    const matched = await plannedForActivity(admin, userId, activity);
     const nearbyPlan = nearbyPlanResult.data
       ? sortByDayOrder(nearbyPlanResult.data).map((workout) => planForPrompt(workout, matched?.id ?? null))
       : null;

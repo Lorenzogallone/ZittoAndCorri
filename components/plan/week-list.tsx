@@ -7,6 +7,7 @@ import { workoutHeadline } from "@/lib/workout-guide";
 import { plannedMeters } from "@/lib/plan/planned-distance";
 import { estimateWorkout } from "@/lib/workout-estimate";
 import { adherence, type DayView } from "@/lib/plan/day-status";
+import { weekdayName } from "@/lib/local-date";
 import type { Activity, PlannedWorkout } from "@/lib/types";
 
 export type PlanActivity = Pick<Activity, "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" | "moving_time_s" | "avg_pace_s_km">;
@@ -60,16 +61,24 @@ function DayRow({ day, today }: { day: PlanDay; today: string }) {
   const isToday = day.date === today;
   const done = day.state === "done" || day.state === "extra";
   const activity = day.activities[0];
+  // Seduta fatta in un altro giorno (entro due giorni prima o dopo).
+  const moved = workout ? day.doneOn[workout.id] : undefined;
+  const sameDayRun = !moved && activity && !(activity.id in day.countsFor) ? activity : undefined;
 
   let title: string;
   let subtitle: string | null = null;
   let dot: string | null = null;
   if (workout) {
     title = workoutTitle(workout) + (day.workouts.length > 1 ? ` +${day.workouts.length - 1}` : "");
-    subtitle = done && activity ? `Fatto · ${activitySummary(activity)}` : workoutSubtitle(workout);
+    subtitle = moved
+      ? `Fatta ${weekdayName(moved.date)} · ${activitySummary(moved.activity)}`
+      : done && sameDayRun ? `Fatto · ${activitySummary(sameDayRun)}` : workoutSubtitle(workout);
     dot = TYPE_DOTS[workout.type];
   } else if (activity) {
-    title = activity.sport === "running" ? "Corsa extra" : SPORT_LABELS[activity.sport];
+    const countsFor = day.countsFor[activity.id];
+    title = countsFor
+      ? `Seduta di ${weekdayName(countsFor)}`
+      : activity.sport === "running" ? "Corsa extra" : SPORT_LABELS[activity.sport];
     subtitle = activitySummary(activity, false);
   } else {
     title = "Riposo";

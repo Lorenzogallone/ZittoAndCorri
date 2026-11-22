@@ -19,12 +19,12 @@ import { WORKOUT_TYPE_GUIDE, workoutHeadline } from "@/lib/workout-guide";
 import { workoutStepsOrLegacy } from "@/lib/workout-steps";
 import { estimateWorkout } from "@/lib/workout-estimate";
 import { plannedMeters } from "@/lib/plan/planned-distance";
-import { addDays, relativeDayLabel, romeDay } from "@/lib/local-date";
+import { addDays, relativeDayLabel, romeDay, weekdayName } from "@/lib/local-date";
 import { adjustStepsForHeat } from "@/lib/metrics/heat";
 import { predictionReference, predictTime } from "@/lib/metrics/race-prediction";
 import { heatForDates } from "@/lib/weather";
 import type { Activity, Goal, PlannedWorkout } from "@/lib/types";
-import { matchDay } from "@/lib/plan/match-activities";
+import { matchPlan, matchWindow, withinWindow } from "@/lib/plan/match-activities";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -47,6 +47,9 @@ export default async function PlannedWorkoutPage({ params }: Props) {
   if (!workout) notFound();
 
   const today = romeDay();
+  // Sedute e corse attorno al giorno: la seduta vale fatta anche con una corsa
+  // fino a due giorni prima o dopo (matchPlan).
+  const range = matchWindow(workout.date);
   const [{ data: goal }, { data: dayActivities }, { data: dayWorkouts }, heat] = await Promise.all([
     supabase
       .from("goals")
@@ -56,18 +59,19 @@ export default async function PlannedWorkoutPage({ params }: Props) {
       .maybeSingle<Pick<Goal, "race_date" | "distance_m" | "target_time_s">>(),
     supabase
       .from("activities")
-      .select("id, started_at, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km")
+      .select("id, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km")
       .eq("user_id", user.id)
       .is("excluded_at", null)
-      .gte("started_at", `${addDays(workout.date, -1)}T12:00:00`)
-      .lte("started_at", `${addDays(workout.date, 1)}T12:00:00`)
+      .gte("started_at", `${addDays(range.from, -1)}T12:00:00`)
+      .lte("started_at", `${addDays(range.to, 1)}T12:00:00`)
       .order("started_at")
-      .returns<Array<Pick<Activity, "id" | "started_at" | "sport" | "distance_m" | "duration_s" | "moving_time_s" | "avg_pace_s_km">>>(),
+      .returns<Array<Pick<Activity, "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" | "moving_time_s" | "avg_pace_s_km">>>(),
     supabase
       .from("planned_workouts")
       .select("*")
       .eq("user_id", user.id)
-      .eq("date", workout.date)
+      .gte("date", range.from)
+      .lte("date", range.to)
       .returns<PlannedWorkout[]>(),
     workout.status === "planned" && workout.type !== "cross"
       ? heatForDates(supabase, user.id, [workout.date]).then((map) => map.get(workout.date) ?? null)
@@ -88,12 +92,14 @@ export default async function PlannedWorkoutPage({ params }: Props) {
   const done = workout.status === "completed";
   // Con più sedute e più corse nello stesso giorno, la corsa che somiglia di
   // più a questa seduta (non per forza la prima del giorno).
-  const sameDayActivities = (dayActivities ?? []).filter((activity) => romeDay(activity.started_at) === workout.date);
-  const matchedId = matchDay(
-    (dayWorkouts?.length ? dayWorkouts : [workout]).map((w) => ({ ...w, workout_steps: workoutStepsOrLegacy(w.workout_steps, w) })),
-    sameDayActivities,
+  // Se non c'è, una corsa dello stesso tipo fino a due giorni prima o dopo.
+  const nearbyWorkouts = dayWorkouts?.some((w) => w.id === workout.id) ? dayWorkouts : [...(dayWorkouts ?? []), workout];
+  const matchedId = matchPlan(
+    nearbyWorkouts.map((w) => ({ ...w, workout_steps: workoutStepsOrLegacy(w.workout_steps, w) })),
+    withinWindow(dayActivities ?? [], range),
   ).get(workout.id);
-  const doneActivity = sameDayActivities.find((activity) => activity.id === matchedId);
+  const doneActivity = (dayActivities ?? []).find((activity) => activity.id === matchedId);
+  const doneDay = doneActivity ? romeDay(doneActivity.started_at) : null;
 
   // Strategia di gara: tempo obiettivo se è la gara dell'obiettivo, altrimenti previsione.
   const isGoalRace = goal?.race_date === workout.date;
@@ -151,7 +157,7 @@ export default async function PlannedWorkoutPage({ params }: Props) {
         <Link href={`/activities/${doneActivity.id}`} className="pressable animate-enter mb-6 flex items-center gap-3 rounded-2xl bg-primary/[0.07] px-4 py-3">
           <span className="animate-pop flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground"><Check size={15} strokeWidth={3} /></span>
           <span className="min-w-0 flex-1 text-sm">
-            <span className="font-medium">Fatta</span>
+            <span className="font-medium">{doneDay && doneDay !== workout.date ? `Fatta ${weekdayName(doneDay)}` : "Fatta"}</span>
             <span className="text-muted-foreground tabular-nums">
               {" · "}{doneActivity.distance_m > 0 ? formatDistance(doneActivity.distance_m) : formatDuration(activeDuration(doneActivity))}
               {doneActivity.avg_pace_s_km ? ` · ${formatPace(doneActivity.avg_pace_s_km)}` : ""}
