@@ -8,6 +8,8 @@ import { CoachChat } from "@/components/coach-chat";
 import { TodayCard } from "@/components/home/today-card";
 import { GettingStarted } from "@/components/home/getting-started";
 import { GoalCard, UpcomingCard } from "@/components/home/desktop-cards";
+import { SyncHealthBanner } from "@/components/home/sync-health-banner";
+import { loadSyncIssues } from "@/lib/sync-health-data";
 import { trainingPhases } from "@/lib/plan/phases";
 import { addDays, daysBetween, mondayOf, romeDay, romeHour } from "@/lib/local-date";
 import { buildDays } from "@/lib/plan/day-status";
@@ -63,7 +65,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   // Margine attorno alla settimana: una seduta vale fatta anche con una corsa
   // fino a due giorni prima o dopo (matchPlan).
   const range = matchWindow(monday, sunday);
-  const [goalRes, nextRes, weekPlanRes, weekActivitiesRes, messagesRes, proposalsRes, aiStatus, pendingEvaluationsRes, firstRun] = await Promise.all([
+  const [goalRes, nextRes, weekPlanRes, weekActivitiesRes, messagesRes, proposalsRes, aiStatus, pendingEvaluationsRes, firstRun, syncIssues] = await Promise.all([
     supabase.from("goals").select("race_name, race_date, distance_m, target_time_s, created_at").eq("user_id", user.id).eq("is_active", true).maybeSingle<Pick<Goal, "race_name" | "race_date" | "distance_m" | "target_time_s" | "created_at">>(),
     // La prima è la seduta in evidenza; le altre vanno nella colonna desktop.
     supabase.from("planned_workouts").select("*").eq("user_id", user.id).eq("status", "planned").gte("date", today).order("date").order("created_at").limit(8).returns<PlannedWorkout[]>(),
@@ -74,6 +76,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
     getAiStatus(supabase, user.id),
     supabase.from("ai_jobs").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("kind", "evaluation").eq("status", "pending"),
     firstRunSteps(supabase, user.id),
+    loadSyncIssues(supabase, user.id),
   ]);
 
   const authName = typeof user.user_metadata?.full_name === "string"
@@ -137,6 +140,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
             </Link>
           </div>
           <div className="contents 3xl:block">
+            {/* Sincronizzazione in errore o dati fermi: una riga sopra la seduta. */}
+            <SyncHealthBanner issues={syncIssues} className="mb-3 shrink-0" />
             <div className="mb-3 shrink-0">
               <TodayCard next={next} sameDay={sameDay} sessionsThatDay={daySessions.length} today={today} heat={heat} week={week} race={race} />
             </div>

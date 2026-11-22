@@ -112,8 +112,8 @@ export function IntervalsSection({
     const now = new Date().toISOString();
     setConnection((current) => current ? {
       ...current,
-      last_import_at: imported ? now : current.last_import_at,
-      last_publish_at: publish ? now : current.last_publish_at,
+      last_import_at: imported && !imported.errors.length ? now : current.last_import_at,
+      last_publish_at: publish && !publish.errors.length ? now : current.last_publish_at,
       last_error: syncError,
     } : current);
   });
