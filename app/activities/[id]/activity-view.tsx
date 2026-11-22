@@ -40,7 +40,7 @@ export interface ActivityViewProps {
   /** Tratti delle ripetute nel tempo: si evidenziano in grafico e mappa. */
   segments?: SegmentSpan[];
   evaluation: Pick<Evaluation, "summary" | "details" | "created_at" | "ai_usage"> | null;
-  evaluationJob: { status: "pending" | "done" | "error"; error: string | null } | null;
+  evaluationJob: { status: "pending" | "done" | "error"; error: string | null; created_at: string | null } | null;
   keyConfigured: boolean;
 }
 
@@ -182,6 +182,7 @@ export function ActivityView(props: ActivityViewProps) {
           initialNotes={activity.notes}
           evaluation={props.evaluation}
           initialAnalyzing={props.evaluationJob?.status === "pending"}
+          analyzingSince={props.evaluationJob?.status === "pending" ? props.evaluationJob.created_at : null}
           initialFailed={props.evaluationJob?.status === "error"}
           initialError={props.evaluationJob?.status === "error" ? props.evaluationJob.error : null}
           keyConfigured={props.keyConfigured}

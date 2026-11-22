@@ -18,6 +18,8 @@ import { intervalsUpToDate, isMissingColumn, persistIntervals, plannedForActivit
 import type { IntervalAnalysis } from "@/lib/metrics/intervals";
 import { intervalsForPrompt } from "@/lib/intervals-text";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isStaleAiJob, STALE_AI_JOB_ERROR } from "@/lib/ai/job-staleness";
+import { evaluationAfterIngest, type IngestOutcome } from "@/lib/ingest/enrichment";
 import { romeDay } from "@/lib/local-date";
 import { sortByDayOrder } from "@/lib/plan/day-sessions";
 
@@ -85,30 +87,58 @@ function sameDayLines(activity: Pick<Activity, "started_at" | "duration_s">, oth
 export async function enqueueActivityEvaluation(
   userId: string,
   activityId: string,
+  options: { notify?: boolean } = {},
 ): Promise<string | null> {
+  const notify = options.notify !== false;
   const ai = await getAiConfig(userId, "analysis");
   if (!ai) return null;
   const admin = createAdminClient();
-  const { data: current } = await admin.from("ai_jobs").select("id").eq("user_id", userId).eq("kind", "evaluation").eq("ref_id", activityId).eq("status", "pending").limit(1).maybeSingle<{ id: string }>();
+  const { data: pendingJobs } = await admin.from("ai_jobs").select("id, status, created_at").eq("user_id", userId).eq("kind", "evaluation").eq("ref_id", activityId).eq("status", "pending").order("created_at", { ascending: false }).returns<Array<{ id: string; status: string; created_at: string | null }>>();
+  // Un job pendente da troppo (funzione scaduta, deploy a metà) non blocca più
+  // la nuova analisi: si chiude come errore e se ne crea uno nuovo.
+  const stale = (pendingJobs ?? []).filter((job) => isStaleAiJob(job));
+  if (stale.length) {
+    await admin.from("ai_jobs").update({ status: "error", error: STALE_AI_JOB_ERROR, updated_at: new Date().toISOString() }).in("id", stale.map((job) => job.id)).eq("status", "pending");
+  }
+  const current = (pendingJobs ?? []).find((job) => !isStaleAiJob(job));
   if (current) return current.id;
   const { data: job, error } = await admin.from("ai_jobs").insert({ user_id: userId, kind: "evaluation", ref_id: activityId, status: "pending" }).select("id").single<{ id: string }>();
   if (error || !job) throw error ?? new Error("Job non creato");
-  after(() => runActivityEvaluation(job.id, userId, activityId, ai));
+  after(() => runActivityEvaluation(job.id, userId, activityId, ai, notify));
   return job.id;
 }
 
-/** Gli import non devono mai fallire dopo che l'attività è stata salvata. */
-export async function enqueueActivityEvaluationSafely(
+/**
+ * Analisi dopo un import: una corsa arricchita già analizzata si rianalizza
+ * solo se i dati sono cambiati davvero, e senza una seconda notifica.
+ * Non lancia mai: gli import non devono fallire dopo che la corsa è salvata.
+ */
+export async function enqueueEvaluationAfterIngest(
   userId: string,
-  activityId: string,
+  outcome: IngestOutcome,
 ): Promise<string | null> {
   try {
-    return await enqueueActivityEvaluation(userId, activityId);
+    let hasEvaluation = false;
+    if (!outcome.created) {
+      const { data, error } = await createAdminClient()
+        .from("evaluations")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("activity_id", outcome.id)
+        .limit(1)
+        .maybeSingle<{ id: string }>();
+      if (error) throw error;
+      hasEvaluation = data != null;
+    }
+    const decision = evaluationAfterIngest(outcome, hasEvaluation);
+    if (decision === "skip") return null;
+    return await enqueueActivityEvaluation(userId, outcome.id, { notify: decision === "notify" });
   } catch (error) {
-    console.error("enqueueActivityEvaluationSafely:", error);
+    console.error("enqueueEvaluationAfterIngest:", error);
     return null;
   }
 }
+
 
 /**
  * Tratti della corsa per la valutazione. Una struttura appena letta dalla nota
@@ -138,6 +168,7 @@ async function runActivityEvaluation(
   userId: string,
   activityId: string,
   ai: AiConfig,
+  notify: boolean,
 ) {
   const admin = createAdminClient();
   try {
@@ -292,15 +323,18 @@ async function runActivityEvaluation(
     if (messageError || !message) throw messageError ?? new Error("Feedback chat non salvato");
     await admin.from("ai_jobs").update({ status: "done", output_message_id: message.id, updated_at: new Date().toISOString() }).eq("id", jobId);
     // La notifica è un extra: qualunque problema non deve far fallire il job.
-    try {
-      await sendPushToUser(userId, {
-        title: "Analisi pronta",
-        body: analysisPushBody(result.summary),
-        url: `/activities/${activityId}`,
-        tag: `eval-${activityId}`,
-      });
-    } catch (pushError) {
-      console.error("runActivityEvaluation push:", pushError);
+    // Una rianalisi dopo un arricchimento non manda una seconda push.
+    if (notify) {
+      try {
+        await sendPushToUser(userId, {
+          title: "Analisi pronta",
+          body: analysisPushBody(result.summary),
+          url: `/activities/${activityId}`,
+          tag: `eval-${activityId}`,
+        });
+      } catch (pushError) {
+        console.error("runActivityEvaluation push:", pushError);
+      }
     }
   } catch (error) {
     console.error("runActivityEvaluation:", error);

@@ -8,9 +8,15 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ingestActivity } from "@/lib/ingest/ingest";
 import { parseFit } from "@/lib/ingest/adapters/fit";
-import { enqueueActivityEvaluationSafely } from "@/lib/ai/evaluate-activity";
+import { enqueueEvaluationAfterIngest } from "@/lib/ai/evaluate-activity";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { isoDateShift } from "@/lib/dates";
+import {
+  deletedExternalIds,
+  isMissingTable,
+  matchesDeletedImport,
+  type DeletedImport,
+} from "@/lib/ingest/deleted-imports";
 import type { Profile } from "@/lib/types";
 import {
   downloadFitFile,
@@ -121,6 +127,19 @@ async function importActivities(client: IntervalsClient, userId: string, summary
   if (knownError) throw knownError;
   const alreadyImported = new Set((known ?? []).map((row) => row.external_id));
 
+  // Corse cancellate dall'atleta: non si ricreano. Senza la tabella
+  // (migrazione 0032) non c'è niente da saltare; un altro errore ferma
+  // l'import, che altrimenti le ricreerebbe.
+  const { data: deletedRows, error: deletedError } = await admin
+    .from("deleted_imports")
+    .select("external_id, sport, started_at")
+    .eq("user_id", userId)
+    .gte("started_at", `${isoDateShift(today, -ACTIVITY_LOOKBACK_DAYS - 2)}T00:00:00Z`)
+    .returns<DeletedImport[]>();
+  if (deletedError && !isMissingTable(deletedError)) throw deletedError;
+  const deleted = deletedRows ?? [];
+  const deletedIds = deletedExternalIds(deleted);
+
   const { data: profile } = await admin
     .from("profiles")
     .select("max_hr, resting_hr")
@@ -135,7 +154,7 @@ async function importActivities(client: IntervalsClient, userId: string, summary
 
   // Dalla più vecchia alla più recente, così gli import parziali restano coerenti.
   const pending = activities
-    .filter((activity) => !alreadyImported.has(intervalsActivityExternalId(activity)))
+    .filter((activity) => !alreadyImported.has(intervalsActivityExternalId(activity)) && !deletedIds.has(intervalsActivityExternalId(activity)))
     .sort((a, b) => a.start_date_local.localeCompare(b.start_date_local))
     .slice(0, MAX_ACTIVITIES_PER_RUN);
   summary.activities.skipped = activities.length - pending.length;
@@ -146,9 +165,23 @@ async function importActivities(client: IntervalsClient, userId: string, summary
       const input = await parseFit(fit);
       input.source = "intervals";
       input.external_id = intervalsActivityExternalId(activity);
+      // Stessa sessione di una corsa cancellata senza id esterno (es. GPX):
+      // si salta e si ricorda l'id, così il FIT non si riscarica a ogni giro.
+      if (matchesDeletedImport({ sport: input.sport ?? "running", started_at: input.started_at }, deleted)) {
+        const { error: markError } = await admin.from("deleted_imports").insert({
+          user_id: userId,
+          external_id: input.external_id,
+          sport: input.sport ?? "running",
+          started_at: input.started_at,
+        });
+        if (markError && markError.code !== "23505") console.error("Intervals import deleted mark:", markError.message);
+        summary.activities.skipped += 1;
+        continue;
+      }
       if (activity.name && !input.source_title) input.source_title = activity.name;
-      const activityId = await ingestActivity(input, ctx);
-      await enqueueActivityEvaluationSafely(userId, activityId);
+      const outcome = await ingestActivity(input, ctx);
+      // Corsa già salvata da un file e solo arricchita: niente seconda push.
+      await enqueueEvaluationAfterIngest(userId, outcome);
       summary.activities.imported += 1;
     } catch (error) {
       summary.activities.failed += 1;

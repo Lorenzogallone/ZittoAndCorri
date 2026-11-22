@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import type { CoachMessage, Evaluation, PlanProposal } from "@/lib/types";
+import { isStaleAiJob, STALE_AI_JOB_ERROR } from "@/lib/ai/job-staleness";
 
 export type AiJobState = "pending" | "done" | "error" | "missing";
 
@@ -32,7 +33,7 @@ export async function pollAiJob(jobId: string): Promise<AiJobStatus> {
 
   const { data } = await supabase
     .from("ai_jobs")
-    .select("status, error, kind, ref_id, output_message_id")
+    .select("status, error, kind, ref_id, output_message_id, created_at")
     .eq("id", jobId)
     .eq("user_id", user.id)
     .maybeSingle<{
@@ -41,9 +42,13 @@ export async function pollAiJob(jobId: string): Promise<AiJobStatus> {
       kind: string;
       ref_id: string | null;
       output_message_id: string | null;
+      created_at: string | null;
     }>();
 
   if (!data) return { status: "missing" };
+  // Pendente oltre il tempo massimo della funzione (anche per la chat): non
+  // finirà più, il client mostra l'errore e il tasto per riprovare.
+  if (isStaleAiJob(data)) return { status: "error", error: data.error ?? STALE_AI_JOB_ERROR };
   if (data.status === "done" && data.kind === "chat" && data.output_message_id) {
     const { data: message } = await supabase
       .from("coach_messages")

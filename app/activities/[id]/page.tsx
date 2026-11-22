@@ -13,6 +13,7 @@ import { bestEffortsForActivity, personalRecords } from "@/lib/metrics/best-effo
 import { cadencePoints, computeIntervals, intervalsUpToDate, paceCheckFor, persistDerived, persistIntervals } from "@/lib/derived";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { getAiStatus } from "@/lib/ai/ai-status";
+import { effectiveAiJob } from "@/lib/ai/job-staleness";
 import type { Activity, ActivityStream, Evaluation, Profile, TimeInZone } from "@/lib/types";
 import { ActivityView } from "./activity-view";
 
@@ -70,13 +71,13 @@ export default async function ActivityDetailPage({
         .maybeSingle<Evaluation>(),
       supabase
         .from("ai_jobs")
-        .select("status, error")
+        .select("status, error, created_at")
         .eq("user_id", user.id)
         .eq("kind", "evaluation")
         .eq("ref_id", id)
         .order("created_at", { ascending: false })
         .limit(1)
-        .maybeSingle<{ status: "pending" | "done" | "error"; error: string | null }>(),
+        .maybeSingle<{ status: "pending" | "done" | "error"; error: string | null; created_at: string | null }>(),
       getAiStatus(supabase, user.id),
     ]);
 
@@ -208,7 +209,8 @@ export default async function ActivityDetailPage({
       intervals={intervals}
       segments={segments}
       evaluation={evaluation ?? null}
-      evaluationJob={evaluationJob ?? null}
+      // Un job pendente oltre il tempo massimo è scaduto: errore e "Riprova".
+      evaluationJob={evaluationJob ? effectiveAiJob(evaluationJob) : null}
       keyConfigured={aiStatus.analysis.active !== null}
     />
   );

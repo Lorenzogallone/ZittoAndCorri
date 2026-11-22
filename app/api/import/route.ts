@@ -5,7 +5,7 @@
 import type { NextRequest } from "next/server";
 import { resolveImportAuth } from "@/lib/ingest/api-auth";
 import { ingestActivity } from "@/lib/ingest/ingest";
-import { enqueueActivityEvaluationSafely } from "@/lib/ai/evaluate-activity";
+import { enqueueEvaluationAfterIngest } from "@/lib/ai/evaluate-activity";
 
 export const maxDuration = 240;
 
@@ -26,9 +26,9 @@ export async function POST(req: NextRequest) {
     const ids: string[] = [];
     const evaluationJobIds: string[] = [];
     for (const inp of inputs) {
-      const id = await ingestActivity(inp, ctx);
-      ids.push(id);
-      const jobId = await enqueueActivityEvaluationSafely(ctx.userId, id);
+      const outcome = await ingestActivity(inp, ctx);
+      ids.push(outcome.id);
+      const jobId = await enqueueEvaluationAfterIngest(ctx.userId, outcome);
       if (jobId) evaluationJobIds.push(jobId);
     }
     return Response.json(ids.length === 1

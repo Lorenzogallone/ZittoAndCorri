@@ -14,12 +14,15 @@ import { useRefreshWhile } from "@/lib/use-app-refresh";
 import type { Evaluation } from "@/lib/types";
 import { AiCost } from "@/components/ai-cost";
 import { readUsage } from "@/lib/ai/usage";
+import { STALE_AI_JOB_ERROR, STALE_AI_JOB_MS } from "@/lib/ai/job-staleness";
 
 interface Props {
   activityId: string;
   initialNotes: string | null;
   evaluation: Pick<Evaluation, "summary" | "details" | "created_at" | "ai_usage"> | null;
   initialAnalyzing?: boolean;
+  /** Creazione del job pendente: oltre STALE_AI_JOB_MS l'analisi è scaduta. */
+  analyzingSince?: string | null;
   initialFailed?: boolean;
   initialError?: string | null;
   keyConfigured?: boolean;
@@ -29,11 +32,29 @@ export function ActivityEvaluation({
   activityId,
   initialNotes,
   evaluation,
-  initialAnalyzing = false,
-  initialFailed = false,
-  initialError = null,
+  initialAnalyzing: serverAnalyzing = false,
+  analyzingSince = null,
+  initialFailed: serverFailed = false,
+  initialError: serverError = null,
   keyConfigured = true,
 }: Props) {
+  // Il job lanciato dal server può non finire mai (funzione scaduta): passato
+  // il tempo massimo lo spinner lascia il posto all'errore e a "Riprova".
+  const [expiredSince, setExpiredSince] = useState<string | null>(null);
+  useEffect(() => {
+    if (!serverAnalyzing || !analyzingSince) return;
+    const created = Date.parse(analyzingSince);
+    if (!Number.isFinite(created)) return;
+    const timer = window.setTimeout(
+      () => setExpiredSince(analyzingSince),
+      Math.max(0, created + STALE_AI_JOB_MS - Date.now()),
+    );
+    return () => window.clearTimeout(timer);
+  }, [serverAnalyzing, analyzingSince]);
+  const expired = serverAnalyzing && analyzingSince != null && expiredSince === analyzingSince;
+  const initialAnalyzing = serverAnalyzing && !expired;
+  const initialFailed = serverFailed || expired;
+  const initialError = expired ? STALE_AI_JOB_ERROR : serverError;
   const [displayedEvaluation, setDisplayedEvaluation] = useState(evaluation);
   // Dopo un refresh (trascina-giù, analisi finita sul server) vale il dato nuovo.
   const [serverEvaluation, setServerEvaluation] = useState(evaluation);

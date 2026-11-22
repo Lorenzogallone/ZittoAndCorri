@@ -3,14 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { ingestActivity } from "@/lib/ingest/ingest";
+import { ingestActivity, type IngestOutcome } from "@/lib/ingest/ingest";
 import { parseGpx } from "@/lib/ingest/adapters/gpx";
+import { deletedImportFor, isMissingTable } from "@/lib/ingest/deleted-imports";
 import { parseDecimal, parseDuration } from "@/lib/format";
 import type { Activity, Profile } from "@/lib/types";
 import { avgPace } from "@/lib/metrics/pace";
 import { timeInZoneFromAverage, timeInZoneFromSeries } from "@/lib/metrics/zones";
 import { computeSplits } from "@/lib/metrics/splits";
-import { enqueueActivityEvaluationSafely } from "@/lib/ai/evaluate-activity";
+import { enqueueEvaluationAfterIngest } from "@/lib/ai/evaluate-activity";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { persistDerived } from "@/lib/derived";
 
@@ -72,9 +73,9 @@ export async function createActivity(
   const effectiveHr = await getEffectiveHrConfig(supabase, user.id, profile ?? null);
 
   // --- ingest unificato ---
-  let activityId: string;
+  let outcome: IngestOutcome;
   try {
-    activityId = await ingestActivity(
+    outcome = await ingestActivity(
       {
         source: "manual",
         type,
@@ -101,7 +102,8 @@ export async function createActivity(
   }
 
   revalidatePath("/activities");
-  const evaluationJobId = await enqueueActivityEvaluationSafely(user.id, activityId);
+  const activityId = outcome.id;
+  const evaluationJobId = await enqueueEvaluationAfterIngest(user.id, outcome);
   // Niente redirect lato server: torniamo l'id e il client naviga (soft da
   // browser, full load in PWA standalone, dove la soft-navigation si impalla).
   return { id: activityId, evaluationJobId: evaluationJobId ?? undefined };
@@ -144,18 +146,18 @@ export async function importGpxActivity(
     profile: effectiveHr,
   };
 
-  let activityId: string;
+  let outcome: IngestOutcome;
   try {
     const text = await file.text();
     const input = parseGpx(text);
-    activityId = await ingestActivity(input, ctx);
+    outcome = await ingestActivity(input, ctx);
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Errore durante l'import." };
   }
 
   revalidatePath("/activities");
-  await enqueueActivityEvaluationSafely(user.id, activityId);
-  redirect(`/activities/${activityId}`, RedirectType.replace);
+  await enqueueEvaluationAfterIngest(user.id, outcome);
+  redirect(`/activities/${outcome.id}`, RedirectType.replace);
 }
 
 export async function deleteActivity(formData: FormData): Promise<void> {
@@ -167,6 +169,25 @@ export async function deleteActivity(formData: FormData): Promise<void> {
 
   const id = String(formData.get("id") ?? "");
   if (!id) return;
+
+  // Traccia della corsa importata cancellata, prima di cancellarla: senza,
+  // l'import successivo da Intervals.icu la ricreerebbe. "*": external_id
+  // esiste solo dalla migrazione 0025. Senza la tabella (migrazione 0032) si
+  // cancella come prima.
+  const { data: stored } = await supabase
+    .from("activities")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle<Activity & { external_id?: string | null }>();
+  const tombstone = stored ? deletedImportFor(stored) : null;
+  if (tombstone) {
+    const { error } = await supabase.from("deleted_imports").insert({ user_id: user.id, ...tombstone });
+    // 23505: l'id esterno è già segnato come cancellato.
+    if (error && !isMissingTable(error) && error.code !== "23505") {
+      console.error("deleteActivity tombstone:", error.message);
+    }
+  }
 
   // RLS + filtro esplicito su user_id: l'utente cancella solo le proprie corse.
   await supabase.from("activities").delete().eq("id", id).eq("user_id", user.id);
@@ -354,15 +375,15 @@ export async function saveParsedActivity(
   const effectiveHr = await getEffectiveHrConfig(supabase, user.id, profile ?? null);
 
   try {
-    const activityId = await ingestActivity(input, {
+    const outcome = await ingestActivity(input, {
       supabase,
       userId: user.id,
       profile: effectiveHr,
     });
 
     revalidatePath("/activities");
-    const evaluationJobId = await enqueueActivityEvaluationSafely(user.id, activityId);
-    return { id: activityId, evaluationJobId: evaluationJobId ?? undefined };
+    const evaluationJobId = await enqueueEvaluationAfterIngest(user.id, outcome);
+    return { id: outcome.id, evaluationJobId: evaluationJobId ?? undefined };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Errore durante il salvataggio." };
   }
