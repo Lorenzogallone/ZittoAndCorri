@@ -353,6 +353,8 @@ async function enrichActivity(
     avg_hr: existing.avg_hr,
     max_hr: existing.max_hr,
     elevation_gain_m: existing.elevation_gain_m,
+    rpe: existing.rpe,
+    notes: existing.notes,
   };
   const after: EnrichmentSnapshot = {
     hasHr: present(hr),
@@ -363,6 +365,8 @@ async function enrichActivity(
     avg_hr: (update.avg_hr as number | null) ?? null,
     max_hr: (update.max_hr as number | null) ?? null,
     elevation_gain_m: (update.elevation_gain_m as number | null) ?? null,
+    rpe: (update.rpe as number | null) ?? null,
+    notes: (update.notes as string | null) ?? null,
   };
   return { id: existing.id, substantial: enrichmentIsSubstantial(before, after) };
 }

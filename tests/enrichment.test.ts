@@ -16,6 +16,8 @@ const gpxOnly: EnrichmentSnapshot = {
   avg_hr: 150,
   max_hr: 172,
   elevation_gain_m: 40,
+  rpe: null,
+  notes: null,
 };
 
 test("lo stesso file reimportato o la sola cadenza non sono un cambiamento", () => {
@@ -29,6 +31,10 @@ test("stream nuovi, FC mancante o passo diverso sono un cambiamento", () => {
   assert.equal(enrichmentIsSubstantial({ ...gpxOnly, hasHr: false, avg_hr: null }, gpxOnly), true);
   assert.equal(enrichmentIsSubstantial(gpxOnly, { ...gpxOnly, moving_time_s: 1_650 }), true);
   assert.equal(enrichmentIsSubstantial({ ...gpxOnly, moving_time_s: null }, gpxOnly), true);
+  // Nota o RPE arrivati con il secondo file: l'analisi li deve leggere.
+  assert.equal(enrichmentIsSubstantial(gpxOnly, { ...gpxOnly, notes: "Gambe pesanti" }), true);
+  assert.equal(enrichmentIsSubstantial(gpxOnly, { ...gpxOnly, rpe: 7 }), true);
+  assert.equal(enrichmentIsSubstantial({ ...gpxOnly, notes: "Gambe pesanti" }, { ...gpxOnly, notes: "Gambe pesanti" }), false);
 });
 
 test("un arricchimento non rimanda la push se l'analisi c'era già", () => {
