@@ -225,8 +225,9 @@ function SessionDivider({ item }: { item: CoachMessage }) {
  */
 function FailedNotice({ reason, retrying, disabled, onRetry }: { reason: string; retrying: boolean; disabled: boolean; onRetry: () => void }) {
   return (
-    <div className="mt-1.5 flex items-center justify-end gap-3" role="status">
-      <p className="flex min-w-0 items-start gap-1.5 text-right text-xs text-destructive">
+    // Testo lungo e tasto da 44 pt: su schermi stretti il tasto va a capo sotto il testo.
+    <div className="mt-1.5 flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5" role="status">
+      <p className="flex min-w-0 flex-1 basis-48 items-start justify-end gap-1.5 text-right text-xs text-destructive">
         <CircleAlert size={14} className="mt-px shrink-0" aria-hidden="true" />
         <span className="min-w-0"><span className="font-semibold">Non inviato.</span> {reason}</span>
       </p>
@@ -304,6 +305,10 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
     ? displayMessages.filter((item) => item.kind !== "status" || isSessionMarker(item))
     : session.current;
   const freshSession = displayMessages.some(isSessionMarker) && session.current.length === 0;
+  // Errore di un turno ripreso dopo il riavvio della PWA (messaggio non noto):
+  // va sull'ultima domanda se è rimasta in fondo senza risposta.
+  const lastItem = [...shown].reverse().find((item) => item.kind !== "status");
+  const failedId = activeId ?? (error && !pending && lastItem?.role === "user" ? lastItem.id : null);
 
   // Scorre solo l'elenco dei messaggi (scrollIntoView spostava anche la pagina),
   // anche quando si apre la tastiera: l'ultimo messaggio resta sopra il campo.
@@ -496,7 +501,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
           const proposal = item.plan_proposal_id ? proposalsById.get(item.plan_proposal_id) : null;
           // Non inviato: segnato dal server, oppure turno appena fallito per questo messaggio.
           const failure = item.role === "user"
-            ? sendErrorOf(item)?.message ?? (!pending && error && activeId === item.id ? error : null)
+            ? sendErrorOf(item)?.message ?? (!pending && error && failedId === item.id ? error : null)
             : null;
           return (
             <div key={item.id} className={item.role === "user" ? "ml-10 lg:ml-[max(2.5rem,calc(100%-42rem))]" : "mr-3 lg:max-w-3xl"}>
@@ -531,7 +536,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
       >
         {!keyConfigured ? <Link href="/settings?tab=coach" className="pressable block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">Aggiungi una chiave Gemini o OpenRouter per parlare con il coach</Link> : <div className="flex items-end gap-2"><TextField aria-label="Scrivi al coach" value={message} onValueChange={setMessage} onKeyDown={sendOnEnter} rows={1} disabled={pending} placeholder="Es. Sono in vacanza 2 giorni…" className="max-h-32" /><Button type="button" size="icon" disabled={pending || !message.trim()} aria-label="Invia" onClick={submit}><Send size={17} /></Button></div>}
         {/* L'errore di un messaggio sta sotto il messaggio, con "Riprova". */}
-        {error && !activeId && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
+        {error && !failedId && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
       </div>
     </section>
   );

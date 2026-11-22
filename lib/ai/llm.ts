@@ -22,6 +22,9 @@ export interface AiResult<T> {
   attempts?: number;
 }
 
+/** Come i client (lib/ai/gemini.ts, lib/ai/openrouter.ts): 3 minuti in tutto. */
+const DEFAULT_DEADLINE_MS = 180_000;
+
 export interface GenerateOptions<T> {
   /** Valida e trasforma la risposta (es. zod): se lancia, la risposta non è valida e si riprova. */
   parse?: (raw: unknown) => T;
@@ -44,6 +47,8 @@ export async function generateAi<T>(
   deadlineAt?: number,
   options: GenerateOptions<T> = {},
 ): Promise<AiResult<T>> {
+  // Una sola scadenza per tutti i tentativi: insieme restano sotto il maxDuration della funzione.
+  deadlineAt ??= Date.now() + DEFAULT_DEADLINE_MS;
   const spent: AiUsage[] = [];
   const result = await withAiRetry(async () => {
     const reply = config.provider === "openrouter"
@@ -87,7 +92,7 @@ function emptyUsage(config: AiConfig): AiUsage {
     input_tokens: 0,
     output_tokens: 0,
     cost_usd: 0,
-    estimated: true,
+    estimated: false,
   };
 }
 

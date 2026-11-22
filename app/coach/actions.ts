@@ -339,6 +339,8 @@ async function runCoachTurn(
   deadlineAt: number,
 ) {
   const admin = createAdminClient();
+  // Dopo il salvataggio della risposta un errore (ricordi, proposta) non rende il messaggio "non inviato".
+  let replyId: string | null = null;
   try {
     const context = await buildAiContext(admin, userId, "chat");
     context.conversation.recent_messages = context.conversation.recent_messages
@@ -402,6 +404,7 @@ async function runCoachTurn(
       .select("id")
       .single<{ id: string }>();
     if (assistantError || !assistant) throw assistantError ?? new Error("Messaggio AI non salvato");
+    replyId = assistant.id;
 
     if (result.memories.length) {
       const activeMemoryIds = new Set(context.memories.map((memory) => memory.id));
@@ -467,6 +470,15 @@ async function runCoachTurn(
     }).eq("id", jobId);
   } catch (error) {
     console.error("runCoachTurn:", error);
+    if (replyId) {
+      // La risposta c'è già: il job si chiude con quella, il resto si perde senza bloccare la chat.
+      await admin.from("ai_jobs").update({
+        status: "done",
+        output_message_id: replyId,
+        updated_at: new Date().toISOString(),
+      }).eq("id", jobId);
+      return;
+    }
     const message = aiErrorMessage(error);
     // Il messaggio resta in chat come "non inviato" con "Riprova", e fuori
     // dalla storia che il coach rilegge.
