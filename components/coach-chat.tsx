@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
-import { Check, LoaderCircle, Maximize2, Minimize2, Send, Sparkles, SquarePen, X } from "lucide-react";
+import { CircleAlert, Check, LoaderCircle, Maximize2, Minimize2, RotateCw, Send, Sparkles, SquarePen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { MarkdownMessage } from "@/components/markdown-message";
@@ -13,7 +13,7 @@ import { tap } from "@/lib/haptics";
 import { useAiJob } from "@/lib/use-ai-job";
 import { useRefreshWhile } from "@/lib/use-app-refresh";
 import type { AiJobStatus } from "@/app/actions/ai-jobs";
-import { applyPlanProposal, rejectPlanProposal, sendCoachMessage, startNewCoachChat } from "@/app/coach/actions";
+import { applyPlanProposal, rejectPlanProposal, retryCoachMessage, sendCoachMessage, startNewCoachChat, type CoachActionResult } from "@/app/coach/actions";
 import { isSessionMarker, splitSessions } from "@/lib/coach-session";
 import { TYPE_LABELS } from "@/lib/activity-meta";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
@@ -25,6 +25,9 @@ import { AiModelLine, type AiSwitchState } from "@/components/ai-provider-switch
 import { workoutHeadline } from "@/lib/workout-guide";
 import { AiCost } from "@/components/ai-cost";
 import { readUsage } from "@/lib/ai/usage";
+import { markSendError, sendErrorOf } from "@/lib/coach-failures";
+import { PROPOSAL_EXPIRY_TEXT, withProposalExpiry } from "@/lib/plan/proposal-expiry";
+import { romeDay } from "@/lib/local-date";
 
 const dayLabel = (iso: string) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", timeZone: "UTC" });
@@ -60,11 +63,15 @@ function MessageFooter({ item, replyUsage }: { item: CoachMessage; replyUsage: R
   return <AiCost usage={usage} part={part} prefix={time} className={cn("mt-1", item.role === "user" && "text-right")} />;
 }
 
-const STATUS_TEXT: Record<Exclude<PlanProposal["status"], "pending">, string> = {
+const STATUS_TEXT: Record<Exclude<PlanProposal["status"], "pending" | "expired">, string> = {
   applied: "Modifiche applicate al piano.",
   rejected: "Proposta annullata.",
   stale: "Proposta superata: il piano di quei giorni è cambiato o sono già passati.",
 };
+
+const statusText = (proposal: PlanProposal) => proposal.status === "expired"
+  ? PROPOSAL_EXPIRY_TEXT[proposal.expired_reason ?? "too_old"]
+  : STATUS_TEXT[proposal.status as Exclude<PlanProposal["status"], "pending" | "expired">];
 
 /** Prima/dopo giorno per giorno: si vede subito cosa cambia e cosa no. */
 function ChangeList({ proposal }: { proposal: PlanProposal }) {
@@ -125,7 +132,7 @@ function ProposalCard({ proposal, onStatusChange }: { proposal: PlanProposal; on
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (proposal.status !== "pending") {
-    return <p className="mt-3 text-xs text-muted-foreground">{STATUS_TEXT[proposal.status]}</p>;
+    return <p className="mt-3 text-xs text-muted-foreground">{statusText(proposal)}</p>;
   }
 
   async function decide(apply: boolean) {
@@ -212,6 +219,29 @@ function SessionDivider({ item }: { item: CoachMessage }) {
   );
 }
 
+/**
+ * Sotto un messaggio rimasto senza risposta: cosa è successo e "Riprova", che
+ * rimanda lo stesso messaggio senza riscriverlo.
+ */
+function FailedNotice({ reason, retrying, disabled, onRetry }: { reason: string; retrying: boolean; disabled: boolean; onRetry: () => void }) {
+  return (
+    <div className="mt-1.5 flex items-center justify-end gap-3" role="status">
+      <p className="flex min-w-0 items-start gap-1.5 text-right text-xs text-destructive">
+        <CircleAlert size={14} className="mt-px shrink-0" aria-hidden="true" />
+        <span className="min-w-0"><span className="font-semibold">Non inviato.</span> {reason}</span>
+      </p>
+      <Button type="button" variant="outline" disabled={disabled || retrying} onClick={onRetry} aria-label="Riprova a inviare il messaggio">
+        {retrying ? <LoaderCircle className="animate-spin" /> : <RotateCw />}
+        {retrying ? "Invio…" : "Riprova"}
+      </Button>
+    </div>
+  );
+}
+
+const newClientId = () => (typeof crypto !== "undefined" && "randomUUID" in crypto
+  ? crypto.randomUUID()
+  : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
+
 /** Lista del server più gli elementi locali più recenti che non contiene ancora. */
 function mergeServer<T extends { id: string; created_at: string }>(server: T[], local: T[]): T[] {
   const ids = new Set(server.map((item) => item.id));
@@ -242,6 +272,10 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
   const viewport = useVisibleViewport();
   // Analisi di corse nuove in corso: la risposta compare da sola in chat.
   useRefreshWhile(analyzingActivities > 0);
+  // Messaggio dell'atleta che il coach sta elaborando: se il turno fallisce è lui il "non inviato".
+  const [activeId, setActiveId] = useState<string | null>(null);
+  // Messaggio per cui "Riprova" sta aspettando il server.
+  const [retryingId, setRetryingId] = useState<string | null>(null);
   const showCoachResult = useCallback((status: AiJobStatus) => {
     if (!status.coachResult) throw new Error("Risultato chat mancante");
     const { message: coachMessage, proposal } = status.coachResult;
@@ -249,10 +283,12 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
       ? current
       : [...current, coachMessage]);
     if (proposal) {
+      // La proposta nuova supera quelle ancora in attesa sugli stessi giorni.
       setDisplayProposals((current) => current.some((item) => item.id === proposal.id)
         ? current
-        : [proposal, ...current]);
+        : withProposalExpiry([proposal, ...current], romeDay()));
     }
+    setActiveId(null);
   }, []);
   const { pending, error, start } = useAiJob("coach", { onDone: showCoachResult });
   const proposalsById = new Map(displayProposals.map((proposal) => [proposal.id, proposal]));
@@ -308,13 +344,47 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
     }
   }
 
+  /** Sostituisce un messaggio locale con quello del server (o lo aggiorna). */
+  const replaceMessage = (id: string, next: CoachMessage) =>
+    setDisplayMessages((current) => current.map((item) => (item.id === id ? next : item)));
+
+  /** Avvia il turno del coach; un errore lascia il messaggio in chat con "Riprova". */
+  function run(localId: string, request: () => Promise<CoachActionResult>, fallback: CoachMessage) {
+    // Il turno precedente fallito resta segnato anche quando ne parte un altro.
+    if (error && activeId && activeId !== localId) {
+      const failedId = activeId;
+      setDisplayMessages((current) => current.map((item) => item.id === failedId && !sendErrorOf(item)
+        ? { ...item, metadata: markSendError(item.metadata, { message: error, at: "" }) }
+        : item));
+    }
+    setActiveId(localId);
+    void start(async () => {
+      try {
+        const result = await request();
+        if (result.userMessage) {
+          replaceMessage(localId, result.userMessage);
+          setActiveId(result.userMessage.id);
+        }
+        if (result.error && !result.userMessage) {
+          replaceMessage(localId, { ...fallback, metadata: markSendError(fallback.metadata, { message: result.error, at: "" }) });
+        }
+        return result;
+      } catch (requestError) {
+        replaceMessage(localId, { ...fallback, metadata: markSendError(fallback.metadata, { message: "Connessione interrotta.", at: "" }) });
+        throw requestError;
+      } finally {
+        setRetryingId(null);
+      }
+    });
+  }
+
   function submit() {
     const text = message.trim();
     if (!text || pending) return;
     setMessage("");
-    const optimisticId = `pending-${Date.now()}`;
+    const clientId = newClientId();
     const optimisticMessage: CoachMessage = {
-      id: optimisticId,
+      id: `pending-${clientId}`,
       user_id: "",
       role: "user",
       kind: "chat",
@@ -322,25 +392,26 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
       activity_id: null,
       job_id: null,
       plan_proposal_id: null,
-      metadata: {},
+      metadata: { client_id: clientId },
       created_at: new Date().toISOString(),
     };
     setDisplayMessages((current) => [...current, optimisticMessage]);
-    void start(async () => {
-      try {
-        const result = await sendCoachMessage(text);
-        if (result.userMessage) {
-          setDisplayMessages((current) => current.map((item) =>
-            item.id === optimisticId ? result.userMessage! : item));
-        } else if (result.error) {
-          setDisplayMessages((current) => current.filter((item) => item.id !== optimisticId));
-        }
-        return result;
-      } catch (requestError) {
-        setDisplayMessages((current) => current.filter((item) => item.id !== optimisticId));
-        throw requestError;
-      }
-    });
+    run(optimisticMessage.id, () => sendCoachMessage(text, clientId), optimisticMessage);
+  }
+
+  /**
+   * "Riprova": lo stesso messaggio torna in fondo alla chat e riparte. Se non
+   * era mai arrivato al server si rimanda con lo stesso client_id (niente doppioni).
+   */
+  function retry(item: CoachMessage) {
+    if (pending || retryingId) return;
+    setRetryingId(item.id);
+    // In fondo alla chat subito; il segno d'errore resta finché il server non risponde.
+    const moved: CoachMessage = { ...item, created_at: new Date().toISOString() };
+    setDisplayMessages((current) => [...current.filter((candidate) => candidate.id !== item.id), moved]);
+    const clientId = typeof item.metadata?.client_id === "string" ? item.metadata.client_id : undefined;
+    const resent: CoachMessage = { ...moved, metadata: markSendError(item.metadata, null) };
+    run(item.id, () => (item.id.startsWith("pending-") ? sendCoachMessage(item.content, clientId) : retryCoachMessage(item.id)), resent);
   }
 
   // Su desktop (tastiera fisica) Invio manda e Maiusc+Invio va a capo; sul
@@ -423,6 +494,10 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
         {shown.map((item) => {
           if (isSessionMarker(item)) return <SessionDivider key={item.id} item={item} />;
           const proposal = item.plan_proposal_id ? proposalsById.get(item.plan_proposal_id) : null;
+          // Non inviato: segnato dal server, oppure turno appena fallito per questo messaggio.
+          const failure = item.role === "user"
+            ? sendErrorOf(item)?.message ?? (!pending && error && activeId === item.id ? error : null)
+            : null;
           return (
             <div key={item.id} className={item.role === "user" ? "ml-10 lg:ml-[max(2.5rem,calc(100%-42rem))]" : "mr-3 lg:max-w-3xl"}>
               <div className={item.role === "user" ? "rounded-2xl rounded-br-md bg-primary px-4 py-3 text-sm text-primary-foreground" : "rounded-2xl rounded-bl-md bg-muted/55 px-4 py-3 text-sm leading-relaxed"}>
@@ -437,7 +512,9 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
                   />
                 )}
               </div>
-              <MessageFooter item={item} replyUsage={usageByQuestion.get(item.id) ?? null} />
+              {failure
+                ? <FailedNotice reason={failure} retrying={retryingId === item.id} disabled={pending} onRetry={() => retry(item)} />
+                : <MessageFooter item={item} replyUsage={usageByQuestion.get(item.id) ?? null} />}
             </div>
           );
         })}
@@ -453,7 +530,8 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
         style={isExpanded ? { paddingBottom: viewport?.keyboard ? "0.5rem" : "max(env(safe-area-inset-bottom, 0px), 0.75rem)" } : undefined}
       >
         {!keyConfigured ? <Link href="/settings?tab=coach" className="pressable block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">Aggiungi una chiave Gemini o OpenRouter per parlare con il coach</Link> : <div className="flex items-end gap-2"><TextField aria-label="Scrivi al coach" value={message} onValueChange={setMessage} onKeyDown={sendOnEnter} rows={1} disabled={pending} placeholder="Es. Sono in vacanza 2 giorni…" className="max-h-32" /><Button type="button" size="icon" disabled={pending || !message.trim()} aria-label="Invia" onClick={submit}><Send size={17} /></Button></div>}
-        {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
+        {/* L'errore di un messaggio sta sotto il messaggio, con "Riprova". */}
+        {error && !activeId && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
       </div>
     </section>
   );

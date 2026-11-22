@@ -9,6 +9,7 @@ import type { Schema } from "@google/genai";
 import { extractJson as parseJson, toJsonSchema } from "./json-schema.ts";
 import type { OpenRouterModel } from "./openrouter-models.ts";
 import { openRouterUsage, type AiUsage } from "./usage.ts";
+import { openRouterMessages, type Prompt } from "./prompt-cache.ts";
 
 export type { OpenRouterModel } from "./openrouter-models.ts";
 export { suggestedOpenRouterModels } from "./openrouter-models.ts";
@@ -22,6 +23,8 @@ const MIN_ATTEMPT_MS = 45_000;
 const MAX_OUTPUT_TOKENS = 24_000;
 
 export class OpenRouterError extends Error {
+  /** Token e costo di una risposta arrivata ma non valida (si paga comunque). */
+  usage?: AiUsage;
   constructor(message: string, readonly status: number) {
     super(message);
     this.name = "OpenRouterError";
@@ -54,7 +57,7 @@ interface ChatUsage {
   prompt_tokens?: number;
   completion_tokens?: number;
   cost?: number | null;
-  prompt_tokens_details?: { cached_tokens?: number | null } | null;
+  prompt_tokens_details?: { cached_tokens?: number | null; cache_write_tokens?: number | null } | null;
   completion_tokens_details?: { reasoning_tokens?: number | null } | null;
 }
 
@@ -122,7 +125,7 @@ async function catalogPrice(model: string) {
  * è quello addebitato (`usage.cost`, sempre presente nelle risposte).
  */
 export async function generateOpenRouter<T>(
-  prompt: string,
+  prompt: Prompt,
   schema: Schema,
   opts: { apiKey: string; model: string; /** Istante (ms) entro cui finire; default fra 3 minuti. */ deadlineAt?: number },
 ): Promise<{ data: T; usage: AiUsage }> {
@@ -133,13 +136,12 @@ export async function generateOpenRouter<T>(
     model: opts.model,
     stream: true,
     ...(maxTokens ? { max_tokens: maxTokens } : {}),
-    messages: [
-      {
-        role: "system",
-        content: `Rispondi esclusivamente con un oggetto JSON valido, senza testo prima o dopo, conforme a questo JSON Schema:\n${JSON.stringify(jsonSchema)}`,
-      },
-      { role: "user", content: prompt },
-    ],
+    // Con Claude la parte fissa porta cache_control (lib/ai/prompt-cache.ts).
+    messages: openRouterMessages(
+      prompt,
+      `Rispondi esclusivamente con un oggetto JSON valido, senza testo prima o dopo, conforme a questo JSON Schema:\n${JSON.stringify(jsonSchema)}`,
+      opts.model,
+    ),
     response_format: {
       type: "json_schema",
       json_schema: { name: "risposta", strict: false, schema: jsonSchema },
@@ -166,14 +168,17 @@ export async function generateOpenRouter<T>(
       const data = await readStream(response);
       const content = data.content;
       if (!content.trim()) throw new OpenRouterError("Risposta vuota dal modello", 502);
+      const price = await catalogPrice(opts.model).catch(() => null);
+      const usage = openRouterUsage(opts.model, data.usage, price);
       let parsed: T;
       try {
         parsed = parseJson(content) as T;
       } catch {
-        throw new OpenRouterError("Risposta del modello non in formato JSON", 422);
+        const invalid = new OpenRouterError("Risposta del modello non in formato JSON", 422);
+        invalid.usage = usage;
+        throw invalid;
       }
-      const price = await catalogPrice(opts.model).catch(() => null);
-      return { data: parsed, usage: openRouterUsage(opts.model, data.usage, price) };
+      return { data: parsed, usage };
     } catch (caught) {
       // Tempo scaduto: il modello è troppo lento per il tempo disponibile.
       const error = isTimeout(caught)
@@ -186,8 +191,9 @@ export async function generateOpenRouter<T>(
         withFormat = false;
         continue;
       }
-      // Chiave, credito o modello sbagliati: ritentare non serve.
-      if ([400, 401, 402, 403, 404].includes(status)) throw error;
+      // Chiave, credito o modello sbagliati: ritentare non serve. Una risposta
+      // non valida (422) la riprova lib/ai/llm.ts, che ne registra il costo.
+      if ([400, 401, 402, 403, 404, 422].includes(status)) throw error;
       if (attempt < MAX_ATTEMPTS - 1) await sleep(1_500 * (attempt + 1));
     }
   }

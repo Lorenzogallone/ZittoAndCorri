@@ -5,6 +5,8 @@ import "server-only";
 import { GoogleGenAI, type GenerateContentResponseUsageMetadata, type Schema } from "@google/genai";
 import { DEFAULT_GEMINI_MODEL, geminiPrice } from "@/lib/ai/models";
 import { geminiUsage, type AiUsage } from "@/lib/ai/usage";
+import { InvalidAiResponseError } from "@/lib/ai/retry";
+import { promptText, type Prompt } from "@/lib/ai/prompt-cache";
 
 export const PRIMARY_MODEL = DEFAULT_GEMINI_MODEL;
 const FALLBACK_MODEL = "gemini-2.5-flash-lite";
@@ -92,7 +94,13 @@ async function callModel(
 
 /** JSON della risposta con token e costo stimato da listino. */
 function result<T>(model: string, reply: { text: string; usage: GenerateContentResponseUsageMetadata | undefined }) {
-  return { data: JSON.parse(reply.text) as T, usage: geminiUsage(model, reply.usage, geminiPrice(model)) };
+  const usage = geminiUsage(model, reply.usage, geminiPrice(model));
+  try {
+    return { data: JSON.parse(reply.text) as T, usage };
+  } catch {
+    // Risposta pagata ma illeggibile: lib/ai/llm.ts la riprova e ne registra il costo.
+    throw new InvalidAiResponseError("Risposta AI non in formato JSON", usage);
+  }
 }
 
 /** Corre `p` contro un deadline assoluto: se scade, rigetta con AiTimeoutError
@@ -123,10 +131,12 @@ function withDeadline<T>(p: Promise<T>, deadlineAt: number): Promise<T> {
  * invece di rischiare il kill della funzione (vedi nota su DEADLINE_MS).
  */
 export async function generateStructured<T>(
-  prompt: string,
+  /** Con le parti, il prefisso fisso va per primo: Gemini lo mette in cache da solo. */
+  input: Prompt,
   schema: Schema,
   opts: { apiKey: string; model?: string; /** Istante (ms) entro cui finire; default fra 3 minuti. */ deadlineAt?: number },
 ): Promise<{ data: T; usage: AiUsage }> {
+  const prompt = promptText(input);
   const model = opts?.model ?? PRIMARY_MODEL;
   const deadlineAt = opts.deadlineAt ?? Date.now() + DEADLINE_MS;
   let lastErr: unknown;

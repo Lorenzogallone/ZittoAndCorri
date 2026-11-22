@@ -22,6 +22,9 @@ import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { intervalsOneLine } from "@/lib/intervals-text";
 import { planCalendar, type CalendarDay } from "@/lib/ai/plan-calendar";
 import { currentSession } from "@/lib/coach-session";
+import { withoutFailedMessages } from "@/lib/coach-failures";
+import { withProposalExpiry } from "@/lib/plan/proposal-expiry";
+import { splitContextJson } from "@/lib/ai/prompt-cache";
 
 export type AiContextPurpose = "chat" | "plan" | "evaluation";
 export type DataOrigin = "measured" | "user" | "derived" | "estimated";
@@ -258,6 +261,7 @@ const PROPOSAL_STATUS: Record<string, string> = {
   applied: "applicata dall'atleta",
   rejected: "rifiutata dall'atleta",
   stale: "superata",
+  expired: "scaduta senza conferma (non più applicabile)",
 };
 
 /** Giorni toccati da una proposta (nuove sedute + giorni svuotati). */
@@ -503,9 +507,16 @@ export async function buildAiContext(
   });
   // Dopo "Nuova chat" il coach vede solo la conversazione corrente e le sue proposte.
   const session = currentSession(messages ?? []);
+  // Le domande rimaste senza risposta (invio fallito) non entrano nella storia:
+  // il coach non deve rispondere a domande vecchie né vederle due volte.
+  // Le proposte in attesa scadute arrivano al coach come "scadute".
   const conversation = selectConversation(
-    session.messages,
-    (proposalRows ?? []).filter((p) => !session.startedAt || p.created_at > session.startedAt),
+    withoutFailedMessages(session.messages, now.getTime()),
+    withProposalExpiry(
+      (proposalRows ?? []).filter((p) => !session.startedAt || p.created_at > session.startedAt),
+      today,
+      now.getTime(),
+    ),
   );
   const profileConfig = await getEffectiveHrConfig(supabase, userId, profile ?? null);
   const best = bestReference(acts);
@@ -732,4 +743,14 @@ export function serializeAiContext(context: AiContextEnvelope): string {
   const missing = missingAiContextSections(context);
   if (missing.length) throw new Error(`Contesto AI incompleto: ${missing.join(", ")}`);
   return JSON.stringify(context, null, 2);
+}
+
+/**
+ * Contesto della chat in due JSON compatti per la cache del prompt: prima i
+ * dati stabili, poi data/ora, conversazione e attività in esame.
+ */
+export function serializeCoachContext(context: AiContextEnvelope): { stable: string; variable: string } {
+  const missing = missingAiContextSections(context);
+  if (missing.length) throw new Error(`Contesto AI incompleto: ${missing.join(", ")}`);
+  return splitContextJson(context as unknown as Record<string, unknown>);
 }
