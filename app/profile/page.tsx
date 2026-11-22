@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeATLCTL } from "@/lib/metrics/load";
 import { personalRecords } from "@/lib/metrics/best-efforts";
-import { enduranceBase, predictionReference } from "@/lib/metrics/race-prediction";
+import { durabilityEvidence, enduranceBase, predictionReference, thresholdEvidence, type EnduranceActivity } from "@/lib/metrics/race-prediction";
 import { weeklyVolume } from "@/lib/plan/weekly";
 import { addDays, daysBetween, mondayOf, romeDay } from "@/lib/local-date";
 import { backfillDerived } from "@/lib/derived";
@@ -72,7 +72,7 @@ export default async function ProfilePage() {
   const today = romeDay();
   const firstMonday = addDays(mondayOf(today), -WEEKS_BACK * 7);
   const lastSunday = addDays(mondayOf(today), 13);
-  const [{ data: activeGoal }, { data: profile }, { data: activities }, { data: planned }] = await Promise.all([
+  const [{ data: activeGoal }, { data: profile }, { data: activities }, { data: planned }, { data: evidence }] = await Promise.all([
     supabase
       .from("goals")
       .select("race_name, race_date, distance_m, target_time_s")
@@ -88,6 +88,16 @@ export default async function ProfilePage() {
       .gte("date", firstMonday)
       .lte("date", lastSunday)
       .returns<Array<Pick<PlannedWorkout, "date" | "type" | "status" | "target_distance_m" | "target_duration_s" | "target_pace_s_km" | "workout_steps">>>(),
+    // Per la previsione: tratti delle sedute di soglia e deriva cardiaca dei
+    // lunghi, solo delle ultime 8 settimane (i tratti sono JSON pesante).
+    supabase
+      .from("activities")
+      .select("sport, started_at, distance_m, moving_time_s, duration_s, hr_drift_pct, intervals")
+      .eq("user_id", user.id)
+      .eq("sport", "running")
+      .is("excluded_at", null)
+      .gte("started_at", `${addDays(today, -56)}T00:00:00`)
+      .returns<EnduranceActivity[]>(),
   ]);
 
   const list = activities ?? [];
@@ -144,7 +154,11 @@ export default async function ProfilePage() {
       .filter((activity) => daysBetween(romeDay(activity.started_at), today) <= 120)
       .map((activity) => ({ ...activity, active_s: activeDuration(activity) })),
   );
-  const endurance = enduranceBase(list, today);
+  const endurance = {
+    ...enduranceBase(list, today),
+    threshold: thresholdEvidence(evidence ?? [], today),
+    durability: durabilityEvidence(evidence ?? [], today),
+  };
   const paceSessions = list
     .filter((activity) => activity.pace_check?.status)
     .slice(0, 5)

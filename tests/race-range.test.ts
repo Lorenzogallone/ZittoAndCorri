@@ -98,7 +98,7 @@ test("spiegazione e consiglio in italiano semplice", () => {
   assert.match(result.explanation, /verso il prudente/);
   assert.match(result.advice_text, /dentro la forbice ma sul lato veloce/);
   const trained = goalRaceRange(athlete, trainedBase, { distance_m: HALF, target_time_s: null }, TODAY);
-  assert.match(trained.explanation, /volume e lungo sono adeguati/);
+  assert.match(trained.explanation, /Volume e lungo sono adeguati/);
   const fromHalf = goalRaceRange({ ...athlete, meters: HALF, time_s: 7_300, started_at: "2026-12-20T09:00:00Z" }, lowBase, { distance_m: HALF, target_time_s: null }, "2026-12-27");
   assert.match(fromHalf.explanation, /^Si basa sulla mezza del 20 dic/);
   const fromRun = goalRaceRange({ ...athlete, meters: 7_400 }, lowBase, { distance_m: HALF, target_time_s: null }, TODAY);

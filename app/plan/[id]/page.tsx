@@ -110,12 +110,12 @@ export default async function PlannedWorkoutPage({ params }: Props) {
     if (distance > 0) {
       const { data: recent } = await supabase
         .from("activities")
-        .select("id, sport, started_at, distance_m, duration_s, moving_time_s, best_efforts")
+        .select("id, sport, started_at, distance_m, duration_s, moving_time_s, best_efforts, hr_drift_pct, intervals")
         .eq("user_id", user.id)
         .eq("sport", "running")
         .is("excluded_at", null)
         .gte("started_at", `${addDays(today, -120)}T00:00:00`)
-        .returns<Array<Pick<Activity, "id" | "sport" | "started_at" | "distance_m" | "duration_s" | "moving_time_s" | "best_efforts">>>();
+        .returns<Array<Pick<Activity, "id" | "sport" | "started_at" | "distance_m" | "duration_s" | "moving_time_s" | "best_efforts" | "hr_drift_pct" | "intervals">>>();
       const reference = predictionReference((recent ?? []).map((activity) => ({ ...activity, active_s: activeDuration(activity) })));
       const base = enduranceBase(recent ?? [], today);
       if (goalTarget) {

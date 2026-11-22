@@ -2,7 +2,15 @@
 // (vedi predict.ts per formule e fonti). Funzioni pure.
 
 import { EFFORTS, type BestEfforts } from "./best-efforts.ts";
-import { predictRange, racePaceAdvice, type EnduranceBase, type PaceAdvice, type RaceRange } from "./predict.ts";
+import {
+  predictRange,
+  racePaceAdvice,
+  type DurabilityEvidence,
+  type EnduranceBase,
+  type PaceAdvice,
+  type RaceRange,
+  type ThresholdEvidence,
+} from "./predict.ts";
 import { daysBetween, romeDay } from "../local-date.ts";
 import { formatDuration, formatPace } from "../format.ts";
 
@@ -75,11 +83,94 @@ export function predictionReference(
 const VOLUME_DAYS = 28;
 const LONG_RUN_DAYS = 56;
 
-/** Km a settimana (ultime 4 settimane) e lungo più lungo (ultime 8) dalle corse. */
-export function enduranceBase(
-  activities: Array<{ sport: string; started_at: string; distance_m: number }>,
-  today: string,
-): EnduranceBase {
+/** Sedute di soglia degli ultimi 42 giorni: più vecchie non descrivono la forma di oggi. */
+const THRESHOLD_DAYS = 42;
+/** Un tratto «di soglia» dura da 6 a 30 minuti: più corto è una ripetuta, più lungo è già una gara. */
+const THRESHOLD_MIN_S = 360;
+const THRESHOLD_MAX_S = 1800;
+/** Servono almeno 15 minuti di lavoro perché la seduta dica qualcosa. */
+const THRESHOLD_MIN_WORK_S = 900;
+/** Le sedute recenti pesano di più: il peso si dimezza circa ogni due settimane. */
+const THRESHOLD_DECAY_DAYS = 21;
+/** Lunghi da almeno 70 minuti: sotto, la deriva cardiaca dice poco sulla tenuta. */
+const DURABILITY_MIN_S = 70 * 60;
+
+/** Quanto serve di una corsa per la base di resistenza; i campi facoltativi aggiungono soglia e tenuta. */
+export interface EnduranceActivity {
+  sport: string;
+  started_at: string;
+  distance_m: number;
+  moving_time_s?: number | null;
+  duration_s?: number | null;
+  hr_drift_pct?: number | null;
+  intervals?: {
+    source?: string;
+    segments?: Array<{ kind: string; variant?: string | null; duration_s: number; distance_m?: number | null; pace_s_km?: number | null }>;
+  } | null;
+}
+
+function median(values: number[]): number {
+  const sorted = [...values].sort((x, y) => x - y);
+  return sorted[Math.floor(sorted.length / 2)];
+}
+
+/** Passo sostenuto nelle sedute di soglia recenti (tratti da 6 a 30 minuti, almeno 15 in tutto). */
+export function thresholdEvidence(activities: EnduranceActivity[], today: string): ThresholdEvidence | null {
+  let weighted = 0;
+  let weights = 0;
+  const dates: Array<{ date: string; age: number }> = [];
+  for (const activity of activities) {
+    if (activity.sport !== "running" || !activity.intervals || activity.intervals.source === "none") continue;
+    const date = romeDay(activity.started_at);
+    const age = daysBetween(date, today);
+    if (age < 0 || age >= THRESHOLD_DAYS) continue;
+    const work = (activity.intervals.segments ?? []).filter(
+      (segment) =>
+        segment.kind === "work" && segment.variant !== "sprint" &&
+        segment.duration_s >= THRESHOLD_MIN_S && segment.duration_s <= THRESHOLD_MAX_S &&
+        (segment.pace_s_km ?? 0) > 0,
+    );
+    const seconds = work.reduce((sum, segment) => sum + segment.duration_s, 0);
+    if (seconds < THRESHOLD_MIN_WORK_S) continue;
+    // Passo della seduta: tempo totale diviso distanza totale dei tratti.
+    const meters = work.reduce((sum, segment) => sum + (segment.distance_m ?? (segment.duration_s / segment.pace_s_km!) * 1000), 0);
+    if (meters <= 0) continue;
+    const weight = seconds * Math.exp(-age / THRESHOLD_DECAY_DAYS);
+    weighted += (seconds / meters) * 1000 * weight;
+    weights += weight;
+    dates.push({ date, age });
+  }
+  if (!dates.length || weights <= 0) return null;
+  dates.sort((x, y) => x.age - y.age);
+  return {
+    pace_s_km: Math.round(weighted / weights),
+    sessions: dates.length,
+    age_days: dates[0].age,
+    dates: dates.map((entry) => entry.date),
+  };
+}
+
+/** Deriva cardiaca mediana nei lunghi (≥ 70 minuti) delle ultime 8 settimane. */
+export function durabilityEvidence(activities: EnduranceActivity[], today: string): DurabilityEvidence | null {
+  const drifts: number[] = [];
+  for (const activity of activities) {
+    if (activity.sport !== "running" || activity.hr_drift_pct == null) continue;
+    const age = daysBetween(romeDay(activity.started_at), today);
+    if (age < 0 || age >= LONG_RUN_DAYS) continue;
+    const seconds = activity.moving_time_s ?? activity.duration_s ?? 0;
+    // Fuori scala: sensore del cuore sbagliato, non tenuta.
+    if (seconds < DURABILITY_MIN_S || activity.hr_drift_pct < -5 || activity.hr_drift_pct > 30) continue;
+    drifts.push(activity.hr_drift_pct);
+  }
+  return drifts.length ? { drift_pct: Math.round(median(drifts) * 10) / 10, runs: drifts.length } : null;
+}
+
+/**
+ * Km a settimana (ultime 4 settimane) e lungo più lungo (ultime 8) dalle
+ * corse; se le corse portano tratti e deriva cardiaca, anche il passo di
+ * soglia e la tenuta nei lunghi.
+ */
+export function enduranceBase(activities: EnduranceActivity[], today: string): EnduranceBase {
   let volume = 0;
   let longest = 0;
   for (const activity of activities) {
@@ -89,7 +180,12 @@ export function enduranceBase(
     if (age < VOLUME_DAYS) volume += activity.distance_m;
     if (age < LONG_RUN_DAYS) longest = Math.max(longest, activity.distance_m);
   }
-  return { weekly_km: Math.round((volume / 1000 / (VOLUME_DAYS / 7)) * 10) / 10, longest_m: longest };
+  return {
+    weekly_km: Math.round((volume / 1000 / (VOLUME_DAYS / 7)) * 10) / 10,
+    longest_m: longest,
+    threshold: thresholdEvidence(activities, today),
+    durability: durabilityEvidence(activities, today),
+  };
 }
 
 export function predictTimeRange(
@@ -129,33 +225,72 @@ function onDistance(meters: number): string {
   return `sui ${Number.isInteger(km) ? km : km.toFixed(1).replace(".", ",")} km`;
 }
 
+/** «i 5 km», «la mezza»: distanza con l'articolo. */
+function theDistance(meters: number): string {
+  if (Math.abs(meters - 21_097) < 1) return "la mezza";
+  if (Math.abs(meters - 42_195) < 1) return "la maratona";
+  const km = meters / 1000;
+  return `i ${Number.isInteger(km) ? km : km.toFixed(1).replace(".", ",")} km`;
+}
+
 function shortDate(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "Europe/Rome" });
 }
 
-/** «Si basa sui 5 km del 14 nov; il volume basso (20 km a settimana) allarga la forbice.» */
+const shortDay = (date: string) => shortDate(`${date}T12:00:00Z`);
+
+/**
+ * Su cosa si basa la forbice e cosa la stringe o la allarga, in italiano
+ * semplice: la prova, le sedute di soglia (e se concordano), la tenuta nei
+ * lunghi, volume e lungo.
+ */
 export function rangeExplanation(
   reference: PredictionReference,
   range: RaceRange,
   base: EnduranceBase,
   today: string,
 ): string {
-  const head = `Si basa ${onDistance(reference.meters)} del ${shortDate(reference.started_at)}`;
-  const causes: string[] = [];
   const longer = range.target_m > reference.meters;
-  if (longer && range.volume_cover < WEAK_COVER) {
-    causes.push(`il volume basso (${Math.round(base.weekly_km)} km a settimana)`);
+  const effort = range.sources?.find((source) => source.kind === "effort");
+  const pace = range.sources?.find((source) => source.kind === "threshold");
+  const sentences: string[] = [];
+  if (effort && pace && base.threshold) {
+    const days = base.threshold.dates.slice(0, 2).reverse().map(shortDay).join(" e del ");
+    const sessions = base.threshold.sessions === 1 ? `la seduta di soglia del ${days}` : `le sedute di soglia del ${days}`;
+    sentences.push(
+      `Combina ${theDistance(reference.meters)} del ${shortDate(reference.started_at)} (da soli: ${formatDuration(effort.central_s)}) e ${sessions} a ${formatPace(base.threshold.pace_s_km)} (${formatDuration(pace.central_s)}).`,
+    );
+    const agreement = range.agreement ?? 0;
+    sentences.push(
+      agreement >= 0.6
+        ? "I due dati concordano, quindi la forbice è più stretta."
+        : agreement > 0
+          ? "I due dati sono vicini ma non uguali."
+          : "I due dati non concordano: la forbice li contiene entrambi.",
+    );
+  } else {
+    sentences.push(`Si basa ${onDistance(reference.meters)} del ${shortDate(reference.started_at)}.`);
   }
-  if (longer && range.long_cover < WEAK_COVER) {
-    causes.push(`il lungo corto (massimo ${Math.round(base.longest_m / 1000)} km)`);
+  if (longer && base.durability && range.durability_factor != null && range.durability_factor !== 1) {
+    const drift = String(base.durability.drift_pct).replace(".", ",");
+    sentences.push(
+      range.durability_factor < 1
+        ? `Nei lunghi il cuore resta stabile (deriva ${drift}%): un punto a favore.`
+        : `Nei lunghi il cuore sale molto (deriva ${drift}%): la tenuta è da costruire.`,
+    );
   }
-  if (daysBetween(romeDay(reference.started_at), today) > OLD_REFERENCE_DAYS) {
-    causes.push("una prova non recente");
+  const causes: string[] = [];
+  if (longer && range.volume_cover < WEAK_COVER) causes.push(`il volume basso (${Math.round(base.weekly_km)} km a settimana)`);
+  if (longer && range.long_cover < WEAK_COVER) causes.push(`il lungo corto (massimo ${Math.round(base.longest_m / 1000)} km)`);
+  if (daysBetween(romeDay(reference.started_at), today) > OLD_REFERENCE_DAYS) causes.push("una prova non recente");
+  if (causes.length === 0) {
+    if (!pace) sentences.push("Volume e lungo sono adeguati, la forbice è stretta.");
+  } else {
+    const verb = causes.length > 1 ? "tengono" : "tiene";
+    const where = longer && (range.volume_cover < WEAK_COVER || range.long_cover < WEAK_COVER) ? " verso il prudente" : "";
+    sentences.push(`${causes.join(" e ").replace(/^./, (c) => c.toUpperCase())} ${verb} larga la forbice${where}.`);
   }
-  if (causes.length === 0) return `${head}; volume e lungo sono adeguati, la forbice è stretta.`;
-  const verb = causes.length > 1 ? "allargano" : "allarga";
-  const where = longer && (range.volume_cover < WEAK_COVER || range.long_cover < WEAK_COVER) ? " verso il prudente" : "";
-  return `${head}; ${causes.join(" e ")} ${verb} la forbice${where}.`;
+  return sentences.join(" ");
 }
 
 export function rangeLabel(range: RaceRange): string {
