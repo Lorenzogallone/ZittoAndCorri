@@ -15,6 +15,7 @@ import { TYPE_LABELS } from "@/lib/activity-meta";
 import type { PlannedWorkout } from "@/lib/types";
 import { syncAllIntervalsUsers } from "@/lib/intervals/sync";
 import { sendSyncAlerts } from "@/lib/push/sync-alerts";
+import { matchPlan, matchWindow, withinWindow, type PlanMatchActivity, type PlanMatchWorkout } from "@/lib/plan/match-activities";
 
 export const maxDuration = 300;
 
@@ -22,6 +23,45 @@ type ReminderWorkout = Pick<
   PlannedWorkout,
   "id" | "user_id" | "type" | "target_distance_m" | "target_duration_s" | "target_pace_s_km" | "workout_steps"
 >;
+
+type MatchRow = PlanMatchWorkout & { user_id: string };
+type ActivityRow = PlanMatchActivity & { user_id: string };
+
+/** Sedute del giorno `date` che risultano già abbinate a una corsa fatta prima. */
+async function workoutsDoneEarly(admin: ReturnType<typeof createAdminClient>, date: string, userIds: string[]): Promise<Set<string>> {
+  const done = new Set<string>();
+  if (!userIds.length) return done;
+  try {
+    const range = matchWindow(date);
+    const [plan, runs] = await Promise.all([
+      admin
+        .from("planned_workouts")
+        .select("id, user_id, date, type, status, target_distance_m, target_duration_s, target_pace_s_km, workout_steps, day_order, day_part")
+        .in("user_id", userIds)
+        .gte("date", range.from)
+        .lte("date", range.to)
+        .returns<MatchRow[]>(),
+      admin
+        .from("activities")
+        .select("id, user_id, started_at, sport, type, distance_m, duration_s, moving_time_s")
+        .in("user_id", userIds)
+        .is("excluded_at", null)
+        .gte("started_at", `${shiftIsoDate(range.from, -1)}T12:00:00Z`)
+        .lte("started_at", `${shiftIsoDate(range.to, 1)}T12:00:00Z`)
+        .returns<ActivityRow[]>(),
+    ]);
+    if (plan.error || runs.error) throw plan.error ?? runs.error;
+    for (const userId of userIds) {
+      const workouts = (plan.data ?? []).filter((row) => row.user_id === userId);
+      const activities = withinWindow((runs.data ?? []).filter((row) => row.user_id === userId), range);
+      const matched = matchPlan(workouts, activities);
+      for (const workout of workouts) if (workout.date === date && matched.has(workout.id)) done.add(workout.id);
+    }
+  } catch (error) {
+    console.error("cron daily, sedute già fatte:", error instanceof Error ? error.message : error);
+  }
+  return done;
+}
 
 export async function GET(request: Request) {
   const authError = cronAuthError(request);
@@ -64,9 +104,12 @@ export async function GET(request: Request) {
   }
 
   const subscribed = new Set((subsRes.data ?? []).map((row) => row.user_id));
+  // Seduta di domani già fatta in anticipo (una corsa di oggi o ieri vale per
+  // lei): niente promemoria. Se la verifica non riesce, il promemoria parte.
+  const doneEarly = await workoutsDoneEarly(admin, date, [...new Set((workoutsRes.data ?? []).map((w) => w.user_id))].filter((id) => subscribed.has(id)));
   const byUser = new Map<string, ReminderWorkout[]>();
   for (const workout of workoutsRes.data ?? []) {
-    if (!subscribed.has(workout.user_id)) continue;
+    if (!subscribed.has(workout.user_id) || doneEarly.has(workout.id)) continue;
     byUser.set(workout.user_id, [...(byUser.get(workout.user_id) ?? []), workout]);
   }
 

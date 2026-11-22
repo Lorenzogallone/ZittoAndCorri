@@ -8,11 +8,14 @@ export function RacePacingCard({
   distance_m,
   target_s,
   source,
+  advice,
   heatPct = 0,
 }: {
   distance_m: number;
   target_s: number;
   source: "goal" | "prediction";
+  /** Passo di partenza consigliato dalla previsione, quando l'obiettivo è ambizioso o fuori forbice. */
+  advice?: string;
   heatPct?: number;
 }) {
   const pacing = racePacing(distance_m, target_s);
@@ -30,6 +33,7 @@ export function RacePacingCard({
         {" "}Parti qualche secondo più piano nei primi km, poi stabilizzati.
         {hotPace && <> Con il caldo previsto punta piuttosto a {formatPace(hotPace)}.</>}
       </p>
+      {advice && <p className="-mt-2 mb-4 text-sm text-muted-foreground">Dalla previsione di oggi: {advice.charAt(0).toLowerCase()}{advice.slice(1)}</p>}
       <ol className="divide-y divide-border/60 rounded-2xl border border-border">
         {pacing.checkpoints.map((checkpoint) => (
           <li key={checkpoint.meters} className="flex items-center justify-between px-4 py-2.5 text-sm">

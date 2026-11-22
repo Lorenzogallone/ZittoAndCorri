@@ -21,7 +21,7 @@ import { estimateWorkout } from "@/lib/workout-estimate";
 import { plannedMeters } from "@/lib/plan/planned-distance";
 import { addDays, relativeDayLabel, romeDay, weekdayName } from "@/lib/local-date";
 import { adjustStepsForHeat } from "@/lib/metrics/heat";
-import { enduranceBase, predictionReference, predictTimeRange } from "@/lib/metrics/race-prediction";
+import { enduranceBase, goalRaceRange, predictionReference, predictTimeRange } from "@/lib/metrics/race-prediction";
 import { heatForDates } from "@/lib/weather";
 import type { Activity, Goal, PlannedWorkout } from "@/lib/types";
 import { matchPlan, matchWindow, withinWindow } from "@/lib/plan/match-activities";
@@ -103,12 +103,11 @@ export default async function PlannedWorkoutPage({ params }: Props) {
 
   // Strategia di gara: tempo obiettivo se è la gara dell'obiettivo, altrimenti previsione.
   const isGoalRace = goal?.race_date === workout.date;
-  let race: { distance: number; target: number; source: "goal" | "prediction" } | null = null;
+  let race: { distance: number; target: number; source: "goal" | "prediction"; advice?: string } | null = null;
   if (workout.type === "race" || isGoalRace) {
     const distance = isGoalRace ? goal!.distance_m : meters;
-    if (isGoalRace && goal?.target_time_s) {
-      race = { distance, target: goal.target_time_s, source: "goal" };
-    } else if (distance > 0) {
+    const goalTarget = isGoalRace ? goal?.target_time_s ?? null : null;
+    if (distance > 0) {
       const { data: recent } = await supabase
         .from("activities")
         .select("id, sport, started_at, distance_m, duration_s, moving_time_s, best_efforts")
@@ -118,11 +117,18 @@ export default async function PlannedWorkoutPage({ params }: Props) {
         .gte("started_at", `${addDays(today, -120)}T00:00:00`)
         .returns<Array<Pick<Activity, "id" | "sport" | "started_at" | "distance_m" | "duration_s" | "moving_time_s" | "best_efforts">>>();
       const reference = predictionReference((recent ?? []).map((activity) => ({ ...activity, active_s: activeDuration(activity) })));
-      // Stima centrale della forbice: tiene conto di volume e lungo, non solo di Riegel.
-      if (reference) {
-        const range = predictTimeRange(reference, distance, enduranceBase(recent ?? [], today), today);
-        race = { distance, target: range.central_s, source: "prediction" };
+      const base = enduranceBase(recent ?? [], today);
+      if (goalTarget) {
+        // Tempo obiettivo, ma con accanto il passo di partenza onesto della
+        // previsione: lo stesso consiglio che si legge nel profilo.
+        const advice = reference ? goalRaceRange(reference, base, { distance_m: distance, target_time_s: goalTarget }, today).advice_text : undefined;
+        race = { distance, target: goalTarget, source: "goal", advice };
+      } else if (reference) {
+        // Stima centrale della forbice: tiene conto di volume e lungo, non solo di Riegel.
+        race = { distance, target: predictTimeRange(reference, distance, base, today).central_s, source: "prediction" };
       }
+    } else if (goalTarget) {
+      race = { distance, target: goalTarget, source: "goal" };
     }
   }
 
@@ -192,7 +198,7 @@ export default async function PlannedWorkoutPage({ params }: Props) {
         </Section>
       )}
 
-      {race && <RacePacingCard distance_m={race.distance} target_s={race.target} source={race.source} heatPct={hot?.pct ?? 0} />}
+      {race && <RacePacingCard distance_m={race.distance} target_s={race.target} source={race.source} advice={race.advice} heatPct={hot?.pct ?? 0} />}
 
       {WORKOUT_TYPE_GUIDE[workout.type] && (
         <details className="group mb-8 text-sm">
