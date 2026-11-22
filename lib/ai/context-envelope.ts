@@ -5,6 +5,7 @@ import { computeATLCTL } from "@/lib/metrics/load";
 import { calibratePaces, type PaceCalibrationEntry } from "@/lib/metrics/pace-calibration";
 import { hrZones } from "@/lib/metrics/zones";
 import { predictRaces } from "@/lib/metrics/predict";
+import { enduranceBase, goalRaceRange, predictionReference } from "@/lib/metrics/race-prediction";
 import type {
   Activity,
   CoachMemory,
@@ -50,6 +51,7 @@ type ContextActivity = Pick<
   | "hr_drift_pct"
   | "calories"
   | "pace_check"
+  | "best_efforts"
   | "intervals"
 >;
 
@@ -134,6 +136,21 @@ export interface AiContextEnvelope {
       note: string;
     };
     predictions: (RacePredict & { origin: "derived"; reference_activity_id: string }) | null;
+    /** Forbice onesta per la gara dell'obiettivo (o la mezza): da preferire alle predictions Riegel. */
+    race_range: {
+      distance_m: number;
+      optimistic_s: number;
+      central_s: number;
+      prudent_s: number;
+      start_pace_s_km: [number, number];
+      goal_fit: "inside" | "too_fast" | "too_slow" | null;
+      explanation: string;
+      advice: string;
+      reference: { meters: number; time_s: number; started_at: string; activity_id: string };
+      endurance: { weekly_km: number; longest_m: number };
+      origin: "derived";
+      note: string;
+    } | null;
     zepp: {
       connected: true;
       last_sync_at: string | null;
@@ -423,10 +440,10 @@ async function contextActivities(supabase: SupabaseClient, userId: string, since
     .is("excluded_at", null)
     .order("started_at")
     .returns<ContextActivity[]>();
-  const full = await query(`${CONTEXT_ACTIVITY_COLUMNS}, pace_check, intervals`);
+  const full = await query(`${CONTEXT_ACTIVITY_COLUMNS}, pace_check, best_efforts, intervals`);
   if (full.error?.code !== "42703") return full;
   // Migration 0022 (intervals) o 0018 (pace_check) non ancora eseguite.
-  const result = await query(`${CONTEXT_ACTIVITY_COLUMNS}, pace_check`);
+  const result = await query(`${CONTEXT_ACTIVITY_COLUMNS}, pace_check, best_efforts`);
   if (result.error?.code === "42703") return query(CONTEXT_ACTIVITY_COLUMNS);
   return result;
 }
@@ -514,6 +531,28 @@ export async function buildAiContext(
     : null;
   const predictions = best
     ? { ...predictRaces({ distance_m: best.distance_m, duration_s: activeSeconds(best) }, goal?.distance_m), origin: "derived" as const, reference_activity_id: best.id }
+    : null;
+  // Stessa forbice del profilo (lib/metrics/race-prediction), qui sulle corse degli ultimi 90 giorni.
+  const rangeReference = predictionReference(acts.map((a) => ({ ...a, best_efforts: a.best_efforts ?? null, active_s: activeSeconds(a) })));
+  const rangeBase = enduranceBase(acts, today);
+  const rangeGoal = rangeReference
+    ? goalRaceRange(rangeReference, rangeBase, { distance_m: goal?.distance_m ?? 21_097, target_time_s: goal?.target_time_s ?? null }, today)
+    : null;
+  const raceRange = rangeReference && rangeGoal
+    ? {
+        distance_m: rangeGoal.range.target_m,
+        optimistic_s: rangeGoal.range.optimistic_s,
+        central_s: rangeGoal.range.central_s,
+        prudent_s: rangeGoal.range.prudent_s,
+        start_pace_s_km: [rangeGoal.advice.fast_s_km, rangeGoal.advice.slow_s_km] as [number, number],
+        goal_fit: rangeGoal.advice.goal_fit,
+        explanation: rangeGoal.explanation,
+        advice: rangeGoal.advice_text,
+        reference: rangeReference,
+        endurance: rangeBase,
+        origin: "derived" as const,
+        note: "Quando parli di tempo o passo gara usa questa forbice e start_pace_s_km, non predictions (Riegel puro, ignora volume e lungo). Dai sempre la forbice, non un tempo secco.",
+      }
     : null;
   const load = computeATLCTL(
     acts.map((a) => ({
@@ -622,6 +661,7 @@ export async function buildAiContext(
         note: "Piano e attività non hanno collegamenti espliciti: deduci quanto è stato svolto confrontando date, distanza, durata, passo, HR e note; non usare lo status come prova di aderenza.",
       },
       predictions,
+      race_range: raceRange,
       zepp: zepp?.connection?.enabled ? {
         connected: true,
         last_sync_at: zepp.connection.last_sync_at,

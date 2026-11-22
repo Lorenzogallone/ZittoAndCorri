@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeATLCTL } from "@/lib/metrics/load";
 import { personalRecords } from "@/lib/metrics/best-efforts";
-import { predictionReference } from "@/lib/metrics/race-prediction";
+import { enduranceBase, predictionReference } from "@/lib/metrics/race-prediction";
 import { weeklyVolume } from "@/lib/plan/weekly";
 import { addDays, daysBetween, mondayOf, romeDay } from "@/lib/local-date";
 import { backfillDerived } from "@/lib/derived";
@@ -144,6 +144,7 @@ export default async function ProfilePage() {
       .filter((activity) => daysBetween(romeDay(activity.started_at), today) <= 120)
       .map((activity) => ({ ...activity, active_s: activeDuration(activity) })),
   );
+  const endurance = enduranceBase(list, today);
   const paceSessions = list
     .filter((activity) => activity.pace_check?.status)
     .slice(0, 5)
@@ -173,6 +174,8 @@ export default async function ProfilePage() {
       weeks={weeks}
       currentWeek={mondayOf(today)}
       reference={reference}
+      endurance={endurance}
+      today={today}
       records={records}
       paceSessions={paceSessions}
     />
