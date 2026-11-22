@@ -1,0 +1,31 @@
+# Controlli automatici su ogni push e pull request: test del core,
+# typecheck e lint. Node 24 come in locale (i test usano
+# --experimental-strip-types, che richiede Node >= 22.6).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Installa le dipendenze
+        run: npm ci
+      - name: Test del core
+        run: npm run test:core
+      - name: Typecheck
+        run: npx tsc --noEmit -p .
+      - name: Lint
+        run: npm run lint
