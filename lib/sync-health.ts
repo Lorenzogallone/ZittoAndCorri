@@ -80,7 +80,8 @@ function latest(values: Array<string | null | undefined>): string | null {
 /**
  * Problemi da segnalare, dal più importante. Vuoto se è tutto a posto.
  * - Intervals.icu in errore (last_error non vuoto).
- * - Orologio Zepp collegato che non sincronizza da più di 48 ore.
+ * - Orologio Zepp collegato che non sincronizza da più di 48 ore, se i suoi
+ *   dati non arrivano nemmeno da Intervals.icu.
  * - Dati salute (Zepp o wellness Intervals.icu) fermi da più di 48 ore.
  * L'ultimo non si ripete se la causa è già segnalata (orologio fermo o
  * Intervals.icu in errore).
@@ -104,8 +105,13 @@ export function syncHealthIssues(input: SyncHealthInput, nowValue: Date | string
     });
   }
 
+  // I dati dell'orologio arrivano anche da Intervals.icu (wellness): se lì
+  // sono freschi l'orologio funziona, anche se l'app Zepp non sincronizza.
+  const wellnessFresh = Boolean(intervals?.importWellness && !intervals.lastError) &&
+    !olderThan(dayEnd(input.latestHealthDate.intervals), now);
+
   let watchStale = false;
-  if (zepp) {
+  if (zepp && !wellnessFresh) {
     const lastSync = time(zepp.lastSyncAt);
     const reference = lastSync ?? time(zepp.pairedAt);
     if (reference !== null && olderThan(reference, now)) {

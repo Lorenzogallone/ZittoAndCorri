@@ -51,6 +51,22 @@ test("orologio Zepp fermo da più di 48 ore", () => {
   assert.equal(issues[0].href, "/settings?tab=links#zepp-os-integration");
 });
 
+test("app Zepp ferma ma dati dell'orologio freschi da Intervals.icu: nessun avviso", () => {
+  // Il caso reale del 22/11: app Zepp ferma al 19, wellness Intervals.icu di oggi.
+  const input: SyncHealthInput = {
+    intervals: { lastError: null, importWellness: true, connectedAt: "2026-10-01T08:00:00Z" },
+    zepp: { enabled: true, lastSyncAt: "2026-11-19T21:47:52Z", pairedAt: "2026-10-23T11:57:54Z" },
+    latestHealthDate: { zepp: "2026-11-19", intervals: "2026-11-22" },
+  };
+  assert.deepEqual(syncHealthIssues(input, NOW), []);
+  // Se anche Intervals.icu è fermo, l'orologio torna a essere segnalato.
+  const stale = syncHealthIssues({ ...input, latestHealthDate: { zepp: "2026-11-19", intervals: "2026-11-19" } }, NOW);
+  assert.deepEqual(stale.map((issue) => issue.kind), ["watch-stale"]);
+  // Con l'import wellness spento Intervals.icu non porta dati dell'orologio.
+  const off = syncHealthIssues({ ...input, intervals: { ...input.intervals!, importWellness: false } }, NOW);
+  assert.deepEqual(off.map((issue) => issue.kind), ["watch-stale"]);
+});
+
 test("47 ore fa è ancora in regola", () => {
   const issues = syncHealthIssues({
     ...base,
