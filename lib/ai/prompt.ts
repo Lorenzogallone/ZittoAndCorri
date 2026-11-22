@@ -3,6 +3,7 @@ import { Type, type Schema } from "@google/genai";
 import { WORKOUT_TYPES } from "@/lib/types";
 import { z } from "zod";
 import { COACH_METHODOLOGY } from "@/lib/ai/methodology";
+import type { PromptParts } from "@/lib/ai/prompt-cache";
 
 // ── Valutazione di una singola corsa ─────────────────────────────────────────
 
@@ -437,8 +438,12 @@ export const coachResponseSchema: Schema = {
   required: ["reply", "conversation_summary", "memories", "goal_update", "plan_summary", "remove_dates", "activity_updates", "workouts"],
 };
 
-export function buildCoachPrompt(contextJson: string, userMessage: string): string {
-  return [
+/**
+ * Prompt della chat in tre parti per la cache del provider (lib/ai/prompt-cache.ts):
+ * istruzioni fisse, contesto stabile, poi data, conversazione e messaggio nuovo.
+ */
+export function buildCoachPrompt(context: { stable: string; variable: string }, userMessage: string): PromptParts {
+  const system = [
     "Sei l'allenatore di corsa di questo atleta, non un assistente compiacente. Lo segui da settimane: conosci il suo storico, il piano, la conversazione e le proposte che gli hai già fatto. Rispondi in italiano, diretto e concreto, come un coach vero a bordo pista.",
     "",
     "# Come ti comporti",
@@ -487,11 +492,16 @@ export function buildCoachPrompt(contextJson: string, userMessage: string): stri
     "- conversation_summary aggiorna in poche frasi il riassunto precedente con ciò che conta per le prossime conversazioni (decisioni prese, richieste ricorrenti, cosa ha rifiutato), senza ripetere i ricordi strutturati.",
     "",
     COACH_METHODOLOGY,
-    "",
-    "# Contesto affidabile",
-    contextJson,
-    "",
-    "# Nuovo messaggio dell'atleta",
-    userMessage,
   ].join("\n");
+  return {
+    system,
+    stable: ["# Contesto affidabile: atleta, storico e piano", context.stable].join("\n"),
+    variable: [
+      "# Contesto affidabile: oggi, conversazione e proposte (meta, conversation, focus_activity)",
+      context.variable,
+      "",
+      "# Nuovo messaggio dell'atleta",
+      userMessage,
+    ].join("\n"),
+  };
 }

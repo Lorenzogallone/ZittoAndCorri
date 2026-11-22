@@ -20,6 +20,8 @@ import type { Activity, CoachMessage, Goal, PlanProposal, PlannedWorkout } from 
 import { scheduleIntervalsImportIfStale } from "@/lib/intervals/sync";
 import { sortByDayOrder } from "@/lib/plan/day-sessions";
 import { matchPlan, matchWindow, withinWindow } from "@/lib/plan/match-activities";
+import { withFailureMarks } from "@/lib/coach-failures";
+import { withProposalExpiry } from "@/lib/plan/proposal-expiry";
 import { workoutStepsOrLegacy } from "@/lib/workout-steps";
 
 // 300 s: la chat del coach con modelli lenti (es. Opus) usa fino a 270 s
@@ -156,7 +158,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
         </aside>
         <div className="flex min-h-0 flex-1 basis-0 flex-col lg:col-start-1 lg:row-start-1">
           <Suspense fallback={<div className="skeleton min-h-0 flex-1 rounded-3xl" />}>
-            <CoachChat key={prompt ?? ""} messages={[...(messagesRes.data ?? [])].reverse()} proposals={proposalsRes.data ?? []} ai={aiStatus.chat} analyzingActivities={pendingEvaluationsRes.count ?? 0} />
+            <CoachChat key={prompt ?? ""} messages={withFailureMarks([...(messagesRes.data ?? [])].reverse())} proposals={withProposalExpiry(proposalsRes.data ?? [], today)} ai={aiStatus.chat} analyzingActivities={pendingEvaluationsRes.count ?? 0} />
           </Suspense>
         </div>
       </div>

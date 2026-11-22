@@ -383,7 +383,9 @@ export interface PlanProposal {
   /** Migrazione 0023: giorni da svuotare e prima/dopo per giorno. */
   remove_dates?: string[] | null;
   changes?: ProposalChange[] | null;
-  status: "pending" | "applied" | "rejected" | "stale";
+  /** "expired" solo nell'app (lib/plan/proposal-expiry.ts): nel db resta "pending". */
+  status: "pending" | "applied" | "rejected" | "stale" | "expired";
+  expired_reason?: "too_old" | "superseded" | "past";
   created_at: string;
   applied_at: string | null;
 }

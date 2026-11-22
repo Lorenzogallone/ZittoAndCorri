@@ -295,7 +295,7 @@ test("chat e analisi usano provider e modello del proprio compito, e ogni chiama
   assert.match(evaluation, /getAiConfig\(userId, "analysis"\)/);
   assert.match(recap, /getAiConfig\(userId, "analysis"\)/);
   for (const source of [coach, evaluation]) {
-    assert.match(source, /generateAi<unknown>\(/);
+    assert.match(source, /generateAi<\w+>\(/);
     assert.doesNotMatch(source, /from "@\/lib\/ai\/gemini"/);
   }
   assert.match(evaluation, /model: ai\.model/);

@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAiConfig, type AiConfig } from "@/lib/ai/credentials";
-import { buildAiContext, serializeAiContext } from "@/lib/ai/context-envelope";
+import { buildAiContext, serializeCoachContext } from "@/lib/ai/context-envelope";
 import {
   buildCoachPrompt,
   coachResponseSchema,
@@ -16,12 +16,16 @@ import {
 } from "@/lib/ai/prompt";
 import { generalGoalName } from "@/lib/goals";
 import { aiErrorMessage, generateAi } from "@/lib/ai/llm";
-import { DAY_PARTS, WORKOUT_TYPES, type CoachMessage, type ProposedWorkout } from "@/lib/types";
+import { DAY_PARTS, WORKOUT_TYPES, type CoachMessage, type PlanProposal, type ProposedWorkout } from "@/lib/types";
 import { normalizeWorkoutSteps } from "@/lib/workout-steps";
 import { withoutEasyWarmups } from "@/lib/plan/easy-steps";
 import { insertPlanProposal } from "@/lib/plan/proposals";
 import { diffAgainstCalendar } from "@/lib/plan/proposal-calendar";
 import { NEW_SESSION } from "@/lib/coach-session";
+import { markSendError } from "@/lib/coach-failures";
+import { proposalExpiry, PROPOSAL_EXPIRY_TEXT } from "@/lib/plan/proposal-expiry";
+import { discardedPlanNote, workoutDiscardReason, type DiscardReason } from "@/lib/plan/proposal-notes";
+import { romeDay } from "@/lib/local-date";
 
 /**
  * Tempo per una risposta del coach, dall'invio del messaggio: la funzione può
@@ -180,11 +184,17 @@ function dayLabel(iso: string): string {
   return new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", timeZone: "UTC" });
 }
 
-export async function sendCoachMessage(message: string): Promise<CoachActionResult> {
+/**
+ * Invia un messaggio al coach. `clientId` (generato dal telefono) rende
+ * l'invio idempotente: se la connessione cade dopo il salvataggio, rimandare
+ * lo stesso messaggio riprende quello salvato invece di duplicarlo.
+ */
+export async function sendCoachMessage(message: string, clientId?: string): Promise<CoachActionResult> {
   const startedAt = Date.now();
   const text = message.trim();
   if (!text) return { error: "Scrivi un messaggio per il coach." };
   if (text.length > 4000) return { error: "Il messaggio è troppo lungo." };
+  const client = typeof clientId === "string" && /^[\w-]{8,64}$/.test(clientId) ? clientId : null;
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -193,23 +203,131 @@ export async function sendCoachMessage(message: string): Promise<CoachActionResu
   const ai = await getAiConfig(user.id, "chat");
   if (!ai) return { error: "Configura una chiave AI (Gemini o OpenRouter) nelle impostazioni." };
 
+  if (client) {
+    const { data: existing } = await supabase
+      .from("coach_messages")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("role", "user")
+      .eq("metadata->>client_id", client)
+      .limit(1)
+      .maybeSingle<{ id: string }>();
+    if (existing) return startCoachTurn(existing.id, startedAt);
+  }
+
   const { data: userMessage, error: messageError } = await supabase
     .from("coach_messages")
-    .insert({ user_id: user.id, role: "user", kind: "chat", content: text })
+    .insert({ user_id: user.id, role: "user", kind: "chat", content: text, metadata: client ? { client_id: client } : {} })
     .select("*")
     .single<CoachMessage>();
   if (messageError || !userMessage) return { error: "Impossibile salvare il messaggio." };
+  return queueCoachTurn(user.id, userMessage, ai, startedAt);
+}
 
+/**
+ * "Riprova" su un messaggio rimasto senza risposta: stesso messaggio, niente
+ * duplicati. Torna in fondo alla chat (ora di invio aggiornata) e perde il
+ * segno d'errore; se il coach fallisce di nuovo il segno torna.
+ */
+export async function retryCoachMessage(messageId: string): Promise<CoachActionResult> {
+  return startCoachTurn(messageId, Date.now());
+}
+
+async function startCoachTurn(messageId: string, startedAt: number): Promise<CoachActionResult> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const ai = await getAiConfig(user.id, "chat");
+  if (!ai) return { error: "Configura una chiave AI (Gemini o OpenRouter) nelle impostazioni." };
+
+  const { data: original } = await supabase
+    .from("coach_messages")
+    .select("*")
+    .eq("id", messageId)
+    .eq("user_id", user.id)
+    .eq("role", "user")
+    .maybeSingle<CoachMessage>();
+  if (!original) return { error: "Messaggio non trovato." };
+
+  // Già risposto (es. il primo invio era andato a buon fine): niente doppione.
+  const { data: reply } = await supabase
+    .from("coach_messages")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("role", "assistant")
+    .eq("metadata->>reply_to", original.id)
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+  if (reply) return { error: "Il coach ha già risposto a questo messaggio: ricarica la chat.", userMessage: original };
+
+  // Un turno ancora in corso per questo messaggio: lo si segue invece di aprirne un altro.
+  const { data: running } = await supabase
+    .from("ai_jobs")
+    .select("id, created_at")
+    .eq("user_id", user.id)
+    .eq("kind", "chat")
+    .eq("ref_id", original.id)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ id: string; created_at: string }>();
+  if (running && Date.now() - Date.parse(running.created_at) < COACH_BUDGET_MS + 30_000) {
+    return { jobId: running.id, userMessage: original };
+  }
+
+  const { data: userMessage, error } = await supabase
+    .from("coach_messages")
+    .update({ metadata: markSendError(original.metadata, null), created_at: new Date().toISOString() })
+    .eq("id", original.id)
+    .eq("user_id", user.id)
+    .select("*")
+    .single<CoachMessage>();
+  if (error || !userMessage) return { error: "Impossibile rimandare il messaggio. Riprova." };
+  return queueCoachTurn(user.id, userMessage, ai, startedAt);
+}
+
+async function queueCoachTurn(userId: string, userMessage: CoachMessage, ai: AiConfig, startedAt: number): Promise<CoachActionResult> {
+  const supabase = await createClient();
   const { data: job, error: jobError } = await supabase
     .from("ai_jobs")
-    .insert({ user_id: user.id, kind: "chat", ref_id: userMessage.id, status: "pending" })
+    .insert({ user_id: userId, kind: "chat", ref_id: userMessage.id, status: "pending" })
     .select("id")
     .single<{ id: string }>();
-  if (jobError || !job) return { error: "Impossibile avviare il coach.", userMessage };
-
-  const userId = user.id;
-  after(() => runCoachTurn(job.id, userId, userMessage.id, text, ai, startedAt + COACH_BUDGET_MS));
+  if (jobError || !job) {
+    const failed = await markMessageFailed(createAdminClient(), userId, userMessage.id, "Impossibile avviare il coach.");
+    return { error: "Impossibile avviare il coach.", userMessage: failed ?? userMessage };
+  }
+  after(() => runCoachTurn(job.id, userId, userMessage.id, userMessage.content, ai, startedAt + COACH_BUDGET_MS));
   return { jobId: job.id, userMessage };
+}
+
+/** Segna il messaggio dell'atleta come non inviato (metadata.send_error). */
+async function markMessageFailed(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  messageId: string,
+  reason: string,
+): Promise<CoachMessage | null> {
+  try {
+    const { data: current } = await admin
+      .from("coach_messages")
+      .select("metadata")
+      .eq("id", messageId)
+      .eq("user_id", userId)
+      .maybeSingle<{ metadata: Record<string, unknown> | null }>();
+    const { data, error } = await admin
+      .from("coach_messages")
+      .update({ metadata: markSendError(current?.metadata, { message: reason, at: new Date().toISOString() }) })
+      .eq("id", messageId)
+      .eq("user_id", userId)
+      .select("*")
+      .maybeSingle<CoachMessage>();
+    if (error) console.error("markMessageFailed:", error.message);
+    return data ?? null;
+  } catch (error) {
+    console.error("markMessageFailed:", error instanceof Error ? error.message : error);
+    return null;
+  }
 }
 
 async function runCoachTurn(
@@ -221,18 +339,23 @@ async function runCoachTurn(
   deadlineAt: number,
 ) {
   const admin = createAdminClient();
+  // Dopo il salvataggio della risposta un errore (ricordi, proposta) non rende il messaggio "non inviato".
+  let replyId: string | null = null;
   try {
     const context = await buildAiContext(admin, userId, "chat");
     context.conversation.recent_messages = context.conversation.recent_messages
       .filter((message) => message.id !== sourceMessageId);
-    const { data: raw, usage } = await generateAi<unknown>(
-      buildCoachPrompt(serializeAiContext(context), userText),
+    // Risposta non valida (JSON o struttura) o errore passeggero: un nuovo
+    // tentativo automatico, poi l'errore (lib/ai/llm.ts, lib/ai/retry.ts).
+    const { data: parsed, usage } = await generateAi<ParsedCoachResponse>(
+      buildCoachPrompt(serializeCoachContext(context), userText),
       coachResponseSchema,
       ai,
       "coach",
       deadlineAt,
+      { parse: parseCoachResponse },
     );
-    const result = coachResponseSchemaZod.parse(raw);
+    const { result, rawWorkouts, rawRemoveDates } = parsed;
     const start = context.meta.today;
     const end = dateShift(start, PROPOSAL_WINDOW_DAYS - 1);
     let goalId = context.goal?.id ?? null;
@@ -245,13 +368,22 @@ async function runCoachTurn(
       revalidatePath("/activities");
       revalidatePath("/profile");
     }
-    const proposed = result.workouts
-      .map((workout) => cleanWorkout(workout, start, end, goalId))
-      .filter((workout): workout is NonNullable<typeof workout> => workout !== null);
+    // Sedute scartate dalla validazione: dette in chat in una riga, non in silenzio.
+    const discarded: DiscardReason[] = Array.from({ length: Math.max(0, rawWorkouts - result.workouts.length) }, () => "invalid" as const);
+    const proposed = result.workouts.flatMap((workout) => {
+      const cleaned = cleanWorkout(workout, start, end, goalId);
+      if (cleaned) return [cleaned];
+      discarded.push(workoutDiscardReason(workout, start, end, WORKOUT_TYPES, normalizeWorkoutSteps(workout.workout_steps).length) ?? "no_steps");
+      return [];
+    });
+    const removeDates = result.remove_dates.filter(isIsoDate);
+    const discardedNote = discardedPlanNote({ workouts: discarded, removeDates: Math.max(0, rawRemoveDates - removeDates.length) });
 
     // Solo ciò che cambia davvero, mai giorni passati o già corsi.
-    const diff = await diffAgainstCalendar(admin, userId, start, end, proposed, result.remove_dates.filter(isIsoDate), REMOVE_LOOKBACK_DAYS);
-    const hasProposal = diff.touched.length > 0 && !!result.plan_summary;
+    const diff = await diffAgainstCalendar(admin, userId, start, end, proposed, removeDates, REMOVE_LOOKBACK_DAYS);
+    // Senza plan_summary la proposta non va persa: riassunto generico.
+    const planSummary = result.plan_summary?.trim() || "Modifiche al piano proposte dal coach.";
+    const hasProposal = diff.touched.length > 0;
     const lockedNote = diff.locked.length
       ? `\n\n_Non ho toccato ${diff.locked.map(dayLabel).join(", ")}: ${diff.locked.length === 1 ? "è un giorno già corso o troppo indietro" : "sono giorni già corsi o troppo indietro"}._`
       : proposed.length && !diff.touched.length
@@ -264,7 +396,7 @@ async function runCoachTurn(
         user_id: userId,
         role: "assistant",
         kind: hasProposal ? "plan_proposal" : "chat",
-        content: result.reply + lockedNote,
+        content: result.reply + lockedNote + (discardedNote ? `\n\n${discardedNote}` : ""),
         job_id: jobId,
         // Costo di prompt e risposta, mostrato sotto i due messaggi in chat.
         metadata: { ai_usage: usage, reply_to: sourceMessageId },
@@ -272,6 +404,7 @@ async function runCoachTurn(
       .select("id")
       .single<{ id: string }>();
     if (assistantError || !assistant) throw assistantError ?? new Error("Messaggio AI non salvato");
+    replyId = assistant.id;
 
     if (result.memories.length) {
       const activeMemoryIds = new Set(context.memories.map((memory) => memory.id));
@@ -314,7 +447,7 @@ async function runCoachTurn(
     if (hasProposal) {
       const proposalId = await insertPlanProposal(admin, {
         userId,
-        summary: result.plan_summary!,
+        summary: planSummary,
         touched: diff.touched,
         workouts: diff.workouts,
         removeDates: diff.removeDates,
@@ -337,18 +470,59 @@ async function runCoachTurn(
     }).eq("id", jobId);
   } catch (error) {
     console.error("runCoachTurn:", error);
+    if (replyId) {
+      // La risposta c'è già: il job si chiude con quella, il resto si perde senza bloccare la chat.
+      await admin.from("ai_jobs").update({
+        status: "done",
+        output_message_id: replyId,
+        updated_at: new Date().toISOString(),
+      }).eq("id", jobId);
+      return;
+    }
+    const message = aiErrorMessage(error);
+    // Il messaggio resta in chat come "non inviato" con "Riprova", e fuori
+    // dalla storia che il coach rilegge.
+    await markMessageFailed(admin, userId, sourceMessageId, message);
     await admin.from("ai_jobs").update({
       status: "error",
-      error: aiErrorMessage(error),
+      error: message,
       updated_at: new Date().toISOString(),
     }).eq("id", jobId);
   }
+}
+
+interface ParsedCoachResponse {
+  result: CoachResponse;
+  /** Elementi nella risposta grezza, per contare quelli scartati dalla validazione. */
+  rawWorkouts: number;
+  rawRemoveDates: number;
+}
+
+function parseCoachResponse(raw: unknown): ParsedCoachResponse {
+  const result = coachResponseSchemaZod.parse(raw);
+  const value = (raw ?? {}) as { workouts?: unknown; remove_dates?: unknown };
+  return {
+    result,
+    rawWorkouts: Array.isArray(value.workouts) ? value.workouts.length : 0,
+    rawRemoveDates: Array.isArray(value.remove_dates) ? value.remove_dates.length : 0,
+  };
 }
 
 export async function applyPlanProposal(proposalId: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  // Proposta scaduta (vecchia, superata o con i giorni già passati): non si applica.
+  const { data: proposals } = await supabase
+    .from("plan_proposals")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(20)
+    .returns<PlanProposal[]>();
+  const target = proposals?.find((proposal) => proposal.id === proposalId);
+  const expired = target ? proposalExpiry(target, proposals ?? [], romeDay(), Date.now()) : null;
+  if (expired) return { error: PROPOSAL_EXPIRY_TEXT[expired] };
   // Solo la funzione giorno per giorno (migrazione 0023): la vecchia cancellava
   // tutte le sedute della finestra, anche quelle non citate o già passate.
   const { data, error } = await supabase.rpc("apply_plan_proposal_v2", { p_proposal_id: proposalId });

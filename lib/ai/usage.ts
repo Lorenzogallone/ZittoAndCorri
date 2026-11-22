@@ -9,6 +9,8 @@ export interface AiUsage {
   output_tokens: number;
   /** Token di input letti dalla cache del provider (già inclusi in input_tokens). */
   cached_tokens?: number;
+  /** Token di input scritti nella cache in questa chiamata (Claude: costano 1,25x). */
+  cache_write_tokens?: number;
   /** Token di ragionamento (già inclusi in output_tokens). */
   reasoning_tokens?: number;
   /** Dollari; null se il prezzo del modello non è noto. */
@@ -77,7 +79,7 @@ export function openRouterUsage(
     prompt_tokens?: number;
     completion_tokens?: number;
     cost?: number | null;
-    prompt_tokens_details?: { cached_tokens?: number | null } | null;
+    prompt_tokens_details?: { cached_tokens?: number | null; cache_write_tokens?: number | null } | null;
     completion_tokens_details?: { reasoning_tokens?: number | null } | null;
   } | null | undefined,
   price: TokenPrice | null,
@@ -85,6 +87,7 @@ export function openRouterUsage(
   const input = count(usage?.prompt_tokens);
   const output = count(usage?.completion_tokens);
   const cached = count(usage?.prompt_tokens_details?.cached_tokens);
+  const written = count(usage?.prompt_tokens_details?.cache_write_tokens);
   const reasoning = count(usage?.completion_tokens_details?.reasoning_tokens);
   const charged = typeof usage?.cost === "number" && Number.isFinite(usage.cost) ? usage.cost : null;
   const listed = price && usage ? priceTokens(price, input, output, cached) : null;
@@ -98,6 +101,7 @@ export function openRouterUsage(
     input_tokens: input,
     output_tokens: output,
     ...(cached ? { cached_tokens: cached } : {}),
+    ...(written ? { cache_write_tokens: written } : {}),
     ...(reasoning ? { reasoning_tokens: reasoning } : {}),
     cost_usd: total,
     input_cost_usd: share !== null ? total! * share : null,
@@ -115,8 +119,9 @@ export function sumUsage(items: Array<AiUsage | null | undefined>): AiUsage | nu
   if (!list.length) return null;
   if (list.length === 1) return list[0];
   const last = list[list.length - 1];
-  const total = (key: "cached_tokens" | "reasoning_tokens") => list.reduce((sum, item) => sum + (item[key] ?? 0), 0);
+  const total = (key: "cached_tokens" | "cache_write_tokens" | "reasoning_tokens") => list.reduce((sum, item) => sum + (item[key] ?? 0), 0);
   const cached = total("cached_tokens");
+  const written = total("cache_write_tokens");
   const reasoning = total("reasoning_tokens");
   return {
     provider: last.provider,
@@ -124,6 +129,7 @@ export function sumUsage(items: Array<AiUsage | null | undefined>): AiUsage | nu
     input_tokens: list.reduce((sum, item) => sum + item.input_tokens, 0),
     output_tokens: list.reduce((sum, item) => sum + item.output_tokens, 0),
     ...(cached ? { cached_tokens: cached } : {}),
+    ...(written ? { cache_write_tokens: written } : {}),
     ...(reasoning ? { reasoning_tokens: reasoning } : {}),
     cost_usd: addAll(list.map((item) => item.cost_usd)),
     input_cost_usd: addAll(list.map((item) => item.input_cost_usd)),
@@ -145,6 +151,7 @@ export function readUsage(raw: unknown): AiUsage | null {
     input_tokens: count(value.input_tokens),
     output_tokens: count(value.output_tokens),
     ...(count(value.cached_tokens) ? { cached_tokens: count(value.cached_tokens) } : {}),
+    ...(count(value.cache_write_tokens) ? { cache_write_tokens: count(value.cache_write_tokens) } : {}),
     ...(count(value.reasoning_tokens) ? { reasoning_tokens: count(value.reasoning_tokens) } : {}),
     cost_usd: usd("cost_usd"),
     input_cost_usd: usd("input_cost_usd"),
