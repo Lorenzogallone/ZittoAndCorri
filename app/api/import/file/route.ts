@@ -12,7 +12,7 @@ import { ingestActivity } from "@/lib/ingest/ingest";
 import { parseGpx } from "@/lib/ingest/adapters/gpx";
 import { parseFit } from "@/lib/ingest/adapters/fit";
 import type { ActivityInput } from "@/lib/ingest/schema";
-import { enqueueActivityEvaluationSafely } from "@/lib/ai/evaluate-activity";
+import { enqueueEvaluationAfterIngest } from "@/lib/ai/evaluate-activity";
 
 export const maxDuration = 240;
 
@@ -58,8 +58,9 @@ export async function POST(req: NextRequest) {
     const notes = req.nextUrl.searchParams.get("notes");
     if (notes && notes.trim()) input.notes = notes.trim();
 
-    const id = await ingestActivity(input, ctx);
-    const evaluationJobId = await enqueueActivityEvaluationSafely(ctx.userId, id);
+    const outcome = await ingestActivity(input, ctx);
+    const id = outcome.id;
+    const evaluationJobId = await enqueueEvaluationAfterIngest(ctx.userId, outcome);
     return Response.json({ success: true, id, evaluationJobId });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Errore durante l'import del file.";

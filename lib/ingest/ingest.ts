@@ -10,6 +10,9 @@ import { isMissingColumn, persistDerived } from "@/lib/derived";
 import type { Activity, ActivityStream } from "@/lib/types";
 import { ActivityInput } from "./schema";
 import { bestMovingTime, movingTimeFromStreams } from "@/lib/metrics/pauses";
+import { enrichmentIsSubstantial, type EnrichmentSnapshot, type IngestOutcome } from "./enrichment";
+
+export type { IngestOutcome } from "./enrichment";
 
 interface IngestContext {
   supabase: SupabaseClient;
@@ -31,19 +34,20 @@ const DEDUPE_WINDOW_MIN = 10;
  * Per gli import da file (source 'file'), se esiste già un'attività dello
  * stesso sport iniziata entro ±10 minuti NON crea un duplicato: riempie i
  * campi/stream mancanti della riga esistente e ricalcola le metriche derivate.
- * Ritorna l'id della corsa creata (o arricchita).
+ * Ritorna l'id della corsa creata (o arricchita), se è nuova e, per gli
+ * arricchimenti, se i dati letti dall'analisi sono cambiati davvero.
  */
 export async function ingestActivity(
   input: unknown,
   ctx: IngestContext,
-): Promise<string> {
+): Promise<IngestOutcome> {
   // 1. validazione
   const data = ActivityInput.parse(input);
 
   // 1b. dedupe/arricchimento per gli import da file
   if (data.source === "file" || data.source === "intervals") {
     const existing = await findNearbyActivity(data, ctx);
-    if (existing) return enrichActivity(existing, data, ctx);
+    if (existing) return { ...(await enrichActivity(existing, data, ctx)), created: false };
   }
 
   // Le attività non running usano sempre il tipo 'cross' (vincolo DB).
@@ -154,8 +158,8 @@ export async function ingestActivity(
     cadence: data.cadence_series,
   });
 
-  // 4. Fase 4: await recomputeSnapshot(ctx.userId) + valutazione AI
-  return row.id;
+  // 4. La valutazione AI la accoda chi chiama (evaluationAfterIngest).
+  return { id: row.id, created: true, substantial: true };
 }
 
 type StreamRow = {
@@ -255,7 +259,7 @@ async function enrichActivity(
   existing: ExistingActivity,
   data: ActivityInput,
   ctx: IngestContext,
-): Promise<string> {
+): Promise<{ id: string; substantial: boolean }> {
   const { data: streamRow } = await ctx.supabase
     .from("activity_streams")
     .select("*")
@@ -339,5 +343,26 @@ async function enrichActivity(
     moving_time_s,
   }, gps, { gps, hr, distance, laps, cadence });
 
-  return existing.id;
+  const present = (series: unknown) => Array.isArray(series) && series.length > 0;
+  const before: EnrichmentSnapshot = {
+    hasHr: present(streamRow?.hr_series),
+    hasGps: present(streamRow?.gps_series),
+    hasDistance: present(streamRow?.distance_series),
+    hasLaps: present(streamRow?.laps),
+    moving_time_s: existing.moving_time_s,
+    avg_hr: existing.avg_hr,
+    max_hr: existing.max_hr,
+    elevation_gain_m: existing.elevation_gain_m,
+  };
+  const after: EnrichmentSnapshot = {
+    hasHr: present(hr),
+    hasGps: present(gps),
+    hasDistance: present(distance),
+    hasLaps: present(laps),
+    moving_time_s: moving_time_s ?? null,
+    avg_hr: (update.avg_hr as number | null) ?? null,
+    max_hr: (update.max_hr as number | null) ?? null,
+    elevation_gain_m: (update.elevation_gain_m as number | null) ?? null,
+  };
+  return { id: existing.id, substantial: enrichmentIsSubstantial(before, after) };
 }

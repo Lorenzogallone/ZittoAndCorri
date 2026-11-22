@@ -158,7 +158,7 @@ test("la proposta non scrive il piano prima della conferma", () => {
 
 test("l'import salva l'attività prima di accodare il feedback", () => {
   const source = readFileSync(new URL("../app/api/import/file/route.ts", import.meta.url), "utf8");
-  assert.ok(source.indexOf("await ingestActivity") < source.indexOf("await enqueueActivityEvaluationSafely"));
+  assert.ok(source.indexOf("await ingestActivity") < source.indexOf("await enqueueEvaluationAfterIngest"));
 });
 
 test("le nuove tabelle coach sono protette da RLS per user_id", () => {

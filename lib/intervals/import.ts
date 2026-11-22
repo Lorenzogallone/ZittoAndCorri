@@ -8,7 +8,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ingestActivity } from "@/lib/ingest/ingest";
 import { parseFit } from "@/lib/ingest/adapters/fit";
-import { enqueueActivityEvaluationSafely } from "@/lib/ai/evaluate-activity";
+import { enqueueEvaluationAfterIngest } from "@/lib/ai/evaluate-activity";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { isoDateShift } from "@/lib/dates";
 import type { Profile } from "@/lib/types";
@@ -147,8 +147,9 @@ async function importActivities(client: IntervalsClient, userId: string, summary
       input.source = "intervals";
       input.external_id = intervalsActivityExternalId(activity);
       if (activity.name && !input.source_title) input.source_title = activity.name;
-      const activityId = await ingestActivity(input, ctx);
-      await enqueueActivityEvaluationSafely(userId, activityId);
+      const outcome = await ingestActivity(input, ctx);
+      // Corsa già salvata da un file e solo arricchita: niente seconda push.
+      await enqueueEvaluationAfterIngest(userId, outcome);
       summary.activities.imported += 1;
     } catch (error) {
       summary.activities.failed += 1;
