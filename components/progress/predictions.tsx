@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import { formatDuration } from "@/lib/format";
 import {
   goalRaceRange,
@@ -53,7 +54,14 @@ export function Predictions({
           <p className="mt-1 text-pretty">{forGoal.advice_text}</p>
         </div>
       )}
-      <p className="mt-3 text-caption text-pretty text-muted-foreground">{explanation}</p>
+      {/* Su quali dati si basa: a richiesta, per non appesantire la scheda. */}
+      <details className="group mt-2 text-caption">
+        <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 font-medium text-primary [&::-webkit-details-marker]:hidden">
+          Come lo prevedo
+          <ChevronDown size={14} aria-hidden className="transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none" />
+        </summary>
+        <p className="text-pretty text-muted-foreground">{explanation}</p>
+      </details>
     </div>
   );
 }
