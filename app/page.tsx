@@ -13,6 +13,7 @@ import { addDays, daysBetween, mondayOf, romeDay, romeHour } from "@/lib/local-d
 import { buildDays } from "@/lib/plan/day-status";
 import { heatForDates } from "@/lib/weather";
 import { getAiStatus } from "@/lib/ai/ai-status";
+import { staleAiJobCutoff } from "@/lib/ai/job-staleness";
 import type { Activity, CoachMessage, Goal, PlanProposal, PlannedWorkout } from "@/lib/types";
 import { scheduleIntervalsImportIfStale } from "@/lib/intervals/sync";
 import { sortByDayOrder } from "@/lib/plan/day-sessions";
@@ -69,7 +70,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
     supabase.from("coach_messages").select("*").eq("user_id", user.id).in("kind", ["chat", "plan_proposal", "status"]).order("created_at", { ascending: false }).limit(60).returns<CoachMessage[]>(),
     supabase.from("plan_proposals").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10).returns<PlanProposal[]>(),
     getAiStatus(supabase, user.id),
-    supabase.from("ai_jobs").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("kind", "evaluation").eq("status", "pending"),
+    supabase.from("ai_jobs").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("kind", "evaluation").eq("status", "pending").gte("created_at", staleAiJobCutoff()),
     firstRunSteps(supabase, user.id),
   ]);
 

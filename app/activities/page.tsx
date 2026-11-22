@@ -13,6 +13,7 @@ import { scheduleIntervalsImportIfStale } from "@/lib/intervals/sync";
 import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { backfillMovingTime } from "@/lib/derived";
+import { staleAiJobCutoff } from "@/lib/ai/job-staleness";
 
 export default async function ActivitiesPage() {
   const supabase = await createClient();
@@ -27,7 +28,7 @@ export default async function ActivitiesPage() {
       .eq("user_id", user.id)
       .order("started_at", { ascending: false })
       .returns<ListActivity[]>(),
-    supabase.from("ai_jobs").select("ref_id").eq("user_id", user.id).eq("kind", "evaluation").eq("status", "pending").returns<Array<{ ref_id: string | null }>>(),
+    supabase.from("ai_jobs").select("ref_id").eq("user_id", user.id).eq("kind", "evaluation").eq("status", "pending").gte("created_at", staleAiJobCutoff()).returns<Array<{ ref_id: string | null }>>(),
   ]);
 
   const list = activities ?? [];

@@ -18,6 +18,7 @@ import { intervalsUpToDate, isMissingColumn, persistIntervals, type DeclaredInte
 import type { IntervalAnalysis } from "@/lib/metrics/intervals";
 import { intervalsForPrompt } from "@/lib/intervals-text";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isStaleAiJob, STALE_AI_JOB_ERROR } from "@/lib/ai/job-staleness";
 import { romeDay } from "@/lib/local-date";
 import { sortByDayOrder } from "@/lib/plan/day-sessions";
 import { workoutForActivity } from "@/lib/plan/match-activities";
@@ -91,7 +92,14 @@ export async function enqueueActivityEvaluation(
   const ai = await getAiConfig(userId, "analysis");
   if (!ai) return null;
   const admin = createAdminClient();
-  const { data: current } = await admin.from("ai_jobs").select("id").eq("user_id", userId).eq("kind", "evaluation").eq("ref_id", activityId).eq("status", "pending").limit(1).maybeSingle<{ id: string }>();
+  const { data: pendingJobs } = await admin.from("ai_jobs").select("id, status, created_at").eq("user_id", userId).eq("kind", "evaluation").eq("ref_id", activityId).eq("status", "pending").order("created_at", { ascending: false }).returns<Array<{ id: string; status: string; created_at: string | null }>>();
+  // Un job pendente da troppo (funzione scaduta, deploy a metà) non blocca più
+  // la nuova analisi: si chiude come errore e se ne crea uno nuovo.
+  const stale = (pendingJobs ?? []).filter((job) => isStaleAiJob(job));
+  if (stale.length) {
+    await admin.from("ai_jobs").update({ status: "error", error: STALE_AI_JOB_ERROR, updated_at: new Date().toISOString() }).in("id", stale.map((job) => job.id)).eq("status", "pending");
+  }
+  const current = (pendingJobs ?? []).find((job) => !isStaleAiJob(job));
   if (current) return current.id;
   const { data: job, error } = await admin.from("ai_jobs").insert({ user_id: userId, kind: "evaluation", ref_id: activityId, status: "pending" }).select("id").single<{ id: string }>();
   if (error || !job) throw error ?? new Error("Job non creato");
