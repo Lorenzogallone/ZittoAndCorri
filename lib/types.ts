@@ -285,13 +285,6 @@ export interface PlannedWorkout {
   chained?: boolean;
 }
 
-export interface AdherenceResult {
-  total: number;
-  completed: number;
-  missed: number;
-  pct: number;
-}
-
 // ── Fase 4: Coach AI ──────────────────────────────────────────────────────────
 
 /** Riga evaluations — valutazione discorsiva AI di una corsa. PLAN.md §5/§8. */
@@ -307,19 +300,6 @@ export interface Evaluation {
   flags: Record<string, boolean> | null;
   /** Token e costo dell'analisi (migrazione 0024), vedi lib/ai/usage.ts. */
   ai_usage?: unknown;
-  created_at: string;
-}
-
-/** Riga plan_reviews — review bisettimanale prodotta dal bottone "Pianifica". */
-export interface PlanReview {
-  id: string;
-  user_id: string;
-  goal_id: string | null;
-  range_start: string;
-  range_end: string;
-  summary: string;
-  comments: string | null;
-  model: string | null;
   created_at: string;
 }
 

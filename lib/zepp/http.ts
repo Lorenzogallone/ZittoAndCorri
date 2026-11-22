@@ -22,7 +22,10 @@ export async function readJsonWithLimit(request: Request, maxBytes: number): Pro
 interface AttemptState { count: number; resetAt: number }
 const pairingAttempts = new Map<string, AttemptState>();
 
-/** Limite best-effort per processo; il codice monouso scade comunque dopo 10 minuti. */
+/**
+ * Freno best-effort per processo. Il limite vero sta nel database
+ * (lib/zepp/pairing.ts): ogni codice accetta al massimo 5 tentativi in tutto.
+ */
 export function consumePairingAttempt(key: string, now = Date.now()): boolean {
   const current = pairingAttempts.get(key);
   if (!current || current.resetAt <= now) {
