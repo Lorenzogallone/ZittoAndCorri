@@ -21,7 +21,7 @@ import { estimateWorkout } from "@/lib/workout-estimate";
 import { plannedMeters } from "@/lib/plan/planned-distance";
 import { addDays, relativeDayLabel, romeDay, weekdayName } from "@/lib/local-date";
 import { adjustStepsForHeat } from "@/lib/metrics/heat";
-import { predictionReference, predictTime } from "@/lib/metrics/race-prediction";
+import { enduranceBase, predictionReference, predictTimeRange } from "@/lib/metrics/race-prediction";
 import { heatForDates } from "@/lib/weather";
 import type { Activity, Goal, PlannedWorkout } from "@/lib/types";
 import { matchPlan, matchWindow, withinWindow } from "@/lib/plan/match-activities";
@@ -111,14 +111,18 @@ export default async function PlannedWorkoutPage({ params }: Props) {
     } else if (distance > 0) {
       const { data: recent } = await supabase
         .from("activities")
-        .select("id, sport, distance_m, duration_s, moving_time_s, best_efforts")
+        .select("id, sport, started_at, distance_m, duration_s, moving_time_s, best_efforts")
         .eq("user_id", user.id)
         .eq("sport", "running")
         .is("excluded_at", null)
         .gte("started_at", `${addDays(today, -120)}T00:00:00`)
-        .returns<Array<Pick<Activity, "id" | "sport" | "distance_m" | "duration_s" | "moving_time_s" | "best_efforts">>>();
+        .returns<Array<Pick<Activity, "id" | "sport" | "started_at" | "distance_m" | "duration_s" | "moving_time_s" | "best_efforts">>>();
       const reference = predictionReference((recent ?? []).map((activity) => ({ ...activity, active_s: activeDuration(activity) })));
-      if (reference) race = { distance, target: predictTime(reference, distance), source: "prediction" };
+      // Stima centrale della forbice: tiene conto di volume e lungo, non solo di Riegel.
+      if (reference) {
+        const range = predictTimeRange(reference, distance, enduranceBase(recent ?? [], today), today);
+        race = { distance, target: range.central_s, source: "prediction" };
+      }
     }
   }
 

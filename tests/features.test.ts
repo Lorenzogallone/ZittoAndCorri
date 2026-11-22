@@ -71,13 +71,13 @@ test("i record personali scelgono il tempo migliore per distanza", () => {
 
 test("la previsione usa il miglior 10 km equivalente", () => {
   const reference = predictionReference([
-    { id: "a", sport: "running", distance_m: 12_000, active_s: 4_000, best_efforts: { "5k": 1_500, "10k": 3_100 } },
-    { id: "b", sport: "running", distance_m: 6_000, active_s: 1_900, best_efforts: { "5k": 1_440 } },
+    { id: "a", sport: "running", started_at: "2026-11-01T08:00:00Z", distance_m: 12_000, active_s: 4_000, best_efforts: { "5k": 1_500, "10k": 3_100 } },
+    { id: "b", sport: "running", started_at: "2026-11-10T08:00:00Z", distance_m: 6_000, active_s: 1_900, best_efforts: { "5k": 1_440 } },
   ]);
-  assert.deepEqual(reference, { meters: 5_000, time_s: 1_440, activity_id: "b" });
-  const times = predictRaceTimes(reference!);
-  assert.equal(times[0].time_s, 1_440);
-  assert.ok(times[1].time_s > 2 * 1_440);
+  assert.deepEqual(reference, { meters: 5_000, time_s: 1_440, activity_id: "b", started_at: "2026-11-10T08:00:00Z" });
+  const times = predictRaceTimes(reference!, { weekly_km: 40, longest_m: 18_000 }, "2026-11-12");
+  assert.equal(times[0].range.central_s, 1_440);
+  assert.ok(times[1].range.central_s > 2 * 1_440);
 });
 
 test("la verifica del passo riconosce ripetute più veloci del previsto", () => {

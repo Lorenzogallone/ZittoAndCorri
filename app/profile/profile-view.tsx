@@ -14,6 +14,7 @@ import { formatDistance, formatDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { PersonalRecord } from "@/lib/metrics/best-efforts";
 import type { PredictionReference } from "@/lib/metrics/race-prediction";
+import type { EnduranceBase } from "@/lib/metrics/predict";
 import type { ATLCTLResult, Goal } from "@/lib/types";
 import type { WellnessDay, ZeppDailyMetric, ZeppReadinessResult } from "@/lib/zepp/types";
 
@@ -32,6 +33,10 @@ export interface ProfileViewProps {
   weeks: WeekBar[];
   currentWeek: string;
   reference: PredictionReference | null;
+  /** Volume e lungo recenti: allargano la forbice delle previsioni. */
+  endurance: EnduranceBase;
+  /** Oggi a Roma (YYYY-MM-DD). */
+  today: string;
   records: PersonalRecord[];
   paceSessions: PaceSession[];
 }
@@ -85,7 +90,7 @@ export function ProfileView(props: ProfileViewProps) {
     props.reference && {
       key: "predictions",
       label: "Previsioni",
-      content: <Predictions reference={props.reference} goal={goal} />,
+      content: <Predictions reference={props.reference} base={props.endurance} today={props.today} goal={goal} />,
     },
     props.records.length > 0 && {
       key: "records",
