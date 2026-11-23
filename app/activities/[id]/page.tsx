@@ -15,7 +15,8 @@ import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { getAiStatus } from "@/lib/ai/ai-status";
 import { effectiveAiJob } from "@/lib/ai/job-staleness";
 import type { Activity, ActivityStream, Evaluation, Profile, TimeInZone } from "@/lib/types";
-import { withCoachVerdict } from "@/lib/intervals-text";
+import { hasIntervals, withCoachVerdict } from "@/lib/intervals-text";
+import { kmSplits } from "@/lib/metrics/km-splits";
 import { ActivityView } from "./activity-view";
 
 /** Downsample a series to at most maxPoints by skipping evenly. */
@@ -167,7 +168,6 @@ export default async function ActivityDetailPage({
   const freshSplits = streams?.gps_series && streams.gps_series.length >= 2
     ? computeSplits(streams.gps_series, streams.hr_series ?? undefined)
     : null;
-  const splits = freshSplits ?? activity.splits;
   if (freshSplits && JSON.stringify(freshSplits) !== JSON.stringify(activity.splits ?? null)) {
     const userId = user.id;
     const drift = computeHrDrift(streams?.hr_series ?? undefined, streams?.gps_series ?? undefined);
@@ -194,9 +194,16 @@ export default async function ActivityDetailPage({
     : [];
   // Tratti delle ripetute su entrambi gli orologi: reale per la mappa, in movimento per il grafico.
   const rawTrack = streams ? referenceTrack({ distance: streams.distance_series, gps: streams.gps_series }) : null;
-  const segments = intervals?.segments.length
+  // Corsa continua (lungo, facile): km per km al posto delle ripetute.
+  const km = activity.sport === "running" && streams && !hasIntervals(intervals)
+    ? kmSplits({ gps: streams.gps_series, hr: streams.hr_series, distance: streams.distance_series, cadence: cadencePoints(streams.cadence) })
+    : null;
+  const segments = hasIntervals(intervals)
     ? segmentSpans(intervals.segments, movingClock(rawTrack ? detectPauses(rawTrack) : []))
-    : [];
+    : (km?.splits ?? []).map((split, index) => ({
+        index, kind: "km", variant: null, label: `Km ${split.km}`,
+        start: split.start, end: split.end, movingStart: split.movingStart, movingEnd: split.movingEnd,
+      }));
 
   return (
     <ActivityView
@@ -206,11 +213,11 @@ export default async function ActivityDetailPage({
       elevation={moving?.gps?.some((p) => p.ele != null) ? downsample(moving.gps, 300) : null}
       paceSeries={pace.length >= 2 ? downsample(pace, 400) : null}
       cadence={cadence.length >= 2 ? downsample(cadence, 300) : null}
-      splits={splits}
       zones={zones}
       records={heldRecords}
       pace={paceResult ? { check: paceResult.check, workoutId: paceResult.workout.id } : null}
       intervals={intervals}
+      km={km}
       segments={segments}
       evaluation={evaluation ?? null}
       // Un job pendente oltre il tempo massimo è scaduto: errore e "Riprova".

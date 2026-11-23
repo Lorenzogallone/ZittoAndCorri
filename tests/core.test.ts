@@ -221,11 +221,13 @@ test("il piano usa la chat e ogni proposta spiega obiettivo e focus", () => {
   assert.match(chat, /Su cosa concentrarti/);
 });
 
-test("il dettaglio attività è essenziale: grafici a schede e mappa leggera di base", () => {
+test("il dettaglio attività è essenziale: un grafico Andamento, i km in tabella e mappa leggera di base", () => {
   const view = readFileSync(new URL("../app/activities/[id]/activity-view.tsx", import.meta.url), "utf8");
   const route = readFileSync(new URL("../components/activity/route-preview.tsx", import.meta.url), "utf8");
-  assert.match(view, /<SegmentedTabs tabs=\{charts\} \/>/);
-  for (const label of ["Andamento", "Km"]) assert.match(view, new RegExp(`label: "${label}"`));
+  assert.match(view, />Andamento<\/h2>/);
+  // I km non hanno più un grafico a parte: stanno nella tabella «Km per km».
+  assert.doesNotMatch(view, /SplitsChart/);
+  assert.match(view, /<KmSplitsCard analysis=\{props\.km\} \/>/);
   // Cuore, passo, quota e cadenza sovrapposti nello stesso grafico.
   assert.match(view, /<OverlayChart series=\{overlay\}/);
   assert.match(view, /<ZonesBar/);

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Flame, Footprints, Gauge, Heart, HeartPulse, Mountain, Timer, TrendingUp, Trophy, type LucideIcon } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { SegmentedTabs } from "@/components/segmented-tabs";
 import { ActivityEvaluation } from "@/components/activity-evaluation";
 import { PaceCheckCard } from "@/components/pace-check-card";
 import { ShareActivityButton } from "@/components/share-activity-button";
@@ -9,19 +8,19 @@ import { RoutePreview } from "@/components/activity/route-preview";
 import { OverlayChart } from "@/components/activity/overlay-chart";
 import { SegmentSelectionProvider } from "@/components/activity/segment-selection";
 import type { SegmentSpan } from "@/lib/metrics/segment-times";
-import { SplitsChart } from "@/components/activity/splits-chart";
 import { ZonesBar } from "@/components/activity/zones-bar";
 import { IntervalsCard } from "@/components/activity/intervals-card";
+import { KmSplitsCard } from "@/components/activity/km-splits-card";
+import type { KmAnalysis } from "@/lib/metrics/km-splits";
 import { ExcludedBanner } from "@/components/activity/excluded-banner";
 import { Stat } from "@/components/stat";
-import { cn } from "@/lib/utils";
 import { hasIntervals } from "@/lib/intervals-text";
 import type { IntervalAnalysis } from "@/lib/metrics/intervals";
 import { activeDuration, formatDuration, formatPace } from "@/lib/format";
 import { EFFORTS, type PersonalRecord } from "@/lib/metrics/best-efforts";
 import type { PaceCheck } from "@/lib/metrics/pace-check";
 import { SPORT_LABELS, TYPE_LABELS } from "@/lib/activity-meta";
-import type { Activity, Evaluation, GpsPoint, HrPoint, Split, TimeInZone } from "@/lib/types";
+import type { Activity, Evaluation, GpsPoint, HrPoint, TimeInZone } from "@/lib/types";
 
 export interface ActivityViewProps {
   activity: Activity;
@@ -32,12 +31,13 @@ export interface ActivityViewProps {
   paceSeries?: Array<{ t: number; v: number }> | null;
   /** Cadenza (passi al minuto) nel tempo in movimento. */
   cadence?: Array<{ t: number; v: number }> | null;
-  splits: Split[] | null;
   zones: TimeInZone | null;
   records: PersonalRecord[];
   pace: { check: PaceCheck; workoutId: string } | null;
   intervals: IntervalAnalysis | null;
-  /** Tratti delle ripetute nel tempo: si evidenziano in grafico e mappa. */
+  /** Corsa continua km per km (quando non ci sono ripetute). */
+  km?: KmAnalysis | null;
+  /** Tratti delle ripetute (o km) nel tempo: si evidenziano in grafico e mappa. */
   segments?: SegmentSpan[];
   evaluation: Pick<Evaluation, "summary" | "details" | "created_at" | "ai_usage"> | null;
   evaluationJob: { status: "pending" | "done" | "error"; error: string | null; created_at: string | null } | null;
@@ -76,10 +76,6 @@ export function ActivityView(props: ActivityViewProps) {
     cadence: props.cadence ?? null,
   };
   const hasOverlay = Object.values(overlay).some((series) => (series?.length ?? 0) >= 2);
-  const charts = [
-    hasOverlay ? { key: "trend", label: "Andamento", content: <OverlayChart series={overlay} /> } : null,
-    props.splits?.length ? { key: "km", label: "Km", content: <SplitsChart splits={props.splits} /> } : null,
-  ].filter((tab): tab is { key: string; label: string; content: React.ReactElement } => tab != null);
 
   const hasZones = props.zones && Object.values(props.zones).some((seconds) => (seconds ?? 0) > 0);
 
@@ -146,26 +142,18 @@ export function ActivityView(props: ActivityViewProps) {
         {hasIntervals(props.intervals) ? (
           <IntervalsCard analysis={props.intervals} workoutId={props.pace?.workoutId} canEditNote={props.keyConfigured} />
         ) : (
-          props.pace && <PaceCheckCard check={props.pace.check} workoutId={props.pace.workoutId} />
+          <>
+            {props.pace && <PaceCheckCard check={props.pace.check} workoutId={props.pace.workoutId} />}
+            {props.km && <KmSplitsCard analysis={props.km} />}
+          </>
         )}
 
-        {charts.length > 0 && (
-          <>
-            {/* Da 2xl i grafici stanno affiancati invece che a schede. */}
-            <section className={cn("surface p-4", charts.length > 1 && "2xl:hidden")}>
-              <SegmentedTabs tabs={charts} />
-            </section>
-            {charts.length > 1 && (
-              <div className="hidden gap-6 2xl:grid 2xl:grid-cols-2 2xl:[&>*:last-child:nth-child(odd)]:col-span-2">
-                {charts.map((chart) => (
-                  <section key={chart.key} className="surface p-4">
-                    <h2 className="mb-4 text-body font-semibold">{chart.label}</h2>
-                    {chart.content}
-                  </section>
-                ))}
-              </div>
-            )}
-          </>
+        {/* I km stanno nella tabella «Km per km» (o nelle ripetute): qui solo l'andamento. */}
+        {hasOverlay && (
+          <section className="surface p-4">
+            <h2 className="mb-4 text-body font-semibold">Andamento</h2>
+            <OverlayChart series={overlay} />
+          </section>
         )}
         </div>
 
