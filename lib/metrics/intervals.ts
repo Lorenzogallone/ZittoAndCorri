@@ -10,7 +10,7 @@
 // Il tipo di ogni tratto (sprint, jogging, camminata) si misura sempre sui
 // dati, relativo al passo facile dell'atleta. Funzioni pure.
 
-import type { GpsPoint, HrPoint, WorkoutStepInput, WorkoutStepKind } from "@/lib/types";
+import type { GpsPoint, HrPoint, WorkoutStepInput, WorkoutStepKind, WorkoutType } from "@/lib/types";
 import { cumulativeDistance } from "./geo.ts";
 import { formatStepAmount, groupWorkoutSteps } from "../workout-guide.ts";
 import { detectPauses } from "./pauses.ts";
@@ -18,7 +18,9 @@ import { detectPauses } from "./pauses.ts";
 // 3: tratti misurati sul tempo in movimento (pause dell'orologio escluse).
 // 4: lap che combaciano con il piano, riscaldamento e defaticamento facoltativi,
 //    soste da fermi come pause, cadenza per tratto.
-export const INTERVALS_VERSION = 4;
+// 5: con un lungo, un facile o un recupero nel piano il rilevamento automatico
+//    vale solo se il disegno è netto (niente ripetute dal rumore del GPS).
+export const INTERVALS_VERSION = 5;
 
 /** Distanza cumulativa registrata dall'orologio (m) a t secondi dall'inizio. */
 export interface DistancePoint {
@@ -96,6 +98,8 @@ export interface IntervalAnalysis {
   summary: IntervalSummary | null;
   /** Struttura letta dalla nota: resta salvata perché la nota viene svuotata. */
   declared?: { steps: WorkoutStepInput[]; description: string | null } | null;
+  /** Il piano chiedeva una corsa continua, ma i dati mostrano ripetute nette. */
+  contradicts_plan?: ContinuousType | null;
 }
 
 export interface DeclaredStructure {
@@ -113,6 +117,8 @@ export interface AnalyzeInput {
   laps?: FitLap[] | null;
   /** Strutture dichiarate, dalla più affidabile (nota) alla meno (piano). */
   structures?: DeclaredStructure[];
+  /** Tipo della seduta del piano abbinata, anche se non ha una struttura. */
+  planned?: WorkoutType | null;
 }
 
 // ── Soglie ───────────────────────────────────────────────────────────────────
@@ -1265,5 +1271,42 @@ export function analyzeIntervals(input: AnalyzeInput): IntervalAnalysis {
   }
 
   const auto = autoSpans(tl);
-  return auto ? build(auto, "auto", null) : EMPTY;
+  if (!auto) return EMPTY;
+  const analysis = build(auto, "auto", null);
+  if (!isContinuous(input.planned)) return analysis;
+  const verdict = againstPlan(analysis, tl.n);
+  if (verdict === "noise") return EMPTY;
+  return verdict === "reps" ? { ...analysis, contradicts_plan: input.planned } : analysis;
+}
+
+// ── Il piano come riferimento ────────────────────────────────────────────────
+
+export type ContinuousType = "long" | "easy" | "recovery";
+
+export const isContinuous = (type: WorkoutType | null | undefined): type is ContinuousType =>
+  type === "long" || type === "easy" || type === "recovery";
+
+/** Con una corsa continua nel piano servono almeno tre ripetute vere… */
+const PLAN_MIN_REPS = 3;
+/** …di almeno 30 secondi ciascuna (come per il tipo di corsa, run-type)… */
+const PLAN_REP_MIN_S = 30;
+/** …che insieme fanno una parte vera della corsa (come AUTO_WORK_SHARE in body-trends). */
+const PLAN_WORK_SHARE = 0.2;
+/** Oppure almeno tre allunghi: sprint corti, non picchi di pochi secondi del GPS. */
+const PLAN_STRIDE_MIN_S = 12;
+
+/**
+ * Il piano diceva lungo, facile o recupero: il rilevamento automatico vale solo
+ * se trova ripetute nette (tre tratti veloci da almeno 30", che insieme fanno
+ * un quinto della corsa) o allunghi veri. Le variazioni di ritmo di una corsa continua
+ * (discese, vento, rumore del GPS) non bastano. Gli allunghi in una corsa
+ * facile non contraddicono il piano.
+ */
+function againstPlan(analysis: IntervalAnalysis, seconds: number): "reps" | "strides" | "noise" {
+  const work = analysis.segments.filter((s) => s.kind === "work");
+  const reps = work.filter((s) => s.variant !== "sprint" && s.duration_s >= PLAN_REP_MIN_S);
+  const repTime = reps.reduce((sum, s) => sum + s.duration_s, 0);
+  if (reps.length >= PLAN_MIN_REPS && repTime >= seconds * PLAN_WORK_SHARE) return "reps";
+  const strides = work.filter((s) => s.variant === "sprint" && s.duration_s >= PLAN_STRIDE_MIN_S);
+  return strides.length >= PLAN_MIN_REPS ? "strides" : "noise";
 }

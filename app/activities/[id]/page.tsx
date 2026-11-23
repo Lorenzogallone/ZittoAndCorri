@@ -15,6 +15,7 @@ import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { getAiStatus } from "@/lib/ai/ai-status";
 import { effectiveAiJob } from "@/lib/ai/job-staleness";
 import type { Activity, ActivityStream, Evaluation, Profile, TimeInZone } from "@/lib/types";
+import { withCoachVerdict } from "@/lib/intervals-text";
 import { ActivityView } from "./activity-view";
 
 /** Downsample a series to at most maxPoints by skipping evenly. */
@@ -150,6 +151,9 @@ export default async function ActivityDetailPage({
       after(() => persistIntervals(createAdminClient(), userId, activity, undefined, declared));
     }
   }
+
+  // Il commento del coach ha l'ultima parola sulle ripetute trovate in automatico.
+  intervals = withCoachVerdict(intervals, evaluation?.flags);
 
   const profileCtx = await getEffectiveHrConfig(supabase, user.id, profile ?? null);
 

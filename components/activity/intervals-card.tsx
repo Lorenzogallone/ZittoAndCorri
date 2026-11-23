@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Pause } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/format";
-import { INTERVAL_SOURCE_LABELS } from "@/lib/intervals-text";
+import { INTERVAL_SOURCE_LABELS, PLANNED_CONTINUOUS_LABELS } from "@/lib/intervals-text";
 import { segmentToneKey, TONES } from "@/lib/step-tones";
 import { useSegmentSelection } from "@/components/activity/segment-selection";
 import type { IntervalAnalysis, IntervalSegment, IntervalSource } from "@/lib/metrics/intervals";
@@ -161,6 +161,12 @@ export function IntervalsCard({
       {analysis.description && <p className="mt-1 text-xl font-bold tracking-tight">{analysis.description}</p>}
       {summary && <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{summary}</p>}
       {sprint && <p className="text-xs text-muted-foreground tabular-nums">{sprint}</p>}
+      {analysis.contradicts_plan && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Il piano diceva {PLANNED_CONTINUOUS_LABELS[analysis.contradicts_plan]}, ma dai dati sembrano ripetute.
+          {workoutId && <> <Link href={`/plan/${workoutId}`} className="text-primary">Vedi la seduta</Link></>}
+        </p>
+      )}
 
       <ExecutedProfile segments={analysis.segments} />
 

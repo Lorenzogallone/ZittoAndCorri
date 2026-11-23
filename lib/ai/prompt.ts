@@ -29,6 +29,11 @@ export const evaluationSchema: Schema = {
         injury_risk: { type: Type.BOOLEAN, nullable: true },
         easy_too_fast: { type: Type.BOOLEAN, nullable: true },
         on_track: { type: Type.BOOLEAN, nullable: true },
+        structured_session: {
+          type: Type.BOOLEAN,
+          nullable: true,
+          description: "true se la corsa ha davvero ripetute (tratti veloci alternati a recuperi), false se è una corsa continua (facile, lungo, recupero) anche con variazioni di ritmo, salite o allunghi. null se non puoi dirlo.",
+        },
       },
     },
   },
@@ -44,6 +49,9 @@ export const evaluationResponseSchemaZod = z.object({
     injury_risk: z.boolean().nullish(),
     easy_too_fast: z.boolean().nullish(),
     on_track: z.boolean().nullish(),
+    // Verdetto del coach sulla forma della corsa: decide se mostrare le ripetute
+    // riconosciute in automatico. Un valore strano non fa fallire la valutazione.
+    structured_session: z.boolean().nullish().catch(null),
   }).transform((flags) => {
     const cleaned: Record<string, boolean> = {};
     for (const [key, value] of Object.entries(flags)) {
@@ -91,7 +99,7 @@ export function buildEvaluationPrompt(
     "- Trasforma le note libere dell'atleta nel campo details: massimo 5 punti telegrafici, preferibilmente 2-6 parole ciascuno, un'informazione per punto. Consolida i dettagli già catalogati, elimina duplicati, non riportare la frase originale e non inventare nulla. Nella summary non citare testualmente il commento grezzo. Se non ci sono informazioni personali aggiuntive, restituisci un array vuoto.",
     "- Inquadra la corsa nella fase di allenamento corrente (vedi memoria coach nel contesto): un easy in settimana di scarico si giudica diversamente da uno in piena fase di carico.",
     "- Giudica lo sforzo REALE, non solo il passo: usa HR media e relativa zona, tempo in zona, deriva cardiaca (decoupling) e cadenza quando presenti. Se una seduta easy/lungo esce nettamente dalla Z1 (zona facile) o ha deriva alta, dillo esplicitamente (flag easy_too_fast) e spiega la conseguenza: a oggi quel ritmo non è davvero easy e il piano dovrà tenerne conto. Se il workout previsto aveva una HR target, confronta HR reale vs target.",
-    "- Se l'attività riporta i tratti misurati (ripetute), commenta come li ha corsi: regolarità tra le ripetute, calo o crescita verso la fine, passo rispetto al previsto, quanto scende il cuore nei recuperi. Distingui i tratti veloci dagli sprint (per questi conta la velocità di punta e la costanza tra uno e l'altro) e guarda come ha recuperato: corricchiando, camminando o da fermo. Se serve, suggerisci come impostare la prossima volta tratti e recuperi (es. recupero corricchiando invece che camminando, o sprint più distanziati). Cita solo i numeri forniti e al massimo 2-3 tratti significativi, senza elencarli tutti. Se la fonte è il rilevamento automatico, trattala come indicativa.",
+    "- Se l'attività riporta i tratti misurati (ripetute), commenta come li ha corsi: regolarità tra le ripetute, calo o crescita verso la fine, passo rispetto al previsto, quanto scende il cuore nei recuperi. Distingui i tratti veloci dagli sprint (per questi conta la velocità di punta e la costanza tra uno e l'altro) e guarda come ha recuperato: corricchiando, camminando o da fermo. Se serve, suggerisci come impostare la prossima volta tratti e recuperi (es. recupero corricchiando invece che camminando, o sprint più distanziati). Cita solo i numeri forniti e al massimo 2-3 tratti significativi, senza elencarli tutti. Se la fonte è il rilevamento automatico, trattala come indicativa: può scambiare per ripetute le variazioni di ritmo di una corsa continua (discese, vento, rumore del GPS). Decidi tu con structured_session se la corsa aveva davvero ripetute, guardando piano, split, FC e note: se era una corsa continua, non commentare quei tratti.",
     "- Se ci sono segnali sullo stile di corsa (cadenza bassa, deriva ricorrente), dai UN consiglio pratico e concreto su cosa curare la prossima volta (es. su cosa pensare, cosa privilegiare o sacrificare), senza trasformare la valutazione in una lezione.",
     "- Sedute collegate: se la seduta pianificata dello stesso giorno è divisa in più parti (chained=true, es. riscaldamento e poi ripetute caricati separati sull'orologio) o l'atleta ha registrato altre attività a pochi minuti da questa (vedi 'Altre attività dello stesso giorno'), giudica l'insieme come un'unica seduta: un riscaldamento da solo non è un easy troppo corto, e la parte principale non è senza riscaldamento. Commenta la parte che stai valutando, ma aderenza, carico e sensazioni valgono per l'uscita intera. Se invece le sedute sono separate (mattina e sera), valutale come due stimoli e considera la fatica della prima nella seconda.",
     "- Considera la fatica delle attività non di corsa recenti (calcio, bici, palestra…): possono spiegare gambe pesanti o un passo più lento, o motivare un giorno di corsa saltato.",

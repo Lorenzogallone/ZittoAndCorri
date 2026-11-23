@@ -10,6 +10,24 @@ export const INTERVAL_SOURCE_LABELS: Record<IntervalSource, string> = {
   auto: "riconosciute in automatico",
 };
 
+/** Il tipo di corsa continua che il piano chiedeva, per la UI e per il coach. */
+export const PLANNED_CONTINUOUS_LABELS = { long: "un lungo", easy: "una corsa facile", recovery: "un recupero" } as const;
+
+/**
+ * Il coach legge piano, split, FC e note: se dice che era una corsa continua,
+ * le ripetute trovate dal solo rilevamento automatico non si mostrano. Lap,
+ * nota e piano restano (lì la struttura l'ha dichiarata qualcuno), e così gli
+ * allunghi di una corsa facile.
+ */
+export function withCoachVerdict(
+  analysis: IntervalAnalysis | null,
+  flags: Record<string, boolean> | null | undefined,
+): IntervalAnalysis | null {
+  // Solo allunghi: non sono ripetute, ma in una corsa continua vanno mostrati.
+  if (analysis?.source !== "auto" || analysis.summary?.main === "sprint") return analysis;
+  return flags?.structured_session === false ? null : analysis;
+}
+
 export const hasIntervals = (analysis: IntervalAnalysis | null | undefined): analysis is IntervalAnalysis =>
   !!analysis && analysis.source !== "none" && analysis.segments.some((segment) => segment.kind === "work");
 
@@ -79,7 +97,8 @@ export function intervalsOneLine(analysis: IntervalAnalysis | null | undefined):
     pauseTotal(analysis),
   ].filter(Boolean);
   const head = analysis.description ?? `${s?.work_count ?? 0} tratti veloci`;
-  return `${head} (${INTERVAL_SOURCE_LABELS[analysis.source as IntervalSource]})${bits.length ? `: ${bits.join(", ")}` : ""}`;
+  const against = analysis.contradicts_plan ? `; il piano chiedeva ${PLANNED_CONTINUOUS_LABELS[analysis.contradicts_plan]}` : "";
+  return `${head} (${INTERVAL_SOURCE_LABELS[analysis.source as IntervalSource]}${against})${bits.length ? `: ${bits.join(", ")}` : ""}`;
 }
 
 /** Tabella dei tratti per la valutazione della singola corsa. */

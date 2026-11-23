@@ -141,15 +141,11 @@ export async function loadStreams(supabase: SupabaseClient, activityId: string):
   };
 }
 
-/** Seduta abbinata all'attività, se ha una struttura da riconoscere (ripetute, progressivi…). */
-async function plannedStructure(supabase: SupabaseClient, userId: string, activity: Pick<Activity, "id" | "started_at">): Promise<PlannedWorkout | null> {
-  const workout = await plannedForActivity(supabase, userId, activity);
-  return workout && workout.type !== "cross" && isStructured(workoutStepsOrLegacy(workout.workout_steps, workout)) ? workout : null;
-}
-
 /**
  * Tratti della corsa: dai lap, dalla struttura scritta nella nota (che vince
  * sul piano: è quello che l'atleta dice di aver fatto) o dalla seduta del giorno.
+ * Il tipo della seduta conta anche senza struttura: con un lungo nel piano il
+ * rilevamento automatico chiede ripetute nette.
  */
 export async function computeIntervals(
   supabase: SupabaseClient,
@@ -161,12 +157,11 @@ export async function computeIntervals(
   if (activity.sport !== "running") return null;
   const structures: DeclaredStructure[] = [];
   if (declared?.steps.length) structures.push({ source: "notes", steps: declared.steps, description: declared.description });
-  const workout = await plannedStructure(supabase, userId, activity);
-  if (workout) {
-    const steps = workoutStepsOrLegacy(workout.workout_steps, workout);
-    structures.push({ source: "plan", steps, description: describeStructure(steps) });
-  }
-  return { ...analyzeIntervals({ ...streams, structures }), declared };
+  const found = await plannedForActivity(supabase, userId, activity);
+  const workout = found && found.type !== "cross" ? found : null;
+  const steps = workout ? workoutStepsOrLegacy(workout.workout_steps, workout) : [];
+  if (workout && isStructured(steps)) structures.push({ source: "plan", steps, description: describeStructure(steps) });
+  return { ...analyzeIntervals({ ...streams, structures, planned: workout?.type ?? null }), declared };
 }
 
 /** Analisi salvata ancora valida (stessa versione dell'algoritmo). */

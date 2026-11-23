@@ -478,3 +478,69 @@ test("una sosta con l'orologio che registra è una pausa, non un rallentamento",
   assert.ok(Math.abs(first.duration_s - 300) <= 15, `durata ${first.duration_s}s`);
   assert.ok(Math.abs(first.pace_s_km! - 303) <= 10, `passo ${first.pace_s_km}`);
 });
+
+// ── Il piano come riferimento ────────────────────────────────────────────────
+
+test("lungo nel piano: le variazioni di ritmo di 15 km continui non sono ripetute", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const raw = JSON.parse(await readFile(new URL("./fixtures/long-15k.json", import.meta.url), "utf8"));
+  const run = {
+    distance: raw.t.map((t: number, i: number) => ({ t, d: raw.d[i] })),
+    hr: raw.hr.map(([t, bpm]: [number, number]) => ({ t, bpm })),
+    cadence: raw.cad.map(([t, rpm]: [number, number]) => ({ t, rpm })),
+    laps: raw.laps,
+  };
+  const long = analyzeIntervals({ ...run, planned: "long" });
+  assert.equal(long.source, "none");
+  assert.equal(long.segments.length, 0);
+});
+
+test("lungo nel piano ma ripetute nette: le mostra e dice che non era il piano", () => {
+  const phases: Phase[] = [{ seconds: 600, speed: 2.8, hr: 135 }];
+  for (let i = 0; i < 6; i++) phases.push({ seconds: 180, speed: 4.4, hr: 170 }, { seconds: 90, speed: 2.0, hr: 140 });
+  phases.push({ seconds: 400, speed: 2.7, hr: 135 });
+  const { distance, hr } = simulate(phases);
+  const result = analyzeIntervals({ distance, hr, planned: "long" });
+  assert.equal(result.source, "auto");
+  assert.equal(result.contradicts_plan, "long");
+  assert.equal(result.segments.filter((s) => s.kind === "work").length, 6);
+});
+
+test("allunghi in una corsa facile del piano: restano, senza contraddire il piano", () => {
+  const phases: Phase[] = [{ seconds: 2400, speed: 2.9, hr: 145 }];
+  for (let i = 0; i < 6; i++) phases.push({ seconds: 20, speed: 5.2, hr: 160 }, { seconds: 60, speed: 2.4, hr: 145 });
+  const { distance, hr } = simulate(phases, 5);
+  const result = analyzeIntervals({ distance, hr, planned: "easy" });
+  assert.equal(result.source, "auto");
+  assert.equal(result.contradicts_plan ?? null, null);
+  assert.equal(result.segments.filter((s) => s.variant === "sprint").length, 6);
+});
+
+test("il coach ha l'ultima parola solo sulle ripetute trovate in automatico", async () => {
+  const { withCoachVerdict } = await import("../lib/intervals-text.ts");
+  const phases: Phase[] = [{ seconds: 600, speed: 2.8, hr: 135 }];
+  for (let i = 0; i < 6; i++) phases.push({ seconds: 90, speed: 4.6, hr: 170 }, { seconds: 90, speed: 2.2, hr: 140 });
+  const { distance, hr } = simulate(phases);
+  const auto = analyzeIntervals({ distance, hr });
+  assert.equal(withCoachVerdict(auto, { structured_session: false }), null);
+  assert.equal(withCoachVerdict(auto, { structured_session: true }), auto);
+  assert.equal(withCoachVerdict(auto, {}), auto);
+  const declared = { ...auto, source: "plan" as const };
+  assert.equal(withCoachVerdict(declared, { structured_session: false }), declared);
+  // Allunghi in una corsa facile: il coach la dice continua, ma restano.
+  const easy: Phase[] = [{ seconds: 2400, speed: 2.9, hr: 145 }];
+  for (let i = 0; i < 6; i++) easy.push({ seconds: 20, speed: 5.2, hr: 160 }, { seconds: 60, speed: 2.4, hr: 145 });
+  const strides = analyzeIntervals({ ...simulate(easy, 5), planned: "easy" });
+  assert.equal(strides.summary?.main, "sprint");
+  assert.equal(withCoachVerdict(strides, { structured_session: false }), strides);
+});
+
+test("facile nel piano ma 10 × 45\" netti: restano, anche se brevi", () => {
+  const phases: Phase[] = [{ seconds: 600, speed: 2.8, hr: 135 }];
+  for (let i = 0; i < 10; i++) phases.push({ seconds: 45, speed: 4.8, hr: 168 }, { seconds: 75, speed: 2.0, hr: 140 });
+  phases.push({ seconds: 300, speed: 2.7, hr: 135 });
+  const result = analyzeIntervals({ ...simulate(phases), planned: "easy" });
+  assert.equal(result.source, "auto");
+  // Sotto i 75" il rilevamento li chiama sprint: passano come allunghi.
+  assert.equal(result.segments.filter((s) => s.kind === "work" && s.duration_s >= 40 && s.duration_s <= 60).length, 9);
+});
