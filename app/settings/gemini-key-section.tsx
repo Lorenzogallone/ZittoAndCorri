@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, ExternalLink, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,7 @@ export function GeminiKeySection({
   credential: AiCredentialMetadata | null;
   focusRequested?: boolean;
 }) {
+  const t = useTranslations("settings.gemini");
   const [key, setKey] = useState("");
   const [pending, setPending] = useState(false);
   const [configured, setConfigured] = useState(credential);
@@ -54,9 +56,9 @@ export function GeminiKeySection({
 
   async function remove() {
     const confirmed = await confirm({
-      title: "Rimuovere la chiave Gemini?",
-      description: "Chat e feedback AI si disattivano finché non aggiungi un'altra chiave.",
-      action: "Rimuovi",
+      title: t("confirmRemove.title"),
+      description: t("confirmRemove.description"),
+      action: t("confirmRemove.action"),
     });
     if (!confirmed) return;
     setPending(true);
@@ -69,7 +71,7 @@ export function GeminiKeySection({
   return (
     <IntegrationCard
       id="gemini-integration"
-      description="Gratis entro i limiti di Google. Il modello si sceglie sopra, per la chat e per le analisi."
+      description={t("description")}
     >
       <div className="space-y-4">
       {configured && !editing ? (
@@ -77,11 +79,11 @@ export function GeminiKeySection({
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm">
               <Check size={16} className="text-emerald-500" />
-              <span>Configurata · ••••{configured.last_four}</span>
+              <span>{t("configured", { lastFour: configured.last_four })}</span>
             </div>
             <div className="flex items-center gap-1">
-              <Button ref={replaceRef} type="button" variant="outline" size="sm" disabled={pending} onClick={() => setEditing(true)}>Sostituisci</Button>
-              <Button type="button" variant="ghost" size="icon" disabled={pending} onClick={remove} title="Rimuovi chiave">
+              <Button ref={replaceRef} type="button" variant="outline" size="sm" disabled={pending} onClick={() => setEditing(true)}>{t("replace")}</Button>
+              <Button type="button" variant="ghost" size="icon" disabled={pending} onClick={remove} title={t("removeTitle")}>
                 <Trash2 size={15} />
               </Button>
             </div>
@@ -89,7 +91,7 @@ export function GeminiKeySection({
         </div>
       ) : (
         <div className="space-y-2.5">
-          <Label htmlFor="gemini-key">Chiave personale Gemini</Label>
+          <Label htmlFor="gemini-key">{t("keyLabel")}</Label>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               ref={inputRef}
@@ -108,20 +110,20 @@ export function GeminiKeySection({
               placeholder="AIza…"
             />
             <Button type="button" disabled={pending || key.trim().length < 16} onClick={save}>
-              {pending ? "Verifico…" : "Verifica"}
+              {pending ? t("verifying") : t("verify")}
             </Button>
           </div>
-          {configured && <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => { setEditing(false); setKey(""); }}>Annulla sostituzione</Button>}
+          {configured && <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => { setEditing(false); setKey(""); }}>{t("cancelReplace")}</Button>}
         </div>
       )}
 
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
 
-      <IntegrationHelp title="Come ottenere la chiave">
+      <IntegrationHelp title={t("help.title")}>
         <ol className="mt-2 list-decimal space-y-1 pl-4">
-          <li>Apri Google AI Studio ed entra con il tuo account Google.</li>
-          <li>Seleziona “Create API key” e scegli o crea un progetto.</li>
-          <li>Copia la chiave e incollala qui. Trattala come una password.</li>
+          <li>{t("help.step1")}</li>
+          <li>{t("help.step2")}</li>
+          <li>{t("help.step3")}</li>
         </ol>
         <a
           href="https://aistudio.google.com/app/apikey"
@@ -129,7 +131,7 @@ export function GeminiKeySection({
           rel="noreferrer"
           className="mt-3 inline-flex items-center gap-1 font-medium text-primary"
         >
-          Apri Google AI Studio <ExternalLink size={12} />
+          {t("help.open")} <ExternalLink size={12} />
         </a>
       </IntegrationHelp>
       {confirmSheet}

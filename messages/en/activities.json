@@ -1,0 +1,271 @@
+{
+  "backLabel": "Runs",
+  "page": {
+    "title": "Runs",
+    "addAria": "Log an activity",
+    "empty": {
+      "title": "Your runs will show up here",
+      "text": "Distance, pace and the coach's analysis for every run. Import a file from your watch or log one by hand.",
+      "action": "Import a run",
+      "secondary": "Connect Intervals.icu"
+    }
+  },
+  "errors": {
+    "dateRequired": "Enter a date and time.",
+    "dateInvalid": "Invalid date or time.",
+    "distanceInvalid": "Invalid distance.",
+    "durationInvalid": "Invalid duration (use h:mm:ss or mm:ss).",
+    "saveFailed": "Something went wrong while saving.",
+    "importFailed": "Something went wrong during the import.",
+    "noFile": "No file selected.",
+    "gpxOnly": "Only .gpx files exported from Strava are supported.",
+    "activityInvalid": "Invalid run.",
+    "needsMigration": "The database needs updating (migration 0026).",
+    "updateFailed": "Couldn't update the run.",
+    "idMissing": "Run ID missing.",
+    "notFound": "Run not found or not authorized."
+  },
+  "share": {
+    "label": "Share",
+    "unauthenticated": "Not signed in",
+    "notFound": "Not found"
+  },
+  "fields": {
+    "sport": "Sport",
+    "dateTime": "Date and time",
+    "dateTimeFromFile": "Date and time (from file)",
+    "type": "Type",
+    "typeTag": "Type (tag)",
+    "distanceKm": "Distance (km)",
+    "distanceKmOptional": "Distance (km, optional)",
+    "duration": "Duration (h:mm:ss)",
+    "avgHr": "Avg HR",
+    "maxHr": "Max HR",
+    "elevation": "Elevation gain (m)",
+    "fromGpx": "(from GPX)"
+  },
+  "new": {
+    "title": "New run",
+    "intro": "Pace and zones are calculated automatically.",
+    "saveRun": "Save run",
+    "saveActivity": "Save activity",
+    "mode": {
+      "manual": "Manual",
+      "file": "From file (GPX/FIT)"
+    },
+    "manual": {
+      "optional": "Optional",
+      "rpe": "RPE 1–10",
+      "notes": "Notes",
+      "notesPlaceholder": "Legs good, feeling fresh.",
+      "saving": "Saving…"
+    },
+    "review": {
+      "title": "Review activity",
+      "intro": "Data extracted successfully. You can edit it before saving.",
+      "notes": "Notes for the coach",
+      "notesPlaceholder": "E.g. heavy legs, hot, easy breathing…",
+      "titleFromFile": "Title from file: <b>{title}</b>",
+      "distanceKmFromFile": "Distance (km, from file)",
+      "durationFromFile": "Duration (from file)",
+      "cardioSection": "Heart rate & elevation (from file)",
+      "rpe": "RPE (effort 1–10)",
+      "back": "Back",
+      "saving": "Saving..."
+    },
+    "file": {
+      "label": "GPX or FIT file",
+      "choose": "Tap to choose a .gpx and/or .fit file",
+      "parsing": "Reading file...",
+      "helpSources": ".gpx or .fit files exported from Strava, Garmin, Coros or Zepp. You can also select both (GPX + FIT) for the same activity: the data gets combined.",
+      "helpAuto": "The sport is detected from the file. Pace, HR zones, splits, cadence and cardiac drift are calculated automatically.",
+      "unsupported": "Unsupported format: use a .gpx or .fit file.",
+      "tooMany": "Two files at most: one .gpx and one .fit from the same activity.",
+      "needPair": "With two files, you need a .gpx and a .fit from the same activity.",
+      "parseFailed": "Couldn't read the file."
+    }
+  },
+  "edit": {
+    "pageTitle": "Edit activity",
+    "cancel": "Cancel",
+    "intro": "Edit your workout details. Pace and zones will be recalculated.",
+    "duration": "Duration",
+    "cardioSection": "Metrics & heart rate",
+    "notEditableGpx": "(can't be edited for GPX)",
+    "rpe": "RPE 1–10 (effort)",
+    "notes": "Notes / activity name",
+    "notesPlaceholder": "How did it go?",
+    "saving": "Saving...",
+    "save": "Save changes",
+    "delete": "Delete run",
+    "confirmDelete": "Are you sure you want to delete this run? This can't be undone.",
+    "deleteFailed": "Couldn't delete the run. Try again.",
+    "deleting": "Deleting...",
+    "confirmDeleteYes": "Yes, delete"
+  },
+  "detail": {
+    "edit": "Edit",
+    "record": "{label} record · {time}",
+    "progress": "Trend",
+    "zones": "Heart-rate zones",
+    "kmSegment": "Km {km}",
+    "stats": {
+      "time": "Time",
+      "pace": "Pace",
+      "avgHr": "Avg HR",
+      "elevation": "Elevation",
+      "cadence": "Cadence",
+      "maxHr": "Max HR",
+      "drift": "HR drift",
+      "effort": "Effort"
+    }
+  },
+  "list": {
+    "excluded": "excluded",
+    "analyzing": "analyzing…",
+    "time": "Time",
+    "elevation": "Elevation",
+    "pace": "Pace",
+    "distance": "Distance"
+  },
+  "totals": {
+    "periodAria": "Period",
+    "runs": "Runs",
+    "time": "Time",
+    "elevation": "Elevation",
+    "longest": "Longest",
+    "walking": "Plus {km} km of walks and hikes",
+    "inLine": "In line with {period}",
+    "difference": "{value} km vs {period}"
+  },
+  "excludedBanner": {
+    "exclude": "Don't count this run",
+    "title": "Excluded from totals and load",
+    "restore": "Add back to totals",
+    "restoring": "Restoring…",
+    "byAthlete": "Excluded by the athlete"
+  },
+  "evaluation": {
+    "title": "The coach's comment",
+    "missingResult": "Evaluation result missing",
+    "cost": "Analysis cost",
+    "addKey": "Add a Gemini or OpenRouter key to get the coach's comment",
+    "quotaHint": "Wait for your free limit to reset before trying again.",
+    "addNote": "Add a note and re-evaluate",
+    "notesLabel": "How did it go?",
+    "notesPlaceholder": "Heavy legs, hot weather… and if you did intervals, what they looked like: 3 × (3' hard + 1' jog + 1' sprint)",
+    "reevaluate": "Re-evaluate",
+    "retry": "Try again",
+    "ask": "Ask the coach"
+  },
+  "paceCheck": {
+    "titleSingle": "Pace of the main section",
+    "titleReps": "Interval pace",
+    "session": "Session",
+    "target": "Target {ranges}",
+    "rep": "Section {index}",
+    "status": {
+      "onTarget": "In line with the plan",
+      "fast": "Faster than expected",
+      "slow": "Slower than expected"
+    }
+  },
+  "kmSplits": {
+    "title": "Km by km",
+    "fastest": "fastest",
+    "slowest": "slowest",
+    "summary": "From the fastest km at {fastest}/km to the slowest at {slowest}/km",
+    "halvesSame": "Second half at the same pace",
+    "halvesFaster": "Second half {delta}″/km faster",
+    "halvesSlower": "Second half {delta}″/km slower",
+    "halvesWithHr": "{pace} · HR {delta} bpm",
+    "columns": {
+      "km": "Km",
+      "pace": "Pace",
+      "hr": "HR",
+      "cadence": "spm",
+      "cadenceTitle": "Steps per minute",
+      "elevation": "Elev.",
+      "elevationTitle": "Elevation gained or lost in that km, in meters"
+    },
+    "hintIdle": "Tap a km to see it on the Trend chart.",
+    "hintSelected": "Km highlighted on the chart. Tap it again to go back to the whole run."
+  },
+  "zones": {
+    "z1": "Easy",
+    "z2": "Steady",
+    "z3": "Threshold",
+    "z4": "Intervals",
+    "z5": "Max"
+  },
+  "intervals": {
+    "title": "Intervals",
+    "profileAria": "Run profile: taller blocks are faster sections",
+    "paused": "paused",
+    "pausedTitle": "Pause: not counted in time or pace",
+    "topSpeedTitle": "Top speed",
+    "hrRecovered": "Heart rate recovered",
+    "average": "Avg {pace}/km",
+    "range": "from {fastest} to {slowest}",
+    "fadeSlower": "last one {pct}% slower",
+    "fadeFaster": "last one {pct}% faster",
+    "regular": "regular intervals",
+    "sprint": "Sprint",
+    "sprintPace": "Sprint {pace}/km",
+    "sprintTop": "top {speed}",
+    "topOnly": "Top {speed}",
+    "contradictsPlan": "The plan said {planned}, but the data looks like intervals.",
+    "viewSession": "View session",
+    "columns": {
+      "time": "Time",
+      "pace": "Pace",
+      "hr": "HR",
+      "cadence": "spm",
+      "cadenceTitle": "Steps per minute"
+    },
+    "hintIdle": "On the map, the route uses the same colors as the sections. Tap a section to bring it to the front.",
+    "hintSelected": "Section highlighted on the chart and map. Tap it again to show them all.",
+    "fixNote": "Fix the structure in the note",
+    "wrongNote": "Not right? Describe the session in the note"
+  },
+  "map": {
+    "preview": "Route map",
+    "slow": "slow",
+    "fast": "fast",
+    "loading": "Loading map…",
+    "touchHelp": "Use two fingers to move the map",
+    "windowsHelp": "Use Ctrl + scroll wheel to zoom",
+    "macHelp": "Use ⌘ + scroll wheel to zoom",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out"
+  },
+  "overlay": {
+    "groupAria": "Series on the chart",
+    "chartAria": "Trend over time: {series}",
+    "series": {
+      "hr": "Heart rate",
+      "pace": "Pace",
+      "elevation": "Elevation",
+      "cadence": "Cadence"
+    }
+  },
+  "charts": {
+    "form": {
+      "form": "Fitness",
+      "fatigue": "Fatigue",
+      "aria": "Fitness {form}, fatigue {fatigue} today"
+    },
+    "weeks": {
+      "done": "Done",
+      "planned": "Planned",
+      "aria": "Running km per week",
+      "now": "Now",
+      "weekOf": "Week of {date}",
+      "doneValue": "{distance} done",
+      "plannedValue": "{distance} planned"
+    },
+    "trend": {
+      "aria": "{label}: last value {value} on {date}"
+    }
+  }
+}

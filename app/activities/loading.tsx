@@ -1,11 +1,13 @@
+import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/app-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Stessa forma della pagina: totali (periodi, km, quattro metriche) e un mese
 // di corse in una card, una riga per uscita.
 export default function Loading() {
+  const t = useTranslations("activities");
   return (
-    <AppShell title="Corse" wide>
+    <AppShell title={t("page.title")} wide>
       <div className="surface mb-8 p-4">
         <Skeleton className="h-8 w-full rounded-xl" />
         <Skeleton className="mt-5 h-3 w-24" />

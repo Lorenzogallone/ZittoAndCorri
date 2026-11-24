@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { WorkoutForm } from "./workout-form";
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default async function NewWorkoutPage({ searchParams }: Props) {
+  const t = await getTranslations("plan");
   const { date } = await searchParams;
   const supabase = await createClient();
   const {
@@ -25,7 +27,7 @@ export default async function NewWorkoutPage({ searchParams }: Props) {
     .returns<Pick<Goal, "id" | "race_name" | "is_active">[]>();
 
   return (
-    <AppShell title="Nuovo allenamento" backHref="/plan" backLabel="Piano" hideTabBar>
+    <AppShell title={t("new.title")} backHref="/plan" backLabel={t("title")} hideTabBar>
       <WorkoutForm goals={goals ?? []} defaultDate={date} />
     </AppShell>
   );

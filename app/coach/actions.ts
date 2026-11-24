@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { schedulePlanPublish } from "@/lib/intervals/sync";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAiConfig, type AiConfig } from "@/lib/ai/credentials";
@@ -191,9 +192,10 @@ function dayLabel(iso: string): string {
  */
 export async function sendCoachMessage(message: string, clientId?: string): Promise<CoachActionResult> {
   const startedAt = Date.now();
+  const t = await getTranslations("coach.actions");
   const text = message.trim();
-  if (!text) return { error: "Scrivi un messaggio per il coach." };
-  if (text.length > 4000) return { error: "Il messaggio è troppo lungo." };
+  if (!text) return { error: t("emptyMessage") };
+  if (text.length > 4000) return { error: t("tooLong") };
   const client = typeof clientId === "string" && /^[\w-]{8,64}$/.test(clientId) ? clientId : null;
 
   const supabase = await createClient();
@@ -201,7 +203,7 @@ export async function sendCoachMessage(message: string, clientId?: string): Prom
   if (!user) redirect("/login");
 
   const ai = await getAiConfig(user.id, "chat");
-  if (!ai) return { error: "Configura una chiave AI (Gemini o OpenRouter) nelle impostazioni." };
+  if (!ai) return { error: t("configureKey") };
 
   if (client) {
     const { data: existing } = await supabase
@@ -220,7 +222,7 @@ export async function sendCoachMessage(message: string, clientId?: string): Prom
     .insert({ user_id: user.id, role: "user", kind: "chat", content: text, metadata: client ? { client_id: client } : {} })
     .select("*")
     .single<CoachMessage>();
-  if (messageError || !userMessage) return { error: "Impossibile salvare il messaggio." };
+  if (messageError || !userMessage) return { error: t("saveFailed") };
   return queueCoachTurn(user.id, userMessage, ai, startedAt);
 }
 
@@ -234,11 +236,12 @@ export async function retryCoachMessage(messageId: string): Promise<CoachActionR
 }
 
 async function startCoachTurn(messageId: string, startedAt: number): Promise<CoachActionResult> {
+  const t = await getTranslations("coach.actions");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const ai = await getAiConfig(user.id, "chat");
-  if (!ai) return { error: "Configura una chiave AI (Gemini o OpenRouter) nelle impostazioni." };
+  if (!ai) return { error: t("configureKey") };
 
   const { data: original } = await supabase
     .from("coach_messages")
@@ -247,7 +250,7 @@ async function startCoachTurn(messageId: string, startedAt: number): Promise<Coa
     .eq("user_id", user.id)
     .eq("role", "user")
     .maybeSingle<CoachMessage>();
-  if (!original) return { error: "Messaggio non trovato." };
+  if (!original) return { error: t("notFound") };
 
   // Già risposto (es. il primo invio era andato a buon fine): niente doppione.
   const { data: reply } = await supabase
@@ -258,7 +261,7 @@ async function startCoachTurn(messageId: string, startedAt: number): Promise<Coa
     .eq("metadata->>reply_to", original.id)
     .limit(1)
     .maybeSingle<{ id: string }>();
-  if (reply) return { error: "Il coach ha già risposto a questo messaggio: ricarica la chat.", userMessage: original };
+  if (reply) return { error: t("alreadyReplied"), userMessage: original };
 
   // Un turno ancora in corso per questo messaggio: lo si segue invece di aprirne un altro.
   const { data: running } = await supabase
@@ -282,11 +285,12 @@ async function startCoachTurn(messageId: string, startedAt: number): Promise<Coa
     .eq("user_id", user.id)
     .select("*")
     .single<CoachMessage>();
-  if (error || !userMessage) return { error: "Impossibile rimandare il messaggio. Riprova." };
+  if (error || !userMessage) return { error: t("resendFailed") };
   return queueCoachTurn(user.id, userMessage, ai, startedAt);
 }
 
 async function queueCoachTurn(userId: string, userMessage: CoachMessage, ai: AiConfig, startedAt: number): Promise<CoachActionResult> {
+  const t = await getTranslations("coach.actions");
   const supabase = await createClient();
   const { data: job, error: jobError } = await supabase
     .from("ai_jobs")
@@ -294,8 +298,8 @@ async function queueCoachTurn(userId: string, userMessage: CoachMessage, ai: AiC
     .select("id")
     .single<{ id: string }>();
   if (jobError || !job) {
-    const failed = await markMessageFailed(createAdminClient(), userId, userMessage.id, "Impossibile avviare il coach.");
-    return { error: "Impossibile avviare il coach.", userMessage: failed ?? userMessage };
+    const failed = await markMessageFailed(createAdminClient(), userId, userMessage.id, t("startFailed"));
+    return { error: t("startFailed"), userMessage: failed ?? userMessage };
   }
   after(() => runCoachTurn(job.id, userId, userMessage.id, userMessage.content, ai, startedAt + COACH_BUDGET_MS));
   return { jobId: job.id, userMessage };
@@ -509,6 +513,7 @@ function parseCoachResponse(raw: unknown): ParsedCoachResponse {
 }
 
 export async function applyPlanProposal(proposalId: string) {
+  const t = await getTranslations("coach.actions");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -527,11 +532,11 @@ export async function applyPlanProposal(proposalId: string) {
   // tutte le sedute della finestra, anche quelle non citate o già passate.
   const { data, error } = await supabase.rpc("apply_plan_proposal_v2", { p_proposal_id: proposalId });
   if (error?.code === "PGRST202") {
-    return { error: "Per applicare le proposte serve aggiornare il database (migrazione 0023)." };
+    return { error: t("proposalNeedsMigration") };
   }
-  if (error) return { error: "Impossibile applicare la proposta." };
-  if (data === "stale") return { error: "Il piano di quei giorni è cambiato o sono già passati: chiedi al coach una nuova proposta." };
-  if (data !== "applied") return { error: "Proposta non più valida." };
+  if (error) return { error: t("applyFailed") };
+  if (data === "stale") return { error: t("proposalStale") };
+  if (data !== "applied") return { error: t("proposalInvalid") };
   schedulePlanPublish(user.id);
   revalidatePath("/plan");
   revalidatePath("/");
@@ -539,11 +544,12 @@ export async function applyPlanProposal(proposalId: string) {
 }
 
 export async function rejectPlanProposal(proposalId: string) {
+  const t = await getTranslations("coach.actions");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { error } = await supabase.from("plan_proposals").update({ status: "rejected" }).eq("id", proposalId).eq("user_id", user.id).eq("status", "pending");
-  if (error) return { error: "Impossibile annullare la proposta." };
+  if (error) return { error: t("rejectFailed") };
   return { ok: true };
 }
 
@@ -561,6 +567,7 @@ export async function deleteCoachMemory(memoryId: string) {
  * conversazione si azzera. Piano, corse e memorie non cambiano.
  */
 export async function startNewCoachChat(): Promise<{ marker?: CoachMessage; error?: string }> {
+  const t = await getTranslations("coach.actions");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -569,7 +576,7 @@ export async function startNewCoachChat(): Promise<{ marker?: CoachMessage; erro
     .insert({ user_id: user.id, role: "system", kind: "status", content: "Nuova chat", metadata: { type: NEW_SESSION } })
     .select("*")
     .single<CoachMessage>();
-  if (error || !marker) return { error: "Impossibile iniziare una nuova chat. Riprova." };
+  if (error || !marker) return { error: t("newChatFailed") };
   const { error: stateError } = await supabase.from("coach_state").upsert({
     user_id: user.id,
     conversation_summary: null,

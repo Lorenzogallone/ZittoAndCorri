@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAthlete, IntervalsError } from "@/lib/intervals/client";
 import {
@@ -14,8 +15,6 @@ import {
 } from "@/lib/intervals/credentials";
 import { runIntervalsSync, type IntervalsSyncResult } from "@/lib/intervals/sync";
 
-const MIGRATION_ERROR = "Per usare Intervals.icu serve aggiornare il database (migrazione 0025).";
-
 async function authenticatedUserId(): Promise<string> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -24,9 +23,10 @@ async function authenticatedUserId(): Promise<string> {
 }
 
 export async function saveIntervalsKey(apiKey: string): Promise<{ error?: string; ok?: boolean; athlete?: { id: string; name: string | null } }> {
+  const t = await getTranslations("settingsLinks.intervals.errors");
   const userId = await authenticatedUserId();
   const key = apiKey.trim();
-  if (key.length < 8) return { error: "La chiave Intervals.icu non sembra valida." };
+  if (key.length < 8) return { error: t("keyInvalidShape") };
   let athlete: { id: string; name: string | null };
   try {
     const fetched = await fetchAthlete(key);
@@ -35,33 +35,35 @@ export async function saveIntervalsKey(apiKey: string): Promise<{ error?: string
     console.error("saveIntervalsKey verify:", error instanceof Error ? error.message : error);
     return {
       error: error instanceof IntervalsError && (error.status === 401 || error.status === 403)
-        ? "Chiave Intervals.icu non valida."
-        : "Non riesco a verificare la chiave con Intervals.icu. Riprova.",
+        ? t("keyRejected")
+        : t("verifyFailed"),
     };
   }
   try {
     await storeIntervalsApiKey(userId, key, athlete);
   } catch (error) {
     console.error("saveIntervalsKey:", error instanceof Error ? error.message : error);
-    return { error: intervalsNotMigrated(error as { code?: string }) ? MIGRATION_ERROR : "Impossibile salvare la chiave. Riprova." };
+    return { error: intervalsNotMigrated(error as { code?: string }) ? t("migration") : t("saveKeyFailed") };
   }
   revalidatePath("/settings");
   return { ok: true, athlete };
 }
 
 export async function deleteIntervalsKey(): Promise<{ error?: string; ok?: boolean }> {
+  const t = await getTranslations("settingsLinks.intervals.errors");
   const userId = await authenticatedUserId();
   try {
     await removeIntervalsApiKey(userId);
   } catch (error) {
     console.error("deleteIntervalsKey:", error instanceof Error ? error.message : error);
-    return { error: "Impossibile rimuovere la chiave. Riprova." };
+    return { error: t("removeKeyFailed") };
   }
   revalidatePath("/settings");
   return { ok: true };
 }
 
 export async function saveIntervalsOptions(options: IntervalsOptions): Promise<{ error?: string; ok?: boolean }> {
+  const t = await getTranslations("settingsLinks.intervals.errors");
   const userId = await authenticatedUserId();
   const clean: IntervalsOptions = {};
   if (typeof options.import_activities === "boolean") clean.import_activities = options.import_activities;
@@ -74,18 +76,19 @@ export async function saveIntervalsOptions(options: IntervalsOptions): Promise<{
     await updateIntervalsOptions(userId, clean);
   } catch (error) {
     console.error("saveIntervalsOptions:", error instanceof Error ? error.message : error);
-    return { error: "Impossibile salvare le preferenze. Riprova." };
+    return { error: t("saveOptionsFailed") };
   }
   revalidatePath("/settings");
   return { ok: true };
 }
 
 export async function syncIntervalsNow(): Promise<{ error?: string; result?: IntervalsSyncResult }> {
+  const t = await getTranslations("settingsLinks.intervals.errors");
   const userId = await authenticatedUserId();
   const supabase = await createClient();
   const connection = await getIntervalsConnection(supabase, userId);
-  if (connection === undefined) return { error: MIGRATION_ERROR };
-  if (!connection) return { error: "Salva prima la chiave Intervals.icu." };
+  if (connection === undefined) return { error: t("migration") };
+  if (!connection) return { error: t("missingKey") };
   try {
     const result = await runIntervalsSync(userId, connection);
     revalidatePath("/settings");
@@ -95,6 +98,6 @@ export async function syncIntervalsNow(): Promise<{ error?: string; result?: Int
     return { result };
   } catch (error) {
     console.error("syncIntervalsNow:", error instanceof Error ? error.message : error);
-    return { error: "Sincronizzazione non riuscita. Riprova." };
+    return { error: t("syncFailed") };
   }
 }

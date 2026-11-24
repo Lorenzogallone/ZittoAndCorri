@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { activeDuration, formatDistance, formatDuration, formatPace } from "@/lib/format";
 import { romeDay } from "@/lib/local-date";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ const DISTANCE_COLUMN = "shrink-0 text-right xl:w-24 3xl:w-28";
 const kmValue = (meters: number) => formatDistance(meters).replace(" km", "");
 
 function ActivityRow({ activity, analyzing }: { activity: ListActivity; analyzing: boolean }) {
+  const t = useTranslations("activities.list");
   const isRun = activity.sport === "running";
   const Icon = SPORT_ICONS[activity.sport ?? "other"];
   const day = romeDay(activity.started_at);
@@ -43,8 +45,8 @@ function ActivityRow({ activity, analyzing }: { activity: ListActivity; analyzin
           <p className="truncate text-body font-semibold">{title}</p>
           <p className="mt-0.5 truncate text-caption text-muted-foreground tabular-nums">
             {dayLabel(day)}<span className="xl:hidden"> · {formatDuration(activeDuration(activity))}</span>
-            {activity.excluded_at && <span> · esclusa</span>}
-            {analyzing && <span className="text-primary"> · analisi in corso…</span>}
+            {activity.excluded_at && <span> · {t("excluded")}</span>}
+            {analyzing && <span className="text-primary"> · {t("analyzing")}</span>}
           </p>
         </div>
         <p className={cn(COLUMN, "text-body")}>{formatDuration(activeDuration(activity))}</p>
@@ -76,6 +78,7 @@ function ActivityRow({ activity, analyzing }: { activity: ListActivity; analyzin
 
 /** Corse raggruppate per mese, una riga compatta ciascuna. */
 export function ActivitiesList({ activities, analyzing }: { activities: ListActivity[]; analyzing: Set<string> }) {
+  const t = useTranslations("activities.list");
   const months: Array<{ key: string; items: ListActivity[] }> = [];
   for (const activity of activities) {
     const key = romeDay(activity.started_at).slice(0, 7);
@@ -89,10 +92,10 @@ export function ActivitiesList({ activities, analyzing }: { activities: ListActi
         <section key={month.key} className="mt-8">
           <div className="mb-2 flex items-baseline gap-3 px-1 xl:pr-4">
             <h2 className="eyebrow min-w-0 flex-1">{monthLabel(`${month.key}-01`)}</h2>
-            <span className={cn(COLUMN, "eyebrow")} aria-hidden="true">Tempo</span>
-            <span className={cn(ELEVATION_COLUMN, "eyebrow")} aria-hidden="true">Dislivello</span>
-            <span className={cn(COLUMN, "eyebrow")} aria-hidden="true">Passo</span>
-            <span className={cn(DISTANCE_COLUMN, "eyebrow hidden xl:block")} aria-hidden="true">Distanza</span>
+            <span className={cn(COLUMN, "eyebrow")} aria-hidden="true">{t("time")}</span>
+            <span className={cn(ELEVATION_COLUMN, "eyebrow")} aria-hidden="true">{t("elevation")}</span>
+            <span className={cn(COLUMN, "eyebrow")} aria-hidden="true">{t("pace")}</span>
+            <span className={cn(DISTANCE_COLUMN, "eyebrow hidden xl:block")} aria-hidden="true">{t("distance")}</span>
           </div>
           <ul className="surface divide-y divide-border/60 px-4">
             {month.items.map((activity) => (

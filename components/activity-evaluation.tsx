@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { startEvaluation } from "@/app/activities/ai-actions";
@@ -38,6 +39,7 @@ export function ActivityEvaluation({
   initialError: serverError = null,
   keyConfigured = true,
 }: Props) {
+  const t = useTranslations("activities.evaluation");
   // Il job lanciato dal server può non finire mai (funzione scaduta): passato
   // il tempo massimo lo spinner lascia il posto all'errore e a "Riprova".
   const [expiredSince, setExpiredSince] = useState<string | null>(null);
@@ -65,11 +67,11 @@ export function ActivityEvaluation({
   const usage = readUsage(displayedEvaluation?.ai_usage);
   const router = useRouter();
   const showEvaluationResult = useCallback((status: AiJobStatus) => {
-    if (!status.evaluationResult) throw new Error("Risultato valutazione mancante");
+    if (!status.evaluationResult) throw new Error(t("missingResult"));
     setDisplayedEvaluation(status.evaluationResult);
     // La valutazione può aver riletto le ripetute dalla nota: aggiorna la pagina.
     router.refresh();
-  }, [router]);
+  }, [router, t]);
   // La chiave per-corsa permette di riprendere il polling se iOS sospende la
   // PWA, mentre onDone aggiorna questa sezione senza ricaricare la pagina.
   const { pending, done, error, start } = useAiJob(`eval:${activityId}`, {
@@ -105,7 +107,7 @@ export function ActivityEvaluation({
   return (
     <section id="nota" ref={sectionRef} className="surface scroll-mt-4 p-5">
       <h2 className="mb-3 flex items-center gap-2 text-body font-semibold">
-        <Sparkles size={16} className="text-primary" /> Il commento del coach
+        <Sparkles size={16} className="text-primary" /> {t("title")}
       </h2>
 
       {displayedEvaluation?.summary && !isAnalyzing && (
@@ -119,12 +121,12 @@ export function ActivityEvaluation({
         </ul>
       )}
       {usage && displayedEvaluation?.summary && !isAnalyzing && (
-        <AiCost usage={usage} part="total" prefix="Costo dell'analisi" className="mt-3" />
+        <AiCost usage={usage} part="total" prefix={t("cost")} className="mt-3" />
       )}
 
       {!keyConfigured && !isAnalyzing && (
         <Link href="/settings?tab=coach" className="pressable mt-3 block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">
-          Aggiungi una chiave Gemini o OpenRouter per ricevere il commento
+          {t("addKey")}
         </Link>
       )}
 
@@ -133,7 +135,7 @@ export function ActivityEvaluation({
           <p className="text-sm font-medium text-destructive">{displayedError}</p>
           {/quota/i.test(displayedError) && (
             <p className="mt-1 text-xs text-muted-foreground">
-              Attendi il ripristino del limite gratuito prima di riprovare.
+              {t("quotaHint")}
             </p>
           )}
         </div>
@@ -141,7 +143,7 @@ export function ActivityEvaluation({
 
       {!isAnalyzing && keyConfigured && !formVisible && (
         <button type="button" onClick={() => setShowForm(true)} className="mt-4 text-sm font-medium text-primary">
-          Aggiungi una nota e rivaluta
+          {t("addNote")}
         </button>
       )}
 
@@ -159,7 +161,7 @@ export function ActivityEvaluation({
         >
           <input type="hidden" name="activity_id" value={activityId} />
           <label id="ai-notes-label" htmlFor="ai-notes" className="text-xs font-medium text-muted-foreground">
-            Come è andata?
+            {t("notesLabel")}
           </label>
           <TextField
             id="ai-notes"
@@ -167,10 +169,10 @@ export function ActivityEvaluation({
             name="notes"
             rows={3}
             defaultValue={displayedEvaluation ? "" : initialNotes ?? ""}
-            placeholder="Gambe pesanti, caldo… e se hai fatto ripetute, com'erano: 3 × (3' forte + 1' jog + 1' sprint)"
+            placeholder={t("notesPlaceholder")}
           />
           <Button type="submit" disabled={!keyConfigured} variant="outline" className="w-full">
-            {displayedEvaluation ? "Rivaluta" : initialFailed ? "Riprova" : "Chiedi al coach"}
+            {displayedEvaluation ? t("reevaluate") : initialFailed ? t("retry") : t("ask")}
           </Button>
         </form>
       )}

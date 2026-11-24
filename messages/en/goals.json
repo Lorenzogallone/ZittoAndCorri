@@ -1,0 +1,59 @@
+{
+  "title": "Goals",
+  "new": {
+    "title": "New goal",
+    "submit": "Save goal"
+  },
+  "edit": {
+    "title": "Edit goal",
+    "submit": "Update goal"
+  },
+  "form": {
+    "active": "Active goal",
+    "saving": "Saving…"
+  },
+  "fields": {
+    "kindLabel": "Goal type",
+    "kinds": {
+      "race": { "label": "Race", "hint": "A race on a specific date" },
+      "general": { "label": "General", "hint": "Improve over a distance, no deadline" }
+    },
+    "presets": {
+      "half": "Half (21.1 km)",
+      "marathon": "Marathon (42.2 km)"
+    },
+    "distanceGeneral": "Distance to improve on",
+    "distanceRace": "Distance",
+    "nameGeneral": "Goal name",
+    "nameRace": "Race name",
+    "namePlaceholderGeneral": "Improve my half marathon",
+    "namePlaceholderRace": "Milano Marathon 2026",
+    "nameOptional": "Optional — leave empty to use “{name}”",
+    "raceDate": "Race date",
+    "targetGeneral": "Time to aim for",
+    "targetRace": "Target time",
+    "targetHint": "Optional — format h:mm:ss or mm:ss"
+  },
+  "list": {
+    "newButton": "New",
+    "empty": "No goals yet. You don't need a race: you can just want to improve over a distance, or tell the coach in chat.",
+    "newGoal": "New goal",
+    "active": "Active",
+    "others": "Other goals"
+  },
+  "card": {
+    "active": "Active",
+    "general": "General goal · no deadline",
+    "target": "Target {time}",
+    "weeksLeft": "{weeks, plural, one {# week left} other {# weeks left}}",
+    "edit": "Edit",
+    "makeActive": "Make active",
+    "delete": "Delete"
+  },
+  "errors": {
+    "distance": "Invalid distance.",
+    "raceName": "Enter the race name.",
+    "raceDate": "Enter the race date, or choose a general goal.",
+    "targetTime": "Invalid target time (use h:mm:ss or mm:ss)."
+  }
+}

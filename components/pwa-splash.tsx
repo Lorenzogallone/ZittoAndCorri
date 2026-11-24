@@ -1,6 +1,7 @@
 "use client";
 
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useMemo } from "react";
+import { useTranslations } from "next-intl";
 
 // Splash PWA pre-hydration: arriva con l'HTML del server (CSS+markup+script
 // inline) così appare appena la risposta viene parsata, prima del JS. Lo script
@@ -100,18 +101,19 @@ const PWA_SPLASH_HTML = `
   </div>
   <div class="ps-text">
     <h1>Zitto e <span>Corri</span></h1>
-    <p>Il tuo coach di corsa personale</p>
+    <p>__TAGLINE__</p>
   </div>
 </div>
 <script>(function(){try{window.__zcSplashAt=Date.now();var s=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;if(!s||sessionStorage.getItem("pwa-splash-shown")){var e=document.getElementById("pwa-splash");if(e)e.remove();}}catch(err){}try{setTimeout(function(){var e=document.getElementById("pwa-splash");if(e){e.style.opacity="0";e.style.pointerEvents="none";setTimeout(function(){if(e&&e.parentNode)e.parentNode.removeChild(e);},450);}},6000);}catch(err){}})();</script>
 `;
 
-// Oggetto stabile a livello di modulo: React 19 confronta le prop per identità
-// e, con un oggetto nuovo, riscrive innerHTML. Quando il markup stava nel layout
-// server, ogni server action (es. elimina obiettivo) o router.refresh() mandava
-// un layout nuovo → lo splash veniva reinserito e, senza più script a
-// toglierlo, restava sopra l'app con la barra di caricamento all'infinito.
-const SPLASH_MARKUP = { __html: PWA_SPLASH_HTML };
+// Oggetto stabile (memoizzato sulla frase): React 19 confronta le prop per
+// identità e, con un oggetto nuovo, riscrive innerHTML. Quando il markup stava
+// nel layout server, ogni server action (es. elimina obiettivo) o
+// router.refresh() mandava un layout nuovo → lo splash veniva reinserito e,
+// senza più script a toglierlo, restava sopra l'app con la barra di
+// caricamento all'infinito.
+const escapeHtml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 // Tempo minimo a schermo dalla comparsa: se l'app si idrata subito, l'omino fa
 // comunque qualche passo invece di lampeggiare.
@@ -125,6 +127,12 @@ function removeSplash(el: HTMLElement) {
 
 /** Splash della PWA: si dissolve appena l'app è idratata. */
 export function PwaSplash() {
+  const t = useTranslations("shell");
+  const tagline = t("splash.tagline");
+  const markup = useMemo(
+    () => ({ __html: PWA_SPLASH_HTML.replace("__TAGLINE__", () => escapeHtml(tagline)) }),
+    [tagline],
+  );
   useLayoutEffect(() => {
     const el = document.getElementById("pwa-splash");
     if (!el) return;
@@ -149,5 +157,5 @@ export function PwaSplash() {
     return () => clearTimeout(timer);
   }, []);
 
-  return <div id="pwa-splash-root" suppressHydrationWarning dangerouslySetInnerHTML={SPLASH_MARKUP} />;
+  return <div id="pwa-splash-root" suppressHydrationWarning dangerouslySetInnerHTML={markup} />;
 }

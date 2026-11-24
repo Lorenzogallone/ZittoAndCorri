@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useMeasuredWidth } from "./chart-utils";
 import { formatMetric, type BodyMetricKey, type DayValue } from "@/lib/metrics/body-trends";
 
@@ -32,6 +33,7 @@ export function TrendChart({
   days?: number;
   label: string;
 }) {
+  const t = useTranslations("activities.charts.trend");
   const { ref, width } = useMeasuredWidth<HTMLDivElement>();
   const [active, setActive] = useState<number | null>(null);
   const end = time(today);
@@ -83,7 +85,7 @@ export function TrendChart({
           className="touch-pan-y overflow-visible outline-none"
           tabIndex={0}
           role="img"
-          aria-label={`${label}: ultimo valore ${formatMetric(metric, last.value)} il ${dayLabel(last.date)}`}
+          aria-label={t("aria", { label, value: formatMetric(metric, last.value), date: dayLabel(last.date) })}
           onPointerMove={(event) => pick(event.clientX, event.currentTarget.getBoundingClientRect())}
           onPointerDown={(event) => pick(event.clientX, event.currentTarget.getBoundingClientRect())}
           onPointerLeave={() => setActive(null)}

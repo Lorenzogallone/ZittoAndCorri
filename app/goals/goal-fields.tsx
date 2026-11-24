@@ -1,23 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { TextField } from "@/components/ui/text-field";
 import { Label } from "@/components/ui/label";
 import { generalGoalName, type GoalKind } from "@/lib/goals";
 import { DECIMAL_PATTERN, DURATION_PATTERN, parseDecimal } from "@/lib/format";
 
-const DISTANCE_PRESETS = [
-  { label: "5 km", km: 5 },
-  { label: "10 km", km: 10 },
-  { label: "Mezza (21,1 km)", km: 21.0975 },
-  { label: "Maratona (42,2 km)", km: 42.195 },
+// Senza `key` l'etichetta è solo "<km> km"; con `key` arriva dai messaggi.
+const DISTANCE_PRESETS: { km: number; key?: "half" | "marathon" }[] = [
+  { km: 5 },
+  { km: 10 },
+  { km: 21.0975, key: "half" },
+  { km: 42.195, key: "marathon" },
 ];
 
-const KIND_OPTIONS: { value: GoalKind; label: string; hint: string }[] = [
-  { value: "race", label: "Gara", hint: "Una gara con una data precisa" },
-  { value: "general", label: "Generico", hint: "Migliorare su una distanza, senza scadenza" },
-];
+const KIND_OPTIONS: GoalKind[] = ["race", "general"];
 
 interface Props {
   defaultKind?: GoalKind;
@@ -35,6 +34,7 @@ export function GoalFields({
   defaultDistanceKm = "",
   defaultTargetTime = "",
 }: Props) {
+  const t = useTranslations("goals.fields");
   const [kind, setKind] = useState<GoalKind>(defaultKind);
   const [distanceKm, setDistanceKm] = useState(defaultDistanceKm);
   const general = kind === "general";
@@ -42,36 +42,36 @@ export function GoalFields({
   const namePlaceholder = general
     ? Number.isFinite(distance) && distance > 0
       ? generalGoalName(Math.round(distance * 1000))
-      : "Migliorare nella mezza maratona"
-    : "Milano Marathon 2026";
+      : t("namePlaceholderGeneral")
+    : t("namePlaceholderRace");
 
   return (
     <>
       <input type="hidden" name="goal_kind" value={kind} />
       <div className="grid gap-2.5">
-        <Label>Tipo di obiettivo</Label>
+        <Label>{t("kindLabel")}</Label>
         <div className="grid grid-cols-2 gap-2">
           {KIND_OPTIONS.map((option) => (
             <button
-              key={option.value}
+              key={option}
               type="button"
-              aria-pressed={kind === option.value}
-              onClick={() => setKind(option.value)}
+              aria-pressed={kind === option}
+              onClick={() => setKind(option)}
               className={`pressable rounded-xl border px-3 py-2.5 text-left ${
-                kind === option.value
+                kind === option
                   ? "border-primary/60 bg-primary/10 text-foreground"
                   : "border-white/[0.08] bg-card text-muted-foreground hover:text-foreground"
               }`}
             >
-              <span className="block text-sm font-semibold">{option.label}</span>
-              <span className="mt-0.5 block text-micro leading-snug">{option.hint}</span>
+              <span className="block text-sm font-semibold">{t(`kinds.${option}.label`)}</span>
+              <span className="mt-0.5 block text-micro leading-snug">{t(`kinds.${option}.hint`)}</span>
             </button>
           ))}
         </div>
       </div>
 
       <div className="grid gap-2.5">
-        <Label htmlFor="distance_km">{general ? "Distanza su cui migliorare" : "Distanza"}</Label>
+        <Label htmlFor="distance_km">{general ? t("distanceGeneral") : t("distanceRace")}</Label>
         <div className="grid grid-cols-2 gap-2 mb-1">
           {DISTANCE_PRESETS.map((p) => (
             <button
@@ -80,7 +80,7 @@ export function GoalFields({
               className="pressable rounded-xl border border-white/[0.08] bg-card px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:border-primary/40"
               onClick={() => setDistanceKm(String(p.km))}
             >
-              {p.label}
+              {p.key ? t(`presets.${p.key}`) : `${p.km} km`}
             </button>
           ))}
         </div>
@@ -100,7 +100,7 @@ export function GoalFields({
       </div>
 
       <div className="grid gap-2.5">
-        <Label id="race_name-label" htmlFor="race_name">{general ? "Nome obiettivo" : "Nome gara"}</Label>
+        <Label id="race_name-label" htmlFor="race_name">{general ? t("nameGeneral") : t("nameRace")}</Label>
         {/* Non un input: Safari proponeva il nome della scheda contatto. */}
         <TextField
           id="race_name"
@@ -112,19 +112,19 @@ export function GoalFields({
           defaultValue={defaultName}
         />
         {general && (
-          <p className="text-xs text-muted-foreground">Opzionale — se vuoto usiamo “{namePlaceholder}”</p>
+          <p className="text-xs text-muted-foreground">{t("nameOptional", { name: namePlaceholder })}</p>
         )}
       </div>
 
       {!general && (
         <div className="grid gap-2.5">
-          <Label htmlFor="race_date">Data gara</Label>
+          <Label htmlFor="race_date">{t("raceDate")}</Label>
           <Input id="race_date" name="race_date" type="date" defaultValue={defaultDate} required />
         </div>
       )}
 
       <div className="grid gap-2.5">
-        <Label htmlFor="target_time">{general ? "Tempo a cui puntare" : "Tempo obiettivo"}</Label>
+        <Label htmlFor="target_time">{general ? t("targetGeneral") : t("targetRace")}</Label>
         <Input
           id="target_time"
           name="target_time"
@@ -136,7 +136,7 @@ export function GoalFields({
           placeholder="1:45:00"
           defaultValue={defaultTargetTime}
         />
-        <p className="text-xs text-muted-foreground">Opzionale — formato h:mm:ss o mm:ss</p>
+        <p className="text-xs text-muted-foreground">{t("targetHint")}</p>
       </div>
     </>
   );

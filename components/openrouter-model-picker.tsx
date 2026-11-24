@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
+import { useTranslations } from "next-intl";
 import { Check, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,10 +19,10 @@ import {
 
 const FREE = "__free__";
 
-const contextLabel = (tokens: number | null) =>
-  tokens ? (tokens >= 1_000_000 ? `${+(tokens / 1_000_000).toFixed(1)}M contesto` : `${Math.round(tokens / 1000)}k contesto`).replace(".", ",") : null;
-
 function ModelRow({ model, selected, onPick, withProvider = false }: { model: OpenRouterModel; selected: boolean; onPick: () => void; withProvider?: boolean }) {
+  const t = useTranslations("coach.picker");
+  const contextLabel = (tokens: number | null) =>
+    tokens ? (tokens >= 1_000_000 ? t("contextM", { size: `${+(tokens / 1_000_000).toFixed(1)}`.replace(".", ",") }) : t("contextK", { size: `${Math.round(tokens / 1000)}` })) : null;
   return (
     <button
       type="button"
@@ -62,6 +63,7 @@ export function OpenRouterModelPicker({
   onSelect: (modelId: string) => void;
   title: string;
 }) {
+  const t = useTranslations("coach.picker");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<string | null>(null);
   const [manual, setManual] = useState("");
@@ -89,22 +91,22 @@ export function OpenRouterModelPicker({
           <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
             <DialogPrimitive.Title className="min-w-0 flex-1 truncate text-body font-semibold">{title}</DialogPrimitive.Title>
             <DialogPrimitive.Close asChild>
-              <Button type="button" variant="ghost" size="icon-sm" aria-label="Chiudi"><X /></Button>
+              <Button type="button" variant="ghost" size="icon-sm" aria-label={t("close")}><X /></Button>
             </DialogPrimitive.Close>
           </div>
 
           {models.length === 0 ? (
             <div className="space-y-3 p-4">
-              <p className="text-sm text-muted-foreground">Il catalogo di OpenRouter non risponde in questo momento. Scrivi l&apos;id del modello come appare su openrouter.ai.</p>
-              <Input value={manual} onChange={(event) => setManual(event.target.value.trim())} placeholder="es. anthropic/claude-sonnet-5-5" autoComplete="off" spellCheck={false} />
-              <Button type="button" className="w-full" disabled={!/^[\w.-]+\/[\w.:-]+$/.test(manual)} onClick={() => pick(manual)}>Usa questo modello</Button>
+              <p className="text-sm text-muted-foreground">{t("catalogDown")}</p>
+              <Input value={manual} onChange={(event) => setManual(event.target.value.trim())} placeholder={t("manualPlaceholder")} autoComplete="off" spellCheck={false} />
+              <Button type="button" className="w-full" disabled={!/^[\w.-]+\/[\w.:-]+$/.test(manual)} onClick={() => pick(manual)}>{t("useThisModel")}</Button>
             </div>
           ) : (
             <>
               <div className="space-y-2.5 border-b border-border/60 px-4 py-3">
                 <div className="relative">
                   <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cerca (facoltativo)" className="pl-9" autoComplete="off" spellCheck={false} />
+                  <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchPlaceholder")} className="pl-9" autoComplete="off" spellCheck={false} />
                 </div>
                 <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none]">
                   {[null, FREE, ...providers].map((item) => (
@@ -117,7 +119,7 @@ export function OpenRouterModelPicker({
                         filter === item ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground",
                       )}
                     >
-                      {item === null ? "Tutti" : item === FREE ? "Gratis" : item}
+                      {item === null ? t("all") : item === FREE ? t("free") : item}
                     </button>
                   ))}
                 </div>
@@ -125,7 +127,7 @@ export function OpenRouterModelPicker({
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,0px)]">
                 {browsing && suggested.length > 0 && (
                   <section>
-                    <h3 className="sticky top-0 z-10 bg-background/95 px-4 py-1.5 text-micro font-semibold uppercase tracking-wide text-primary backdrop-blur">Consigliati</h3>
+                    <h3 className="sticky top-0 z-10 bg-background/95 px-4 py-1.5 text-micro font-semibold uppercase tracking-wide text-primary backdrop-blur">{t("suggested")}</h3>
                     {suggested.map((model) => (
                       <ModelRow key={`s-${model.id}`} model={model} withProvider selected={model.id === value} onPick={() => pick(model.id)} />
                     ))}
@@ -141,7 +143,7 @@ export function OpenRouterModelPicker({
                     ))}
                   </section>
                 ))}
-                {groups.length === 0 && <p className="px-4 py-8 text-center text-sm text-muted-foreground">Nessun modello trovato.</p>}
+                {groups.length === 0 && <p className="px-4 py-8 text-center text-sm text-muted-foreground">{t("noModels")}</p>}
               </div>
             </>
           )}

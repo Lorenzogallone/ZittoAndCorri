@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useConfirm } from "@/components/ui/confirm-sheet";
 import { Eye, EyeOff, Copy, Check, RefreshCw } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { regenerateApiKey } from "./actions";
 import { IntegrationCard, IntegrationHelp } from "./integration-card";
 
@@ -14,6 +15,7 @@ interface ApiKeySectionProps {
 }
 
 export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
+  const t = useTranslations("settings.apiKey");
   const [apiKey, setApiKey] = useState<string | null>(initialApiKey);
   const [showKey, setShowKey] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -36,9 +38,9 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
     if (
       apiKey &&
       !(await confirm({
-        title: "Rigenerare la chiave personale?",
-        description: "I Comandi Rapidi configurati con la chiave attuale smetteranno di funzionare finché non li aggiorni.",
-        action: "Rigenera",
+        title: t("confirmRegenerate.title"),
+        description: t("confirmRegenerate.description"),
+        action: t("confirmRegenerate.action"),
       }))
     )
       return;
@@ -48,12 +50,12 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
     try {
       const res = await regenerateApiKey();
       if (res.error) {
-        setError("Errore durante la rigenerazione: " + res.error);
+        setError(t("errorRegenerate", { error: res.error }));
       } else if (res.key) {
         setApiKey(res.key);
       }
     } catch {
-      setError("Errore imprevisto. Riprova.");
+      setError(t("errorUnexpected"));
     } finally {
       setLoading(false);
     }
@@ -62,11 +64,11 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
   return (
     <IntegrationCard
       id="external-import-integration"
-      description="Per caricare corse da Comandi Rapidi o altri servizi senza aprire l'app."
+      description={t("description")}
     >
     <div className="flex flex-col gap-4">
       <div className="grid gap-2.5">
-        <Label htmlFor="api_key">Chiave personale</Label>
+        <Label htmlFor="api_key">{t("label")}</Label>
         <div className="relative flex gap-2">
           <div className="relative flex-1">
             <Input
@@ -77,7 +79,7 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              value={apiKey ?? "Nessuna chiave configurata. Generala per iniziare."}
+              value={apiKey ?? t("empty")}
               className="pr-10 font-mono text-xs text-muted-foreground bg-muted/20"
             />
             {apiKey && (
@@ -85,7 +87,7 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
                 type="button"
                 onClick={() => setShowKey(!showKey)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors"
-                title={showKey ? "Nascondi chiave" : "Mostra chiave"}
+                title={showKey ? t("hide") : t("show")}
               >
                 {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -97,7 +99,7 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
               variant="outline"
               size="icon"
               onClick={handleCopy}
-              title="Copia negli appunti"
+              title={t("copy")}
             >
               {copied ? (
                 <Check size={16} className="text-emerald-600 dark:text-emerald-400" />
@@ -123,21 +125,21 @@ export function ApiKeySection({ initialApiKey }: ApiKeySectionProps) {
           className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5"
         >
           <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-          {apiKey ? "Rigenera chiave" : "Genera nuova chiave"}
+          {apiKey ? t("regenerate") : t("generate")}
         </Button>
       </div>
-      <IntegrationHelp title="Come si usa">
+      <IntegrationHelp title={t("help.title")}>
         <ol className="list-decimal space-y-1.5 pl-4">
-          <li>Genera la chiave, mostrala e copiala.</li>
-          <li>Nel servizio esterno usa l&apos;header <code className="rounded bg-muted px-1 py-0.5 text-foreground">Authorization: Bearer LA_TUA_CHIAVE</code>.</li>
-          <li>Scegli l&apos;endpoint adatto al contenuto da inviare.</li>
+          <li>{t("help.step1")}</li>
+          <li>{t.rich("help.step2", { code: (chunks) => <code className="rounded bg-muted px-1 py-0.5 text-foreground">{chunks}</code> })}</li>
+          <li>{t("help.step3")}</li>
         </ol>
         <div className="mt-3 space-y-1.5 rounded-lg bg-background/60 p-3 font-mono text-xs text-foreground">
-          <p>POST /api/import <span className="font-sans text-muted-foreground">— dati JSON</span></p>
-          <p>POST /api/import/gpx <span className="font-sans text-muted-foreground">— contenuto GPX</span></p>
-          <p>POST /api/import/file <span className="font-sans text-muted-foreground">— file FIT o GPX</span></p>
+          <p>POST /api/import <span className="font-sans text-muted-foreground">{t("help.endpointJson")}</span></p>
+          <p>POST /api/import/gpx <span className="font-sans text-muted-foreground">{t("help.endpointGpx")}</span></p>
+          <p>POST /api/import/file <span className="font-sans text-muted-foreground">{t("help.endpointFile")}</span></p>
         </div>
-        <p className="mt-3">Se rigeneri la chiave, aggiorna tutti i Comandi Rapidi che usavano quella precedente.</p>
+        <p className="mt-3">{t("help.regenerateNote")}</p>
       </IntegrationHelp>
       {confirmSheet}
     </div>

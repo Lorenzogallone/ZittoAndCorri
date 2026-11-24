@@ -1,0 +1,271 @@
+{
+  "backLabel": "Corse",
+  "page": {
+    "title": "Corse",
+    "addAria": "Registra un'attività",
+    "empty": {
+      "title": "Qui vedrai le tue corse",
+      "text": "Distanza, passo e l'analisi del coach per ogni uscita. Importa un file dall'orologio o registrala a mano.",
+      "action": "Importa una corsa",
+      "secondary": "Collega Intervals.icu"
+    }
+  },
+  "errors": {
+    "dateRequired": "Inserisci data e ora.",
+    "dateInvalid": "Data/ora non valida.",
+    "distanceInvalid": "Distanza non valida.",
+    "durationInvalid": "Durata non valida (usa h:mm:ss o mm:ss).",
+    "saveFailed": "Errore durante il salvataggio.",
+    "importFailed": "Errore durante l'import.",
+    "noFile": "Nessun file selezionato.",
+    "gpxOnly": "Solo file .gpx esportati da Strava sono supportati.",
+    "activityInvalid": "Corsa non valida.",
+    "needsMigration": "Serve aggiornare il database (migrazione 0026).",
+    "updateFailed": "Impossibile aggiornare la corsa.",
+    "idMissing": "ID corsa mancante.",
+    "notFound": "Corsa non trovata o non autorizzato."
+  },
+  "share": {
+    "label": "Condividi",
+    "unauthenticated": "Non autenticato",
+    "notFound": "Non trovata"
+  },
+  "fields": {
+    "sport": "Sport",
+    "dateTime": "Data e ora",
+    "dateTimeFromFile": "Data e ora (dal file)",
+    "type": "Tipo",
+    "typeTag": "Tipo (Tag)",
+    "distanceKm": "Distanza (km)",
+    "distanceKmOptional": "Distanza (km, opzionale)",
+    "duration": "Durata (h:mm:ss)",
+    "avgHr": "HR media",
+    "maxHr": "HR max",
+    "elevation": "Dislivello + (m)",
+    "fromGpx": "(da GPX)"
+  },
+  "new": {
+    "title": "Nuova corsa",
+    "intro": "Passo e zone sono calcolati in automatico.",
+    "saveRun": "Salva corsa",
+    "saveActivity": "Salva attività",
+    "mode": {
+      "manual": "Manuale",
+      "file": "Da file (GPX/FIT)"
+    },
+    "manual": {
+      "optional": "Opzionali",
+      "rpe": "RPE 1–10",
+      "notes": "Note",
+      "notesPlaceholder": "Gambe ok, fresco.",
+      "saving": "Salvo…"
+    },
+    "review": {
+      "title": "Revisione attività",
+      "intro": "I dati sono stati estratti con successo. Puoi modificarli prima di salvare.",
+      "notes": "Note per il coach",
+      "notesPlaceholder": "Es. gambe pesanti, caldo, respirazione facile…",
+      "titleFromFile": "Titolo dal file: <b>{title}</b>",
+      "distanceKmFromFile": "Distanza (km - dal file)",
+      "durationFromFile": "Durata (dal file)",
+      "cardioSection": "Dati Cardio & Dislivello (dal file)",
+      "rpe": "RPE (Sforzo 1-10)",
+      "back": "Indietro",
+      "saving": "Salvo..."
+    },
+    "file": {
+      "label": "File GPX o FIT",
+      "choose": "Tocca per scegliere file .gpx e/o .fit",
+      "parsing": "Analisi file in corso...",
+      "helpSources": "File .gpx o .fit esportati da Strava, Garmin, Coros o Zepp. Puoi selezionare anche entrambi (GPX + FIT) della stessa attività: i dati vengono combinati.",
+      "helpAuto": "Lo sport viene riconosciuto dal file; passo, zone HR, split, cadenza e deriva cardiaca sono calcolati in automatico.",
+      "unsupported": "Formato non supportato: usa file .gpx o .fit.",
+      "tooMany": "Massimo due file: un .gpx e un .fit della stessa attività.",
+      "needPair": "Con due file servono un .gpx e un .fit della stessa attività.",
+      "parseFailed": "Errore durante il parsing del file."
+    }
+  },
+  "edit": {
+    "pageTitle": "Modifica attività",
+    "cancel": "Annulla",
+    "intro": "Modifica i dettagli del tuo allenamento. Passo e zone verranno ricalcolati.",
+    "duration": "Durata",
+    "cardioSection": "Metodi & Cardio",
+    "notEditableGpx": "(non modificabili per GPX)",
+    "rpe": "RPE 1–10 (Fatica)",
+    "notes": "Note / Nome attività",
+    "notesPlaceholder": "Come è andata?",
+    "saving": "Salvataggio in corso...",
+    "save": "Salva modifiche",
+    "delete": "Elimina corsa",
+    "confirmDelete": "Sei sicuro di voler eliminare questa corsa? L'operazione non è reversibile.",
+    "deleteFailed": "Errore durante l'eliminazione. Riprova.",
+    "deleting": "Eliminazione...",
+    "confirmDeleteYes": "Sì, elimina"
+  },
+  "detail": {
+    "edit": "Modifica",
+    "record": "Record {label} · {time}",
+    "progress": "Andamento",
+    "zones": "Zone cardiache",
+    "kmSegment": "Km {km}",
+    "stats": {
+      "time": "Tempo",
+      "pace": "Passo",
+      "avgHr": "FC media",
+      "elevation": "Dislivello",
+      "cadence": "Cadenza",
+      "maxHr": "FC max",
+      "drift": "Deriva FC",
+      "effort": "Fatica"
+    }
+  },
+  "list": {
+    "excluded": "esclusa",
+    "analyzing": "analisi in corso…",
+    "time": "Tempo",
+    "elevation": "Dislivello",
+    "pace": "Passo",
+    "distance": "Distanza"
+  },
+  "totals": {
+    "periodAria": "Periodo",
+    "runs": "Uscite",
+    "time": "Tempo",
+    "elevation": "Dislivello",
+    "longest": "Più lunga",
+    "walking": "Più {km} km di camminate ed escursioni",
+    "inLine": "In linea rispetto {period}",
+    "difference": "{value} km rispetto {period}"
+  },
+  "excludedBanner": {
+    "exclude": "Non contare questa corsa",
+    "title": "Esclusa da totali e carico",
+    "restore": "Rimetti nei conteggi",
+    "restoring": "Ripristino…",
+    "byAthlete": "Esclusa dall'atleta"
+  },
+  "evaluation": {
+    "title": "Il commento del coach",
+    "missingResult": "Risultato valutazione mancante",
+    "cost": "Costo dell'analisi",
+    "addKey": "Aggiungi una chiave Gemini o OpenRouter per ricevere il commento",
+    "quotaHint": "Attendi il ripristino del limite gratuito prima di riprovare.",
+    "addNote": "Aggiungi una nota e rivaluta",
+    "notesLabel": "Come è andata?",
+    "notesPlaceholder": "Gambe pesanti, caldo… e se hai fatto ripetute, com'erano: 3 × (3' forte + 1' jog + 1' sprint)",
+    "reevaluate": "Rivaluta",
+    "retry": "Riprova",
+    "ask": "Chiedi al coach"
+  },
+  "paceCheck": {
+    "titleSingle": "Passo del tratto principale",
+    "titleReps": "Passo delle ripetute",
+    "session": "Seduta",
+    "target": "Obiettivo {ranges}",
+    "rep": "Tratto {index}",
+    "status": {
+      "onTarget": "In linea con il piano",
+      "fast": "Più veloce del previsto",
+      "slow": "Più lento del previsto"
+    }
+  },
+  "kmSplits": {
+    "title": "Km per km",
+    "fastest": "più veloce",
+    "slowest": "più lento",
+    "summary": "Dal km più veloce a {fastest}/km al più lento a {slowest}/km",
+    "halvesSame": "Seconda metà allo stesso passo",
+    "halvesFaster": "Seconda metà più veloce di {delta}″/km",
+    "halvesSlower": "Seconda metà più lenta di {delta}″/km",
+    "halvesWithHr": "{pace} · FC {delta} bpm",
+    "columns": {
+      "km": "Km",
+      "pace": "Passo",
+      "hr": "FC",
+      "cadence": "spm",
+      "cadenceTitle": "Passi al minuto",
+      "elevation": "Disl.",
+      "elevationTitle": "Quota guadagnata o persa nel km, in metri"
+    },
+    "hintIdle": "Tocca un km per vederlo nel grafico Andamento.",
+    "hintSelected": "Km in primo piano nel grafico. Toccalo di nuovo per tornare a tutta la corsa."
+  },
+  "zones": {
+    "z1": "Facile",
+    "z2": "Medio",
+    "z3": "Soglia",
+    "z4": "Ripetute",
+    "z5": "Massimo"
+  },
+  "intervals": {
+    "title": "Ripetute",
+    "profileAria": "Profilo della corsa: blocchi più alti sono tratti più veloci",
+    "paused": "pausa",
+    "pausedTitle": "Pausa: non conta nel tempo né nel passo",
+    "topSpeedTitle": "Velocità di punta",
+    "hrRecovered": "Battiti recuperati",
+    "average": "Media {pace}/km",
+    "range": "da {fastest} a {slowest}",
+    "fadeSlower": "ultima più lenta del {pct}%",
+    "fadeFaster": "ultima più veloce del {pct}%",
+    "regular": "ripetute regolari",
+    "sprint": "Sprint",
+    "sprintPace": "Sprint {pace}/km",
+    "sprintTop": "punta {speed}",
+    "topOnly": "Punta {speed}",
+    "contradictsPlan": "Il piano diceva {planned}, ma dai dati sembrano ripetute.",
+    "viewSession": "Vedi la seduta",
+    "columns": {
+      "time": "Tempo",
+      "pace": "Passo",
+      "hr": "FC",
+      "cadence": "spm",
+      "cadenceTitle": "Passi al minuto"
+    },
+    "hintIdle": "Sulla mappa il percorso ha gli stessi colori dei tratti. Tocca un tratto per metterlo in primo piano.",
+    "hintSelected": "Tratto in primo piano nel grafico e sulla mappa. Toccalo di nuovo per tornare a tutte.",
+    "fixNote": "Correggi la struttura nella nota",
+    "wrongNote": "Non torna? Scrivi com'era la seduta nella nota"
+  },
+  "map": {
+    "preview": "Mappa del percorso",
+    "slow": "lento",
+    "fast": "veloce",
+    "loading": "Caricamento mappa…",
+    "touchHelp": "Usa due dita per spostare la mappa",
+    "windowsHelp": "Usa Ctrl + rotella per lo zoom",
+    "macHelp": "Usa ⌘ + rotella per lo zoom",
+    "zoomIn": "Ingrandisci",
+    "zoomOut": "Riduci"
+  },
+  "overlay": {
+    "groupAria": "Serie nel grafico",
+    "chartAria": "Andamento nel tempo: {series}",
+    "series": {
+      "hr": "Cuore",
+      "pace": "Passo",
+      "elevation": "Quota",
+      "cadence": "Cadenza"
+    }
+  },
+  "charts": {
+    "form": {
+      "form": "Forma",
+      "fatigue": "Fatica",
+      "aria": "Forma {form}, fatica {fatigue} oggi"
+    },
+    "weeks": {
+      "done": "Fatti",
+      "planned": "Previsti",
+      "aria": "Km di corsa per settimana",
+      "now": "Ora",
+      "weekOf": "Settimana del {date}",
+      "doneValue": "{distance} fatti",
+      "plannedValue": "{distance} previsti"
+    },
+    "trend": {
+      "aria": "{label}: ultimo valore {value} il {date}"
+    }
+  }
+}

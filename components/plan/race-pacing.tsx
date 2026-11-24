@@ -1,4 +1,5 @@
 import { Flag } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { formatDuration, formatPace } from "@/lib/format";
 import { racePacing } from "@/lib/plan/race";
 import { adjustPace } from "@/lib/metrics/heat";
@@ -18,22 +19,24 @@ export function RacePacingCard({
   advice?: string;
   heatPct?: number;
 }) {
+  const t = useTranslations("plan.race");
   const pacing = racePacing(distance_m, target_s);
   if (!pacing) return null;
   const hotPace = heatPct > 0 ? adjustPace(pacing.pace_s_km, heatPct) : null;
   return (
     <section className="mb-8">
       <h2 className="mb-1 flex items-center gap-2 text-base font-semibold tracking-tight">
-        <Flag size={16} className="text-primary" /> Strategia di gara
+        <Flag size={16} className="text-primary" /> {t("title")}
       </h2>
       <p className="mb-4 text-sm text-muted-foreground">
-        {source === "goal" ? "Per il tuo tempo obiettivo" : "Per il tempo che oggi sei in grado di fare"}{" "}
-        <span className="font-semibold text-foreground tabular-nums">{formatDuration(target_s)}</span> tieni{" "}
-        <span className="font-semibold text-foreground tabular-nums">{formatPace(pacing.pace_s_km)}</span>.
-        {" "}Parti qualche secondo più piano nei primi km, poi stabilizzati.
-        {hotPace && <> Con il caldo previsto punta piuttosto a {formatPace(hotPace)}.</>}
+        {t.rich(source === "goal" ? "goal" : "prediction", {
+          time: formatDuration(target_s),
+          pace: formatPace(pacing.pace_s_km),
+          b: (chunks) => <span className="font-semibold text-foreground tabular-nums">{chunks}</span>,
+        })}
+        {hotPace && <>{" "}{t("heat", { pace: formatPace(hotPace) })}</>}
       </p>
-      {advice && <p className="-mt-2 mb-4 text-sm text-muted-foreground">Dalla previsione di oggi: {advice.charAt(0).toLowerCase()}{advice.slice(1)}</p>}
+      {advice && <p className="-mt-2 mb-4 text-sm text-muted-foreground">{t("advice", { advice: advice.charAt(0).toLowerCase() + advice.slice(1) })}</p>}
       <ol className="divide-y divide-border/60 rounded-2xl border border-border">
         {pacing.checkpoints.map((checkpoint) => (
           <li key={checkpoint.meters} className="flex items-center justify-between px-4 py-2.5 text-sm">

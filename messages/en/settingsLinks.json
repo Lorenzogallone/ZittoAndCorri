@@ -1,0 +1,171 @@
+{
+  "memory": {
+    "categories": {
+      "guideline": "Guideline",
+      "preference": "Preference",
+      "availability": "Availability",
+      "vacation": "Vacation",
+      "weather": "Weather",
+      "fatigue": "Fatigue",
+      "limitation": "Limitation",
+      "pace_hr": "Pace and heart rate",
+      "long_term": "Long-term path"
+    },
+    "expiredOn": "expired on {date}",
+    "validUntil": "valid until {date}",
+    "editor": {
+      "typeLabel": "Type",
+      "contentLabel": "What it should remember",
+      "contentPlaceholder": "E.g. Warm up and cool down at an easy pace, or by walking…",
+      "validUntilLabel": "Valid until",
+      "validUntilHint": "Leave empty if it always applies.",
+      "saving": "Saving…",
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete"
+    },
+    "list": {
+      "empty": "Nothing yet. The coach learns from your conversations, or you can add a memory yourself.",
+      "editAria": "Edit memory",
+      "add": "Add memory",
+      "clearChat": "Clear chat",
+      "clearAll": "Clear all"
+    },
+    "confirm": {
+      "delete": {
+        "title": "Delete this memory?",
+        "description": "The coach will stop taking it into account. This can't be undone.",
+        "action": "Delete"
+      },
+      "clearAll": {
+        "title": "Clear chat and memories?",
+        "description": "The coach also forgets what it has learned about you. This can't be undone.",
+        "action": "Clear all"
+      },
+      "clearChat": {
+        "title": "Clear chat history?",
+        "description": "The coach's memories stay.",
+        "action": "Clear chat"
+      }
+    },
+    "errors": {
+      "contentTooShort": "Write at least a few words.",
+      "contentTooLong": "Maximum 600 characters.",
+      "invalid": "Invalid data.",
+      "categoryUnavailable": "This category isn't available in the database yet.",
+      "saveFailed": "Couldn't save the memory. Try again in a moment.",
+      "deleteFailed": "Couldn't delete the memory. Try again in a moment."
+    }
+  },
+  "zepp": {
+    "never": "Never",
+    "description": "Optional: brings in sleep, recovery and heart-rate zones from your watch.",
+    "useWatchData": "Use watch data",
+    "useWatchDataAria": "Use watch data",
+    "connected": "{device} connected",
+    "defaultDevice": "Zepp watch",
+    "lastSync": "Last sync: {date}",
+    "staleNote": "old data isn't used until you sync again",
+    "lastError": "Last error: {error}",
+    "disconnectAndDelete": "Disconnect and delete data",
+    "codeTitle": "ZittoAndCorri code",
+    "copied": "Copied",
+    "validUntil": "Valid until {time}",
+    "validFallback": "Valid for the next 10 min",
+    "codeHint": "Use it to connect both the Health app and the Coach app.",
+    "generating": "Generating…",
+    "generate": "Generate connection code",
+    "generateNew": "Generate a new code",
+    "codeUnavailable": "Code unavailable.",
+    "confirm": {
+      "disable": {
+        "title": "Turn off watch data?",
+        "description": "The Zepp connection will be revoked: to turn it back on you'll need a new code.",
+        "action": "Turn off"
+      },
+      "delete": {
+        "title": "Disconnect the watch and delete data?",
+        "description": "The Zepp connection and history will be deleted. This can't be undone.",
+        "action": "Delete"
+      }
+    },
+    "help": {
+      "title": "How to connect your watch",
+      "step1": "Generate the code above (valid for 5 minutes, locks after 5 attempts).",
+      "step2": "<strong>Health app (data sync):</strong> open Zepp on your phone → your watch → Apps → Zitto e Corri → Settings → paste the code → <em>Connect</em>.",
+      "step3": "<strong>Coach app (workouts):</strong> again in Zepp → Apps → Zitto e Corri Coach → Settings → paste the <strong>same code</strong> → <em>Connect</em>.",
+      "step4": "Open the Mini Program on the watch for the first sync.",
+      "note": "The code can be used once per app within its validity window. If it expires before you connect the second app, generate a new code."
+    },
+    "errors": {
+      "generate": "Couldn't generate the code. Try again.",
+      "disable": "Couldn't turn off Zepp.",
+      "delete": "Couldn't delete the Zepp data."
+    }
+  },
+  "intervals": {
+    "never": "never",
+    "description": "The official bridge with your watch: Zepp sends runs and health data to Intervals.icu, and Intervals brings your plan to the watch as guided workouts.",
+    "notMigrated": {
+      "description": "Imports runs and health data from your watch and sends the plan to the watch, via Intervals.icu.",
+      "text": "To turn it on, the database needs updating with migration 0025."
+    },
+    "targets": {
+      "auto": "Automatic",
+      "pace": "Pace",
+      "hr": "HR"
+    },
+    "keySaved": "Key saved. Tap “Sync now” for the first import.",
+    "confirmDisconnect": {
+      "title": "Disconnect Intervals.icu?",
+      "description": "Runs already imported stay.",
+      "action": "Disconnect"
+    },
+    "replace": "Replace",
+    "disconnect": "Disconnect",
+    "importActivities": "Import runs",
+    "importWellness": "Import sleep, resting HR and HRV",
+    "importWellnessAria": "Import health data",
+    "publishPlan": "Send plan to the watch",
+    "targetLabel": "Step target on the watch",
+    "targetHint": "Zepp accepts only one target type per session. Automatic uses pace for threshold and interval sessions, and HR for easy and long runs.",
+    "lastImport": "Last import: {date}",
+    "lastPublish": "Last plan sent: {date}",
+    "lastError": "Last error: {error}",
+    "syncing": "Syncing…",
+    "syncNow": "Sync now",
+    "keyLabel": "Intervals.icu API key",
+    "keyPlaceholder": "Find it in Settings → Developer",
+    "verifying": "Verifying…",
+    "verifyAndSave": "Verify and save",
+    "cancel": "Cancel",
+    "sync": {
+      "activitiesImported": "{count, plural, one {# run imported} other {# runs imported}}",
+      "wellnessDays": "{days, plural, one {# day} other {# days}} of health data",
+      "plan": "plan: {created} new, {updated} updated, {deleted} removed",
+      "nothing": "Nothing to sync."
+    },
+    "help": {
+      "title": "How to connect it",
+      "step1": "Create a free account on Intervals.icu.",
+      "step2": "In the Zepp app: Profile → Third-party accounts → Intervals.icu.",
+      "step3": "On Intervals.icu, Settings → Amazfit panel: turn on downloading of wellness data and HRV.",
+      "step4": "Also in Settings, at the bottom (Developer): copy the API key and paste it here.",
+      "note": "After a run, open the Zepp app: the run reaches Intervals.icu within seconds, and from there it arrives here within an hour, or right away when you open Zitto e Corri. The whole future plan appears in the Intervals.icu calendar; the next 7 days reach the watch in the Workout app, among the plan's workouts.",
+      "open": "Open Intervals.icu"
+    },
+    "errors": {
+      "migration": "To use Intervals.icu the database needs updating (migration 0025).",
+      "keyInvalidShape": "The Intervals.icu key doesn't look valid.",
+      "keyRejected": "Invalid Intervals.icu key.",
+      "verifyFailed": "Couldn't verify the key with Intervals.icu. Try again.",
+      "saveKeyFailed": "Couldn't save the key. Try again.",
+      "removeKeyFailed": "Couldn't remove the key. Try again.",
+      "saveOptionsFailed": "Couldn't save the preferences. Try again.",
+      "keyNotSaved": "Key not saved.",
+      "missingKey": "Save the Intervals.icu key first.",
+      "syncFailed": "Sync failed. Try again.",
+      "syncNotCompleted": "Sync failed."
+    }
+  }
+}

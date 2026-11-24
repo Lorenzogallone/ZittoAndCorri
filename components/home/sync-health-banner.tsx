@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { CloudOff, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { SyncIssue } from "@/lib/sync-health";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,7 @@ function subscribe(onChange: () => void) {
 export function SyncHealthBanner({ issues, className }: { issues: SyncIssue[]; className?: string }) {
   // undefined sul server: si mostra solo dopo aver letto se era stato chiuso,
   // così un avviso già chiuso non lampeggia all'apertura.
+  const t = useTranslations("home.syncBanner");
   const dismissed = useSyncExternalStore(subscribe, readDismissed, () => undefined);
   const [issue] = issues;
   const current = signature(issues);
@@ -60,12 +62,12 @@ export function SyncHealthBanner({ issues, className }: { issues: SyncIssue[]; c
         {others > 0 && <span className="text-muted-foreground"> · +{others}</span>}
       </p>
       <Link href={issue.href} className="shrink-0 text-sm font-medium text-primary">
-        Controlla
+        {t("check")}
       </Link>
       <button
         type="button"
         onClick={dismiss}
-        aria-label="Chiudi l'avviso"
+        aria-label={t("dismiss")}
         className="pressable grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted"
       >
         <X size={16} aria-hidden />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { Check, ExternalLink, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,16 +13,12 @@ import type { IntervalsTargetPreference } from "@/lib/intervals/workout-text";
 import { IntegrationCard, IntegrationHelp } from "./integration-card";
 import { deleteIntervalsKey, saveIntervalsKey, saveIntervalsOptions, syncIntervalsNow } from "./intervals-actions";
 
-function formatDate(value: string | null): string {
-  if (!value) return "mai";
+function formatDate(value: string | null, never: string): string {
+  if (!value) return never;
   return new Date(value).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" });
 }
 
-const TARGETS: Array<{ value: IntervalsTargetPreference; label: string }> = [
-  { value: "auto", label: "Automatico" },
-  { value: "pace", label: "Passo" },
-  { value: "hr", label: "Frequenza" },
-];
+const TARGETS: IntervalsTargetPreference[] = ["auto", "pace", "hr"];
 
 export function IntervalsSection({
   initial,
@@ -29,6 +26,7 @@ export function IntervalsSection({
   /** null = non collegato; undefined = database senza migrazione 0025. */
   initial: IntervalsConnectionView | null | undefined;
 }) {
+  const t = useTranslations("settingsLinks.intervals");
   const [connection, setConnection] = useState(initial ?? null);
   const [key, setKey] = useState("");
   const [editing, setEditing] = useState(false);
@@ -39,8 +37,8 @@ export function IntervalsSection({
 
   if (initial === undefined) {
     return (
-      <IntegrationCard description="Importa corse e dati salute dall'orologio e manda il piano all'orologio, tramite Intervals.icu.">
-        <p className="text-sm text-muted-foreground">Per attivarla serve aggiornare il database con la migrazione 0025.</p>
+      <IntegrationCard description={t("notMigrated.description")}>
+        <p className="text-sm text-muted-foreground">{t("notMigrated.text")}</p>
       </IntegrationCard>
     );
   }
@@ -49,7 +47,7 @@ export function IntervalsSection({
     setError(null);
     setMessage(null);
     const result = await saveIntervalsKey(key);
-    if (result.error || !result.athlete) return setError(result.error ?? "Chiave non salvata.");
+    if (result.error || !result.athlete) return setError(result.error ?? t("errors.keyNotSaved"));
     setConnection((current) => ({
       last_four: key.trim().slice(-4),
       athlete_id: result.athlete!.id,
@@ -65,14 +63,14 @@ export function IntervalsSection({
     }));
     setKey("");
     setEditing(false);
-    setMessage("Chiave salvata. Tocca “Sincronizza ora” per il primo import.");
+    setMessage(t("keySaved"));
   });
 
   const remove = async () => {
     const confirmed = await confirm({
-      title: "Scollegare Intervals.icu?",
-      description: "Le corse già importate restano.",
-      action: "Scollega",
+      title: t("confirmDisconnect.title"),
+      description: t("confirmDisconnect.description"),
+      action: t("confirmDisconnect.action"),
     });
     if (!confirmed) return;
     startTransition(async () => {
@@ -100,15 +98,15 @@ export function IntervalsSection({
     setError(null);
     setMessage(null);
     const response = await syncIntervalsNow();
-    if (response.error || !response.result) return setError(response.error ?? "Sincronizzazione non riuscita.");
+    if (response.error || !response.result) return setError(response.error ?? t("errors.syncNotCompleted"));
     const { import: imported, publish, error: syncError } = response.result;
     const parts: string[] = [];
     if (imported) {
-      parts.push(`${imported.activities.imported} ${imported.activities.imported === 1 ? "corsa importata" : "corse importate"}`);
-      parts.push(`${imported.wellness.days} giorni di dati salute`);
+      parts.push(t("sync.activitiesImported", { count: imported.activities.imported }));
+      parts.push(t("sync.wellnessDays", { days: imported.wellness.days }));
     }
-    if (publish) parts.push(`piano: ${publish.created} nuove, ${publish.updated} aggiornate, ${publish.deleted} tolte`);
-    setMessage(parts.join(" · ") || "Niente da sincronizzare.");
+    if (publish) parts.push(t("sync.plan", { created: publish.created, updated: publish.updated, deleted: publish.deleted }));
+    setMessage(parts.join(" · ") || t("sync.nothing"));
     const now = new Date().toISOString();
     setConnection((current) => current ? {
       ...current,
@@ -121,7 +119,7 @@ export function IntervalsSection({
   return (
     <IntegrationCard
       id="intervals-integration"
-      description="Il ponte ufficiale con l'orologio: Zepp manda corse e dati salute a Intervals.icu, e Intervals porta il tuo piano sull'orologio come allenamenti guidati."
+      description={t("description")}
     >
       <div className="space-y-4">
         {connection && !editing ? (
@@ -132,68 +130,68 @@ export function IntervalsSection({
                 <span className="truncate">{connection.athlete_name ?? connection.athlete_id} · ••••{connection.last_four}</span>
               </div>
               <div className="flex items-center gap-1">
-                <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => setEditing(true)}>Sostituisci</Button>
-                <Button type="button" variant="ghost" size="icon" disabled={pending} onClick={remove} title="Scollega"><Trash2 size={15} /></Button>
+                <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => setEditing(true)}>{t("replace")}</Button>
+                <Button type="button" variant="ghost" size="icon" disabled={pending} onClick={remove} title={t("disconnect")}><Trash2 size={15} /></Button>
               </div>
             </div>
 
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-4">
-                <p className="text-sm">Importa le corse</p>
-                <Switch checked={connection.import_activities} disabled={pending} onCheckedChange={(value) => setOption({ import_activities: value })} aria-label="Importa le corse" />
+                <p className="text-sm">{t("importActivities")}</p>
+                <Switch checked={connection.import_activities} disabled={pending} onCheckedChange={(value) => setOption({ import_activities: value })} aria-label={t("importActivities")} />
               </div>
               <div className="flex items-center justify-between gap-4">
-                <p className="text-sm">Importa sonno, FC a riposo e HRV</p>
-                <Switch checked={connection.import_wellness} disabled={pending} onCheckedChange={(value) => setOption({ import_wellness: value })} aria-label="Importa i dati salute" />
+                <p className="text-sm">{t("importWellness")}</p>
+                <Switch checked={connection.import_wellness} disabled={pending} onCheckedChange={(value) => setOption({ import_wellness: value })} aria-label={t("importWellnessAria")} />
               </div>
               <div className="flex items-center justify-between gap-4">
-                <p className="text-sm">Manda il piano all&apos;orologio</p>
-                <Switch checked={connection.publish_plan} disabled={pending} onCheckedChange={(value) => setOption({ publish_plan: value })} aria-label="Manda il piano all'orologio" />
+                <p className="text-sm">{t("publishPlan")}</p>
+                <Switch checked={connection.publish_plan} disabled={pending} onCheckedChange={(value) => setOption({ publish_plan: value })} aria-label={t("publishPlan")} />
               </div>
               {connection.publish_plan && (
                 <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">Target delle fasi sull&apos;orologio</p>
+                  <p className="text-xs text-muted-foreground">{t("targetLabel")}</p>
                   <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
                     {TARGETS.map((target) => (
                       <button
-                        key={target.value}
+                        key={target}
                         type="button"
                         disabled={pending}
-                        onClick={() => setOption({ target_preference: target.value })}
-                        className={`rounded-lg px-2 py-1.5 text-xs font-medium transition-colors ${connection.target_preference === target.value ? "bg-background shadow-sm" : "text-muted-foreground"}`}
+                        onClick={() => setOption({ target_preference: target })}
+                        className={`rounded-lg px-2 py-1.5 text-xs font-medium transition-colors ${connection.target_preference === target ? "bg-background shadow-sm" : "text-muted-foreground"}`}
                       >
-                        {target.label}
+                        {t(`targets.${target}`)}
                       </button>
                     ))}
                   </div>
                   <p className="text-[11px] leading-snug text-muted-foreground">
-                    Zepp accetta un solo tipo di target per seduta. Automatico usa il passo nelle sedute di soglia e ripetute, la frequenza in facili e lunghi.
+                    {t("targetHint")}
                   </p>
                 </div>
               )}
             </div>
 
             <div className="space-y-1 text-xs text-muted-foreground">
-              <p>Ultimo import: {formatDate(connection.last_import_at)}</p>
-              <p>Ultimo invio del piano: {formatDate(connection.last_publish_at)}</p>
-              {connection.last_error && <p className="text-destructive">Ultimo errore: {connection.last_error}</p>}
+              <p>{t("lastImport", { date: formatDate(connection.last_import_at, t("never")) })}</p>
+              <p>{t("lastPublish", { date: formatDate(connection.last_publish_at, t("never")) })}</p>
+              {connection.last_error && <p className="text-destructive">{t("lastError", { error: connection.last_error })}</p>}
             </div>
 
             <Button type="button" variant="outline" className="w-full" disabled={pending} onClick={sync}>
-              <RefreshCw size={15} className={pending ? "animate-spin" : undefined} /> {pending ? "Sincronizzo…" : "Sincronizza ora"}
+              <RefreshCw size={15} className={pending ? "animate-spin" : undefined} /> {pending ? t("syncing") : t("syncNow")}
             </Button>
           </>
         ) : (
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label htmlFor="intervals-key">Chiave API Intervals.icu</Label>
-              <Input id="intervals-key" type="password" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="done" value={key} onChange={(event) => setKey(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !pending && key.trim().length >= 8) save(); }} placeholder="La trovi in Settings → Developer" />
+              <Label htmlFor="intervals-key">{t("keyLabel")}</Label>
+              <Input id="intervals-key" type="password" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="done" value={key} onChange={(event) => setKey(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !pending && key.trim().length >= 8) save(); }} placeholder={t("keyPlaceholder")} />
             </div>
             <div className="flex gap-2">
               <Button type="button" className="flex-1" disabled={pending || key.trim().length < 8} onClick={save}>
-                {pending ? "Verifico…" : "Verifica e salva"}
+                {pending ? t("verifying") : t("verifyAndSave")}
               </Button>
-              {connection && <Button type="button" variant="ghost" disabled={pending} onClick={() => { setEditing(false); setKey(""); }}>Annulla</Button>}
+              {connection && <Button type="button" variant="ghost" disabled={pending} onClick={() => { setEditing(false); setKey(""); }}>{t("cancel")}</Button>}
             </div>
           </div>
         )}
@@ -201,20 +199,16 @@ export function IntervalsSection({
         {message && <p className="text-sm text-emerald-600">{message}</p>}
         {error && <p role="alert" className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
 
-        <IntegrationHelp title="Come collegarlo">
+        <IntegrationHelp title={t("help.title")}>
           <ol className="list-decimal space-y-1.5 pl-4">
-            <li>Crea un account gratuito su Intervals.icu.</li>
-            <li>Nell&apos;app Zepp: Profilo → Collegamento account di terze parti → Intervals.icu.</li>
-            <li>Su Intervals.icu, Settings → riquadro Amazfit: attiva il download del wellness e dell&apos;HRV.</li>
-            <li>Sempre in Settings, in fondo (Developer): copia la API key e incollala qui.</li>
+            <li>{t("help.step1")}</li>
+            <li>{t("help.step2")}</li>
+            <li>{t("help.step3")}</li>
+            <li>{t("help.step4")}</li>
           </ol>
-          <p className="mt-3">
-            Dopo una corsa, apri l&apos;app Zepp: la corsa passa a Intervals.icu in pochi secondi e da lì arriva qui entro un&apos;ora, oppure
-            subito quando apri Zitto e Corri. Tutto il piano futuro compare nel calendario di Intervals.icu; i prossimi 7 giorni arrivano
-            sull&apos;orologio nell&apos;app Allenamento, tra gli allenamenti del piano.
-          </p>
+          <p className="mt-3">{t("help.note")}</p>
           <a href="https://intervals.icu/settings" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 font-medium text-primary">
-            Apri Intervals.icu <ExternalLink size={12} />
+            {t("help.open")} <ExternalLink size={12} />
           </a>
         </IntegrationHelp>
         {confirmSheet}

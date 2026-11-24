@@ -2,6 +2,7 @@
 
 import { handleEnterKeyHint } from "@/lib/form-keys";
 import { useActionState } from "react";
+import { useTranslations } from "next-intl";
 import { updateGoal, type GoalFormState } from "../../actions";
 import type { Goal } from "@/lib/types";
 import { formatDuration } from "@/lib/format";
@@ -17,6 +18,7 @@ interface Props {
 const initialState: GoalFormState = {};
 
 export function EditGoalForm({ goal }: Props) {
+  const t = useTranslations("goals");
   const updateWithId = updateGoal.bind(null, goal.id);
   const [state, formAction, pending] = useActionState(updateWithId, initialState);
 
@@ -42,7 +44,7 @@ export function EditGoalForm({ goal }: Props) {
           className="h-4 w-4 rounded border-white/20 accent-primary"
         />
         <Label htmlFor="is_active" className="cursor-pointer">
-          Obiettivo attivo
+          {t("form.active")}
         </Label>
       </div>
 
@@ -55,7 +57,7 @@ export function EditGoalForm({ goal }: Props) {
       )}
 
       <Button type="submit" disabled={pending} size="lg" className="w-full mt-2">
-        {pending ? "Salvo…" : "Aggiorna obiettivo"}
+        {pending ? t("form.saving") : t("edit.submit")}
       </Button>
     </form>
   );

@@ -2,41 +2,43 @@
 
 import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 // Step "di pensiero" che si accumulano durante i ~50s medi della chiamata AI.
 // Ogni step compare ogni ~3-4s nei primi 30s (frequente, sembra vivo), poi
 // rallenta leggermente. Gli step restano visibili man mano che si aggiungono.
+// Chiavi in messages/it/coach.json (thinking.plan.* e thinking.evaluation.*).
 const PLAN_STEPS = [
-  "Leggo il tuo storico corse…",
-  "Misuro carico e fatica accumulata…",
-  "Calcolo aderenza alle ultime settimane…",
-  "Rivedo l'obiettivo attivo…",
-  "Valuto il tuo livello di forma attuale…",
-  "Stimo il volume sostenibile…",
-  "Distribuisco intensità nella settimana…",
-  "Costruisco gli allenamenti chiave…",
-  "Aggiungo corse di recupero e facili…",
-  "Bilancio lunedì-domenica…",
-  "Inserisco le note e i vincoli richiesti…",
-  "Controllo la progressione del piano…",
-  "Rifinisco i dettagli finali…",
-];
+  "readHistory",
+  "measureLoad",
+  "adherence",
+  "reviewGoal",
+  "assessForm",
+  "estimateVolume",
+  "distributeIntensity",
+  "buildKeyWorkouts",
+  "addEasyRuns",
+  "balanceWeek",
+  "addNotes",
+  "checkProgression",
+  "finalDetails",
+] as const;
 
 const EVALUATION_STEPS = [
-  "Leggo i dati della corsa…",
-  "Analizzo il passo…",
-  "Analizzo la frequenza cardiaca…",
-  "Confronto con il piano del giorno…",
-  "Verifico l'aderenza agli obiettivi…",
-  "Stimo l'effort percepito…",
-  "Valuto il dislivello e le condizioni…",
-  "Individuo punti di forza…",
-  "Individuo punti da migliorare…",
-  "Verifico rischi di sovraccarico…",
-  "Incrocio con le ultime settimane…",
-  "Preparo i suggerimenti del coach…",
-  "Rifinisco la valutazione…",
-];
+  "readData",
+  "pace",
+  "heartRate",
+  "comparePlan",
+  "adherence",
+  "effort",
+  "elevation",
+  "strengths",
+  "improvements",
+  "overloadRisk",
+  "recentWeeks",
+  "coachTips",
+  "finalize",
+] as const;
 
 // Uno step nuovo ogni ~3-4s per i primi 30s, poi ogni ~5s fino a ~55s.
 // L'array ha tanti elementi quanti PLAN_STEPS / EVALUATION_STEPS.
@@ -51,9 +53,10 @@ interface AiThinkingOverlayProps {
 }
 
 export function AiThinkingOverlay({ pending, variant }: AiThinkingOverlayProps) {
+  const t = useTranslations("coach.thinking");
   const [visibleSteps, setVisibleSteps] = useState(pending ? 1 : 0);
   const [elapsed, setElapsed] = useState(0);
-  const steps = variant === "plan" ? PLAN_STEPS : EVALUATION_STEPS;
+  const steps = (variant === "plan" ? PLAN_STEPS : EVALUATION_STEPS).map((key) => t(`${variant}.${key}`));
 
   // Reset quando pending cambia: adattamento dello stato durante il render
   // (niente setState dentro un effect → niente render a cascata).
@@ -97,7 +100,7 @@ export function AiThinkingOverlay({ pending, variant }: AiThinkingOverlayProps) 
       <div className="mt-1 py-2" aria-live="polite">
         <div className="mb-3 flex items-center gap-2 text-primary">
           <Sparkles size={15} className="animate-pulse" />
-          <span className="text-sm font-semibold">Il Coach sta analizzando…</span>
+          <span className="text-sm font-semibold">{t("analyzing")}</span>
         </div>
         <div className="ai-shimmer-bar mb-3 h-0.5 w-full rounded-full" />
         <p className="text-xs text-muted-foreground">
@@ -117,7 +120,7 @@ export function AiThinkingOverlay({ pending, variant }: AiThinkingOverlayProps) 
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-foreground">
-              Il Coach sta pensando
+              {t("thinking")}
             </span>
             <span className="ai-thinking-dots text-primary font-bold">
               <span>.</span><span>.</span><span>.</span>

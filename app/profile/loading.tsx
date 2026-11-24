@@ -1,11 +1,13 @@
+import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/app-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Stessa forma della pagina: nome, stato di forma, obiettivo e la sezione
 // dell'andamento con il grafico.
 export default function Loading() {
+  const t = useTranslations("profile");
   return (
-    <AppShell title="Profilo" wide>
+    <AppShell title={t("title")} wide>
       <div className="mb-6 flex items-center gap-3">
         <Skeleton className="h-12 w-12 rounded-full" />
         <Skeleton className="h-5 w-36" />

@@ -1,4 +1,5 @@
 import { Repeat } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { WorkoutStepInput, WorkoutType } from "@/lib/types";
 import {
@@ -11,6 +12,7 @@ import {
 import { intensityTone } from "@/components/workout-graph";
 
 function StepRow({ step, type, compact }: { step: WorkoutStepInput; type?: WorkoutType | null; compact?: boolean }) {
+  const t = useTranslations("plan.steps");
   const tone = intensityTone(step, type);
   const amount = formatStepAmount(step);
   const pace = formatStepPace(step);
@@ -29,7 +31,7 @@ function StepRow({ step, type, compact }: { step: WorkoutStepInput; type?: Worko
         </p>
         {(pace || hr) && (
           <p className={cn("mt-0.5 tabular-nums text-muted-foreground", compact ? "text-micro" : "text-xs")}>
-            {[pace && `Passo ${pace}`, hr && `♥ ${hr}`].filter(Boolean).join(" · ")}
+            {[pace && t("pace", { pace }), hr && `♥ ${hr}`].filter(Boolean).join(" · ")}
           </p>
         )}
       </div>
@@ -39,6 +41,7 @@ function StepRow({ step, type, compact }: { step: WorkoutStepInput; type?: Worko
 
 /** Sequenza guidata della seduta con i blocchi ripetuti raggruppati. */
 export function WorkoutSteps({ steps, type, compact }: { steps: WorkoutStepInput[]; type?: WorkoutType | null; compact?: boolean }) {
+  const t = useTranslations("plan.steps");
   const blocks = groupWorkoutSteps(steps);
   if (!blocks.length) return null;
   return (
@@ -50,7 +53,7 @@ export function WorkoutSteps({ steps, type, compact }: { steps: WorkoutStepInput
           <li key={index} className="rounded-xl border border-border bg-muted/30 p-3">
             <p className={cn("mb-2 flex items-center gap-1.5 font-semibold", compact ? "text-xs" : "text-sm")}>
               <Repeat size={compact ? 12 : 14} className="text-muted-foreground" />
-              Ripeti {block.times} volte
+              {t("repeat", { times: block.times })}
             </p>
             <ol className={cn("flex flex-col", compact ? "gap-2" : "gap-2.5")}>
               {block.steps.map((step, stepIndex) => (

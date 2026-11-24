@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Footprints, Mountain, Route, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Segmented } from "@/components/ui/segmented";
@@ -16,27 +17,28 @@ function hours(seconds: number): string {
   return h > 0 ? `${h} h ${String(m).padStart(2, "0")}′` : `${m}′`;
 }
 
-function comparison(period: PeriodTotals): { text: string; trend: "up" | "down" | "flat" } | null {
+function comparison(period: PeriodTotals, t: ReturnType<typeof useTranslations>): { text: string; trend: "up" | "down" | "flat" } | null {
   if (period.previous_m == null || period.previous_label == null) return null;
   if (period.previous_m === 0 && period.running_m === 0) return null;
   const diff = period.running_m - period.previous_m;
-  if (Math.abs(diff) < 500) return { text: `In linea rispetto ${period.previous_label}`, trend: "flat" };
-  return { text: `${diff > 0 ? "+" : "−"}${km(Math.abs(diff))} km rispetto ${period.previous_label}`, trend: diff > 0 ? "up" : "down" };
+  if (Math.abs(diff) < 500) return { text: t("inLine", { period: period.previous_label }), trend: "flat" };
+  return { text: t("difference", { value: `${diff > 0 ? "+" : "−"}${km(Math.abs(diff))}`, period: period.previous_label }), trend: diff > 0 ? "up" : "down" };
 }
 
 const TREND_ICONS = { up: ArrowUpRight, down: ArrowDownRight, flat: ArrowRight } as const;
 
 /** Quanto hai corso: settimana, mese, anno e da sempre. */
 export function TotalsCard({ periods, initial = "month", className }: { periods: PeriodTotals[]; initial?: TotalsPeriodKey; className?: string }) {
+  const t = useTranslations("activities.totals");
   const [active, setActive] = useState<TotalsPeriodKey>(initial);
   const period = periods.find((candidate) => candidate.key === active) ?? periods[0];
-  const note = comparison(period);
+  const note = comparison(period, t);
   const TrendIcon = TREND_ICONS[note?.trend ?? "flat"];
   return (
     <section className={cn("surface mb-8 p-4", className)}>
       <Segmented
         size="sm"
-        ariaLabel="Periodo"
+        ariaLabel={t("periodAria")}
         options={periods.map(({ key, label }) => ({ key, label }))}
         value={active}
         onChange={setActive}
@@ -62,14 +64,14 @@ export function TotalsCard({ periods, initial = "month", className }: { periods:
 
         {/* Due colonne: su telefono quattro tagliavano le etichette con l'icona. */}
         <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 border-t border-border/60 pt-4">
-          <Stat size="sm" icon={Footprints} label="Uscite" value={String(period.runs)} />
-          <Stat size="sm" icon={Timer} label="Tempo" value={hours(period.seconds)} />
-          <Stat size="sm" icon={Mountain} label="Dislivello" value={Math.round(period.elevation_m).toLocaleString("it-IT")} unit="m" />
-          <Stat size="sm" icon={Route} label="Più lunga" value={km(period.longest_m)} unit="km" />
+          <Stat size="sm" icon={Footprints} label={t("runs")} value={String(period.runs)} />
+          <Stat size="sm" icon={Timer} label={t("time")} value={hours(period.seconds)} />
+          <Stat size="sm" icon={Mountain} label={t("elevation")} value={Math.round(period.elevation_m).toLocaleString("it-IT")} unit="m" />
+          <Stat size="sm" icon={Route} label={t("longest")} value={km(period.longest_m)} unit="km" />
         </div>
         {period.walking_m > 0 && (
           <p className="mt-3 text-caption text-muted-foreground">
-            Più {km(period.walking_m)} km di camminate ed escursioni
+            {t("walking", { km: km(period.walking_m) })}
           </p>
         )}
       </div>

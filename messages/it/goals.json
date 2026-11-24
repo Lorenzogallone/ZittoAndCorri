@@ -1,0 +1,59 @@
+{
+  "title": "Obiettivi",
+  "new": {
+    "title": "Nuovo obiettivo",
+    "submit": "Salva obiettivo"
+  },
+  "edit": {
+    "title": "Modifica obiettivo",
+    "submit": "Aggiorna obiettivo"
+  },
+  "form": {
+    "active": "Obiettivo attivo",
+    "saving": "Salvo…"
+  },
+  "fields": {
+    "kindLabel": "Tipo di obiettivo",
+    "kinds": {
+      "race": { "label": "Gara", "hint": "Una gara con una data precisa" },
+      "general": { "label": "Generico", "hint": "Migliorare su una distanza, senza scadenza" }
+    },
+    "presets": {
+      "half": "Mezza (21,1 km)",
+      "marathon": "Maratona (42,2 km)"
+    },
+    "distanceGeneral": "Distanza su cui migliorare",
+    "distanceRace": "Distanza",
+    "nameGeneral": "Nome obiettivo",
+    "nameRace": "Nome gara",
+    "namePlaceholderGeneral": "Migliorare nella mezza maratona",
+    "namePlaceholderRace": "Milano Marathon 2026",
+    "nameOptional": "Opzionale — se vuoto usiamo “{name}”",
+    "raceDate": "Data gara",
+    "targetGeneral": "Tempo a cui puntare",
+    "targetRace": "Tempo obiettivo",
+    "targetHint": "Opzionale — formato h:mm:ss o mm:ss"
+  },
+  "list": {
+    "newButton": "Nuovo",
+    "empty": "Nessun obiettivo. Non serve una gara: puoi anche solo voler migliorare su una distanza, o dirlo al coach in chat.",
+    "newGoal": "Nuovo obiettivo",
+    "active": "Attivo",
+    "others": "Altri obiettivi"
+  },
+  "card": {
+    "active": "Attivo",
+    "general": "Obiettivo generico · senza scadenza",
+    "target": "Target {time}",
+    "weeksLeft": "{weeks, plural, one {# settimana} other {# settimane}} rimaste",
+    "edit": "Modifica",
+    "makeActive": "Rendi attivo",
+    "delete": "Elimina"
+  },
+  "errors": {
+    "distance": "Distanza non valida.",
+    "raceName": "Inserisci il nome della gara.",
+    "raceDate": "Inserisci la data della gara, oppure scegli un obiettivo generico.",
+    "targetTime": "Tempo obiettivo non valido (usa h:mm:ss o mm:ss)."
+  }
+}

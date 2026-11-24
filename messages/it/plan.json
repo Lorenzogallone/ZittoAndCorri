@@ -1,0 +1,183 @@
+{
+  "title": "Piano",
+  "page": {
+    "today": "Oggi",
+    "inDays": "tra {days} giorni",
+    "inWeeks": "{weeks} settimane",
+    "goalMeta": "{distance} · {date}",
+    "goalMetaNoDate": "{distance} · obiettivo senza data",
+    "noGoal": "Nessun obiettivo · parlane al coach",
+    "promptSetGoal": "Vorrei impostare un obiettivo",
+    "promptMakePlan": "Mi prepari il piano delle prossime due settimane?",
+    "empty": {
+      "title": "Nessuna seduta in programma",
+      "text": "Qui vedrai le sedute della settimana, giorno per giorno. Il coach può prepararti le prossime due settimane.",
+      "action": "Chiedi un piano al coach",
+      "secondary": "Aggiungi una seduta"
+    },
+    "view": {
+      "label": "Vista",
+      "weeks": "Settimane",
+      "month": "Mese"
+    },
+    "previousWeeks": "Settimane precedenti",
+    "nextWeeks": "Settimane successive",
+    "backToToday": "Torna a oggi",
+    "thisWeek": "Questa settimana",
+    "nextWeek": "Prossima settimana",
+    "addWorkout": "Aggiungi una seduta"
+  },
+  "new": {
+    "title": "Nuovo allenamento",
+    "form": {
+      "date": "Data",
+      "type": "Tipo",
+      "goal": "Obiettivo (opzionale)",
+      "goalPlaceholder": "Nessun obiettivo collegato",
+      "noGoal": "Nessun obiettivo",
+      "targets": "Target (opzionali)",
+      "distance": "Distanza (km)",
+      "pace": "Passo (mm:ss)",
+      "duration": "Durata (h:mm:ss)",
+      "maxHr": "HR max (bpm)",
+      "notes": "Note",
+      "notesPlaceholder": "10km a ritmo facile, HR < 145.",
+      "focus": "Focus (opzionale)",
+      "focusPlaceholder": "Es. resta sotto la HR anche se il passo cala; pensa alla cadenza.",
+      "saving": "Salvo…",
+      "submit": "Aggiungi al piano"
+    }
+  },
+  "detail": {
+    "lightened": "alleggerita",
+    "paused": "In pausa: ripristinala dal piano quando stai meglio.",
+    "doneOn": "Fatta {weekday}",
+    "done": "Fatta",
+    "sections": {
+      "what": "Cosa fare e perché",
+      "how": "Come si svolge",
+      "focus": "Su cosa concentrarti"
+    },
+    "typeGuide": "Che cos'è una seduta «{type}»? <read>Leggi</read>",
+    "markDone": "Segna come fatta",
+    "markedDone": "Segnata come fatta · annulla",
+    "delete": {
+      "button": "Elimina seduta",
+      "confirm": "Eliminare questa seduta? Non si può annullare.",
+      "cancel": "Annulla",
+      "error": "Errore durante l'eliminazione. Riprova.",
+      "deleting": "Eliminazione...",
+      "yes": "Sì, elimina"
+    }
+  },
+  "day": {
+    "planned": "In programma",
+    "add": "Aggiungi",
+    "doneOn": "Fatta {weekday}",
+    "rest": "Giorno di riposo.",
+    "done": "Fatto",
+    "record": "Registra",
+    "sessionOf": "Seduta di {weekday}",
+    "noActivities": "Nessuna attività registrata."
+  },
+  "adapt": {
+    "headerButton": "Non al 100%",
+    "inlineButton": "Non me la sento",
+    "title": "Come ti senti?",
+    "close": "Chiudi",
+    "result": "{count, plural, one {# seduta adattata} other {# sedute adattate}} fino a {date}. Puoi annullare dal piano.",
+    "resultNone": "Nessuna seduta da adattare in questi giorni.",
+    "done": "Fatto",
+    "duration": "Per quanto tempo",
+    "pending": "Adatto il piano…",
+    "confirm": "Adatta il piano"
+  },
+  "banner": {
+    "paused": "Sedute in pausa fino al {date}",
+    "lightened": "Piano alleggerito fino al {date}",
+    "restore": "Ripristina"
+  },
+  "phaseBar": {
+    "currentThen": "Fase di <b>{phase}</b> · poi {next}",
+    "currentLast": "Fase di <b>{phase}</b> · ultimi giorni prima della gara"
+  },
+  "move": {
+    "today": "oggi",
+    "tomorrow": "domani",
+    "button": "Sposta",
+    "title": "Sposta a…",
+    "current": "{day} (attuale)",
+    "moveTo": "Sposta al {day}",
+    "cancel": "Annulla"
+  },
+  "week": {
+    "paused": "In pausa",
+    "lightened": "alleggerita",
+    "doneOn": "Fatta {weekday} · {summary}",
+    "done": "Fatto · {summary}",
+    "sessionOf": "Seduta di {weekday}",
+    "extraRun": "Corsa extra",
+    "rest": "Riposo",
+    "sessionsDone": "{done} su {due} sedute fatte"
+  },
+  "race": {
+    "title": "Strategia di gara",
+    "goal": "Per il tuo tempo obiettivo <b>{time}</b> tieni <b>{pace}</b>. Parti qualche secondo più piano nei primi km, poi stabilizzati.",
+    "prediction": "Per il tempo che oggi sei in grado di fare <b>{time}</b> tieni <b>{pace}</b>. Parti qualche secondo più piano nei primi km, poi stabilizzati.",
+    "heat": "Con il caldo previsto punta piuttosto a {pace}.",
+    "advice": "Dalla previsione di oggi: {advice}"
+  },
+  "calendar": {
+    "weekdays": {
+      "mon": "L",
+      "tue": "M",
+      "wed": "M",
+      "thu": "G",
+      "fri": "V",
+      "sat": "S",
+      "sun": "D"
+    },
+    "previousMonth": "Mese precedente",
+    "nextMonth": "Mese successivo",
+    "legend": {
+      "done": "Fatta",
+      "planned": "In programma",
+      "missed": "Saltata"
+    }
+  },
+  "steps": {
+    "pace": "Passo {pace}",
+    "repeat": "Ripeti {times} volte"
+  },
+  "graph": {
+    "label": "Profilo della seduta: blocchi più alti sono tratti più intensi"
+  },
+  "dayState": {
+    "done": "Fatto",
+    "missed": "Saltato",
+    "today": "Oggi",
+    "planned": "In programma",
+    "rest": "Riposo",
+    "extra": "Attività extra",
+    "skipped": "In pausa"
+  },
+  "heat": {
+    "forecast": "{temp}°{humid, select, true { e umido} other {}} previsti alle {hour}.",
+    "slowed": "Passi già rallentati di circa {delta}″/km: corri a sensazione e bevi.",
+    "generic": "Rallenta un po' e bevi più del solito."
+  },
+  "recovery": {
+    "message": "Complimenti per la {race}! Prima di ripartire concediti qualche giorno di recupero: uscite brevi e facili per far tornare fresche le gambe. Se ti va bene, conferma qui sotto.",
+    "summary": "Recupero dopo la gara"
+  },
+  "errors": {
+    "dateRequired": "Inserisci la data.",
+    "typeRequired": "Seleziona il tipo.",
+    "paceInvalid": "Passo target non valido (usa mm:ss).",
+    "dateInvalid": "Data non valida.",
+    "moveFailed": "Impossibile spostare la seduta.",
+    "choiceInvalid": "Scelta non valida.",
+    "planReadFailed": "Impossibile leggere il piano.",
+    "restoreFailed": "Impossibile ripristinare il piano."
+  }
+}

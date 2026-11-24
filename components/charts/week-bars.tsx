@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { niceTicks, roundedTopBar, useMeasuredWidth } from "./chart-utils";
 
 export interface WeekBar {
@@ -21,6 +22,7 @@ function weekLabel(iso: string): string {
 
 /** Km di corsa per settimana: barra piena = fatti, traccia chiara = previsti. */
 export function WeekBars({ weeks, current }: { weeks: WeekBar[]; current: string }) {
+  const t = useTranslations("activities.charts.weeks");
   const { ref, width } = useMeasuredWidth<HTMLDivElement>();
   const [active, setActive] = useState<number | null>(null);
   if (!weeks.length) return null;
@@ -40,12 +42,12 @@ export function WeekBars({ weeks, current }: { weeks: WeekBar[]; current: string
   return (
     <div>
       <div className="mb-2 flex gap-4 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-xs bg-primary" />Fatti</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-xs bg-muted-foreground/25 dark:bg-muted-foreground/40" />Previsti</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-xs bg-primary" />{t("done")}</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-xs bg-muted-foreground/25 dark:bg-muted-foreground/40" />{t("planned")}</span>
       </div>
       <div ref={ref} className="relative" style={{ height: HEIGHT }}>
         {width > 0 && (
-          <svg width={width} height={HEIGHT} role="img" aria-label="Km di corsa per settimana" className="overflow-visible">
+          <svg width={width} height={HEIGHT} role="img" aria-label={t("aria")} className="overflow-visible">
             {ticks.map((tick) => (
               <g key={tick}>
                 <line x1={PAD.left} x2={PAD.left + innerW} y1={PAD.top + innerH - (tick / top) * innerH} y2={PAD.top + innerH - (tick / top) * innerH} stroke="var(--border)" strokeWidth={1} />
@@ -90,7 +92,7 @@ export function WeekBars({ weeks, current }: { weeks: WeekBar[]; current: string
                   )}
                   {(isCurrent || (index % labelEvery === 0 && Math.abs(index - currentIndex) > 1)) && (
                     <text x={barX(index) + barW / 2} y={HEIGHT - 6} textAnchor="middle" className={isCurrent ? "fill-foreground text-micro font-medium" : "fill-muted-foreground text-micro"}>
-                      {isCurrent ? "Ora" : weekLabel(week.week_start)}
+                      {isCurrent ? t("now") : weekLabel(week.week_start)}
                     </text>
                   )}
                 </g>
@@ -103,9 +105,9 @@ export function WeekBars({ weeks, current }: { weeks: WeekBar[]; current: string
             className="pointer-events-none absolute top-0 z-10 rounded-lg border border-border bg-popover px-2.5 py-1.5 text-xs shadow-sm"
             style={{ left: Math.min(Math.max(0, barX(active) + barW / 2 - 64), Math.max(0, width - 132)), width: 128 }}
           >
-            <p className="text-micro text-muted-foreground">Settimana del {weekLabel(focused.week_start)}</p>
-            <p className="font-semibold tabular-nums">{kmLabel(focused.done_m)} fatti</p>
-            {focused.planned_m > 0 && <p className="text-muted-foreground tabular-nums">{kmLabel(focused.planned_m)} previsti</p>}
+            <p className="text-micro text-muted-foreground">{t("weekOf", { date: weekLabel(focused.week_start) })}</p>
+            <p className="font-semibold tabular-nums">{t("doneValue", { distance: kmLabel(focused.done_m) })}</p>
+            {focused.planned_m > 0 && <p className="text-muted-foreground tabular-nums">{t("plannedValue", { distance: kmLabel(focused.planned_m) })}</p>}
           </div>
         )}
       </div>

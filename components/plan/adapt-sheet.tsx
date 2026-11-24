@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { BatteryLow, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,7 @@ function untilLabel(iso: string): string {
 
 /** "Non mi sento al 100%": motivo + durata, poi il piano si adatta da solo. */
 export function AdaptSheet({ variant = "header" }: { variant?: "header" | "inline" }) {
+  const t = useTranslations("plan.adapt");
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<AdaptReason | null>(null);
@@ -38,8 +40,8 @@ export function AdaptSheet({ variant = "header" }: { variant?: "header" | "inlin
       if (response.error) return setError(response.error);
       setResult(
         response.count
-          ? `${response.count === 1 ? "1 seduta adattata" : `${response.count} sedute adattate`} fino a ${untilLabel(response.until!)}. Puoi annullare dal piano.`
-          : "Nessuna seduta da adattare in questi giorni.",
+          ? t("result", { count: response.count, date: untilLabel(response.until!) })
+          : t("resultNone"),
       );
       router.refresh();
     });
@@ -50,12 +52,12 @@ export function AdaptSheet({ variant = "header" }: { variant?: "header" | "inlin
       {variant === "header" ? (
         <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(true)} className="-mr-2">
           <BatteryLow size={16} />
-          Non al 100%
+          {t("headerButton")}
         </Button>
       ) : (
         <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)} className="w-full">
           <BatteryLow size={15} />
-          Non me la sento
+          {t("inlineButton")}
         </Button>
       )}
 
@@ -73,8 +75,8 @@ export function AdaptSheet({ variant = "header" }: { variant?: "header" | "inlin
           >
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-muted-foreground/25" />
             <div className="mb-4 flex items-center justify-between">
-              <h2 id="adapt-title" className="text-heading font-semibold">Come ti senti?</h2>
-              <Button type="button" variant="ghost" size="icon-sm" onClick={close} aria-label="Chiudi"><X size={18} /></Button>
+              <h2 id="adapt-title" className="text-heading font-semibold">{t("title")}</h2>
+              <Button type="button" variant="ghost" size="icon-sm" onClick={close} aria-label={t("close")}><X size={18} /></Button>
             </div>
 
             {result ? (
@@ -83,7 +85,7 @@ export function AdaptSheet({ variant = "header" }: { variant?: "header" | "inlin
                   <Check size={18} className="mt-0.5 shrink-0 text-primary" />
                   {result}
                 </p>
-                <Button type="button" className="mt-5 w-full" onClick={close}>Fatto</Button>
+                <Button type="button" className="mt-5 w-full" onClick={close}>{t("done")}</Button>
               </div>
             ) : (
               <>
@@ -105,7 +107,7 @@ export function AdaptSheet({ variant = "header" }: { variant?: "header" | "inlin
                   ))}
                 </div>
 
-                <p className="mb-2 mt-5 text-xs font-medium text-muted-foreground">Per quanto tempo</p>
+                <p className="mb-2 mt-5 text-xs font-medium text-muted-foreground">{t("duration")}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {ADAPT_DURATIONS.map((option) => (
                     <button
@@ -125,7 +127,7 @@ export function AdaptSheet({ variant = "header" }: { variant?: "header" | "inlin
 
                 {error && <p role="alert" className="mt-3 text-xs text-destructive">{error}</p>}
                 <Button type="button" className="mt-5 w-full" disabled={!reason || pending} onClick={confirm}>
-                  {pending ? "Adatto il piano…" : "Adatta il piano"}
+                  {pending ? t("pending") : t("confirm")}
                 </Button>
               </>
             )}

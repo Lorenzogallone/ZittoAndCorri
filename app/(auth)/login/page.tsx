@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { RunnerMark } from "@/components/runner-mark";
@@ -18,6 +19,7 @@ function GoogleIcon() {
 }
 
 export default function LoginPage() {
+  const t = useTranslations("home.login");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,7 +50,7 @@ export default function LoginPage() {
         <h1 className="mt-7 font-display text-display font-bold tracking-tight">
           Zitto e <span className="text-primary">Corri</span>
         </h1>
-        <p className="mt-2 text-body text-muted-foreground">Il tuo coach di corsa personale.</p>
+        <p className="mt-2 text-body text-muted-foreground">{t("tagline")}</p>
       </div>
 
       <div className="flex w-full max-w-xs flex-col items-center gap-3">
@@ -57,12 +59,10 @@ export default function LoginPage() {
           <span className="flex size-6 items-center justify-center rounded-full bg-white">
             <GoogleIcon />
           </span>
-          {loading ? "Reindirizzo…" : "Accedi con Google"}
+          {loading ? t("redirecting") : t("signIn")}
         </Button>
         {error && <p role="alert" className="text-center text-sm text-destructive">{error}</p>}
-        <p className="text-center text-micro text-muted-foreground">
-          Nessuna password. Nessuna pubblicità. Zitto e corri.
-        </p>
+        <p className="text-center text-micro text-muted-foreground">{t("footnote")}</p>
       </div>
     </main>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Check, RefreshCw, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { tap } from "@/lib/haptics";
@@ -45,6 +46,7 @@ function innerScrollerAway(target: Element, root: HTMLElement): boolean {
  * chat a tutto schermo e sheet, che stanno in un portale) resta al browser.
  */
 export function PullToRefresh({ className, children }: { className?: string; children: React.ReactNode }) {
+  const t = useTranslations("shell");
   const mainRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const indicatorRef = useRef<HTMLDivElement>(null);
@@ -170,7 +172,7 @@ export function PullToRefresh({ className, children }: { className?: string; chi
           onClick={refresh}
           className="sr-only rounded-full bg-card text-caption font-medium text-foreground shadow-[var(--surface-shadow)] outline-none focus-visible:not-sr-only focus-visible:mt-2 focus-visible:h-9 focus-visible:shrink-0 focus-visible:px-4 focus-visible:ring-3 focus-visible:ring-ring/30"
         >
-          Aggiorna la pagina
+          {t("pullToRefresh.manual")}
         </button>
       </div>
       {/* Alta zero e attaccata in cima: l'indicatore non sposta il layout. */}
@@ -186,7 +188,7 @@ export function PullToRefresh({ className, children }: { className?: string; chi
             <RefreshCw ref={iconRef} size={16} className={cn("text-primary", refreshing && "animate-spin")} />
           )}
           {message && <span className="pr-0.5">{message}</span>}
-          {refreshing && <span className="sr-only">Aggiorno…</span>}
+          {refreshing && <span className="sr-only">{t("pullToRefresh.busy")}</span>}
         </div>
       </div>
       <div ref={contentRef} className="h-full">

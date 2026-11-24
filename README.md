@@ -74,6 +74,21 @@ complete the onboarding flow. AI features remain disabled until the user adds a
 personal Gemini or OpenRouter key, in onboarding or later under
 **Settings → Coach**.
 
+## Languages
+
+The interface is moving from Italian-only to Italian and English, with
+[next-intl](https://next-intl.dev) and no language prefix in the URLs. The
+language is stored in the `NEXT_LOCALE` cookie, chosen on the first onboarding
+step or in **Settings → App**; without a cookie it follows the browser's
+`Accept-Language` (Italian or English, else Italian).
+
+Messages live in `messages/<language>/<area>.json`, one file per area, so areas
+can be translated independently. A new area must be added to `NAMESPACES` in
+`i18n/config.ts`; `tests/i18n.test.ts` checks that every language has the same
+keys and placeholders. `messages/GLOSSARY.md` lists the fixed running terms.
+Translated so far: onboarding. The other screens, the AI coach prompts, and
+date and number formats (still `it-IT`) are being converted area by area.
+
 ## First-run onboarding
 
 New users go through five short steps (`app/onboarding`), all skippable except

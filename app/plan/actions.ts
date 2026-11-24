@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { schedulePlanPublish } from "@/lib/intervals/sync";
 import { redirect, RedirectType } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { parseDecimal, parseDuration } from "@/lib/format";
 import type { CoachMemoryCategory, Goal, PlannedStatus, PlannedWorkout, Profile } from "@/lib/types";
@@ -34,17 +35,18 @@ export async function createPlannedWorkout(
   _state: WorkoutFormState,
   formData: FormData,
 ): Promise<WorkoutFormState> {
+  const t = await getTranslations("plan.errors");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const date = String(formData.get("date") ?? "").trim();
   const type = String(formData.get("type") ?? "").trim();
-  if (!date) return { error: "Inserisci la data." };
-  if (!type) return { error: "Seleziona il tipo." };
+  if (!date) return { error: t("dateRequired") };
+  if (!type) return { error: t("typeRequired") };
   const distanceKm = optFloat(formData, "target_distance_km");
   const paceRaw = String(formData.get("target_pace") ?? "").trim();
   const pace = paceRaw ? parseDuration(paceRaw) : null;
-  if (paceRaw && pace == null) return { error: "Passo target non valido (usa mm:ss)." };
+  if (paceRaw && pace == null) return { error: t("paceInvalid") };
   const hrRaw = optFloat(formData, "target_hr_bpm");
   const targetDistance = distanceKm == null ? null : Math.round(distanceKm * 1000);
   const targetDuration = optDuration(formData, "target_duration");
@@ -108,18 +110,19 @@ function revalidatePlan(userId: string) {
 
 /** Sposta una seduta su un altro giorno (da oggi in avanti). */
 export async function moveWorkout(id: string, date: string): Promise<{ error?: string }> {
+  const t = await getTranslations("plan.errors");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < romeDay() || date > addDays(romeDay(), 60)) {
-    return { error: "Data non valida." };
+    return { error: t("dateInvalid") };
   }
   const { error } = await supabase
     .from("planned_workouts")
     .update({ date })
     .eq("id", id)
     .eq("user_id", user.id);
-  if (error) return { error: "Impossibile spostare la seduta." };
+  if (error) return { error: t("moveFailed") };
   revalidatePlan(user.id);
   return {};
 }
@@ -132,11 +135,12 @@ const ADAPT_MEMORY: Record<AdaptReason, { category: CoachMemoryCategory; text: s
 
 /** "Non mi sento al 100%": alleggerisce, accorcia o mette in pausa i prossimi giorni. */
 export async function adaptPlan(reason: AdaptReason, days: number): Promise<{ error?: string; count?: number; until?: string }> {
+  const t = await getTranslations("plan.errors");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   if (!(reason in ADAPT_REASONS) || !ADAPT_DURATIONS.some((option) => option.days === days)) {
-    return { error: "Scelta non valida." };
+    return { error: t("choiceInvalid") };
   }
   const today = romeDay();
   const until = addDays(today, days - 1);
@@ -149,7 +153,7 @@ export async function adaptPlan(reason: AdaptReason, days: number): Promise<{ er
     .gte("date", today)
     .lte("date", until)
     .returns<PlannedWorkout[]>();
-  if (error) return { error: "Impossibile leggere il piano." };
+  if (error) return { error: t("planReadFailed") };
 
   const memory = ADAPT_MEMORY[reason];
   const { data: savedMemory } = await supabase
@@ -189,6 +193,7 @@ const ADAPT_META_KEYS = new Set(["reason", "until", "memory_id"]);
 
 /** Ripristina le sedute future alleggerite o in pausa. */
 export async function undoAdaptation(): Promise<{ error?: string }> {
+  const t = await getTranslations("plan.errors");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -199,7 +204,7 @@ export async function undoAdaptation(): Promise<{ error?: string }> {
     .not("adapted_from", "is", null)
     .gte("date", romeDay())
     .returns<Array<Pick<PlannedWorkout, "id" | "adapted_from">>>();
-  if (error) return { error: "Impossibile ripristinare il piano." };
+  if (error) return { error: t("restoreFailed") };
   const memories = new Set<string>();
   for (const workout of workouts ?? []) {
     const original = Object.fromEntries(
@@ -225,6 +230,7 @@ export async function undoAdaptation(): Promise<{ error?: string }> {
  * l'obiettivo e attiva il prossimo obiettivo in calendario, se c'è.
  */
 export async function planRecovery(): Promise<void> {
+  const t = await getTranslations("plan.recovery");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -256,7 +262,7 @@ export async function planRecovery(): Promise<void> {
         user_id: user.id,
         role: "assistant",
         kind: "plan_proposal",
-        content: `Complimenti per la ${goal.race_name}! Prima di ripartire concediti qualche giorno di recupero: uscite brevi e facili per far tornare fresche le gambe. Se ti va bene, conferma qui sotto.`,
+        content: t("message", { race: goal.race_name }),
         metadata: { type: "post_race_recovery", goal_id: goal.id },
       })
       .select("id")
@@ -269,7 +275,7 @@ export async function planRecovery(): Promise<void> {
     if (message && diff.touched.length) {
       const proposalId = await insertPlanProposal(supabase, {
         userId: user.id,
-        summary: "Recupero dopo la gara",
+        summary: t("summary"),
         touched: diff.touched,
         workouts: diff.workouts,
         removeDates: diff.removeDates,

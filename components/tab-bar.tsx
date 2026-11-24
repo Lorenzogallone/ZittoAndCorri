@@ -2,19 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { MessageCircle, Activity, Calendar, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // `fill`: icone con un'area chiusa da riempire quando la tab è attiva; le
 // altre (linee aperte o dettagli interni) prendono solo un tratto più spesso.
 const tabs = [
-  { href: "/", label: "Coach", icon: MessageCircle, fill: true },
-  { href: "/activities", label: "Corse", icon: Activity, fill: false },
-  { href: "/plan", label: "Piano", icon: Calendar, fill: false },
-  { href: "/profile", label: "Profilo", icon: User, fill: true },
+  { href: "/", labelKey: "coach", icon: MessageCircle, fill: true },
+  { href: "/activities", labelKey: "activities", icon: Activity, fill: false },
+  { href: "/plan", labelKey: "plan", icon: Calendar, fill: false },
+  { href: "/profile", labelKey: "profile", icon: User, fill: true },
 ] as const;
 
 export function TabBar() {
+  const t = useTranslations("shell");
   const pathname = usePathname();
 
   function isActive(href: string) {
@@ -36,7 +38,7 @@ export function TabBar() {
         }}
       >
         <div className="mx-4 mb-1 flex items-center justify-around rounded-full bg-card/85 px-2 py-1 shadow-[0_8px_24px_-12px_oklch(0_0_0/0.25)] ring-1 ring-border/60 backdrop-blur-xl dark:ring-white/8">
-          {tabs.map(({ href, label, icon: Icon, fill }) => {
+          {tabs.map(({ href, labelKey, icon: Icon, fill }) => {
             const active = isActive(href);
             return (
               <Link
@@ -64,7 +66,7 @@ export function TabBar() {
                     active ? "font-semibold text-foreground" : "font-medium text-muted-foreground",
                   )}
                 >
-                  {label}
+                  {t(`nav.${labelKey}`)}
                 </span>
                 {/* Segno della tab attiva: puntino nel colore principale. */}
                 <span

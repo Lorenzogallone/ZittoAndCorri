@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useTranslations } from "next-intl";
 import { createPlannedWorkout, type WorkoutFormState } from "../actions";
 import { WORKOUT_TYPES } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ interface Props {
 const initialState: WorkoutFormState = {};
 
 export function WorkoutForm({ goals, defaultDate }: Props) {
+  const t = useTranslations("plan.new.form");
   const [state, formAction, pending] = useActionState(
     createPlannedWorkout,
     initialState,
@@ -40,7 +42,7 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
   return (
     <form action={formAction} onKeyDown={handleEnterKeyHint} className="flex flex-col gap-5">
       <div className="grid gap-2.5">
-        <Label htmlFor="date">Data</Label>
+        <Label htmlFor="date">{t("date")}</Label>
         <Input
           id="date"
           name="date"
@@ -51,15 +53,15 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
       </div>
 
       <div className="grid gap-2.5">
-        <Label htmlFor="type">Tipo</Label>
+        <Label htmlFor="type">{t("type")}</Label>
         <Select name="type" defaultValue="easy">
           <SelectTrigger id="type">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {WORKOUT_TYPES.map((t) => (
-              <SelectItem key={t} value={t}>
-                {TYPE_LABELS[t] ?? t}
+            {WORKOUT_TYPES.map((type) => (
+              <SelectItem key={type} value={type}>
+                {TYPE_LABELS[type] ?? type}
               </SelectItem>
             ))}
           </SelectContent>
@@ -68,13 +70,13 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
 
       {goals.length > 0 && (
         <div className="grid gap-2.5">
-          <Label htmlFor="goal_id">Obiettivo (opzionale)</Label>
+          <Label htmlFor="goal_id">{t("goal")}</Label>
           <Select name="goal_id" defaultValue="none">
             <SelectTrigger id="goal_id">
-              <SelectValue placeholder="Nessun obiettivo collegato" />
+              <SelectValue placeholder={t("goalPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">Nessun obiettivo</SelectItem>
+              <SelectItem value="none">{t("noGoal")}</SelectItem>
               {goals.map((g) => (
                 <SelectItem key={g.id} value={g.id}>
                   {g.race_name}
@@ -87,12 +89,12 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
 
       <div className="separator my-1" />
       <p className="text-xs text-muted-foreground uppercase tracking-wider">
-        Target (opzionali)
+        {t("targets")}
       </p>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2.5">
-          <Label htmlFor="target_distance_km">Distanza (km)</Label>
+          <Label htmlFor="target_distance_km">{t("distance")}</Label>
           <Input
             id="target_distance_km"
             name="target_distance_km"
@@ -105,7 +107,7 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
           />
         </div>
         <div className="grid gap-2.5">
-          <Label htmlFor="target_pace">Passo (mm:ss)</Label>
+          <Label htmlFor="target_pace">{t("pace")}</Label>
           <Input
             id="target_pace"
             name="target_pace"
@@ -121,7 +123,7 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2.5">
-          <Label htmlFor="target_duration">Durata (h:mm:ss)</Label>
+          <Label htmlFor="target_duration">{t("duration")}</Label>
           <Input
             id="target_duration"
             name="target_duration"
@@ -134,7 +136,7 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
           />
         </div>
         <div className="grid gap-2.5">
-          <Label htmlFor="target_hr_bpm">HR max (bpm)</Label>
+          <Label htmlFor="target_hr_bpm">{t("maxHr")}</Label>
           <Input
             id="target_hr_bpm"
             name="target_hr_bpm"
@@ -150,24 +152,24 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
       </div>
 
       <div className="grid gap-2.5">
-        <Label id="description-label" htmlFor="description">Note</Label>
+        <Label id="description-label" htmlFor="description">{t("notes")}</Label>
         <TextField
           id="description"
           aria-labelledby="description-label"
           name="description"
           rows={3}
-          placeholder="10km a ritmo facile, HR < 145."
+          placeholder={t("notesPlaceholder")}
         />
       </div>
 
       <div className="grid gap-2.5">
-        <Label id="focus-label" htmlFor="focus">Focus (opzionale)</Label>
+        <Label id="focus-label" htmlFor="focus">{t("focus")}</Label>
         <TextField
           id="focus"
           aria-labelledby="focus-label"
           name="focus"
           rows={2}
-          placeholder="Es. resta sotto la HR anche se il passo cala; pensa alla cadenza."
+          placeholder={t("focusPlaceholder")}
         />
       </div>
 
@@ -180,7 +182,7 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
       )}
 
       <Button type="submit" disabled={pending} size="lg" className="w-full mt-2">
-        {pending ? "Salvo…" : "Aggiungi al piano"}
+        {pending ? t("saving") : t("submit")}
       </Button>
     </form>
   );

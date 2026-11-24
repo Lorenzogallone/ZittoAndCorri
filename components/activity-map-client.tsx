@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { GpsPoint } from "@/lib/types";
@@ -31,6 +32,12 @@ export interface RoutePart {
 }
 
 export default function ActivityMapClient({ gpsSeries, embedded = false, onFail, parts = null, selected = null }: ActivityMapClientProps) {
+  const t = useTranslations("activities.map");
+  const touchHelp = t("touchHelp");
+  const windowsHelp = t("windowsHelp");
+  const macHelp = t("macHelp");
+  const zoomIn = t("zoomIn");
+  const zoomOut = t("zoomOut");
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -64,11 +71,11 @@ export default function ActivityMapClient({ gpsSeries, embedded = false, onFail,
       refreshExpiredTiles: false,
       cooperativeGestures: embedded,
       locale: {
-        "CooperativeGesturesHandler.MobileHelpText": "Usa due dita per spostare la mappa",
-        "CooperativeGesturesHandler.WindowsHelpText": "Usa Ctrl + rotella per lo zoom",
-        "CooperativeGesturesHandler.MacHelpText": "Usa ⌘ + rotella per lo zoom",
-        "NavigationControl.ZoomIn": "Ingrandisci",
-        "NavigationControl.ZoomOut": "Riduci",
+        "CooperativeGesturesHandler.MobileHelpText": touchHelp,
+        "CooperativeGesturesHandler.WindowsHelpText": windowsHelp,
+        "CooperativeGesturesHandler.MacHelpText": macHelp,
+        "NavigationControl.ZoomIn": zoomIn,
+        "NavigationControl.ZoomOut": zoomOut,
       },
       dragRotate: false,
       pitchWithRotate: false,
@@ -180,7 +187,7 @@ export default function ActivityMapClient({ gpsSeries, embedded = false, onFail,
         mapRef.current = null;
       }
     };
-  }, [gpsSeries, embedded, onFail]);
+  }, [gpsSeries, embedded, onFail, touchHelp, windowsHelp, macHelp, zoomIn, zoomOut]);
 
   // Colori per tratto: si aggiornano quando cambia la scelta nella card.
   useEffect(() => {
@@ -215,15 +222,15 @@ export default function ActivityMapClient({ gpsSeries, embedded = false, onFail,
       {!mapLoaded && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground bg-muted/50 z-10 backdrop-blur-xs">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          <span className="text-xs font-medium">Caricamento mappa…</span>
+          <span className="text-xs font-medium">{t("loading")}</span>
         </div>
       )}
       <div ref={mapContainerRef} className="w-full h-full" />
       {colored && (
         <div className="pointer-events-none absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full bg-background/85 px-2.5 py-1 text-micro font-medium text-muted-foreground backdrop-blur">
-          lento
+          {t("slow")}
           <span className="h-1.5 w-12 rounded-full" style={{ background: `linear-gradient(90deg, ${PACE_SCALE.slow}, ${PACE_SCALE.mid}, ${PACE_SCALE.fast})` }} />
-          veloce
+          {t("fast")}
         </div>
       )}
     </div>

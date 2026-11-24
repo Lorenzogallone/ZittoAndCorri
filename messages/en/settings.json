@@ -1,0 +1,195 @@
+{
+  "title": "Settings",
+  "backLabel": "Profile",
+  "signOut": "Sign out",
+  "tabs": {
+    "athlete": "Athlete",
+    "app": "App",
+    "coach": "Coach",
+    "links": "Connections"
+  },
+  "groups": {
+    "heart": "Heart rate and personal data",
+    "training": "Training",
+    "appearance": "Appearance",
+    "notifications": "Notifications",
+    "models": "Models",
+    "coachMemory": "What the coach remembers",
+    "zepp": "Zepp watch",
+    "autoImport": "Automatic imports"
+  },
+  "profile": {
+    "maxHr": "Max HR",
+    "restingHr": "Resting HR",
+    "birth": "Date of birth",
+    "birthdateNotSet": "Not set",
+    "sourceManual": "Manual",
+    "sourceNotSet": "Not set",
+    "zonesHrr": "Zones (heart rate reserve): {values}",
+    "zonesWatch": "Zones from the watch: {values}",
+    "edit": "Edit",
+    "saved": "Data saved",
+    "watchNote": "With the watch connected, its values count. These are used when it doesn't sync.",
+    "maxHrManual": "Manual max HR",
+    "restingHrManual": "Manual resting HR",
+    "birthdate": "Date of birth",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "save": "Save"
+  },
+  "heat": {
+    "label": "Adjust paces for heat",
+    "description": "When heat and humidity are forecast, session paces slow down, on the watch too."
+  },
+  "theme": {
+    "mode": "Theme",
+    "modes": {
+      "auto": "Auto",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "accent": "Color",
+    "style": "Background"
+  },
+  "notifications": {
+    "label": "Notifications on this device",
+    "description": "Session reminders, run analysis and the Monday summary.",
+    "hints": {
+      "unsupported": "This browser doesn't support notifications.",
+      "iosInstall": "On iPhone, first add the app to your Home Screen.",
+      "denied": "Notifications are blocked in your browser settings."
+    },
+    "enableFailed": "Couldn't turn on notifications.",
+    "disableFailed": "Couldn't turn off notifications.",
+    "testFailed": "Sending failed.",
+    "testSent": "Notification sent.",
+    "test": "Send a test"
+  },
+  "push": {
+    "invalidSubscription": "Invalid notification subscription.",
+    "enableFailed": "Couldn't turn on notifications. Try again.",
+    "disableFailed": "Couldn't turn off notifications. Try again.",
+    "notConfigured": "Notifications aren't set up on the server.",
+    "noDevice": "Couldn't reach any device. Turn notifications back on.",
+    "testTitle": "Notifications on",
+    "testBody": "You'll get session reminders and coach updates here."
+  },
+  "models": {
+    "tasks": {
+      "chat": {
+        "title": "Coach chat",
+        "hint": "Replies to your messages and suggests changes to the plan."
+      },
+      "analysis": {
+        "title": "Run analysis",
+        "hint": "Comments on every run, reads the intervals from the note and writes the weekly summary."
+      }
+    },
+    "saved": "Saved",
+    "providerFor": "Provider for {task}",
+    "addKey": "Add the {provider} key below",
+    "geminiModelFor": "Gemini model for {task}",
+    "priceLine": "List price {input} / {output} per M tokens, free within Google's limits",
+    "chooseModel": "Choose a model",
+    "pickerTitle": "Model for {task}",
+    "noKeys": "Add a Gemini or OpenRouter key below, then choose which model to use for chat and which one for analysis.",
+    "migrationNeeded": "To choose a model for chat and one for analysis, the database needs updating (migration 0024).",
+    "month": {
+      "title": "Spending this month",
+      "summary": "Chat {chat} · Analysis {analysis} · {calls, plural, one {# call} other {# calls}}.",
+      "summaryEstimated": "Chat {chat} · Analysis {analysis} · {calls, plural, one {# call} other {# calls}}. Gemini costs are estimated at list price: on the free plan you pay nothing."
+    }
+  },
+  "gemini": {
+    "description": "Free within Google's limits. Choose the model above, for chat and for analysis.",
+    "configured": "Configured · ••••{lastFour}",
+    "replace": "Replace",
+    "removeTitle": "Remove key",
+    "keyLabel": "Personal Gemini key",
+    "verifying": "Verifying…",
+    "verify": "Verify",
+    "cancelReplace": "Cancel replacement",
+    "confirmRemove": {
+      "title": "Remove the Gemini key?",
+      "description": "Chat and AI feedback will turn off until you add another key.",
+      "action": "Remove"
+    },
+    "help": {
+      "title": "How to get the key",
+      "step1": "Open Google AI Studio and sign in with your Google account.",
+      "step2": "Select “Create API key” and choose or create a project.",
+      "step3": "Copy the key and paste it here. Treat it like a password.",
+      "open": "Open Google AI Studio"
+    }
+  },
+  "openrouter": {
+    "descriptionShort": "Alternative to Gemini: hundreds of models (Claude, GPT, DeepSeek…) with one key.",
+    "descriptionFull": "Alternative to Gemini: hundreds of models (Claude, GPT, DeepSeek…) with one key, pay as you go. Choose the model above, for chat and for analysis.",
+    "migrationNeeded": "To turn it on, the database needs updating with migration 0023.",
+    "configured": "Configured · ••••{lastFour}",
+    "replace": "Replace",
+    "removeTitle": "Remove key",
+    "keyLabel": "OpenRouter key",
+    "verifying": "Verifying…",
+    "verifySave": "Verify and save",
+    "cancel": "Cancel",
+    "justSaved": "Key saved. Now, above, choose OpenRouter and a model for chat or analysis.",
+    "confirmRemove": {
+      "title": "Remove the OpenRouter key?",
+      "description": "Chat and analysis will use Gemini.",
+      "action": "Remove"
+    },
+    "help": {
+      "title": "How to get the key",
+      "step1": "Create an OpenRouter account and add some credit (“free” models don't use it).",
+      "step2": "Under “Keys”, create a key and paste it here. Treat it like a password.",
+      "step3": "Above, under “Models”, choose OpenRouter and tap the model to see the list with prices.",
+      "open": "Open OpenRouter"
+    }
+  },
+  "apiKey": {
+    "description": "To upload runs from Shortcuts or other services without opening the app.",
+    "label": "Personal key",
+    "empty": "No key set up. Generate one to get started.",
+    "hide": "Hide key",
+    "show": "Show key",
+    "copy": "Copy to clipboard",
+    "regenerate": "Regenerate key",
+    "generate": "Generate new key",
+    "confirmRegenerate": {
+      "title": "Regenerate the personal key?",
+      "description": "Shortcuts set up with the current key will stop working until you update them.",
+      "action": "Regenerate"
+    },
+    "errorRegenerate": "Error while regenerating: {error}",
+    "errorUnexpected": "Unexpected error. Try again.",
+    "help": {
+      "title": "How to use it",
+      "step1": "Generate the key, show it and copy it.",
+      "step2": "In the external service, use the header <code>Authorization: Bearer YOUR_KEY</code>.",
+      "step3": "Choose the endpoint that fits what you're sending.",
+      "endpointJson": "— JSON data",
+      "endpointGpx": "— GPX content",
+      "endpointFile": "— FIT or GPX file",
+      "regenerateNote": "If you regenerate the key, update every Shortcut that used the previous one."
+    }
+  },
+  "errors": {
+    "hrOrder": "Max HR must be higher than resting HR.",
+    "geminiKeyInvalidFormat": "The Gemini key doesn't look valid.",
+    "geminiKeyRejected": "Invalid key, or not authorized for Gemini.",
+    "keyRemoveFailed": "Couldn't remove the key. Try again.",
+    "keySaveFailed": "Couldn't save the key. Try again.",
+    "openrouterMigration": "To use OpenRouter, the database needs updating (migration 0023).",
+    "routingMigration": "To choose a model for chat and one for analysis, the database needs updating (migration 0024).",
+    "openrouterKeyInvalidFormat": "The OpenRouter key doesn't look valid.",
+    "openrouterKeyUnauthorized": "Invalid OpenRouter key.",
+    "openrouterVerifyFailed": "Couldn't verify the key with OpenRouter. Try again.",
+    "invalidTask": "Invalid task.",
+    "invalidProvider": "Invalid provider.",
+    "invalidModel": "Invalid model.",
+    "modelSaveFailed": "Couldn't save the model. Try again.",
+    "addKeyFirst": "Add the {provider} key first.",
+    "heatNotSaved": "Setting not saved."
+  }
+}

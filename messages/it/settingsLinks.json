@@ -1,0 +1,171 @@
+{
+  "memory": {
+    "categories": {
+      "guideline": "Linea guida",
+      "preference": "Preferenza",
+      "availability": "Disponibilità",
+      "vacation": "Vacanza",
+      "weather": "Meteo",
+      "fatigue": "Fatica",
+      "limitation": "Limite",
+      "pace_hr": "Passo e cuore",
+      "long_term": "Percorso"
+    },
+    "expiredOn": "scaduto il {date}",
+    "validUntil": "fino al {date}",
+    "editor": {
+      "typeLabel": "Tipo",
+      "contentLabel": "Cosa deve ricordare",
+      "contentPlaceholder": "Es. Riscaldamento e defaticamento al passo easy, oppure camminando…",
+      "validUntilLabel": "Vale fino al",
+      "validUntilHint": "Lascia vuoto se vale sempre.",
+      "saving": "Salvo…",
+      "save": "Salva",
+      "cancel": "Annulla",
+      "delete": "Elimina"
+    },
+    "list": {
+      "empty": "Ancora niente: impara dalle tue conversazioni, oppure aggiungi tu un ricordo.",
+      "editAria": "Modifica ricordo",
+      "add": "Aggiungi ricordo",
+      "clearChat": "Cancella chat",
+      "clearAll": "Cancella tutto"
+    },
+    "confirm": {
+      "delete": {
+        "title": "Eliminare questo ricordo?",
+        "description": "Il coach non ne terrà più conto. Non si può annullare.",
+        "action": "Elimina"
+      },
+      "clearAll": {
+        "title": "Cancellare chat e ricordi?",
+        "description": "Il coach dimentica anche quello che ha imparato su di te. Non si può annullare.",
+        "action": "Cancella tutto"
+      },
+      "clearChat": {
+        "title": "Cancellare la cronologia della chat?",
+        "description": "I ricordi del coach restano.",
+        "action": "Cancella chat"
+      }
+    },
+    "errors": {
+      "contentTooShort": "Scrivi almeno qualche parola.",
+      "contentTooLong": "Massimo 600 caratteri.",
+      "invalid": "Dati non validi.",
+      "categoryUnavailable": "Questa categoria non è ancora disponibile sul database.",
+      "saveFailed": "Non sono riuscito a salvare il ricordo: riprova tra poco.",
+      "deleteFailed": "Non sono riuscito a eliminare il ricordo: riprova tra poco."
+    }
+  },
+  "zepp": {
+    "never": "Mai",
+    "description": "Facoltativo: porta sonno, recupero e zone cardiache dall'orologio.",
+    "useWatchData": "Usa i dati dell'orologio",
+    "useWatchDataAria": "Usa i dati dell'orologio",
+    "connected": "{device} collegato",
+    "defaultDevice": "Orologio Zepp",
+    "lastSync": "Ultima sincronizzazione: {date}",
+    "staleNote": "i dati vecchi non vengono usati finché non risincronizzi",
+    "lastError": "Ultimo errore: {error}",
+    "disconnectAndDelete": "Scollega e cancella i dati",
+    "codeTitle": "Codice ZittoAndCorri",
+    "copied": "Copiato",
+    "validUntil": "Valido fino alle {time}",
+    "validFallback": "Valido fino alle prossime 10 min",
+    "codeHint": "Usalo per collegare sia l'app Salute che il Coach.",
+    "generating": "Generazione…",
+    "generate": "Genera codice di collegamento",
+    "generateNew": "Genera un nuovo codice",
+    "codeUnavailable": "Codice non disponibile.",
+    "confirm": {
+      "disable": {
+        "title": "Disattivare i dati dell'orologio?",
+        "description": "Il collegamento con Zepp viene revocato: per riattivarlo servirà un nuovo codice.",
+        "action": "Disattiva"
+      },
+      "delete": {
+        "title": "Scollegare l'orologio e cancellare i dati?",
+        "description": "Collegamento e storico Zepp vengono eliminati. Non si può annullare.",
+        "action": "Elimina"
+      }
+    },
+    "help": {
+      "title": "Come collegare l'orologio",
+      "step1": "Genera il codice qui sopra (valido 5 minuti, si blocca dopo 5 tentativi).",
+      "step2": "<strong>App Salute (sync dati):</strong> apri Zepp sul telefono → il tuo orologio → App → Zitto e Corri → Impostazioni → incolla il codice → <em>Collega</em>.",
+      "step3": "<strong>App Coach (allenamenti):</strong> sempre in Zepp → App → Zitto e Corri Coach → Impostazioni → incolla lo <strong>stesso codice</strong> → <em>Collega</em>.",
+      "step4": "Apri il Mini Program sull'orologio per la prima sincronizzazione.",
+      "note": "Il codice può essere usato una volta per ciascuna app nello stesso intervallo di validità. Se scade prima di collegare la seconda app, genera un nuovo codice."
+    },
+    "errors": {
+      "generate": "Impossibile generare il codice. Riprova.",
+      "disable": "Impossibile disattivare Zepp.",
+      "delete": "Impossibile eliminare i dati Zepp."
+    }
+  },
+  "intervals": {
+    "never": "mai",
+    "description": "Il ponte ufficiale con l'orologio: Zepp manda corse e dati salute a Intervals.icu, e Intervals porta il tuo piano sull'orologio come allenamenti guidati.",
+    "notMigrated": {
+      "description": "Importa corse e dati salute dall'orologio e manda il piano all'orologio, tramite Intervals.icu.",
+      "text": "Per attivarla serve aggiornare il database con la migrazione 0025."
+    },
+    "targets": {
+      "auto": "Automatico",
+      "pace": "Passo",
+      "hr": "Frequenza"
+    },
+    "keySaved": "Chiave salvata. Tocca “Sincronizza ora” per il primo import.",
+    "confirmDisconnect": {
+      "title": "Scollegare Intervals.icu?",
+      "description": "Le corse già importate restano.",
+      "action": "Scollega"
+    },
+    "replace": "Sostituisci",
+    "disconnect": "Scollega",
+    "importActivities": "Importa le corse",
+    "importWellness": "Importa sonno, FC a riposo e HRV",
+    "importWellnessAria": "Importa i dati salute",
+    "publishPlan": "Manda il piano all'orologio",
+    "targetLabel": "Target delle fasi sull'orologio",
+    "targetHint": "Zepp accetta un solo tipo di target per seduta. Automatico usa il passo nelle sedute di soglia e ripetute, la frequenza in facili e lunghi.",
+    "lastImport": "Ultimo import: {date}",
+    "lastPublish": "Ultimo invio del piano: {date}",
+    "lastError": "Ultimo errore: {error}",
+    "syncing": "Sincronizzo…",
+    "syncNow": "Sincronizza ora",
+    "keyLabel": "Chiave API Intervals.icu",
+    "keyPlaceholder": "La trovi in Settings → Developer",
+    "verifying": "Verifico…",
+    "verifyAndSave": "Verifica e salva",
+    "cancel": "Annulla",
+    "sync": {
+      "activitiesImported": "{count, plural, one {# corsa importata} other {# corse importate}}",
+      "wellnessDays": "{days} giorni di dati salute",
+      "plan": "piano: {created} nuove, {updated} aggiornate, {deleted} tolte",
+      "nothing": "Niente da sincronizzare."
+    },
+    "help": {
+      "title": "Come collegarlo",
+      "step1": "Crea un account gratuito su Intervals.icu.",
+      "step2": "Nell'app Zepp: Profilo → Collegamento account di terze parti → Intervals.icu.",
+      "step3": "Su Intervals.icu, Settings → riquadro Amazfit: attiva il download del wellness e dell'HRV.",
+      "step4": "Sempre in Settings, in fondo (Developer): copia la API key e incollala qui.",
+      "note": "Dopo una corsa, apri l'app Zepp: la corsa passa a Intervals.icu in pochi secondi e da lì arriva qui entro un'ora, oppure subito quando apri Zitto e Corri. Tutto il piano futuro compare nel calendario di Intervals.icu; i prossimi 7 giorni arrivano sull'orologio nell'app Allenamento, tra gli allenamenti del piano.",
+      "open": "Apri Intervals.icu"
+    },
+    "errors": {
+      "migration": "Per usare Intervals.icu serve aggiornare il database (migrazione 0025).",
+      "keyInvalidShape": "La chiave Intervals.icu non sembra valida.",
+      "keyRejected": "Chiave Intervals.icu non valida.",
+      "verifyFailed": "Non riesco a verificare la chiave con Intervals.icu. Riprova.",
+      "saveKeyFailed": "Impossibile salvare la chiave. Riprova.",
+      "removeKeyFailed": "Impossibile rimuovere la chiave. Riprova.",
+      "saveOptionsFailed": "Impossibile salvare le preferenze. Riprova.",
+      "keyNotSaved": "Chiave non salvata.",
+      "missingKey": "Salva prima la chiave Intervals.icu.",
+      "syncFailed": "Sincronizzazione non riuscita. Riprova.",
+      "syncNotCompleted": "Sincronizzazione non riuscita."
+    }
+  }
+}

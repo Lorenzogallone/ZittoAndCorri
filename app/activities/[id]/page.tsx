@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { notFound, redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { timeInZoneFromSeries } from "@/lib/metrics/zones";
@@ -37,6 +38,7 @@ export default async function ActivityDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const t = await getTranslations("activities.detail");
   const { id } = await params;
   const supabase = await createClient();
   const {
@@ -201,7 +203,7 @@ export default async function ActivityDetailPage({
   const segments = hasIntervals(intervals)
     ? segmentSpans(intervals.segments, movingClock(rawTrack ? detectPauses(rawTrack) : []))
     : (km?.splits ?? []).map((split, index) => ({
-        index, kind: "km", variant: null, label: `Km ${split.km}`,
+        index, kind: "km", variant: null, label: t("kmSegment", { km: split.km }),
         start: split.start, end: split.end, movingStart: split.movingStart, movingEnd: split.movingEnd,
       }));
 

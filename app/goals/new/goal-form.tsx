@@ -2,6 +2,7 @@
 
 import { handleEnterKeyHint } from "@/lib/form-keys";
 import { useActionState } from "react";
+import { useTranslations } from "next-intl";
 import { createGoal, type GoalFormState } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,6 +11,7 @@ import { GoalFields } from "../goal-fields";
 const initialState: GoalFormState = {};
 
 export function GoalForm() {
+  const t = useTranslations("goals");
   const [state, formAction, pending] = useActionState(createGoal, initialState);
 
   return (
@@ -25,7 +27,7 @@ export function GoalForm() {
           className="h-4 w-4 rounded border-white/20 accent-primary"
         />
         <Label htmlFor="is_active" className="cursor-pointer">
-          Obiettivo attivo
+          {t("form.active")}
         </Label>
       </div>
 
@@ -38,7 +40,7 @@ export function GoalForm() {
       )}
 
       <Button type="submit" disabled={pending} size="lg" className="w-full mt-2">
-        {pending ? "Salvo…" : "Salva obiettivo"}
+        {pending ? t("form.saving") : t("new.submit")}
       </Button>
     </form>
   );

@@ -216,15 +216,22 @@ test("il piano usa la chat e ogni proposta spiega obiettivo e focus", () => {
   const chat = readFileSync(new URL("../components/coach-chat.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(plan, /plan_reviews|Review del coach|Chiedi al coach di adattare il piano/);
   assert.match(prompt, /Per ogni workout proposto compila sempre description e focus/);
-  assert.match(chat, /Cosa fare e perché/);
+  // I testi italiani stanno nei messaggi, la chat li legge da lì.
+  const messages = readFileSync(new URL("../messages/it/coach.json", import.meta.url), "utf8");
+  assert.match(messages, /Cosa fare e perché/);
+  assert.match(messages, /Su cosa concentrarti/);
+  assert.match(chat, /whatAndWhy/);
+  assert.match(chat, /focusOn/);
   assert.match(chat, /<WorkoutSteps/);
-  assert.match(chat, /Su cosa concentrarti/);
 });
 
 test("il dettaglio attività è essenziale: un grafico Andamento, i km in tabella e mappa leggera di base", () => {
   const view = readFileSync(new URL("../app/activities/[id]/activity-view.tsx", import.meta.url), "utf8");
   const route = readFileSync(new URL("../components/activity/route-preview.tsx", import.meta.url), "utf8");
-  assert.match(view, />Andamento<\/h2>/);
+  // Il titolo «Andamento» sta nei messaggi (activities.detail.progress).
+  const messages = readFileSync(new URL("../messages/it/activities.json", import.meta.url), "utf8");
+  assert.match(messages, /"progress": "Andamento"/);
+  assert.match(view, /<h2[^>]*>\{t\("detail\.progress"\)\}<\/h2>/);
   // I km non hanno più un grafico a parte: stanno nella tabella «Km per km».
   assert.doesNotMatch(view, /SplitsChart/);
   assert.match(view, /<KmSplitsCard analysis=\{props\.km\} \/>/);
@@ -310,7 +317,9 @@ test("il tasto Profilo apre sempre la pagina profilo", () => {
   const tabs = readFileSync(new URL("../components/tab-bar.tsx", import.meta.url), "utf8");
   const settings = readFileSync(new URL("../app/settings/settings-view.tsx", import.meta.url), "utf8");
   const backButton = readFileSync(new URL("../components/back-button.tsx", import.meta.url), "utf8");
-  assert.match(tabs, /href: "\/profile", label: "Profilo"/);
+  const shell = readFileSync(new URL("../messages/it/shell.json", import.meta.url), "utf8");
+  assert.match(tabs, /href: "\/profile", labelKey: "profile"/);
+  assert.match(shell, /"profile": "Profilo"/);
   assert.match(settings, /backHref="\/profile"/);
   assert.match(backButton, /<Link href=\{fallbackHref\}/);
   assert.doesNotMatch(backButton, /window\.history\.length/);
@@ -389,8 +398,10 @@ test("lo splash PWA non viene reinserito dalle server action", () => {
   assert.doesNotMatch(layout, /pwa-splash-root/);
   const splash = readFileSync(new URL("../components/pwa-splash.tsx", import.meta.url), "utf8");
   assert.match(splash, /^"use client";/);
-  assert.match(splash, /^const SPLASH_MARKUP = \{ __html: PWA_SPLASH_HTML \};$/m);
-  assert.match(splash, /dangerouslySetInnerHTML=\{SPLASH_MARKUP\}/);
+  // L'HTML dipende dalla lingua: l'oggetto resta stabile con useMemo, così
+  // React non riscrive innerHTML a ogni render.
+  assert.match(splash, /const markup = useMemo\(/);
+  assert.match(splash, /dangerouslySetInnerHTML=\{markup\}/);
 });
 
 test("form numbers accept the comma from the Italian iOS decimal keypad", () => {

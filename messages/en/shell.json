@@ -1,0 +1,40 @@
+{
+  "nav": {
+    "coach": "Coach",
+    "activities": "Runs",
+    "plan": "Plan",
+    "profile": "Profile",
+    "settings": "Settings",
+    "main": "Main navigation",
+    "registerActivity": "Log an activity"
+  },
+  "refreshButton": {
+    "label": "Refresh",
+    "busy": "Refreshing…"
+  },
+  "pullToRefresh": {
+    "manual": "Refresh the page",
+    "busy": "Refreshing…"
+  },
+  "updateToast": {
+    "message": "New version ready",
+    "update": "Update",
+    "updating": "Updating…",
+    "later": "Later"
+  },
+  "loadingScreen": {
+    "label": "Loading…"
+  },
+  "backButton": {
+    "label": "Back"
+  },
+  "confirmSheet": {
+    "cancel": "Cancel"
+  },
+  "splash": {
+    "tagline": "Your personal running coach"
+  },
+  "diagnostics": {
+    "copy": "copy"
+  }
+}

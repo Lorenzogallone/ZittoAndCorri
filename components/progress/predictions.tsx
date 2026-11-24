@@ -1,4 +1,5 @@
 import { ChevronDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { formatDuration } from "@/lib/format";
 import {
   goalRaceRange,
@@ -25,6 +26,7 @@ export function Predictions({
   today: string;
   goal: { race_name: string; distance_m: number; target_time_s: number | null } | null;
 }) {
+  const t = useTranslations("profile.predictions");
   const times = predictRaceTimes(reference, base, today);
   const forGoal = goal ? goalRaceRange(reference, base, goal, today) : null;
   // Senza obiettivo la spiegazione si riferisce alla mezza, la distanza tipica.
@@ -46,10 +48,14 @@ export function Predictions({
       {goal && forGoal && (
         <div className="mt-4 rounded-2xl bg-muted/50 px-4 py-3 text-sm">
           <p>
-            <span className="font-medium">{goal.race_name}</span>: tra{" "}
-            <span className="font-semibold tabular-nums">{formatDuration(forGoal.range.optimistic_s)}</span> e{" "}
-            <span className="font-semibold tabular-nums">{formatDuration(forGoal.range.prudent_s)}</span>, più probabile{" "}
-            <span className="font-semibold tabular-nums">{formatDuration(forGoal.range.central_s)}</span>.
+            {t.rich("goalRange", {
+              name: goal.race_name,
+              optimistic: formatDuration(forGoal.range.optimistic_s),
+              prudent: formatDuration(forGoal.range.prudent_s),
+              central: formatDuration(forGoal.range.central_s),
+              race: (chunks) => <span className="font-medium">{chunks}</span>,
+              num: (chunks) => <span className="font-semibold tabular-nums">{chunks}</span>,
+            })}
           </p>
           <p className="mt-1 text-pretty">{forGoal.advice_text}</p>
         </div>
@@ -57,7 +63,7 @@ export function Predictions({
       {/* Su quali dati si basa: a richiesta, per non appesantire la scheda. */}
       <details className="group mt-2 text-caption">
         <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 font-medium text-primary [&::-webkit-details-marker]:hidden">
-          Come lo prevedo
+          {t("how")}
           <ChevronDown size={14} aria-hidden className="transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none" />
         </summary>
         <p className="text-pretty text-muted-foreground">{explanation}</p>

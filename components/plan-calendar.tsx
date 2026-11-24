@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TYPE_DOTS } from "@/lib/activity-meta";
 import type { PlanDay } from "@/components/plan/week-list";
 
-const WEEKDAYS = ["L", "M", "M", "G", "V", "S", "D"];
+const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 
 function shiftMonth(month: string, delta: number): string {
   const [y, m] = month.split("-").map(Number);
@@ -26,24 +27,25 @@ interface Props {
 
 /** Vista mese: un pallino per seduta, pieno se fatta, vuoto se saltata. */
 export function PlanCalendar({ days, month, today, raceDate }: Props) {
+  const t = useTranslations("plan.calendar");
   const startWeekday = (new Date(`${month}-01T12:00:00Z`).getUTCDay() + 6) % 7;
   const cells: Array<PlanDay | null> = [...Array(startWeekday).fill(null), ...days];
 
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <Link href={`/plan?view=month&month=${shiftMonth(month, -1)}`} className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted" aria-label="Mese precedente">
+        <Link href={`/plan?view=month&month=${shiftMonth(month, -1)}`} className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted" aria-label={t("previousMonth")}>
           <ChevronLeft size={18} />
         </Link>
         <h2 className="text-sm font-semibold capitalize">{monthLabel(month)}</h2>
-        <Link href={`/plan?view=month&month=${shiftMonth(month, 1)}`} className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted" aria-label="Mese successivo">
+        <Link href={`/plan?view=month&month=${shiftMonth(month, 1)}`} className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted" aria-label={t("nextMonth")}>
           <ChevronRight size={18} />
         </Link>
       </div>
 
       <div className="grid grid-cols-7 text-center">
-        {WEEKDAYS.map((d, i) => (
-          <span key={i} className="py-1 text-micro font-medium uppercase text-muted-foreground">{d}</span>
+        {WEEKDAYS.map((d) => (
+          <span key={d} className="py-1 text-micro font-medium uppercase text-muted-foreground">{t(`weekdays.${d}`)}</span>
         ))}
       </div>
 
@@ -85,9 +87,9 @@ export function PlanCalendar({ days, month, today, raceDate }: Props) {
       </div>
 
       <div className="mt-3 flex justify-center gap-4 text-micro text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Fatta</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 opacity-40" />In programma</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full border border-muted-foreground/50" />Saltata</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{t("legend.done")}</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 opacity-40" />{t("legend.planned")}</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full border border-muted-foreground/50" />{t("legend.missed")}</span>
       </div>
     </div>
   );

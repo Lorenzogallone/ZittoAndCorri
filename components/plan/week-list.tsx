@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { DayStateIcon } from "@/components/day-state-icon";
 import { TYPE_DOTS, TYPE_LABELS, SPORT_LABELS } from "@/lib/activity-meta";
@@ -27,14 +28,15 @@ export function workoutTitle(workout: PlannedWorkout): string {
   return detail ? `${TYPE_LABELS[workout.type]} · ${detail}` : TYPE_LABELS[workout.type];
 }
 
-export function workoutSubtitle(workout: PlannedWorkout): string {
-  if (workout.status === "skipped") return "In pausa";
+/** `t` è il traduttore dell'ambito "plan.week" (chiavi `paused` e `lightened`). */
+export function workoutSubtitle(workout: PlannedWorkout, t: (key: "paused" | "lightened") => string): string {
+  if (workout.status === "skipped") return t("paused");
   const meters = plannedMeters(workout);
   const seconds = workout.target_duration_s ?? (workout.workout_steps?.length ? estimateWorkout(workout.workout_steps).seconds : null);
   const parts = [
     meters > 0 ? `${workout.target_distance_m ? "" : "≈ "}${kmText(meters)}` : null,
     seconds ? `${Math.round(seconds / 60)} min` : null,
-    workout.adapted_from ? "alleggerita" : null,
+    workout.adapted_from ? t("lightened") : null,
   ];
   return parts.filter(Boolean).join(" · ");
 }
@@ -55,6 +57,7 @@ function dayHref(day: PlanDay): string {
 }
 
 function DayRow({ day, today }: { day: PlanDay; today: string }) {
+  const t = useTranslations("plan.week");
   const date = new Date(`${day.date}T12:00:00Z`);
   const weekday = date.toLocaleDateString("it-IT", { weekday: "short", timeZone: "UTC" }).replace(".", "");
   const workout = day.workouts[0];
@@ -71,17 +74,17 @@ function DayRow({ day, today }: { day: PlanDay; today: string }) {
   if (workout) {
     title = workoutTitle(workout) + (day.workouts.length > 1 ? ` +${day.workouts.length - 1}` : "");
     subtitle = moved
-      ? `Fatta ${weekdayName(moved.date)} · ${activitySummary(moved.activity)}`
-      : done && sameDayRun ? `Fatto · ${activitySummary(sameDayRun)}` : workoutSubtitle(workout);
+      ? t("doneOn", { weekday: weekdayName(moved.date), summary: activitySummary(moved.activity) })
+      : done && sameDayRun ? t("done", { summary: activitySummary(sameDayRun) }) : workoutSubtitle(workout, t);
     dot = TYPE_DOTS[workout.type];
   } else if (activity) {
     const countsFor = day.countsFor[activity.id];
     title = countsFor
-      ? `Seduta di ${weekdayName(countsFor)}`
-      : activity.sport === "running" ? "Corsa extra" : SPORT_LABELS[activity.sport];
+      ? t("sessionOf", { weekday: weekdayName(countsFor) })
+      : activity.sport === "running" ? t("extraRun") : SPORT_LABELS[activity.sport];
     subtitle = activitySummary(activity, false);
   } else {
-    title = "Riposo";
+    title = t("rest");
   }
 
   return (
@@ -122,6 +125,7 @@ function DayRow({ day, today }: { day: PlanDay; today: string }) {
 
 /** Una settimana del piano: km fatti/previsti e un giorno per riga. */
 export function PlanWeek({ days, today, title, highlight = false }: { days: PlanDay[]; today: string; title?: string; highlight?: boolean }) {
+  const t = useTranslations("plan.week");
   const planned = days.flatMap((day) => day.workouts).reduce((sum, workout) => sum + (workout.status === "skipped" ? 0 : plannedMeters(workout)), 0);
   const done = days.flatMap((day) => day.activities).filter((activity) => activity.sport === "running").reduce((sum, activity) => sum + activity.distance_m, 0);
   const { done: sessionsDone, due } = adherence(days.map((day) => day.state));
@@ -142,7 +146,7 @@ export function PlanWeek({ days, today, title, highlight = false }: { days: Plan
         </div>
       )}
       {due > 0 && (
-        <p className="mb-1 text-micro text-muted-foreground">{sessionsDone} su {due} sedute fatte</p>
+        <p className="mb-1 text-micro text-muted-foreground">{t("sessionsDone", { done: sessionsDone, due })}</p>
       )}
       <ul className="divide-y divide-border/60 2xl:mt-3 2xl:grid 2xl:grid-cols-7 2xl:gap-2 2xl:divide-y-0">
         {days.map((day) => <DayRow key={day.date} day={day} today={today} />)}

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { ActivityForm } from "./activity-form";
@@ -6,6 +7,7 @@ import { ActivityForm } from "./activity-form";
 export const maxDuration = 240;
 
 export default async function NewActivityPage() {
+  const t = await getTranslations("activities");
   const supabase = await createClient();
   const {
     data: { user },
@@ -14,13 +16,13 @@ export default async function NewActivityPage() {
 
   return (
     <AppShell
-      title="Nuova corsa"
+      title={t("new.title")}
       backHref="/activities"
-      backLabel="Corse"
+      backLabel={t("backLabel")}
       hideTabBar
     >
       <p className="text-muted-foreground text-sm mb-6">
-        Passo e zone sono calcolati in automatico.
+        {t("new.intro")}
       </p>
       <ActivityForm />
     </AppShell>

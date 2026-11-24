@@ -1,0 +1,195 @@
+{
+  "title": "Impostazioni",
+  "backLabel": "Profilo",
+  "signOut": "Esci dall'account",
+  "tabs": {
+    "athlete": "Atleta",
+    "app": "App",
+    "coach": "Coach",
+    "links": "Collegamenti"
+  },
+  "groups": {
+    "heart": "Cuore e dati personali",
+    "training": "Allenamento",
+    "appearance": "Aspetto",
+    "notifications": "Notifiche",
+    "models": "Modelli",
+    "coachMemory": "Cosa ricorda il coach",
+    "zepp": "Orologio Zepp",
+    "autoImport": "Import automatici"
+  },
+  "profile": {
+    "maxHr": "FC massima",
+    "restingHr": "FC a riposo",
+    "birth": "Nascita",
+    "birthdateNotSet": "Non impostata",
+    "sourceManual": "Manuale",
+    "sourceNotSet": "Non impostata",
+    "zonesHrr": "Zone (riserva cardiaca): {values}",
+    "zonesWatch": "Zone dall’orologio: {values}",
+    "edit": "Modifica",
+    "saved": "Dati salvati",
+    "watchNote": "Con l'orologio collegato contano i suoi valori: questi servono quando non sincronizza.",
+    "maxHrManual": "FC massima manuale",
+    "restingHrManual": "FC a riposo manuale",
+    "birthdate": "Data di nascita",
+    "cancel": "Annulla",
+    "saving": "Salvataggio…",
+    "save": "Salva"
+  },
+  "heat": {
+    "label": "Adatta i passi al caldo",
+    "description": "Con caldo e umidità previsti rallenta i passi delle sedute, anche sull'orologio."
+  },
+  "theme": {
+    "mode": "Tema",
+    "modes": {
+      "auto": "Auto",
+      "light": "Chiaro",
+      "dark": "Scuro"
+    },
+    "accent": "Colore",
+    "style": "Sfondo"
+  },
+  "notifications": {
+    "label": "Notifiche su questo dispositivo",
+    "description": "Promemoria della seduta, analisi delle corse e riepilogo del lunedì.",
+    "hints": {
+      "unsupported": "Questo browser non supporta le notifiche.",
+      "iosInstall": "Su iPhone aggiungi prima l'app alla schermata Home.",
+      "denied": "Notifiche bloccate nelle impostazioni del browser."
+    },
+    "enableFailed": "Impossibile attivare le notifiche.",
+    "disableFailed": "Impossibile disattivare le notifiche.",
+    "testFailed": "Invio non riuscito.",
+    "testSent": "Notifica inviata.",
+    "test": "Invia una prova"
+  },
+  "push": {
+    "invalidSubscription": "Iscrizione alle notifiche non valida.",
+    "enableFailed": "Impossibile attivare le notifiche. Riprova.",
+    "disableFailed": "Impossibile disattivare le notifiche. Riprova.",
+    "notConfigured": "Notifiche non configurate sul server.",
+    "noDevice": "Nessun dispositivo raggiunto. Riattiva le notifiche.",
+    "testTitle": "Notifiche attive",
+    "testBody": "Riceverai qui promemoria e aggiornamenti del coach."
+  },
+  "models": {
+    "tasks": {
+      "chat": {
+        "title": "Chat del coach",
+        "hint": "Risponde ai tuoi messaggi e propone le modifiche al piano."
+      },
+      "analysis": {
+        "title": "Analisi delle corse",
+        "hint": "Commenta ogni corsa, legge le ripetute dalla nota e scrive il riepilogo della settimana."
+      }
+    },
+    "saved": "Salvato",
+    "providerFor": "Provider per {task}",
+    "addKey": "Aggiungi la chiave {provider} qui sotto",
+    "geminiModelFor": "Modello Gemini per {task}",
+    "priceLine": "Listino {input} / {output} per M token, gratis entro i limiti di Google",
+    "chooseModel": "Scegli un modello",
+    "pickerTitle": "Modello per {task}",
+    "noKeys": "Aggiungi qui sotto una chiave Gemini o OpenRouter, poi scegli quale modello usare per la chat e quale per le analisi.",
+    "migrationNeeded": "Per scegliere un modello per la chat e uno per le analisi serve aggiornare il database (migrazione 0024).",
+    "month": {
+      "title": "Spesa di questo mese",
+      "summary": "Chat {chat} · Analisi {analysis} · {calls, plural, one {# chiamata} other {# chiamate}}.",
+      "summaryEstimated": "Chat {chat} · Analisi {analysis} · {calls, plural, one {# chiamata} other {# chiamate}}. I costi di Gemini sono stimati a listino: con il piano gratuito non paghi nulla."
+    }
+  },
+  "gemini": {
+    "description": "Gratis entro i limiti di Google. Il modello si sceglie sopra, per la chat e per le analisi.",
+    "configured": "Configurata · ••••{lastFour}",
+    "replace": "Sostituisci",
+    "removeTitle": "Rimuovi chiave",
+    "keyLabel": "Chiave personale Gemini",
+    "verifying": "Verifico…",
+    "verify": "Verifica",
+    "cancelReplace": "Annulla sostituzione",
+    "confirmRemove": {
+      "title": "Rimuovere la chiave Gemini?",
+      "description": "Chat e feedback AI si disattivano finché non aggiungi un'altra chiave.",
+      "action": "Rimuovi"
+    },
+    "help": {
+      "title": "Come ottenere la chiave",
+      "step1": "Apri Google AI Studio ed entra con il tuo account Google.",
+      "step2": "Seleziona “Create API key” e scegli o crea un progetto.",
+      "step3": "Copia la chiave e incollala qui. Trattala come una password.",
+      "open": "Apri Google AI Studio"
+    }
+  },
+  "openrouter": {
+    "descriptionShort": "Alternativa a Gemini: centinaia di modelli (Claude, GPT, DeepSeek…) con una sola chiave.",
+    "descriptionFull": "Alternativa a Gemini: centinaia di modelli (Claude, GPT, DeepSeek…) con una sola chiave, a consumo. Il modello si sceglie sopra, per la chat e per le analisi.",
+    "migrationNeeded": "Per attivarla serve aggiornare il database con la migrazione 0023.",
+    "configured": "Configurata · ••••{lastFour}",
+    "replace": "Sostituisci",
+    "removeTitle": "Rimuovi chiave",
+    "keyLabel": "Chiave OpenRouter",
+    "verifying": "Verifico…",
+    "verifySave": "Verifica e salva",
+    "cancel": "Annulla",
+    "justSaved": "Chiave salvata. Ora scegli OpenRouter e un modello per la chat o per le analisi, qui sopra.",
+    "confirmRemove": {
+      "title": "Rimuovere la chiave OpenRouter?",
+      "description": "Chat e analisi useranno Gemini.",
+      "action": "Rimuovi"
+    },
+    "help": {
+      "title": "Come ottenere la chiave",
+      "step1": "Crea un account su OpenRouter e aggiungi un po' di credito (i modelli “free” non lo consumano).",
+      "step2": "Da “Keys” crea una chiave e incollala qui. Trattala come una password.",
+      "step3": "Sopra, in “Modelli”, scegli OpenRouter e tocca il modello per vedere l'elenco con i prezzi.",
+      "open": "Apri OpenRouter"
+    }
+  },
+  "apiKey": {
+    "description": "Per caricare corse da Comandi Rapidi o altri servizi senza aprire l'app.",
+    "label": "Chiave personale",
+    "empty": "Nessuna chiave configurata. Generala per iniziare.",
+    "hide": "Nascondi chiave",
+    "show": "Mostra chiave",
+    "copy": "Copia negli appunti",
+    "regenerate": "Rigenera chiave",
+    "generate": "Genera nuova chiave",
+    "confirmRegenerate": {
+      "title": "Rigenerare la chiave personale?",
+      "description": "I Comandi Rapidi configurati con la chiave attuale smetteranno di funzionare finché non li aggiorni.",
+      "action": "Rigenera"
+    },
+    "errorRegenerate": "Errore durante la rigenerazione: {error}",
+    "errorUnexpected": "Errore imprevisto. Riprova.",
+    "help": {
+      "title": "Come si usa",
+      "step1": "Genera la chiave, mostrala e copiala.",
+      "step2": "Nel servizio esterno usa l'header <code>Authorization: Bearer LA_TUA_CHIAVE</code>.",
+      "step3": "Scegli l'endpoint adatto al contenuto da inviare.",
+      "endpointJson": "— dati JSON",
+      "endpointGpx": "— contenuto GPX",
+      "endpointFile": "— file FIT o GPX",
+      "regenerateNote": "Se rigeneri la chiave, aggiorna tutti i Comandi Rapidi che usavano quella precedente."
+    }
+  },
+  "errors": {
+    "hrOrder": "HR max deve essere maggiore della HR a riposo.",
+    "geminiKeyInvalidFormat": "La chiave Gemini non sembra valida.",
+    "geminiKeyRejected": "Chiave non valida o non autorizzata per Gemini.",
+    "keyRemoveFailed": "Impossibile rimuovere la chiave. Riprova.",
+    "keySaveFailed": "Impossibile salvare la chiave. Riprova.",
+    "openrouterMigration": "Per usare OpenRouter serve aggiornare il database (migrazione 0023).",
+    "routingMigration": "Per scegliere un modello per la chat e uno per le analisi serve aggiornare il database (migrazione 0024).",
+    "openrouterKeyInvalidFormat": "La chiave OpenRouter non sembra valida.",
+    "openrouterKeyUnauthorized": "Chiave OpenRouter non valida.",
+    "openrouterVerifyFailed": "Non riesco a verificare la chiave con OpenRouter. Riprova.",
+    "invalidTask": "Compito non valido.",
+    "invalidProvider": "Provider non valido.",
+    "invalidModel": "Modello non valido.",
+    "modelSaveFailed": "Impossibile salvare il modello. Riprova.",
+    "addKeyFirst": "Aggiungi prima la chiave {provider}.",
+    "heatNotSaved": "Impostazione non salvata."
+  }
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { niceTicks, useMeasuredWidth } from "./chart-utils";
 
 export interface FormPoint {
@@ -12,8 +13,8 @@ export interface FormPoint {
 const HEIGHT = 150;
 const PAD = { top: 10, right: 8, bottom: 22, left: 4 };
 const SERIES = [
-  { key: "form", label: "Forma", color: "var(--viz-1)" },
-  { key: "fatigue", label: "Fatica", color: "var(--viz-2)" },
+  { key: "form", color: "var(--viz-1)" },
+  { key: "fatigue", color: "var(--viz-2)" },
 ] as const;
 
 function dayLabel(iso: string): string {
@@ -22,6 +23,7 @@ function dayLabel(iso: string): string {
 
 /** Forma (carico costruito nel tempo) e fatica (carico recente), stessa scala. */
 export function FormChart({ points }: { points: FormPoint[] }) {
+  const t = useTranslations("activities.charts.form");
   const { ref, width } = useMeasuredWidth<HTMLDivElement>();
   const [active, setActive] = useState<number | null>(null);
   if (points.length < 2) return null;
@@ -53,7 +55,7 @@ export function FormChart({ points }: { points: FormPoint[] }) {
         {SERIES.map((series) => (
           <span key={series.key} className="inline-flex items-center gap-1.5">
             <span className="h-0.5 w-3 rounded-full" style={{ background: series.color }} />
-            {series.label}
+            {t(series.key)}
           </span>
         ))}
       </div>
@@ -65,7 +67,7 @@ export function FormChart({ points }: { points: FormPoint[] }) {
             className="touch-pan-y overflow-visible outline-none"
             tabIndex={0}
             role="img"
-            aria-label={`Forma ${Math.round(last.form)}, fatica ${Math.round(last.fatigue)} oggi`}
+            aria-label={t("aria", { form: Math.round(last.form), fatigue: Math.round(last.fatigue) })}
             onPointerMove={(event) => pick(event.clientX, event.currentTarget.getBoundingClientRect())}
             onPointerDown={(event) => pick(event.clientX, event.currentTarget.getBoundingClientRect())}
             onPointerLeave={() => setActive(null)}
@@ -123,7 +125,7 @@ export function FormChart({ points }: { points: FormPoint[] }) {
               <p key={series.key} className="flex items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                   <span className="h-0.5 w-2.5 rounded-full" style={{ background: series.color }} />
-                  {series.label}
+                  {t(series.key)}
                 </span>
                 <span className="font-semibold tabular-nums">{Math.round(focused[series.key])}</span>
               </p>

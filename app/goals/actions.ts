@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { parseDecimal, parseDuration } from "@/lib/format";
 import { generalGoalName } from "@/lib/goals";
@@ -28,28 +29,28 @@ interface GoalValues {
  * Valida il form obiettivo. Con goal_kind "general" non serve una gara: la
  * data viene ignorata e il nome, se vuoto, si genera dalla distanza.
  */
-function parseGoalForm(formData: FormData): GoalValues | { error: string } {
+function parseGoalForm(formData: FormData, t: (key: string) => string): GoalValues | { error: string } {
   const general = formData.get("goal_kind") === "general";
 
   const distanceKm = parseDecimal(formData.get("distance_km"));
   if (!Number.isFinite(distanceKm) || distanceKm <= 0)
-    return { error: "Distanza non valida." };
+    return { error: t("distance") };
   const distance_m = Math.round(distanceKm * 1000);
 
   const nameRaw = String(formData.get("race_name") ?? "").trim();
   const race_name = nameRaw || (general ? generalGoalName(distance_m) : "");
-  if (!race_name) return { error: "Inserisci il nome della gara." };
+  if (!race_name) return { error: t("raceName") };
 
   const race_date = general ? null : String(formData.get("race_date") ?? "").trim() || null;
   if (!general && !race_date)
-    return { error: "Inserisci la data della gara, oppure scegli un obiettivo generico." };
+    return { error: t("raceDate") };
 
   const targetRaw = String(formData.get("target_time") ?? "").trim();
   let target_time_s: number | null = null;
   if (targetRaw) {
     target_time_s = optDuration(formData, "target_time");
     if (target_time_s == null || target_time_s <= 0)
-      return { error: "Tempo obiettivo non valido (usa h:mm:ss o mm:ss)." };
+      return { error: t("targetTime") };
   }
 
   return {
@@ -71,7 +72,7 @@ export async function createGoal(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const parsed = parseGoalForm(formData);
+  const parsed = parseGoalForm(formData, await getTranslations("goals.errors"));
   if ("error" in parsed) return parsed;
   const { race_name, race_date, distance_m, target_time_s, is_active } = parsed;
 
@@ -108,7 +109,7 @@ export async function updateGoal(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const parsed = parseGoalForm(formData);
+  const parsed = parseGoalForm(formData, await getTranslations("goals.errors"));
   if ("error" in parsed) return parsed;
   const { race_name, race_date, distance_m, target_time_s, is_active } = parsed;
 

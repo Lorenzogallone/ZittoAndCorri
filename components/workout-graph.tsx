@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { WorkoutStepInput, WorkoutType } from "@/lib/types";
 import { estimateStep, stepIntensity } from "@/lib/workout-estimate";
@@ -51,6 +52,7 @@ export function WorkoutGraph({
   onDark?: boolean;
   className?: string;
 }) {
+  const t = useTranslations("plan.graph");
   if (!steps.length) return null;
   const blocks = steps.map((step) => ({ step, seconds: Math.max(1, estimateStep(step).seconds) }));
   const total = blocks.reduce((sum, block) => sum + block.seconds, 0);
@@ -58,7 +60,7 @@ export function WorkoutGraph({
     <div
       className={cn("flex items-end gap-[2px]", size === "sm" ? "h-7" : "h-11", className)}
       role="img"
-      aria-label="Profilo della seduta: blocchi più alti sono tratti più intensi"
+      aria-label={t("label")}
     >
       {blocks.map(({ step, seconds }, index) => {
         const tone = intensityTone(step, type);

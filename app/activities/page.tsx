@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { Footprints, Link2, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
@@ -16,6 +17,7 @@ import { backfillMovingTime } from "@/lib/derived";
 import { staleAiJobCutoff } from "@/lib/ai/job-staleness";
 
 export default async function ActivitiesPage() {
+  const t = await getTranslations("activities.page");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -43,9 +45,9 @@ export default async function ActivitiesPage() {
   return (
     <AppShell
       wide
-      title="Corse"
+      title={t("title")}
       headerAction={
-        <Button asChild size="icon-sm" className="rounded-full" aria-label="Registra un'attività">
+        <Button asChild size="icon-sm" className="rounded-full" aria-label={t("addAria")}>
           <Link href="/activities/new">
             <Plus size={18} />
           </Link>
@@ -55,10 +57,10 @@ export default async function ActivitiesPage() {
       {list.length === 0 ? (
         <EmptyState
           icon={Footprints}
-          title="Qui vedrai le tue corse"
-          text="Distanza, passo e l'analisi del coach per ogni uscita. Importa un file dall'orologio o registrala a mano."
-          action={{ href: "/activities/new", label: "Importa una corsa", icon: Plus }}
-          secondary={{ href: "/settings?tab=links", label: "Collega Intervals.icu", icon: Link2 }}
+          title={t("empty.title")}
+          text={t("empty.text")}
+          action={{ href: "/activities/new", label: t("empty.action"), icon: Plus }}
+          secondary={{ href: "/settings?tab=links", label: t("empty.secondary"), icon: Link2 }}
         />
       ) : (
         // Desktop: totali fissi a sinistra (su tutte le righe), mesi a destra.

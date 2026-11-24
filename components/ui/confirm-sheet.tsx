@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -34,10 +35,11 @@ export function ConfirmSheet({
   title,
   description,
   action,
-  cancel = "Annulla",
+  cancel,
   onResolve,
   onExited,
 }: ConfirmSheetProps) {
+  const t = useTranslations("shell");
   const titleId = useId();
   const descriptionId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -159,7 +161,7 @@ export function ConfirmSheet({
             className="w-full text-foreground"
             onClick={() => onResolve(false)}
           >
-            {cancel}
+            {cancel ?? t("confirmSheet.cancel")}
           </Button>
         </div>
       </div>

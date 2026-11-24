@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import { useTranslations } from "next-intl";
 import {
   Sun,
   Moon,
@@ -24,13 +25,14 @@ import {
 import { Segmented } from "@/components/ui/segmented";
 import { updateThemePrefs } from "./actions";
 
-const MODES: { key: ThemeMode; label: string; icon: typeof Sun }[] = [
-  { key: "auto", label: "Auto", icon: Monitor },
-  { key: "light", label: "Chiaro", icon: Sun },
-  { key: "dark", label: "Scuro", icon: Moon },
+const MODES: { key: ThemeMode; icon: typeof Sun }[] = [
+  { key: "auto", icon: Monitor },
+  { key: "light", icon: Sun },
+  { key: "dark", icon: Moon },
 ];
 
 export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
+  const t = useTranslations("settings.theme");
   // Sorgente di verità: il DB (seed iniettato server-side). Qui partiamo dal
   // valore salvato e ottimisticamente applichiamo + persistiamo a ogni cambio.
   const [prefs, setPrefs] = useState<ThemePrefs>(initial);
@@ -54,17 +56,17 @@ export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
   return (
     <div id="theme-settings-content" className="divide-y divide-border/60">
       <div className="space-y-2.5 py-4">
-        <p className="text-sm font-medium">Tema</p>
+        <p className="text-sm font-medium">{t("mode")}</p>
         <Segmented
-          ariaLabel="Tema"
+          ariaLabel={t("mode")}
           value={prefs.mode}
           onChange={(mode) => update({ mode })}
-          options={MODES.map(({ key, label, icon: Icon }) => ({ key, label, icon: <Icon size={14} /> }))}
+          options={MODES.map(({ key, icon: Icon }) => ({ key, label: t(`modes.${key}`), icon: <Icon size={14} /> }))}
         />
       </div>
 
       <div className="space-y-3 py-4">
-        <p className="text-sm font-medium">Colore</p>
+        <p className="text-sm font-medium">{t("accent")}</p>
         <div className="flex flex-wrap gap-3">
           {ACCENT_ORDER.map((key) => {
             const active = prefs.accent === key;
@@ -92,7 +94,7 @@ export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
       </div>
 
       <div className="space-y-3 py-4">
-        <p className="text-sm font-medium">Sfondo</p>
+        <p className="text-sm font-medium">{t("style")}</p>
         <div className="grid grid-cols-4 gap-2">
           {STYLE_ORDER.map((key) => {
             const active = prefs.style === key;

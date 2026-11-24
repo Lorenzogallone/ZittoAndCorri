@@ -1,0 +1,40 @@
+{
+  "nav": {
+    "coach": "Coach",
+    "activities": "Corse",
+    "plan": "Piano",
+    "profile": "Profilo",
+    "settings": "Impostazioni",
+    "main": "Navigazione principale",
+    "registerActivity": "Registra un'attività"
+  },
+  "refreshButton": {
+    "label": "Aggiorna",
+    "busy": "Aggiorno…"
+  },
+  "pullToRefresh": {
+    "manual": "Aggiorna la pagina",
+    "busy": "Aggiorno…"
+  },
+  "updateToast": {
+    "message": "Nuova versione pronta",
+    "update": "Aggiorna",
+    "updating": "Aggiorno…",
+    "later": "Più tardi"
+  },
+  "loadingScreen": {
+    "label": "Caricamento…"
+  },
+  "backButton": {
+    "label": "Indietro"
+  },
+  "confirmSheet": {
+    "cancel": "Annulla"
+  },
+  "splash": {
+    "tagline": "Il tuo coach di corsa personale"
+  },
+  "diagnostics": {
+    "copy": "copia"
+  }
+}

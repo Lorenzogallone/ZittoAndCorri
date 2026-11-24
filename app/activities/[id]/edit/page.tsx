@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ export default async function EditActivityPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const t = await getTranslations("activities.edit");
   const { id } = await params;
   const supabase = await createClient();
   const {
@@ -31,18 +33,18 @@ export default async function EditActivityPage({
 
   return (
     <AppShell
-      title="Modifica attività"
+      title={t("pageTitle")}
       hideTabBar
       headerAction={
         <Button asChild variant="outline" size="sm">
           <Link href={`/activities/${activity.id}`} replace>
-            Annulla
+            {t("cancel")}
           </Link>
         </Button>
       }
     >
       <p className="text-muted-foreground text-sm mb-6">
-        Modifica i dettagli del tuo allenamento. Passo e zone verranno ricalcolati.
+        {t("intro")}
       </p>
       <EditActivityForm activity={activity} />
     </AppShell>

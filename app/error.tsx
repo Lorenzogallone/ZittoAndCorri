@@ -4,6 +4,7 @@
 // pagine e mostra un fallback con retry invece di crashare l'intera app.
 import { useEffect } from "react";
 import { AlertTriangle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 
 export default function Error({
@@ -13,6 +14,7 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations("home.error");
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -21,14 +23,11 @@ export default function Error({
     <div className="flex h-screen w-full flex-col items-center justify-center gap-4 px-6 text-center">
       <AlertTriangle size={32} className="text-destructive" />
       <div>
-        <p className="font-semibold">Qualcosa è andato storto</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Si è verificato un errore imprevisto. Riprova: se il problema
-          persiste, ricarica l&apos;app.
-        </p>
+        <p className="font-semibold">{t("title")}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t("text")}</p>
       </div>
       <Button variant="outline" size="sm" onClick={() => reset()}>
-        Riprova
+        {t("retry")}
       </Button>
     </div>
   );

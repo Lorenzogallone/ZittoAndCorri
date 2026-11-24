@@ -1,4 +1,5 @@
 import { LogOut } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { signOut } from "@/app/actions/auth";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import { IntervalsSection } from "./intervals-section";
 import type { IntervalsConnectionView } from "@/lib/intervals/credentials";
 import { ApiKeySection } from "./api-key-section";
 import { SettingsGroup } from "./settings-group";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { SettingsTabs } from "./settings-tabs";
 
 export interface SettingsViewProps {
@@ -46,17 +48,18 @@ export interface SettingsViewProps {
   openRouterModels: OpenRouterModel[];
 }
 
-export function SettingsView(props: SettingsViewProps) {
+export async function SettingsView(props: SettingsViewProps) {
+  const t = await getTranslations("settings");
   const tabs = [
     {
       key: "athlete",
-      label: "Atleta",
+      label: t("tabs.athlete"),
       content: (
         <>
-          <SettingsGroup title="Cuore e dati personali">
+          <SettingsGroup title={t("groups.heart")}>
             <ProfileForm profile={props.profile} effectiveHr={props.effectiveHr} />
           </SettingsGroup>
-          <SettingsGroup title="Allenamento">
+          <SettingsGroup title={t("groups.training")}>
             <HeatSetting initial={props.heatAdjust} />
           </SettingsGroup>
         </>
@@ -64,14 +67,17 @@ export function SettingsView(props: SettingsViewProps) {
     },
     {
       key: "app",
-      label: "App",
+      label: t("tabs.app"),
       content: (
         <>
-          <SettingsGroup title="Aspetto">
+          <SettingsGroup title="Lingua / Language">
+            <LanguageSwitcher />
+          </SettingsGroup>
+          <SettingsGroup title={t("groups.appearance")}>
             <ThemeSettings initial={props.theme} />
           </SettingsGroup>
           {props.vapidPublicKey && (
-            <SettingsGroup title="Notifiche">
+            <SettingsGroup title={t("groups.notifications")}>
               <NotificationsSection vapidPublicKey={props.vapidPublicKey} />
             </SettingsGroup>
           )}
@@ -80,10 +86,10 @@ export function SettingsView(props: SettingsViewProps) {
     },
     {
       key: "coach",
-      label: "Coach",
+      label: t("tabs.coach"),
       content: (
         <>
-          <SettingsGroup title="Modelli">
+          <SettingsGroup title={t("groups.models")}>
             <TaskModelsSection {...props.aiTasks} models={props.openRouterModels} month={props.aiMonth} />
           </SettingsGroup>
           <SettingsGroup title="Gemini">
@@ -92,7 +98,7 @@ export function SettingsView(props: SettingsViewProps) {
           <SettingsGroup title="OpenRouter">
             <OpenRouterSection initial={props.openrouter} />
           </SettingsGroup>
-          <SettingsGroup title="Cosa ricorda il coach">
+          <SettingsGroup title={t("groups.coachMemory")}>
             <CoachMemorySection memories={props.memories} />
           </SettingsGroup>
         </>
@@ -100,16 +106,16 @@ export function SettingsView(props: SettingsViewProps) {
     },
     {
       key: "links",
-      label: "Collegamenti",
+      label: t("tabs.links"),
       content: (
         <>
           <SettingsGroup title="Intervals.icu">
             <IntervalsSection initial={props.intervals} />
           </SettingsGroup>
-          <SettingsGroup title="Orologio Zepp">
+          <SettingsGroup title={t("groups.zepp")}>
             <ZeppIntegrationSection initialConnection={props.zeppConnection} />
           </SettingsGroup>
-          <SettingsGroup title="Import automatici">
+          <SettingsGroup title={t("groups.autoImport")}>
             <ApiKeySection initialApiKey={props.profile?.api_key ?? null} />
           </SettingsGroup>
         </>
@@ -118,12 +124,12 @@ export function SettingsView(props: SettingsViewProps) {
   ];
 
   return (
-    <AppShell title="Impostazioni" backHref="/profile" backLabel="Profilo" hideTabBar>
+    <AppShell title={t("title")} backHref="/profile" backLabel={t("backLabel")} hideTabBar>
       <SettingsTabs tabs={tabs} initial={props.tab} />
       <form action={signOut} className="mt-2">
         <Button type="submit" variant="ghost" className="w-full text-destructive hover:text-destructive">
           <LogOut size={16} />
-          Esci dall&apos;account
+          {t("signOut")}
         </Button>
       </form>
     </AppShell>

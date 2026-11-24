@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -23,9 +24,10 @@ async function authenticatedUserId(): Promise<string> {
 }
 
 export async function savePushSubscription(subscription: unknown): Promise<{ error?: string }> {
+  const t = await getTranslations("settings.push");
   const userId = await authenticatedUserId();
   const parsed = SubscriptionSchema.safeParse(subscription);
-  if (!parsed.success) return { error: "Iscrizione alle notifiche non valida." };
+  if (!parsed.success) return { error: t("invalidSubscription") };
   const userAgent = (await headers()).get("user-agent")?.slice(0, 512) ?? null;
   // Admin client: se il dispositivo era iscritto con un altro account, l'endpoint
   // passa all'utente corrente (la RLS impedirebbe di aggiornare la riga altrui).
@@ -43,12 +45,13 @@ export async function savePushSubscription(subscription: unknown): Promise<{ err
     );
   if (error) {
     console.error("savePushSubscription:", error.message);
-    return { error: "Impossibile attivare le notifiche. Riprova." };
+    return { error: t("enableFailed") };
   }
   return {};
 }
 
 export async function removePushSubscription(endpoint: string): Promise<{ error?: string }> {
+  const t = await getTranslations("settings.push");
   const userId = await authenticatedUserId();
   if (typeof endpoint !== "string" || !endpoint) return {};
   const supabase = await createClient();
@@ -59,20 +62,21 @@ export async function removePushSubscription(endpoint: string): Promise<{ error?
     .eq("endpoint", endpoint);
   if (error) {
     console.error("removePushSubscription:", error.message);
-    return { error: "Impossibile disattivare le notifiche. Riprova." };
+    return { error: t("disableFailed") };
   }
   return {};
 }
 
 export async function sendTestPush(): Promise<{ error?: string; delivered?: number }> {
+  const t = await getTranslations("settings.push");
   const userId = await authenticatedUserId();
-  if (!isPushConfigured()) return { error: "Notifiche non configurate sul server." };
+  if (!isPushConfigured()) return { error: t("notConfigured") };
   const delivered = await sendPushToUser(userId, {
-    title: "Notifiche attive",
-    body: "Riceverai qui promemoria e aggiornamenti del coach.",
+    title: t("testTitle"),
+    body: t("testBody"),
     url: "/settings",
     tag: "test",
   });
-  if (!delivered) return { error: "Nessun dispositivo raggiunto. Riattiva le notifiche." };
+  if (!delivered) return { error: t("noDevice") };
   return { delivered };
 }
