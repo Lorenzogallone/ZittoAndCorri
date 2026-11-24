@@ -125,14 +125,16 @@ export async function getAiConfig(userId: string, task: AiTask): Promise<AiConfi
     : { provider: "openrouter", model: resolved.model, apiKey: openrouter!.apiKey, userId, task };
 }
 
-export async function storeOpenRouterApiKey(userId: string, apiKey: string): Promise<void> {
+export async function storeOpenRouterApiKey(userId: string, apiKey: string, model: string | null = null): Promise<void> {
   const admin = createAdminClient();
   const { error } = await admin.rpc("admin_set_openrouter_credential", {
     p_user_id: userId,
     p_secret: apiKey,
     p_last_four: apiKey.slice(-4),
-    // Null mantiene il modello già salvato: i modelli ora si scelgono per compito.
-    p_model: null,
+    // Null mantiene il modello già salvato (le impostazioni scelgono il modello
+    // per compito); l'onboarding lo passa perché senza modello la chiave non
+    // basta a far partire il coach.
+    p_model: model,
   });
   if (error) throw error;
 }

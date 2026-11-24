@@ -2,7 +2,7 @@
 
 Zitto e Corri is a mobile-first running coach delivered as a Progressive Web
 App. It combines activity tracking, training plans, performance insights, and a
-personal Gemini-powered coach in one installable web app.
+personal AI coach (Gemini or OpenRouter) in one installable web app.
 
 The interface is currently in Italian.
 
@@ -19,11 +19,15 @@ The interface is currently in Italian.
   plan, race predictions, personal records, pace checks on quality sessions and
   running totals by week, month, year and all time.
 - Provides a conversational coach that can suggest plan changes for approval.
+  Each athlete brings their own key: Gemini (Google AI Studio) or OpenRouter
+  (one key for hundreds of models), with a model per task (chat, run analysis).
+- Works with or without a race: the goal can be a race with a date, a generic
+  "get better at this distance", or no goal at all.
 - Keeps each athlete's coach memory, preferences, and data separate.
 - Supports automatic imports through a personal access key.
 - Imports runs and nightly health data (sleep, resting HR, HRV) from Intervals.icu
-  and publishes the next 7 days of the plan there, so Amazfit watches receive
-  them as native structured workouts.
+  and publishes the plan there, so Amazfit watches receive the next 7 days as
+  native structured workouts.
 - Optionally uses health summaries from a compatible Zepp OS watch.
 - Works as an installable PWA on mobile and desktop browsers.
 
@@ -33,7 +37,8 @@ The interface is currently in Italian.
 - npm
 - A Supabase project
 - Google OAuth configured in Supabase Authentication
-- A Gemini API key for each user who wants AI coaching
+- An AI key for each user who wants AI coaching: Gemini (Google AI Studio) or
+  OpenRouter
 
 ## Getting started
 
@@ -66,7 +71,26 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000), sign in with Google, and
 complete the onboarding flow. AI features remain disabled until the user adds a
-personal Gemini key under **Settings → Coach**.
+personal Gemini or OpenRouter key, in onboarding or later under
+**Settings → Coach**.
+
+## First-run onboarding
+
+New users go through five short steps (`app/onboarding`), all skippable except
+where noted. Everything can be changed later in Settings.
+
+1. **Welcome** — what the app does: coach, plan, runs and progress, watch.
+2. **About you** — maximum and resting heart rate, birth date (used for zones).
+3. **Goal** — prepare a race (distance and date required, name and target time
+   optional), improve on a distance (no date, generic goal) or just train (no
+   goal).
+4. **Coach AI** — choose Gemini or OpenRouter and paste the key; the key is
+   verified before saving. For OpenRouter pick a suggested model (the first
+   chat and analysis model) or type a model id; without a model the key is not
+   enough to start the coach. OpenRouter needs
+   `supabase/migrations/0023_coach_proposals_and_openrouter.sql`.
+5. **Watch** — which watches are supported (Amazfit today, other brands in
+   progress) and an option to open **Settings → Collegamenti** right after.
 
 ## Main areas
 
@@ -79,7 +103,14 @@ personal Gemini key under **Settings → Coach**.
 - **Profile** — goal, training status, fitness and fatigue, weekly distance,
   race predictions, personal records and pace trend.
 - **Settings** — athlete data, heat adjustment, appearance, notifications,
-  Gemini, imports, and Zepp OS.
+  AI keys and models (Gemini, OpenRouter), imports, Intervals.icu and Zepp OS.
+
+## Supported watches
+
+| Watch | Status | How |
+| --- | --- | --- |
+| Amazfit Balance 2, Active 3 Premium | Available | [Intervals.icu](#intervalsicu-integration-recommended-for-amazfit-watches) for runs, health data and plan on the watch; optional [Zepp OS companion](#zepp-os-integration) for recovery metrics and the "Today" widget |
+| Garmin and other brands | In progress | Not integrated yet. FIT and GPX files from any watch can be imported meanwhile |
 
 ## Activity imports
 
@@ -107,9 +138,10 @@ Intervals.icu public API with the athlete's personal key:
   Intervals.icu activity id and analysed like any other import;
 - sleep, resting heart rate, HRV, SpO2 and steps go to `wellness_daily` and feed
   the readiness score (HRV against the personal median);
-- the next 7 days of the plan are published as `WORKOUT` events (one target per
-  step: pace on work steps, heart rate elsewhere, or as chosen in settings),
-  updated after every plan change and removed when a session disappears.
+- the future plan (up to a year) is published as `WORKOUT` events (one target
+  per step: pace on work steps, heart rate elsewhere, or as chosen in
+  settings), updated after every plan change and removed when a session
+  disappears; Zepp loads the next 7 days onto the watch.
 
 Setup: apply `supabase/migrations/0025_intervals_icu.sql`, link Intervals.icu in
 the Zepp app (Profile → Third-party accounts), enable wellness and HRV download
@@ -199,8 +231,8 @@ as the browser version.
 
 - Supabase Row Level Security separates user data.
 - The Supabase secret key is used only by server-side code.
-- Gemini keys are supplied by users and stored encrypted through Supabase
-  Vault.
+- Gemini and OpenRouter keys are supplied by users and stored encrypted
+  through Supabase Vault.
 - Zepp OS uses a dedicated revocable token created during pairing.
 - Import keys and pairing codes should be treated as private credentials.
 
