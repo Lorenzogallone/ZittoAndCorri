@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { Pause } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/format";
-import { INTERVAL_SOURCE_LABELS, PLANNED_CONTINUOUS_LABELS } from "@/lib/intervals-text";
 import { segmentToneKey, TONES } from "@/lib/step-tones";
 import { useSegmentSelection } from "@/components/activity/segment-selection";
 import type { IntervalAnalysis, IntervalSegment, IntervalSource } from "@/lib/metrics/intervals";
@@ -133,6 +132,7 @@ export function IntervalsCard({
   canEditNote: boolean;
 }) {
   const t = useTranslations("activities.intervals");
+  const tStatus = useTranslations("status");
   const s = analysis.summary;
   const source = analysis.source as IntervalSource;
   const { selected, toggle, segments: spans } = useSegmentSelection();
@@ -157,9 +157,9 @@ export function IntervalsCard({
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-body font-semibold">{t("title")}</h2>
         {source === "plan" && workoutId ? (
-          <Link href={`/plan/${workoutId}`} className="text-xs text-primary">{INTERVAL_SOURCE_LABELS[source]}</Link>
+          <Link href={`/plan/${workoutId}`} className="text-xs text-primary">{tStatus(`intervals.source.${source}`)}</Link>
         ) : (
-          <span className="text-xs text-muted-foreground">{INTERVAL_SOURCE_LABELS[source]}</span>
+          <span className="text-xs text-muted-foreground">{tStatus(`intervals.source.${source}`)}</span>
         )}
       </div>
       {analysis.description && <p className="mt-1 text-xl font-bold tracking-tight">{analysis.description}</p>}
@@ -167,7 +167,7 @@ export function IntervalsCard({
       {sprint && <p className="text-xs text-muted-foreground tabular-nums">{sprint}</p>}
       {analysis.contradicts_plan && (
         <p className="mt-2 text-xs text-muted-foreground">
-          {t("contradictsPlan", { planned: PLANNED_CONTINUOUS_LABELS[analysis.contradicts_plan] })}
+          {t("contradictsPlan", { planned: tStatus(`intervals.plannedContinuous.${analysis.contradicts_plan}`) })}
           {workoutId && <> <Link href={`/plan/${workoutId}`} className="text-primary">{t("viewSession")}</Link></>}
         </p>
       )}

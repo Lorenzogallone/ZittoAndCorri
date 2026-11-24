@@ -33,6 +33,7 @@ const MODES: { key: ThemeMode; icon: typeof Sun }[] = [
 
 export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
   const t = useTranslations("settings.theme");
+  const tl = useTranslations("labels");
   // Sorgente di verità: il DB (seed iniettato server-side). Qui partiamo dal
   // valore salvato e ottimisticamente applichiamo + persistiamo a ogni cambio.
   const [prefs, setPrefs] = useState<ThemePrefs>(initial);
@@ -75,8 +76,8 @@ export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
                 key={key}
                 type="button"
                 onClick={() => update({ accent: key as AccentKey })}
-                title={ACCENTS[key].label}
-                aria-label={ACCENTS[key].label}
+                title={tl(`theme.accent.${key}`)}
+                aria-label={tl(`theme.accent.${key}`)}
                 aria-pressed={active}
                 className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-transform active:scale-90 ${
                   active ? "ring-2 ring-offset-2 ring-offset-card" : ""
@@ -113,7 +114,7 @@ export function ThemeSettings({ initial }: { initial: ThemePrefs }) {
                 >
                   <span className="h-3 w-3 rounded-full" style={{ background: ACCENTS[prefs.accent].brand }} />
                 </span>
-                <span className={active ? "font-medium text-foreground" : "text-muted-foreground"}>{style.label}</span>
+                <span className={active ? "font-medium text-foreground" : "text-muted-foreground"}>{tl(`theme.style.${key}`)}</span>
               </button>
             );
           })}

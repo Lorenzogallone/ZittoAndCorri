@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { analyzeIntervals, areAutoLaps, describeStructure, type FitLap } from "../lib/metrics/intervals.ts";
+import { itLabels } from "./it-labels.ts";
 import type { WorkoutStepInput } from "../lib/types.ts";
 
 // Corsa sintetica: fasi a velocità costante con rumore deterministico.
@@ -309,11 +310,11 @@ test("le fasi del piano sanno essere sprint, jogging o camminata", async () => {
   const sprint = { ...step("work", "Sprint a tutta", "time", 20), variant: "sprint" as const };
   const walk = { ...step("recovery", "Cammina", "time", 120), variant: "walk" as const };
   const jog = { ...step("recovery", "Corricchia", "time", 30), variant: "jog" as const };
-  assert.equal(stepKindLabel(sprint), "Sprint");
-  assert.equal(stepKindLabel(walk), "Recupero camminando");
-  assert.equal(stepKindLabel(jog), "Recupero corricchiando");
-  assert.equal(describeStep(sprint), '20" a tutta');
-  assert.equal(describeStep(walk), "2' camminando");
+  assert.equal(stepKindLabel(itLabels, sprint), "Sprint");
+  assert.equal(stepKindLabel(itLabels, walk), "Recupero camminando");
+  assert.equal(stepKindLabel(itLabels, jog), "Recupero corricchiando");
+  assert.equal(describeStep(itLabels, sprint), '20" a tutta');
+  assert.equal(describeStep(itLabels, walk), "2' camminando");
   // Variante incoerente con il tipo: ignorata, non rompe nulla.
   assert.equal(stepVariant({ kind: "warmup", variant: "sprint" }), null);
   assert.ok(estimateStep(walk).meters < estimateStep(jog).meters * 4 * 0.8, "si cammina più piano");

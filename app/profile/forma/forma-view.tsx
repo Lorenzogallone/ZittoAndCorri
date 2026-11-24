@@ -1,5 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { AppShell } from "@/components/app-shell";
 import { Section } from "@/components/section";
 import { Stat } from "@/components/stat";
@@ -24,8 +25,8 @@ const GROUPS: Array<{ id: string; keys: BodyMetricKey[] }> = [
  *  sono in `profile.forma.summary.labels`. */
 const SUMMARY_KEYS = ["vo2max", "efficiency", "fitness", "restingHr", "hrv", "sleep", "sleepDeep", "stress"] as const satisfies readonly BodyMetricKey[];
 
-function shortDate(iso: string): string {
-  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "UTC" });
+function shortDate(iso: string, locale: Locale): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "short", timeZone: "UTC" });
 }
 
 function list(labels: string[], locale: string): string {
@@ -34,20 +35,22 @@ function list(labels: string[], locale: string): string {
 
 function MetricCard({ trend, today }: { trend: MetricTrend; today: string }) {
   const t = useTranslations("profile.forma.metric");
+  const tMetrics = useTranslations("metrics");
+  const locale = useLocale() as Locale;
   const latest = trend.latest!;
   const age = daysBetween(latest.date, today);
   const spec = BODY_METRICS[trend.key];
   // Il numero grande è un dato singolo (l'ultimo), la frase confronta medie: va detto.
-  const latestText = spec.latestLabel
-    ? t("latestWithDate", { label: spec.latestLabel, date: shortDate(latest.date) })
-    : age > 1 ? t("latestData", { date: shortDate(latest.date) }) : null;
+  const latestText = spec.latest
+    ? t("latestWithDate", { label: tMetrics(`body.${trend.key}.latest`), date: shortDate(latest.date, locale) })
+    : age > 1 ? t("latestData", { date: shortDate(latest.date, locale) }) : null;
   return (
     <div className="surface p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="eyebrow truncate">{trend.label}</p>
           <p className="mt-1 flex items-baseline gap-1 font-display text-2xl font-semibold leading-none tabular-nums tracking-tight">
-            {formatMetric(trend.key, latest.value)}
+            {formatMetric(trend.key, latest.value, locale)}
             {trend.unit && <span className="font-sans text-caption font-medium tracking-normal text-muted-foreground">{trend.unit}</span>}
           </p>
           {latestText && <p className="mt-1 text-micro text-muted-foreground">{latestText}</p>}
@@ -63,7 +66,7 @@ function MetricCard({ trend, today }: { trend: MetricTrend; today: string }) {
           {t("about")}
           <ChevronDown size={14} aria-hidden className="transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none" />
         </summary>
-        <p className="text-muted-foreground">{spec.about}</p>
+        <p className="text-muted-foreground">{tMetrics(`body.${trend.key}.about`)}</p>
       </details>
     </div>
   );

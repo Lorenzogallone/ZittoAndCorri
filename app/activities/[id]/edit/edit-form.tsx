@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TYPE_LABELS, SPORT_LABELS } from "@/lib/activity-meta";
+import { typeLabel, sportLabel } from "@/lib/activity-meta";
 
 function formatDateTimeLocal(isoString: string): string {
   const d = new Date(isoString);
@@ -35,6 +35,7 @@ interface Props {
 export function EditActivityForm({ activity }: Props) {
   const t = useTranslations("activities.edit");
   const tf = useTranslations("activities.fields");
+  const tl = useTranslations("labels");
   const initialState: EditActivityFormState = {};
   const [state, formAction, pending] = useActionState(updateActivity, initialState);
   const router = useRouter();
@@ -82,7 +83,7 @@ export function EditActivityForm({ activity }: Props) {
             <SelectContent>
               {SPORTS.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {SPORT_LABELS[s]}
+                  {sportLabel(tl, s)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -99,7 +100,7 @@ export function EditActivityForm({ activity }: Props) {
               <SelectContent>
                 {ACTIVITY_TYPES.map((activityType) => (
                   <SelectItem key={activityType} value={activityType}>
-                    {TYPE_LABELS[activityType] ?? activityType}
+                    {typeLabel(tl, activityType)}
                   </SelectItem>
                 ))}
               </SelectContent>

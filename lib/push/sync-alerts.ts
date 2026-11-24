@@ -11,6 +11,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendPushToUser } from "@/lib/push/send";
 import { loadSyncIssues } from "@/lib/sync-health-data";
 import { syncIssuePush, type SyncIssueKind } from "@/lib/sync-health";
+import { staticTranslator } from "@/lib/static-translator";
 
 export interface SyncAlertsSummary {
   users: number;
@@ -22,6 +23,8 @@ export interface SyncAlertsSummary {
 
 export async function sendSyncAlerts(admin: SupabaseClient, userIds: string[], date: string): Promise<SyncAlertsSummary> {
   const summary: SyncAlertsSummary = { users: userIds.length, alerted: 0, delivered: 0, issues: {}, failed: 0 };
+  // Il cron non ha la lingua dell'utente (nessun cookie): le notifiche escono in italiano.
+  const t = await staticTranslator("it", "status");
   for (const userId of userIds) {
     try {
       const issues = await loadSyncIssues(admin, userId);
@@ -29,7 +32,7 @@ export async function sendSyncAlerts(admin: SupabaseClient, userIds: string[], d
       for (const issue of issues) {
         summary.issues[issue.kind] = (summary.issues[issue.kind] ?? 0) + 1;
         delivered += await sendPushToUser(userId, {
-          ...syncIssuePush(issue),
+          ...syncIssuePush(issue, t, "it"),
           url: issue.href,
           tag: `sync-${issue.kind}-${date}`,
         });

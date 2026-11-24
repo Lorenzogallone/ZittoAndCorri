@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { itLabels } from "./it-labels.ts";
 import { planProposalDiff, type PlanDayWorkout } from "../lib/plan/proposal-diff.ts";
 
 // Settimana tipo: oggi è venerdì 23 ottobre 2026.
@@ -216,8 +217,8 @@ test("seduta divisa: la seconda parte è concatenata e segue la prima", async ()
   });
   assert.deepEqual(diff.workouts.map((w) => [w.day_order, w.chained]), [[1, false], [2, true]]);
   assert.deepEqual(diff.changes[0].after.map((b) => b.chained), [false, true]);
-  assert.equal(sessionPlacement(diff.workouts[1], 2), "Subito dopo la precedente");
-  assert.equal(sessionPlacement(diff.workouts[0], 1), null);
+  assert.equal(sessionPlacement(itLabels, diff.workouts[1], 2), "Subito dopo la precedente");
+  assert.equal(sessionPlacement(itLabels, diff.workouts[0], 1), null);
   // Sul calendario dell'orologio le due parti restano in fila.
   assert.deepEqual(diff.workouts.map((w) => sessionStartTime(w)), ["00:00:00", "00:01:00"]);
 });

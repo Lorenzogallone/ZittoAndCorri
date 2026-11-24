@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TYPE_DOTS } from "@/lib/activity-meta";
@@ -13,9 +14,9 @@ function shiftMonth(month: string, delta: number): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-function monthLabel(month: string): string {
+function monthLabel(month: string, locale: Locale): string {
   const [y, m] = month.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("it-IT", { month: "long", year: "numeric", timeZone: "UTC" });
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(intlLocale(locale), { month: "long", year: "numeric", timeZone: "UTC" });
 }
 
 interface Props {
@@ -28,6 +29,7 @@ interface Props {
 /** Vista mese: un pallino per seduta, pieno se fatta, vuoto se saltata. */
 export function PlanCalendar({ days, month, today, raceDate }: Props) {
   const t = useTranslations("plan.calendar");
+  const locale = useLocale() as Locale;
   const startWeekday = (new Date(`${month}-01T12:00:00Z`).getUTCDay() + 6) % 7;
   const cells: Array<PlanDay | null> = [...Array(startWeekday).fill(null), ...days];
 
@@ -37,7 +39,7 @@ export function PlanCalendar({ days, month, today, raceDate }: Props) {
         <Link href={`/plan?view=month&month=${shiftMonth(month, -1)}`} className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted" aria-label={t("previousMonth")}>
           <ChevronLeft size={18} />
         </Link>
-        <h2 className="text-sm font-semibold capitalize">{monthLabel(month)}</h2>
+        <h2 className="text-sm font-semibold capitalize">{monthLabel(month, locale)}</h2>
         <Link href={`/plan?view=month&month=${shiftMonth(month, 1)}`} className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted" aria-label={t("nextMonth")}>
           <ChevronRight size={18} />
         </Link>

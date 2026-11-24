@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { ChevronRight, Flag, ThermometerSun } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 import { WorkoutGraph } from "@/components/workout-graph";
 import { DayStateIcon } from "@/components/day-state-icon";
 import { planRecovery } from "@/app/plan/actions";
-import { TYPE_LABELS } from "@/lib/activity-meta";
+import { typeLabel } from "@/lib/activity-meta";
 import { workoutHeadline } from "@/lib/workout-guide";
 import { workoutStepsOrLegacy } from "@/lib/workout-steps";
 import { estimateWorkout } from "@/lib/workout-estimate";
@@ -16,8 +17,8 @@ import type { DayView } from "@/lib/plan/day-status";
 import type { HeatInfo } from "@/lib/weather";
 import type { PlannedWorkout } from "@/lib/types";
 
-const kmNumber = (meters: number) => (meters / 1000).toLocaleString("it-IT", { maximumFractionDigits: 1 });
-const kmText = (meters: number) => `${kmNumber(meters)} km`;
+const kmNumber = (meters: number, locale: Locale) => (meters / 1000).toLocaleString(intlLocale(locale), { maximumFractionDigits: 1 });
+const kmText = (meters: number, locale: Locale) => `${kmNumber(meters, locale)} km`;
 const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 
 // Titolo della card hero: è l'H1 visivo della home.
@@ -39,6 +40,8 @@ interface Props {
 
 function NextWorkout({ next, today, heat, sessionsThatDay }: Pick<Props, "next" | "today" | "heat" | "sessionsThatDay">) {
   const t = useTranslations("home.today");
+  const tl = useTranslations("labels");
+  const locale = useLocale() as Locale;
   if (!next) {
     return (
       <div className="surface-hero p-5">
@@ -56,13 +59,13 @@ function NextWorkout({ next, today, heat, sessionsThatDay }: Pick<Props, "next" 
   const steps = workoutStepsOrLegacy(next.workout_steps, next);
   const meters = plannedMeters({ ...next, workout_steps: steps });
   const seconds = next.target_duration_s ?? estimateWorkout(steps).seconds;
-  const headline = workoutHeadline(steps) ?? (meters > 0 ? kmText(meters) : TYPE_LABELS[next.type]);
-  const meta = [meters > 0 ? `≈ ${kmText(meters)}` : null, seconds ? `${Math.round(seconds / 60)} min` : null].filter(Boolean).join(" · ");
+  const headline = workoutHeadline(steps, locale) ?? (meters > 0 ? kmText(meters, locale) : typeLabel(tl, next.type));
+  const meta = [meters > 0 ? `≈ ${kmText(meters, locale)}` : null, seconds ? `${Math.round(seconds / 60)} min` : null].filter(Boolean).join(" · ");
   return (
     <Link href={`/plan/${next.id}`} className="surface-hero block p-5 transition-transform active:scale-[0.99]">
       <div className="flex items-center justify-between gap-3">
         <p className="eyebrow truncate">
-          {[relativeDayLabel(next.date, today), sessionPlacement(next, sessionsThatDay), TYPE_LABELS[next.type]].filter(Boolean).join(" · ")}
+          {[relativeDayLabel(next.date, today, locale), sessionPlacement(tl, next, sessionsThatDay), typeLabel(tl, next.type)].filter(Boolean).join(" · ")}
         </p>
         <div className="flex shrink-0 items-center gap-2">
           {heat && heat.pct > 0 && (
@@ -114,6 +117,8 @@ function RaceCard({ race, next, today }: { race: NonNullable<Props["race"]>; nex
 /** Le altre sedute dello stesso giorno, compatte sotto la card hero. */
 function SameDaySessions({ sessions, sessionsThatDay }: { sessions: Props["sameDay"]; sessionsThatDay: number }) {
   const t = useTranslations("home.today");
+  const tl = useTranslations("labels");
+  const locale = useLocale() as Locale;
   if (!sessions.length) return null;
   return (
     <ul className="surface divide-y divide-border/60 px-4">
@@ -121,10 +126,10 @@ function SameDaySessions({ sessions, sessionsThatDay }: { sessions: Props["sameD
         const steps = workoutStepsOrLegacy(workout.workout_steps, workout);
         const meters = plannedMeters({ ...workout, workout_steps: steps });
         const seconds = workout.target_duration_s ?? estimateWorkout(steps).seconds;
-        const title = [TYPE_LABELS[workout.type], workoutHeadline(steps)].filter(Boolean).join(" · ");
+        const title = [typeLabel(tl, workout.type), workoutHeadline(steps, locale)].filter(Boolean).join(" · ");
         const meta = [
-          done ? t("sessionDone") : sessionPlacement(workout, sessionsThatDay),
-          meters > 0 ? `≈ ${kmText(meters)}` : null,
+          done ? t("sessionDone") : sessionPlacement(tl, workout, sessionsThatDay),
+          meters > 0 ? `≈ ${kmText(meters, locale)}` : null,
           seconds ? `${Math.round(seconds / 60)} min` : null,
         ].filter(Boolean).join(" · ");
         return (
@@ -147,6 +152,7 @@ function SameDaySessions({ sessions, sessionsThatDay }: { sessions: Props["sameD
 /** Home: la prossima seduta in evidenza (card hero), le altre dello stesso giorno e la settimana. */
 export function TodayCard({ next, sameDay, sessionsThatDay, today, heat, week, race }: Props) {
   const t = useTranslations("home.today");
+  const locale = useLocale() as Locale;
   const planned = week.flatMap((day) => day.workouts).reduce((sum, workout) => sum + (workout.status === "skipped" ? 0 : plannedMeters(workout)), 0);
   const done = week.flatMap((day) => day.activities).filter((activity) => activity.sport === "running").reduce((sum, activity) => sum + activity.distance_m, 0);
   return (
@@ -158,8 +164,8 @@ export function TodayCard({ next, sameDay, sessionsThatDay, today, heat, week, r
         <div className="flex items-baseline justify-between gap-3">
           <span className="eyebrow">{t("thisWeek")}</span>
           <span className="font-display text-heading font-bold tracking-tight tabular-nums">
-            {kmNumber(done)}
-            {planned > 0 && <span className="text-muted-foreground"> / {kmNumber(planned)}</span>}
+            {kmNumber(done, locale)}
+            {planned > 0 && <span className="text-muted-foreground"> / {kmNumber(planned, locale)}</span>}
             <span className="ml-1 font-sans text-caption font-medium tracking-normal text-muted-foreground">km</span>
           </span>
         </div>

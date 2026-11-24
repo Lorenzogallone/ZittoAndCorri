@@ -1,6 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 import { useSegmentSelection } from "@/components/activity/segment-selection";
 import type { KmAnalysis, KmSplit } from "@/lib/metrics/km-splits";
@@ -15,8 +16,8 @@ const clock = (seconds: number | null) => {
 const signed = (value: number) => `${value > 0 ? "+" : value < 0 ? "−" : ""}${Math.abs(value)}`;
 
 /** Km parziale (l'ultimo): la distanza al posto del numero. */
-const kmLabel = (split: KmSplit) =>
-  split.distance_m >= 990 ? `${split.km}` : `${(split.distance_m / 1000).toLocaleString("it-IT", { maximumFractionDigits: 2 })} km`;
+const kmLabel = (split: KmSplit, locale: Locale) =>
+  split.distance_m >= 990 ? `${split.km}` : `${(split.distance_m / 1000).toLocaleString(intlLocale(locale), { maximumFractionDigits: 2 })} km`;
 
 /** Seconda metà contro prima: passo e cuore, in parole. */
 function halvesText(analysis: KmAnalysis, t: ReturnType<typeof useTranslations>): string | null {
@@ -30,6 +31,7 @@ function halvesText(analysis: KmAnalysis, t: ReturnType<typeof useTranslations>)
 
 function Row({ split, fastest, slowest, selected, onSelect }: { split: KmSplit; fastest: boolean; slowest: boolean; selected: boolean; onSelect: () => void }) {
   const t = useTranslations("activities.kmSplits");
+  const locale = useLocale() as Locale;
   return (
     <button
       type="button"
@@ -41,7 +43,7 @@ function Row({ split, fastest, slowest, selected, onSelect }: { split: KmSplit; 
       )}
     >
       <div className="flex min-w-0 items-center gap-2 border-t border-border/50 py-2 font-medium tabular-nums">
-        {kmLabel(split)}
+        {kmLabel(split, locale)}
         {fastest && <span className="text-xs font-normal text-muted-foreground">{t("fastest")}</span>}
         {slowest && <span className="text-xs font-normal text-muted-foreground">{t("slowest")}</span>}
       </div>

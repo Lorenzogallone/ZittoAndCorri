@@ -20,8 +20,9 @@ const items = [
 /** Ripiego del trascina-giù su desktop: stessa ricarica (orologio + dati). */
 function RefreshButton() {
   const t = useTranslations("shell");
+  const tStatus = useTranslations("status");
   const { refreshing, result, refresh } = useAppRefresh();
-  const message = refreshing ? t("refreshButton.busy") : refreshMessage(result);
+  const message = refreshing ? t("refreshButton.busy") : refreshMessage(result, tStatus);
   return (
     <button
       type="button"

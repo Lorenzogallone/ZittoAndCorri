@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { parseRouting, resolveTask, taskModel, withRoute, type ProviderAvailability } from "../lib/ai/routing.ts";
 import { formatTokens, formatUsd, geminiUsage, openRouterUsage, readUsage, sumUsage, summarizeUsage } from "../lib/ai/usage.ts";
+import { itLabels } from "./it-labels.ts";
 import { groupByProvider, modelTitle, priceLabel, providerOf, type OpenRouterModel } from "../lib/ai/openrouter-models.ts";
 
 const both: ProviderAvailability = {
@@ -117,9 +118,9 @@ test("il catalogo OpenRouter si sfoglia per azienda, con prezzi leggibili", () =
   assert.equal(providerOf(catalog[0]), "Anthropic");
   assert.equal(providerOf(catalog[4]), "x-ai");
   assert.equal(modelTitle(catalog[0]), "Claude Sonnet 5.5");
-  assert.equal(priceLabel(catalog[0]), "$2 / $10 per M token");
-  assert.equal(priceLabel(catalog[1]), "$0,1 / $0,5 per M token");
-  assert.equal(priceLabel(catalog[3]), "gratis");
+  assert.equal(priceLabel(itLabels, catalog[0]), "$2 / $10 per M token");
+  assert.equal(priceLabel(itLabels, catalog[1]), "$0,1 / $0,5 per M token");
+  assert.equal(priceLabel(itLabels, catalog[3]), "gratis");
   const groups = groupByProvider(catalog);
   assert.equal(groups[0].provider, "Anthropic");
   assert.deepEqual(groups[0].models.map((m) => m.id), ["anthropic/claude-sonnet-5-5", "anthropic/claude-haiku-5-5"]);

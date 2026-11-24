@@ -21,6 +21,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isStaleAiJob, STALE_AI_JOB_ERROR } from "@/lib/ai/job-staleness";
 import { evaluationAfterIngest, type IngestOutcome } from "@/lib/ingest/enrichment";
 import { romeDay } from "@/lib/local-date";
+import { staticTranslator } from "@/lib/static-translator";
 import { sortByDayOrder } from "@/lib/plan/day-sessions";
 
 type EvalActivity = Pick<Activity,
@@ -338,6 +339,7 @@ async function runActivityEvaluation(
     }
   } catch (error) {
     console.error("runActivityEvaluation:", error);
-    await admin.from("ai_jobs").update({ status: "error", error: aiErrorMessage(error), updated_at: new Date().toISOString() }).eq("id", jobId);
+    // Va nel database (ai_jobs.error): senza lingua dell'utente nel cron, resta italiano.
+    await admin.from("ai_jobs").update({ status: "error", error: aiErrorMessage(error, await staticTranslator("it", "status")), updated_at: new Date().toISOString() }).eq("id", jobId);
   }
 }

@@ -2,13 +2,11 @@
 // (una seduta "concatenata" si fa subito dopo la precedente, come un'unica
 // uscita divisa in due allenamenti sull'orologio). Funzioni pure.
 
+import type { Translator } from "../../i18n/config.ts";
 import type { DayPart } from "../types.ts";
 
-export const DAY_PART_LABELS: Record<DayPart, string> = {
-  morning: "Mattina",
-  afternoon: "Pomeriggio",
-  evening: "Sera",
-};
+/** "Mattina", "Pomeriggio", "Sera" (`t` legato al namespace "labels"). */
+export const dayPartLabel = (t: Translator, part: DayPart): string => t(`dayPart.${part}`);
 
 export interface DaySession {
   date: string;
@@ -31,10 +29,10 @@ export function sortByDayOrder<T extends DaySession>(sessions: T[]): T[] {
 }
 
 /** Come si colloca la seduta nella giornata, per l'interfaccia; null se è l'unica. */
-export function sessionPlacement(session: DaySession, sessionsThatDay: number): string | null {
+export function sessionPlacement(t: Translator, session: DaySession, sessionsThatDay: number): string | null {
   if (sessionsThatDay < 2) return null;
-  if (session.chained && orderOf(session) > 1) return "Subito dopo la precedente";
-  return session.day_part ? DAY_PART_LABELS[session.day_part] : null;
+  if (session.chained && orderOf(session) > 1) return t("placement.afterPrevious");
+  return session.day_part ? dayPartLabel(t, session.day_part) : null;
 }
 
 const PART_START: Record<DayPart, number> = { morning: 7 * 60, afternoon: 13 * 60, evening: 18 * 60 };

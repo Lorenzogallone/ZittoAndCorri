@@ -20,11 +20,12 @@ function repTone(deviation: number): string {
 /** Passo reale dei tratti veloci contro il range previsto dalla seduta. */
 export function PaceCheckCard({ check, workoutId }: { check: PaceCheck; workoutId: string }) {
   const t = useTranslations("activities.paceCheck");
+  const tl = useTranslations("labels");
   const status = STATUS[check.status];
-  const ranges = [...new Set(check.reps.map((rep) => formatStepPace({
+  const ranges = [...new Set(check.reps.map((rep) => formatStepPace(tl, {
     pace_min_s_km: rep.target_min,
     pace_max_s_km: rep.target_max,
-  } as Parameters<typeof formatStepPace>[0])).filter(Boolean))];
+  } as Parameters<typeof formatStepPace>[1])).filter(Boolean))];
   const single = check.reps.length === 1;
   return (
     <section className="surface p-5">

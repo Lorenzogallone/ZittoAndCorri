@@ -8,6 +8,7 @@ import { computeATLCTL, sessionLoad } from "../lib/metrics/load.ts";
 import { generalGoalName, goalKind } from "../lib/goals.ts";
 import { COACH_METHODOLOGY } from "../lib/ai/methodology.ts";
 import { describeStep, groupWorkoutSteps, workoutHeadline } from "../lib/workout-guide.ts";
+import { itLabels } from "./it-labels.ts";
 import { parseDecimal, parseDuration as parseFormDuration } from "../lib/format.ts";
 
 test("il carico interno privilegia HR, poi RPE e infine la stima per sport", () => {
@@ -279,9 +280,11 @@ test("la valutazione AI aggiorna la sezione senza ricaricare la pagina", () => {
 test("l'errore quota interrompe il caricamento e resta leggibile", () => {
   const evaluation = readFileSync(new URL("../components/activity-evaluation.tsx", import.meta.url), "utf8");
   const gemini = readFileSync(new URL("../lib/ai/gemini.ts", import.meta.url), "utf8");
+  const status = readFileSync(new URL("../messages/it/status.json", import.meta.url), "utf8");
   assert.match(evaluation, /initialAnalyzing && !done && !displayedError/);
   assert.match(evaluation, /initialError/);
-  assert.match(gemini, /Quota del modello Gemini esaurita\. Scegli un altro modello nelle impostazioni oppure attendi il ripristino\./);
+  assert.match(gemini, /geminiQuota/);
+  assert.match(status, /Quota del modello Gemini esaurita\. Scegli un altro modello nelle impostazioni oppure attendi il ripristino\./);
   assert.match(gemini, /if \(isQuotaExhausted\(err\)\) throw err/);
   assert.doesNotMatch(gemini, /Quota Gemini[^\n]*più/);
 });
@@ -386,8 +389,8 @@ test("le ripetute vengono raggruppate e descritte a parole", () => {
   assert.equal(blocks.length, 3);
   assert.deepEqual(blocks[1], { kind: "repeat", times: 6, steps: [work, recovery] });
   assert.equal(workoutHeadline(steps), "6 × 400 m");
-  assert.equal(describeStep(work), "400 m a 4:20–4:30/km");
-  assert.equal(describeStep(recovery), '90"');
+  assert.equal(describeStep(itLabels, work), "400 m a 4:20–4:30/km");
+  assert.equal(describeStep(itLabels, recovery), '90"');
 });
 
 test("lo splash PWA non viene reinserito dalle server action", () => {

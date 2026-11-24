@@ -1,6 +1,8 @@
 import { ChevronDown } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import type { Locale } from "@/i18n/config";
 import { formatDuration } from "@/lib/format";
+import { effortLabel } from "@/lib/metrics/best-efforts";
 import {
   goalRaceRange,
   predictRaceTimes,
@@ -27,17 +29,19 @@ export function Predictions({
   goal: { race_name: string; distance_m: number; target_time_s: number | null } | null;
 }) {
   const t = useTranslations("profile.predictions");
+  const tMetrics = useTranslations("metrics");
+  const locale = useLocale() as Locale;
   const times = predictRaceTimes(reference, base, today);
-  const forGoal = goal ? goalRaceRange(reference, base, goal, today) : null;
+  const forGoal = goal ? goalRaceRange(reference, base, goal, today, tMetrics, locale) : null;
   // Senza obiettivo la spiegazione si riferisce alla mezza, la distanza tipica.
   const half = times.find((time) => time.meters === 21_097)!;
-  const explanation = forGoal?.explanation ?? rangeExplanation(reference, half.range, base, today);
+  const explanation = forGoal?.explanation ?? rangeExplanation(reference, half.range, base, today, tMetrics, locale);
   return (
     <div>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
         {times.map((time) => (
-          <div key={time.label}>
-            <dt className="text-xs text-muted-foreground">{time.label}</dt>
+          <div key={time.key}>
+            <dt className="text-xs text-muted-foreground">{effortLabel(time.key, tMetrics)}</dt>
             <dd className="mt-0.5 text-lg font-semibold tabular-nums">{formatDuration(time.range.central_s)}</dd>
             {time.range.prudent_s - time.range.optimistic_s >= 60 && (
               <dd className="text-caption text-muted-foreground tabular-nums">{rangeLabel(time.range)}</dd>

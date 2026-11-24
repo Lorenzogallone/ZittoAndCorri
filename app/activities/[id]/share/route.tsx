@@ -1,7 +1,8 @@
 // Immagine da condividere di un'attività. Solo per il proprietario.
 
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
+import type { Locale } from "@/i18n/config";
 import { shareImage, type ShareActivity } from "@/lib/share-image";
 import type { GpsPoint } from "@/lib/types";
 
@@ -22,5 +23,5 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     supabase.from("activity_streams").select("gps_series").eq("activity_id", id).maybeSingle<{ gps_series: GpsPoint[] | null }>(),
   ]);
   if (!activity) return new Response(t("notFound"), { status: 404 });
-  return shareImage(activity, stream?.gps_series ?? null);
+  return shareImage(activity, stream?.gps_series ?? null, await getTranslations("labels"), (await getLocale()) as Locale);
 }

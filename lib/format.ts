@@ -1,5 +1,7 @@
 // Helper di presentazione e parsing input. Niente metriche: solo formattazione.
 
+import { DEFAULT_LOCALE, intlLocale, type Locale, type Translator } from "../i18n/config.ts";
+
 /** Secondi/km → "m:ss/km". */
 export function formatPace(s_km: number | null | undefined): string {
   if (s_km == null) return "—";
@@ -20,10 +22,15 @@ export function formatDuration(total_s: number | null | undefined): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-/** Metri → "X,XX km". */
-export function formatDistance(distance_m: number | null | undefined): string {
+/** Metri → "X,XX km" (it) / "X.XX km" (en): il separatore decimale segue la lingua. */
+export function formatDistance(distance_m: number | null | undefined, locale: Locale = DEFAULT_LOCALE): string {
   if (distance_m == null) return "—";
-  return `${(distance_m / 1000).toFixed(2).replace(".", ",")} km`;
+  const km = (distance_m / 1000).toLocaleString(intlLocale(locale), {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: false,
+  });
+  return `${km} km`;
 }
 
 /**
@@ -72,10 +79,11 @@ export function formatPlannedDistance(
     target_duration_s?: number | null;
     target_pace_s_km?: number | null;
   },
+  locale: Locale = DEFAULT_LOCALE,
 ): string | null {
   const d = plannedDistanceM(w);
   if (!d) return null;
-  return `${d.estimated ? "~" : ""}${formatDistance(d.meters)}`;
+  return `${d.estimated ? "~" : ""}${formatDistance(d.meters, locale)}`;
 }
 
 /** Giorni interi rimanenti a raceDate (min 0). Null se raceDate è null. */
@@ -85,13 +93,11 @@ export function daysUntil(raceDate: string | null | undefined): number | null {
   return Math.max(0, Math.ceil(diff / (24 * 3600 * 1000)));
 }
 
-/** "142 giorni" / "1 giorno" / "Oggi!" */
-export function countdownLabel(raceDate: string | null | undefined): string | null {
+/** "142 giorni" / "1 giorno" / "Oggi!" (`t` legato al namespace "metrics"). */
+export function countdownLabel(raceDate: string | null | undefined, t: Translator): string | null {
   const d = daysUntil(raceDate);
   if (d === null) return null;
-  if (d === 0) return "Oggi!";
-  if (d === 1) return "1 giorno";
-  return `${d} giorni`;
+  return d === 0 ? t("countdown.today") : t("countdown.days", { count: d });
 }
 
 /**

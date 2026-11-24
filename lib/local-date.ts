@@ -1,5 +1,8 @@
 // Date "di calendario" nel fuso dell'atleta (Europe/Rome). Funzioni pure,
-// senza import runtime: usabili da pagine server, client e test.
+// usabili da pagine server, client e test. Le etichette seguono la lingua
+// passata (italiano di default).
+
+import { DEFAULT_LOCALE, intlLocale, type Locale } from "../i18n/config.ts";
 
 const ROME = "Europe/Rome";
 
@@ -51,24 +54,30 @@ export function mondayOf(iso: string): string {
 }
 
 /** "mercoledì": il giorno della settimana per esteso. */
-export function weekdayName(iso: string): string {
-  return new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "long", timeZone: "UTC" });
+export function weekdayName(iso: string, locale: Locale = DEFAULT_LOCALE): string {
+  return new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { weekday: "long", timeZone: "UTC" });
 }
 
 /** "lun 14", "mar 15"… */
-export function shortDayLabel(iso: string): string {
+export function shortDayLabel(iso: string, locale: Locale = DEFAULT_LOCALE): string {
   return new Date(`${iso.slice(0, 10)}T12:00:00Z`)
-    .toLocaleDateString("it-IT", { weekday: "short", day: "numeric", timeZone: "UTC" })
+    .toLocaleDateString(intlLocale(locale), { weekday: "short", day: "numeric", timeZone: "UTC" })
     .replace(".", "");
 }
 
+const RELATIVE_DAYS: Record<Locale, { today: string; tomorrow: string; yesterday: string }> = {
+  it: { today: "Oggi", tomorrow: "Domani", yesterday: "Ieri" },
+  en: { today: "Today", tomorrow: "Tomorrow", yesterday: "Yesterday" },
+};
+
 /** "Oggi", "Domani", "Ieri" oppure "giovedì 16 ottobre". */
-export function relativeDayLabel(iso: string, today: string): string {
+export function relativeDayLabel(iso: string, today: string, locale: Locale = DEFAULT_LOCALE): string {
   const diff = daysBetween(today, iso);
-  if (diff === 0) return "Oggi";
-  if (diff === 1) return "Domani";
-  if (diff === -1) return "Ieri";
-  return new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString("it-IT", {
+  const words = RELATIVE_DAYS[locale];
+  if (diff === 0) return words.today;
+  if (diff === 1) return words.tomorrow;
+  if (diff === -1) return words.yesterday;
+  return new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString(intlLocale(locale), {
     weekday: "long",
     day: "numeric",
     month: "long",

@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { Check, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { updateProfile, type ProfileFormState } from "./actions";
 import type { Profile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ export function ProfileForm({
   effectiveHr: EffectiveHrView;
 }) {
   const t = useTranslations("settings.profile");
+  const locale = useLocale() as Locale;
   const [state, setState] = useState<ProfileFormState>(initialState);
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
@@ -47,7 +49,7 @@ export function ProfileForm({
   });
 
   const birthdate = profile?.birthdate
-    ? new Date(`${profile.birthdate}T12:00:00`).toLocaleDateString("it-IT", {
+    ? new Date(`${profile.birthdate}T12:00:00`).toLocaleDateString(intlLocale(locale), {
         day: "2-digit",
         month: "short",
         year: "numeric",

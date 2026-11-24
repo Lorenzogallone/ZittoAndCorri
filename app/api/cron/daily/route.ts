@@ -11,7 +11,7 @@ import { cronAuthError } from "@/lib/push/cron-auth";
 import { isPushConfigured, sendPushToUser } from "@/lib/push/send";
 import { reminderBody } from "@/lib/push/messages";
 import { romeDate, shiftIsoDate } from "@/lib/push/weekly-stats";
-import { TYPE_LABELS } from "@/lib/activity-meta";
+import { TYPE_LABELS_IT } from "@/lib/activity-meta";
 import type { PlannedWorkout } from "@/lib/types";
 import { syncAllIntervalsUsers } from "@/lib/intervals/sync";
 import { sendSyncAlerts } from "@/lib/push/sync-alerts";
@@ -117,7 +117,7 @@ export async function GET(request: Request) {
   let delivered = 0;
   for (const [userId, workouts] of byUser) {
     const [first] = workouts;
-    const labels = [...new Set(workouts.map((w) => TYPE_LABELS[w.type]))].join(" + ");
+    const labels = [...new Set(workouts.map((w) => TYPE_LABELS_IT[w.type]))].join(" + ");
     const sent = await sendPushToUser(userId, {
       title: `Domani: ${labels}`,
       body: reminderBody(first),

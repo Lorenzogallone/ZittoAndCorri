@@ -7,7 +7,7 @@ import { mapView, type MapTile } from "@/lib/route-path";
 import { PACE_SCALE, pointSpeedColors } from "@/lib/metrics/pace-colors";
 import { useSegmentSelection } from "@/components/activity/segment-selection";
 import type { RoutePart } from "@/components/activity-map-client";
-import { segmentToneKey, TONE_LABELS, TONES, type ToneKey } from "@/lib/step-tones";
+import { segmentToneKey, toneLabel, TONES, type ToneKey } from "@/lib/step-tones";
 import type { GpsPoint } from "@/lib/types";
 
 // Mappa interattiva (WebGL) di base, ma solo quando la card entra nello schermo
@@ -65,6 +65,7 @@ function useNearViewport<T extends Element>() {
 /** Percorso colorato per tratto (ripetute) o per velocità su mappa interattiva, con anteprima statica sotto. */
 export function RoutePreview({ gps }: { gps: GpsPoint[] }) {
   const t = useTranslations("activities.map");
+  const tl = useTranslations("labels");
   const dark = useDarkTheme();
   const [ref, near] = useNearViewport<HTMLDivElement>();
   const [failed, setFailed] = useState(false);
@@ -158,7 +159,7 @@ export function RoutePreview({ gps }: { gps: GpsPoint[] }) {
           {legend.map((key) => (
             <span key={key} className="inline-flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full" style={{ background: TONES[key].hex }} />
-              {TONE_LABELS[key]}
+              {toneLabel(tl, key)}
             </span>
           ))}
         </span>

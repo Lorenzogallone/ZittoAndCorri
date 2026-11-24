@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import type { Locale } from "@/i18n/config";
 import { Check, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,8 @@ const FREE = "__free__";
 
 function ModelRow({ model, selected, onPick, withProvider = false }: { model: OpenRouterModel; selected: boolean; onPick: () => void; withProvider?: boolean }) {
   const t = useTranslations("coach.picker");
+  const tl = useTranslations("labels");
+  const locale = useLocale() as Locale;
   const contextLabel = (tokens: number | null) =>
     tokens ? (tokens >= 1_000_000 ? t("contextM", { size: `${+(tokens / 1_000_000).toFixed(1)}`.replace(".", ",") }) : t("contextK", { size: `${Math.round(tokens / 1000)}` })) : null;
   return (
@@ -35,7 +38,7 @@ function ModelRow({ model, selected, onPick, withProvider = false }: { model: Op
           {modelTitle(model)}
         </span>
         <span className="block truncate text-xs text-muted-foreground">
-          {[priceLabel(model), contextLabel(model.context)].filter(Boolean).join(" · ")}
+          {[priceLabel(tl, model, locale), contextLabel(model.context)].filter(Boolean).join(" · ")}
         </span>
       </span>
       {selected && <Check size={16} className="shrink-0 text-primary" />}

@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Flame, Footprints, Gauge, Heart, HeartPulse, Mountain, Timer, TrendingUp, Trophy, type LucideIcon } from "lucide-react";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { AppShell } from "@/components/app-shell";
 import { ActivityEvaluation } from "@/components/activity-evaluation";
 import { PaceCheckCard } from "@/components/pace-check-card";
@@ -18,9 +19,9 @@ import { Stat } from "@/components/stat";
 import { hasIntervals } from "@/lib/intervals-text";
 import type { IntervalAnalysis } from "@/lib/metrics/intervals";
 import { activeDuration, formatDuration, formatPace } from "@/lib/format";
-import { EFFORTS, type PersonalRecord } from "@/lib/metrics/best-efforts";
+import { effortLabel, type PersonalRecord } from "@/lib/metrics/best-efforts";
 import type { PaceCheck } from "@/lib/metrics/pace-check";
-import { SPORT_LABELS, TYPE_LABELS } from "@/lib/activity-meta";
+import { sportLabel, typeLabel } from "@/lib/activity-meta";
 import type { Activity, Evaluation, GpsPoint, HrPoint, TimeInZone } from "@/lib/types";
 
 export interface ActivityViewProps {
@@ -47,11 +48,14 @@ export interface ActivityViewProps {
 
 export function ActivityView(props: ActivityViewProps) {
   const t = useTranslations("activities");
+  const locale = useLocale() as Locale;
+  const tl = useTranslations("labels");
+  const tMetrics = useTranslations("metrics");
   const { activity } = props;
   const isRun = activity.sport === "running";
   const duration = activeDuration(activity);
-  const title = activity.source_title || (isRun ? TYPE_LABELS[activity.type] : SPORT_LABELS[activity.sport]);
-  const date = new Date(activity.started_at).toLocaleString("it-IT", {
+  const title = activity.source_title || (isRun ? typeLabel(tl, activity.type) : sportLabel(tl, activity.sport));
+  const date = new Date(activity.started_at).toLocaleString(intlLocale(locale), {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -109,7 +113,7 @@ export function ActivityView(props: ActivityViewProps) {
           <h1 className="mt-1 font-display text-display-xl font-bold tabular-nums tracking-tight">
             {activity.distance_m > 0 ? (
               <>
-                {(activity.distance_m / 1000).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {(activity.distance_m / 1000).toLocaleString(intlLocale(locale), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 <span className="ml-1.5 text-heading font-semibold tracking-normal text-muted-foreground">km</span>
               </>
             ) : (
@@ -120,7 +124,7 @@ export function ActivityView(props: ActivityViewProps) {
             <div className="animate-enter-late mt-3 flex flex-wrap gap-1.5">
               {props.records.map((record) => (
                 <span key={record.key} className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-caption font-semibold text-amber-700 tabular-nums dark:text-amber-300">
-                  <Trophy size={14} /> {t("detail.record", { label: EFFORTS.find((effort) => effort.key === record.key)?.label ?? "", time: formatDuration(record.time_s) })}
+                  <Trophy size={14} /> {t("detail.record", { label: effortLabel(record.key, tMetrics), time: formatDuration(record.time_s) })}
                 </span>
               ))}
             </div>

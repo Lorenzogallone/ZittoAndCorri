@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { niceTicks, useMeasuredWidth } from "./chart-utils";
 
 export interface FormPoint {
@@ -17,13 +18,14 @@ const SERIES = [
   { key: "fatigue", color: "var(--viz-2)" },
 ] as const;
 
-function dayLabel(iso: string): string {
-  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "UTC" });
+function dayLabel(iso: string, locale: Locale): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "short", timeZone: "UTC" });
 }
 
 /** Forma (carico costruito nel tempo) e fatica (carico recente), stessa scala. */
 export function FormChart({ points }: { points: FormPoint[] }) {
   const t = useTranslations("activities.charts.form");
+  const locale = useLocale() as Locale;
   const { ref, width } = useMeasuredWidth<HTMLDivElement>();
   const [active, setActive] = useState<number | null>(null);
   if (points.length < 2) return null;
@@ -84,7 +86,7 @@ export function FormChart({ points }: { points: FormPoint[] }) {
             ))}
             {months.map(({ i, date }) => (
               <text key={date} x={x(i)} y={HEIGHT - 6} textAnchor="middle" className="fill-muted-foreground text-micro">
-                {new Date(`${date}T12:00:00Z`).toLocaleDateString("it-IT", { month: "short", timeZone: "UTC" })}
+                {new Date(`${date}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { month: "short", timeZone: "UTC" })}
               </text>
             ))}
             {SERIES.map((series, index) => (
@@ -120,7 +122,7 @@ export function FormChart({ points }: { points: FormPoint[] }) {
             className="pointer-events-none absolute top-0 z-10 rounded-lg border border-border bg-popover px-2.5 py-1.5 text-xs shadow-sm"
             style={{ left: Math.min(Math.max(0, x(active) - 60), Math.max(0, width - 124)), width: 120 }}
           >
-            <p className="text-micro text-muted-foreground">{dayLabel(focused.date)}</p>
+            <p className="text-micro text-muted-foreground">{dayLabel(focused.date, locale)}</p>
             {SERIES.map((series) => (
               <p key={series.key} className="flex items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-1.5 text-muted-foreground">

@@ -4,7 +4,7 @@ import "server-only";
 import { zoneForHr } from "@/lib/metrics/zones";
 import { formatPace, formatDuration, formatDistance } from "@/lib/format";
 import type { Activity, Profile, ActivityType } from "@/lib/types";
-import { TYPE_LABELS, SPORT_LABELS } from "@/lib/activity-meta";
+import { TYPE_LABELS_IT, SPORT_LABELS_IT } from "@/lib/activity-meta";
 
 function shortDate(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", {
@@ -35,8 +35,8 @@ export function activityDetailLine(
 ): string {
   const isRun = (a.sport ?? "running") === "running";
   const head = isRun
-    ? TYPE_LABELS[a.type]
-    : `${SPORT_LABELS[a.sport ?? "other"]} (non corsa)`;
+    ? TYPE_LABELS_IT[a.type]
+    : `${SPORT_LABELS_IT[a.sport ?? "other"]} (non corsa)`;
   const parts = [
     `${head}${a.distance_m > 0 ? ` ${formatDistance(a.distance_m)}` : ""}`,
     `durata ${formatDuration(a.duration_s)}`,

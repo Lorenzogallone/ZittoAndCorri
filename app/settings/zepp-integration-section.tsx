@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { Check, Link2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -18,9 +19,9 @@ interface Props {
   initialConnection: ZeppConnectionView | null;
 }
 
-function formatDate(value: string | null, never: string): string {
+function formatDate(value: string | null, never: string, locale: Locale): string {
   if (!value) return never;
-  return new Date(value).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" });
+  return new Date(value).toLocaleString(intlLocale(locale), { dateStyle: "short", timeStyle: "short" });
 }
 
 const richTags = {
@@ -33,6 +34,7 @@ const STALE_MS = 3 * 86_400_000;
 
 export function ZeppIntegrationSection({ initialConnection }: Props) {
   const t = useTranslations("settingsLinks.zepp");
+  const locale = useLocale() as Locale;
   const [connection, setConnection] = useState(initialConnection);
   const [enabled, setEnabled] = useState(Boolean(initialConnection?.enabled));
   const [code, setCode] = useState<string | null>(null);
@@ -125,7 +127,7 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
               <span className="font-medium">{t("connected", { device: connection.device_name ?? t("defaultDevice") })}</span>
             </div>
             <p className={`text-xs ${stale ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
-              {t("lastSync", { date: formatDate(connection.last_sync_at, t("never")) })}
+              {t("lastSync", { date: formatDate(connection.last_sync_at, t("never"), locale) })}
               {stale && ` · ${t("staleNote")}`}
             </p>
             {connection.last_error && <p className="text-xs text-destructive">{t("lastError", { error: connection.last_error })}</p>}
@@ -142,7 +144,7 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
                   {code}
                 </button>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {copied ? t("copied") : expiresAt ? t("validUntil", { time: new Date(expiresAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }) }) : t("validFallback")}
+                  {copied ? t("copied") : expiresAt ? t("validUntil", { time: new Date(expiresAt).toLocaleTimeString(intlLocale(locale), { hour: "2-digit", minute: "2-digit" }) }) : t("validFallback")}
                 </p>
                 <p className="mt-1 text-xs font-medium text-primary/80">
                   {t("codeHint")}

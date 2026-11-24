@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TYPE_LABELS } from "@/lib/activity-meta";
+import { typeLabel } from "@/lib/activity-meta";
 import { DECIMAL_PATTERN, DURATION_PATTERN } from "@/lib/format";
 import { handleEnterKeyHint } from "@/lib/form-keys";
 
@@ -34,6 +34,7 @@ const initialState: WorkoutFormState = {};
 
 export function WorkoutForm({ goals, defaultDate }: Props) {
   const t = useTranslations("plan.new.form");
+  const tl = useTranslations("labels");
   const [state, formAction, pending] = useActionState(
     createPlannedWorkout,
     initialState,
@@ -61,7 +62,7 @@ export function WorkoutForm({ goals, defaultDate }: Props) {
           <SelectContent>
             {WORKOUT_TYPES.map((type) => (
               <SelectItem key={type} value={type}>
-                {TYPE_LABELS[type] ?? type}
+                {typeLabel(tl, type)}
               </SelectItem>
             ))}
           </SelectContent>

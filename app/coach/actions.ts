@@ -24,9 +24,10 @@ import { insertPlanProposal } from "@/lib/plan/proposals";
 import { diffAgainstCalendar } from "@/lib/plan/proposal-calendar";
 import { NEW_SESSION } from "@/lib/coach-session";
 import { markSendError } from "@/lib/coach-failures";
-import { proposalExpiry, PROPOSAL_EXPIRY_TEXT } from "@/lib/plan/proposal-expiry";
+import { proposalExpiry, proposalExpiryText } from "@/lib/plan/proposal-expiry";
 import { discardedPlanNote, workoutDiscardReason, type DiscardReason } from "@/lib/plan/proposal-notes";
 import { romeDay } from "@/lib/local-date";
+import type { Translator } from "@/i18n/config";
 
 /**
  * Tempo per una risposta del coach, dall'invio del messaggio: la funzione può
@@ -291,6 +292,8 @@ async function startCoachTurn(messageId: string, startedAt: number): Promise<Coa
 
 async function queueCoachTurn(userId: string, userMessage: CoachMessage, ai: AiConfig, startedAt: number): Promise<CoachActionResult> {
   const t = await getTranslations("coach.actions");
+  // `after()` non ha il cookie della lingua: il traduttore si prende qui.
+  const tStatus = await getTranslations("status");
   const supabase = await createClient();
   const { data: job, error: jobError } = await supabase
     .from("ai_jobs")
@@ -301,7 +304,7 @@ async function queueCoachTurn(userId: string, userMessage: CoachMessage, ai: AiC
     const failed = await markMessageFailed(createAdminClient(), userId, userMessage.id, t("startFailed"));
     return { error: t("startFailed"), userMessage: failed ?? userMessage };
   }
-  after(() => runCoachTurn(job.id, userId, userMessage.id, userMessage.content, ai, startedAt + COACH_BUDGET_MS));
+  after(() => runCoachTurn(job.id, userId, userMessage.id, userMessage.content, ai, startedAt + COACH_BUDGET_MS, tStatus));
   return { jobId: job.id, userMessage };
 }
 
@@ -341,6 +344,7 @@ async function runCoachTurn(
   userText: string,
   ai: AiConfig,
   deadlineAt: number,
+  tStatus: Translator,
 ) {
   const admin = createAdminClient();
   // Dopo il salvataggio della risposta un errore (ricordi, proposta) non rende il messaggio "non inviato".
@@ -483,7 +487,7 @@ async function runCoachTurn(
       }).eq("id", jobId);
       return;
     }
-    const message = aiErrorMessage(error);
+    const message = aiErrorMessage(error, tStatus);
     // Il messaggio resta in chat come "non inviato" con "Riprova", e fuori
     // dalla storia che il coach rilegge.
     await markMessageFailed(admin, userId, sourceMessageId, message);
@@ -527,7 +531,7 @@ export async function applyPlanProposal(proposalId: string) {
     .returns<PlanProposal[]>();
   const target = proposals?.find((proposal) => proposal.id === proposalId);
   const expired = target ? proposalExpiry(target, proposals ?? [], romeDay(), Date.now()) : null;
-  if (expired) return { error: PROPOSAL_EXPIRY_TEXT[expired] };
+  if (expired) return { error: proposalExpiryText(await getTranslations("labels"), expired) };
   // Solo la funzione giorno per giorno (migrazione 0023): la vecchia cancellava
   // tutte le sedute della finestra, anche quelle non citate o già passate.
   const { data, error } = await supabase.rpc("apply_plan_proposal_v2", { p_proposal_id: proposalId });

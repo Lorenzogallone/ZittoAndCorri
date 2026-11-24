@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import type { Locale } from "@/i18n/config";
 import { Footprints, Link2, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
@@ -18,6 +19,8 @@ import { staleAiJobCutoff } from "@/lib/ai/job-staleness";
 
 export default async function ActivitiesPage() {
   const t = await getTranslations("activities.page");
+  const tMetrics = await getTranslations("metrics");
+  const locale = (await getLocale()) as Locale;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -41,7 +44,7 @@ export default async function ActivitiesPage() {
   }
   const pendingActivityIds = new Set((pendingEvaluationJobs ?? []).flatMap((job) => job.ref_id ? [job.ref_id] : []));
   // Le corse escluse restano in elenco (con etichetta) ma fuori dai totali.
-  const totals = periodTotals(list.filter((activity) => !activity.excluded_at), romeDay());
+  const totals = periodTotals(list.filter((activity) => !activity.excluded_at), romeDay(), tMetrics, locale);
   return (
     <AppShell
       wide

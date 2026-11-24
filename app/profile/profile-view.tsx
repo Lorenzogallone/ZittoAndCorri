@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import type { Locale } from "@/i18n/config";
 import { ChevronRight, Flag, Settings } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,7 @@ function TabbedCard({ tabs }: { tabs: Tab[] }) {
 export function ProfileView(props: ProfileViewProps) {
   const t = useTranslations("profile.view");
   const tProfile = useTranslations("profile");
+  const locale = useLocale() as Locale;
   const { goal, daysToRace } = props;
   const trends = [
     props.formPoints.length >= 3 && {
@@ -152,7 +154,7 @@ export function ProfileView(props: ProfileViewProps) {
               <p className="truncate text-body font-semibold">
                 {goal.race_name}
                 <span className="font-normal text-muted-foreground">
-                  {" · "}{formatDistance(goal.distance_m)}
+                  {" · "}{formatDistance(goal.distance_m, locale)}
                   {goal.target_time_s ? ` ${t("goal.inTime", { time: formatDuration(goal.target_time_s) })}` : ""}
                 </span>
               </p>

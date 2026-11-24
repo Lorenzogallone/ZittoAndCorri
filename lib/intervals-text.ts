@@ -1,4 +1,5 @@
-// Testi per i tratti di una seduta: etichette per la UI e righe per il coach AI.
+// Testi per i tratti di una seduta, in italiano per il coach AI (contesto e
+// prompt). La UI usa le stesse etichette tradotte: messages/*/status.json, intervals.*.
 
 import type { IntervalAnalysis, IntervalSegment, IntervalSource } from "./metrics/intervals.ts";
 import { formatDuration, formatPace } from "./format.ts";

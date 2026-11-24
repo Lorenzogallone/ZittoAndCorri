@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { Check, ExternalLink, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,9 +14,9 @@ import type { IntervalsTargetPreference } from "@/lib/intervals/workout-text";
 import { IntegrationCard, IntegrationHelp } from "./integration-card";
 import { deleteIntervalsKey, saveIntervalsKey, saveIntervalsOptions, syncIntervalsNow } from "./intervals-actions";
 
-function formatDate(value: string | null, never: string): string {
+function formatDate(value: string | null, never: string, locale: Locale): string {
   if (!value) return never;
-  return new Date(value).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" });
+  return new Date(value).toLocaleString(intlLocale(locale), { dateStyle: "short", timeStyle: "short" });
 }
 
 const TARGETS: IntervalsTargetPreference[] = ["auto", "pace", "hr"];
@@ -27,6 +28,7 @@ export function IntervalsSection({
   initial: IntervalsConnectionView | null | undefined;
 }) {
   const t = useTranslations("settingsLinks.intervals");
+  const locale = useLocale() as Locale;
   const [connection, setConnection] = useState(initial ?? null);
   const [key, setKey] = useState("");
   const [editing, setEditing] = useState(false);
@@ -172,8 +174,8 @@ export function IntervalsSection({
             </div>
 
             <div className="space-y-1 text-xs text-muted-foreground">
-              <p>{t("lastImport", { date: formatDate(connection.last_import_at, t("never")) })}</p>
-              <p>{t("lastPublish", { date: formatDate(connection.last_publish_at, t("never")) })}</p>
+              <p>{t("lastImport", { date: formatDate(connection.last_import_at, t("never"), locale) })}</p>
+              <p>{t("lastPublish", { date: formatDate(connection.last_publish_at, t("never"), locale) })}</p>
               {connection.last_error && <p className="text-destructive">{t("lastError", { error: connection.last_error })}</p>}
             </div>
 

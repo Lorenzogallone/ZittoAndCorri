@@ -4,13 +4,14 @@
 import "server-only";
 
 import type { Schema } from "@google/genai";
-import { aiErrorMessage as geminiErrorMessage, generateStructured as generateGemini } from "@/lib/ai/gemini";
+import { geminiErrorKey, generateStructured as generateGemini } from "@/lib/ai/gemini";
 import { generateOpenRouter, OpenRouterError } from "@/lib/ai/openrouter";
 import type { AiConfig } from "@/lib/ai/credentials";
 import { sumUsage, type AiUsage } from "@/lib/ai/usage";
 import { InvalidAiResponseError, isInvalidResponse, shouldRetryAi, withAiRetry } from "@/lib/ai/retry";
 import type { Prompt } from "@/lib/ai/prompt-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Translator } from "@/i18n/config";
 
 /** A cosa serve la chiamata, per il dettaglio dei costi. */
 export type AiPurpose = "coach" | "evaluation" | "interval_structure" | "weekly_recap";
@@ -127,17 +128,22 @@ async function recordAiUsage(config: AiConfig, purpose: AiPurpose, usage: AiUsag
   }
 }
 
-/** Messaggio d'errore per l'utente, con il provider giusto. */
-export function aiErrorMessage(error: unknown): string {
+/** Chiave del messaggio d'errore per l'utente (namespace "status", ai.<chiave>), con il provider giusto. */
+export function aiErrorKey(error: unknown): string {
   if (error instanceof OpenRouterError) {
-    if (error.status === 401 || error.status === 403) return "Chiave OpenRouter non valida: controllala nelle impostazioni.";
-    if (error.status === 402) return "Credito OpenRouter esaurito: ricarica il credito o passa a Gemini.";
-    if (error.status === 404) return "Modello OpenRouter non disponibile: scegline un altro nelle impostazioni.";
-    if (error.status === 429) return "Troppe richieste a OpenRouter: riprova tra poco o cambia modello.";
-    if (error.status === 422) return "Il modello OpenRouter non ha risposto nel formato atteso, nemmeno al secondo tentativo. Riprova o prova un altro modello.";
-    if (error.status === 504) return "Il modello ci ha messo troppo a rispondere. Riprova, oppure scegli un modello più veloce per la chat.";
-    return "Richiesta a OpenRouter non riuscita. Riprova tra poco.";
+    if (error.status === 401 || error.status === 403) return "openrouterInvalidKey";
+    if (error.status === 402) return "openrouterNoCredit";
+    if (error.status === 404) return "openrouterModelUnavailable";
+    if (error.status === 429) return "openrouterRateLimit";
+    if (error.status === 422) return "openrouterBadFormat";
+    if (error.status === 504) return "openrouterTimeout";
+    return "openrouterFailed";
   }
-  if (isInvalidResponse(error)) return "Il coach ha dato una risposta non leggibile, anche al secondo tentativo. Riprova.";
-  return geminiErrorMessage(error);
+  if (isInvalidResponse(error)) return "invalidResponse";
+  return geminiErrorKey(error);
+}
+
+/** Messaggio d'errore per l'utente. `t` è legato al namespace "status". */
+export function aiErrorMessage(error: unknown, t: Translator): string {
+  return t(`ai.${aiErrorKey(error)}`);
 }

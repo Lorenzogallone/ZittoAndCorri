@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import type { Locale } from "@/i18n/config";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { OpenRouterModelPicker } from "@/components/openrouter-model-picker";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,8 @@ function TaskRow({
   disabled: boolean;
 }) {
   const t = useTranslations("settings.models");
+  const tl = useTranslations("labels");
+  const locale = useLocale() as Locale;
   const [route, setRoute] = useState(initial);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -128,7 +131,7 @@ function TaskRow({
             <span className="block truncate text-sm font-medium">
               {routerModel ? <><span className="text-muted-foreground">{providerOf(routerModel)} · </span>{modelTitle(routerModel)}</> : route.openrouter ?? t("chooseModel")}
             </span>
-            {routerModel && <span className="block truncate text-xs text-muted-foreground">{priceLabel(routerModel)}</span>}
+            {routerModel && <span className="block truncate text-xs text-muted-foreground">{priceLabel(tl, routerModel, locale)}</span>}
           </span>
           <ChevronRight size={16} className="shrink-0 text-muted-foreground" />
         </button>

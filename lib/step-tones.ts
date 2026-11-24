@@ -2,6 +2,8 @@
 // (scheda Ripetute): azzurro lento → rosso veloce, viola per gli sprint
 // ("oltre il rosso"), grigio per camminata e sosta.
 
+import type { Translator } from "../i18n/config.ts";
+
 export interface StepTone {
   bar: string;
   dot: string;
@@ -22,15 +24,8 @@ export const TONES = {
 
 export type ToneKey = keyof typeof TONES;
 
-export const TONE_LABELS: Record<ToneKey, string> = {
-  sprint: "Sprint",
-  hard: "Ripetute",
-  tempo: "Continuo",
-  moderate: "Medio",
-  jog: "Jogging",
-  easy: "Facile",
-  walk: "Camminata",
-};
+/** Etichetta tradotta del colore/tratto (`t` legato al namespace "labels"). */
+export const toneLabel = (t: Translator, key: ToneKey): string => t(`tone.${key}`);
 
 /** Colore di un tratto corso: lo stesso nella scheda Ripetute, nel grafico e sulla mappa. */
 export function segmentToneKey(segment: { kind: string; variant: string | null }): ToneKey {

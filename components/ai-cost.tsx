@@ -1,6 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 import { formatTokens, formatUsd, shortModelName, type AiUsage } from "@/lib/ai/usage";
 
@@ -28,31 +29,36 @@ export function costSummary(usage: AiUsage, part: CostPart, t: CostT): string {
   return [approx(usage, usage.cost_usd) ?? t("costUnknown"), shortModelName(usage.model)].join(" · ");
 }
 
-const precise = (value: number | null | undefined, t: CostT) =>
-  value == null ? t("notAvailable") : value === 0 ? t("free") : `$${value.toFixed(value < 0.01 ? 4 : 3).replace(".", ",")}`;
+const precise = (value: number | null | undefined, t: CostT, locale: Locale) => {
+  if (value == null) return t("notAvailable");
+  if (value === 0) return t("free");
+  const digits = value < 0.01 ? 4 : 3;
+  return `$${value.toLocaleString(intlLocale(locale), { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
+};
 
-const int = (value: number) => value.toLocaleString("it-IT");
+const int = (value: number, locale: Locale) => value.toLocaleString(intlLocale(locale));
 
 /** Dettaglio completo: token, costo di prompt e risposta, modello. */
 export function UsageBreakdown({ usage, className }: { usage: AiUsage; className?: string }) {
   const t = useTranslations("coach.cost");
+  const locale = useLocale() as Locale;
   return (
     <dl className={cn("mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-left text-micro leading-relaxed", className)}>
       <dt className="text-muted-foreground">{t("prompt")}</dt>
       <dd>
         {usage.cached_tokens
-          ? t("tokensCached", { tokens: int(usage.input_tokens), cached: int(usage.cached_tokens) })
-          : t("tokens", { tokens: int(usage.input_tokens) })} · {precise(usage.input_cost_usd, t)}
+          ? t("tokensCached", { tokens: int(usage.input_tokens, locale), cached: int(usage.cached_tokens, locale) })
+          : t("tokens", { tokens: int(usage.input_tokens, locale) })} · {precise(usage.input_cost_usd, t, locale)}
       </dd>
       <dt className="text-muted-foreground">{t("reply")}</dt>
       <dd>
         {usage.reasoning_tokens
-          ? t("tokensReasoning", { tokens: int(usage.output_tokens), reasoning: int(usage.reasoning_tokens) })
-          : t("tokens", { tokens: int(usage.output_tokens) })} · {precise(usage.output_cost_usd, t)}
+          ? t("tokensReasoning", { tokens: int(usage.output_tokens, locale), reasoning: int(usage.reasoning_tokens, locale) })
+          : t("tokens", { tokens: int(usage.output_tokens, locale) })} · {precise(usage.output_cost_usd, t, locale)}
       </dd>
       <dt className="text-muted-foreground">{t("total")}</dt>
       <dd>
-        {precise(usage.cost_usd, t)}{" "}
+        {precise(usage.cost_usd, t, locale)}{" "}
         <span className="text-muted-foreground">
           · {usage.estimated ? (usage.provider === "gemini" ? t("estimateFree") : t("estimate")) : t("chargedByOpenRouter")}
         </span>

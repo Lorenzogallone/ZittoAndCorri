@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { useMeasuredWidth } from "./chart-utils";
 import { formatMetric, type BodyMetricKey, type DayValue } from "@/lib/metrics/body-trends";
 
@@ -9,8 +10,8 @@ const HEIGHT = 96;
 const PAD = { top: 10, right: 10, bottom: 18, left: 4 };
 const DAY_MS = 86_400_000;
 
-function dayLabel(iso: string): string {
-  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "UTC" });
+function dayLabel(iso: string, locale: Locale): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "short", timeZone: "UTC" });
 }
 
 const time = (iso: string) => Date.parse(`${iso}T12:00:00Z`);
@@ -34,6 +35,7 @@ export function TrendChart({
   label: string;
 }) {
   const t = useTranslations("activities.charts.trend");
+  const locale = useLocale() as Locale;
   const { ref, width } = useMeasuredWidth<HTMLDivElement>();
   const [active, setActive] = useState<number | null>(null);
   const end = time(today);
@@ -85,7 +87,7 @@ export function TrendChart({
           className="touch-pan-y overflow-visible outline-none"
           tabIndex={0}
           role="img"
-          aria-label={t("aria", { label, value: formatMetric(metric, last.value), date: dayLabel(last.date) })}
+          aria-label={t("aria", { label, value: formatMetric(metric, last.value), date: dayLabel(last.date, locale) })}
           onPointerMove={(event) => pick(event.clientX, event.currentTarget.getBoundingClientRect())}
           onPointerDown={(event) => pick(event.clientX, event.currentTarget.getBoundingClientRect())}
           onPointerLeave={() => setActive(null)}
@@ -102,7 +104,7 @@ export function TrendChart({
           ))}
           {months.map((iso) => (
             <text key={iso} x={x(iso)} y={HEIGHT - 4} textAnchor="middle" className="fill-muted-foreground text-micro">
-              {new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { month: "short", timeZone: "UTC" })}
+              {new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { month: "short", timeZone: "UTC" })}
             </text>
           ))}
           {points.length > 1 && (
@@ -136,7 +138,7 @@ export function TrendChart({
           className="pointer-events-none absolute -top-2 z-10 rounded-lg border border-border bg-popover px-2.5 py-1.5 text-xs shadow-sm"
           style={{ left: Math.min(Math.max(0, x(focused.date) - 48), Math.max(0, width - 100)), width: 96 }}
         >
-          <p className="text-micro text-muted-foreground">{dayLabel(focused.date)}</p>
+          <p className="text-micro text-muted-foreground">{dayLabel(focused.date, locale)}</p>
           <p className="font-semibold tabular-nums">{formatMetric(metric, focused.value)}</p>
         </div>
       )}

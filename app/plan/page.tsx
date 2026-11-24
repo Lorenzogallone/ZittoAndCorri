@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { CalendarDays, ChevronLeft, ChevronRight, MessageCircle, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
@@ -26,13 +27,14 @@ interface Props {
 
 const isIsoDate = (value: string | undefined): value is string => !!value && /^\d{4}-\d{2}-\d{2}$/.test(value);
 
-function rangeLabel(start: string, end: string): string {
-  const format = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "UTC" });
+function rangeLabel(start: string, end: string, locale: Locale): string {
+  const format = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "short", timeZone: "UTC" });
   return `${format(start)} – ${format(end)}`;
 }
 
 export default async function PlanPage({ searchParams }: Props) {
   const t = await getTranslations("plan");
+  const locale = (await getLocale()) as Locale;
   const params = await searchParams;
   const view = params.view === "month" ? "month" : "weeks";
   const today = romeDay();
@@ -124,10 +126,10 @@ export default async function PlanPage({ searchParams }: Props) {
           <p className="mb-4 mt-1 text-caption text-muted-foreground tabular-nums">
             {goal.race_date
               ? t("page.goalMeta", {
-                distance: formatDistance(goal.distance_m),
-                date: new Date(`${goal.race_date}T12:00:00Z`).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }),
+                distance: formatDistance(goal.distance_m, locale),
+                date: new Date(`${goal.race_date}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }),
               })
-              : t("page.goalMetaNoDate", { distance: formatDistance(goal.distance_m) })}
+              : t("page.goalMetaNoDate", { distance: formatDistance(goal.distance_m, locale) })}
           </p>
           {phases && <PhaseBar plan={phases} />}
         </Link>
@@ -167,7 +169,7 @@ export default async function PlanPage({ searchParams }: Props) {
                   <ChevronLeft size={17} />
                 </Link>
                 {firstMonday === thisMonday ? (
-                  <span className="tabular-nums">{rangeLabel(rangeStart, rangeEnd)}</span>
+                  <span className="tabular-nums">{rangeLabel(rangeStart, rangeEnd, locale)}</span>
                 ) : (
                   <Link href="/plan" className="font-medium text-primary">{t("page.backToToday")}</Link>
                 )}

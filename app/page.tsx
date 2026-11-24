@@ -1,9 +1,10 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { AppShell } from "@/components/app-shell";
 import { CoachChat } from "@/components/coach-chat";
 import { TodayCard } from "@/components/home/today-card";
@@ -38,8 +39,8 @@ function greetingKey(): "morning" | "afternoon" | "evening" {
 }
 
 /** "mercoledì 22 ottobre". */
-function longDate(iso: string): string {
-  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+function longDate(iso: string, locale: Locale): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 }
 
 /** Passi di "Inizia da qui": solo conteggi (head), nessuna riga letta.
@@ -59,6 +60,7 @@ async function firstRunSteps(supabase: Awaited<ReturnType<typeof createClient>>,
 export default async function Home({ searchParams }: { searchParams: Promise<{ prompt?: string }> }) {
   const { prompt } = await searchParams;
   const t = await getTranslations("home.page");
+  const locale = (await getLocale()) as Locale;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -133,7 +135,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
           <div className="mb-4 flex shrink-0 items-center justify-between gap-3 pt-1 3xl:col-span-2">
             <div className="min-w-0">
               <p className="eyebrow truncate">{t(`greeting.${greetingKey()}`, { name })}</p>
-              <p className="mt-1 text-caption text-muted-foreground first-letter:uppercase">{longDate(today)}</p>
+              <p className="mt-1 text-caption text-muted-foreground first-letter:uppercase">{longDate(today, locale)}</p>
             </div>
             <Link
               href="/activities/new"

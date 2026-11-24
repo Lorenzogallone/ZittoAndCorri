@@ -24,11 +24,23 @@ export const NAMESPACES = [
   "profile",
   "settings",
   "settingsLinks",
+  "labels",
+  "metrics",
+  "status",
 ] as const;
 export type Namespace = (typeof NAMESPACES)[number];
 
+/** Traduttore passato alle funzioni di lib/ (ricavato da useTranslations / getTranslations). */
+export type Translator = (key: string, values?: Record<string, string | number | Date>) => string;
+
 export const isLocale = (value: unknown): value is Locale =>
   typeof value === "string" && (LOCALES as readonly string[]).includes(value);
+
+/**
+ * Etichetta BCP 47 per Intl (date, numeri). L'inglese usa en-GB: stesso ordine
+ * giorno-mese e orario 24 ore dell'italiano, cambiano i nomi e i separatori.
+ */
+export const intlLocale = (locale: Locale): string => (locale === "en" ? "en-GB" : "it-IT");
 
 /** Lingua dal cookie; senza cookie, da Accept-Language (italiano o inglese). */
 export function resolveLocale(cookie: string | undefined, acceptLanguage: string | null | undefined): Locale {

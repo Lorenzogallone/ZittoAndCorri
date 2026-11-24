@@ -9,7 +9,7 @@ import { parseDecimal, parseDuration } from "@/lib/format";
 import type { CoachMemoryCategory, Goal, PlannedStatus, PlannedWorkout, Profile } from "@/lib/types";
 import { legacyWorkoutStep, workoutStepsOrLegacy } from "@/lib/workout-steps";
 import { addDays, romeDay } from "@/lib/local-date";
-import { ADAPT_DURATIONS, ADAPT_REASONS, adaptWorkout, originalFields, type AdaptReason } from "@/lib/plan/adapt";
+import { ADAPT_DURATIONS, ADAPT_REASON_KEYS, adaptWorkout, originalFields, type AdaptReason } from "@/lib/plan/adapt";
 import { recoveryWorkouts } from "@/lib/plan/recovery";
 import { insertPlanProposal } from "@/lib/plan/proposals";
 import { diffAgainstCalendar } from "@/lib/plan/proposal-calendar";
@@ -139,7 +139,7 @@ export async function adaptPlan(reason: AdaptReason, days: number): Promise<{ er
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  if (!(reason in ADAPT_REASONS) || !ADAPT_DURATIONS.some((option) => option.days === days)) {
+  if (!ADAPT_REASON_KEYS.includes(reason) || !ADAPT_DURATIONS.some((option) => option.days === days)) {
     return { error: t("choiceInvalid") };
   }
   const today = romeDay();

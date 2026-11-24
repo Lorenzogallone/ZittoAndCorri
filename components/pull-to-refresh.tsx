@@ -47,6 +47,7 @@ function innerScrollerAway(target: Element, root: HTMLElement): boolean {
  */
 export function PullToRefresh({ className, children }: { className?: string; children: React.ReactNode }) {
   const t = useTranslations("shell");
+  const tStatus = useTranslations("status");
   const mainRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const indicatorRef = useRef<HTMLDivElement>(null);
@@ -160,7 +161,7 @@ export function PullToRefresh({ className, children }: { className?: string; chi
     };
   }, [refresh, paint]);
 
-  const message = showResult ? refreshMessage(result) : null;
+  const message = showResult ? refreshMessage(result, tStatus) : null;
   const failed = !!result?.error;
 
   return (

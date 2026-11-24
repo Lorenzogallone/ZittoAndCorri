@@ -2,6 +2,8 @@
 // (Anthropic, OpenAI, Google…), con prezzi leggibili. Modulo puro, lo usa
 // anche il client.
 
+import { DEFAULT_LOCALE, type Locale, type Translator } from "../../i18n/config.ts";
+
 export interface OpenRouterModel {
   id: string;
   name: string;
@@ -27,13 +29,17 @@ export const modelTitle = (model: Pick<OpenRouterModel, "name">) => model.name.r
 export const isFree = (model: OpenRouterModel) =>
   model.id.endsWith(":free") || (model.prompt_per_m === 0 && model.completion_per_m === 0);
 
-const money = (value: number) => (value >= 10 ? String(Math.round(value)) : String(+value.toFixed(2))).replace(".", ",");
+const money = (value: number, locale: Locale) =>
+  (value >= 10 ? String(Math.round(value)) : String(+value.toFixed(2))).replace(".", locale === "it" ? "," : ".");
 
-/** "$2 / $10 per M token" oppure "gratis". */
-export function priceLabel(model: OpenRouterModel): string | null {
-  if (isFree(model)) return "gratis";
+/** "$2 / $10 per M token" oppure "gratis" (`t` legato al namespace "labels"). */
+export function priceLabel(t: Translator, model: OpenRouterModel, locale: Locale = DEFAULT_LOCALE): string | null {
+  if (isFree(model)) return t("price.free");
   if (model.prompt_per_m == null || model.completion_per_m == null) return null;
-  return `$${money(model.prompt_per_m)} / $${money(model.completion_per_m)} per M token`;
+  return t("price.perMillionTokens", {
+    input: `$${money(model.prompt_per_m, locale)}`,
+    output: `$${money(model.completion_per_m, locale)}`,
+  });
 }
 
 export interface ProviderGroup {

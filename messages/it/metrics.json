@@ -1,0 +1,153 @@
+{
+  "countdown": {
+    "today": "Oggi!",
+    "days": "{count, plural, one {# giorno} other {# giorni}}"
+  },
+  "efforts": {
+    "1k": "1 km",
+    "5k": "5 km",
+    "10k": "10 km",
+    "half": "Mezza",
+    "marathon": "Maratona"
+  },
+  "totals": {
+    "week": {
+      "label": "Settimana",
+      "caption": "da lunedì",
+      "previous": "alla settimana scorsa"
+    },
+    "month": {
+      "label": "Mese",
+      "caption": "{month} {year}",
+      "previous": "allo stesso punto di {month}"
+    },
+    "year": {
+      "label": "Anno",
+      "previous": "allo stesso punto del {year}"
+    },
+    "all": {
+      "label": "Sempre",
+      "since": "dal {date}"
+    }
+  },
+  "racePrediction": {
+    "distanceOn": "{kind, select, half {sulla mezza} marathon {sulla maratona} other {sui {km} km}}",
+    "distanceThe": "{kind, select, half {la mezza} marathon {la maratona} other {i {km} km}}",
+    "combines": "Combina {distance} del {date} (da soli: {effortTime}) e {sessions} a {pace} ({paceTime}).",
+    "thresholdSessions": "{count, plural, one {la seduta di soglia del {first}} other {le sedute di soglia del {first} e del {second}}}",
+    "agreement": {
+      "high": "I due dati concordano, quindi la forbice è più stretta.",
+      "close": "I due dati sono vicini ma non uguali.",
+      "low": "I due dati non concordano: la forbice li contiene entrambi."
+    },
+    "basedOn": "Si basa {distance} del {date}.",
+    "durability": {
+      "steady": "Nei lunghi il cuore resta stabile (deriva {drift}%): un punto a favore.",
+      "rising": "Nei lunghi il cuore sale molto (deriva {drift}%): la tenuta è da costruire."
+    },
+    "causes": {
+      "volume": "il volume basso ({km} km a settimana)",
+      "longRun": "il lungo corto (massimo {km} km)",
+      "oldReference": "una prova non recente",
+      "join": "{first} e {second}",
+      "sentence": "{causes} {count, plural, one {tiene} other {tengono}} larga la forbice{toward, select, yes { verso il prudente} other {}}."
+    },
+    "adequate": "Volume e lungo sono adeguati, la forbice è stretta.",
+    "advice": {
+      "noGoal": "Passo di partenza consigliato {pace}.",
+      "tooFast": "L'obiettivo {goal} oggi è fuori dalla forbice (serve meglio di {best}): parti prudente a {pace} e decidi dopo metà gara.",
+      "tooSlow": "L'obiettivo {goal} è più lento anche della stima prudente: è alla portata, parti a {pace}.",
+      "ambitious": "L'obiettivo {goal} è dentro la forbice ma sul lato veloce: serve una giornata buona. Parti a {pace}, non a {goalPace}, e accelera solo nel finale se stai bene.",
+      "inside": "L'obiettivo {goal} è dentro la forbice: parti a {pace}."
+    }
+  },
+  "body": {
+    "sentence": {
+      "range": "media delle ultime 2 settimane {recent}, un mese fa {previous}",
+      "better": "In miglioramento: {range}.",
+      "worse": "In peggioramento: {range}.",
+      "up": "In aumento: {range}.",
+      "down": "In calo: {range}.",
+      "stable": "Stabile: media delle ultime 2 settimane {value}, come un mese fa.",
+      "notEnough": "Servono ancora qualche settimana di dati per vedere un andamento.",
+      "noData": "Nessun dato dall'orologio."
+    },
+    "vo2max": {
+      "label": "VO₂max",
+      "good": "il motore aerobico cresce",
+      "bad": "spesso segue settimane con meno corsa o più fatica",
+      "about": "Stima dell'orologio di quanto ossigeno riesci a usare al massimo sforzo (ml per kg al minuto). Più è alto, più è grande il motore aerobico. Cambia lentamente: conta l'andamento su settimane."
+    },
+    "fitness": {
+      "label": "Forma (CTL)",
+      "good": "stai costruendo allenamento",
+      "bad": "stai facendo meno di prima",
+      "about": "Media del carico di allenamento delle ultime 6 settimane. Sale se ti alleni con costanza, scende quando fai meno."
+    },
+    "load7": {
+      "label": "Carico 7 giorni",
+      "about": "Somma del carico degli ultimi 7 giorni, da durata e intensità delle attività."
+    },
+    "sleep": {
+      "label": "Sonno",
+      "good": "più ore per recuperare",
+      "bad": "meno ore per recuperare",
+      "about": "Ore dormite a notte secondo l'orologio. È il primo mattone del recupero dagli allenamenti."
+    },
+    "sleepDeep": {
+      "label": "Sonno profondo",
+      "good": "recupero fisico migliore",
+      "bad": "recupero fisico più corto",
+      "about": "Minuti di sonno profondo: la fase in cui il corpo ripara muscoli e tessuti."
+    },
+    "sleepScore": {
+      "label": "Punteggio sonno",
+      "about": "Voto dell'orologio alla notte (0–100): mette insieme durata, fasi e risvegli."
+    },
+    "restingHr": {
+      "label": "FC a riposo",
+      "good": "segno di adattamento",
+      "bad": "può voler dire fatica, stress o un malanno in arrivo",
+      "about": "Battiti al minuto a riposo, misurati di notte. Scende quando il cuore si allena; qualche battito in più per diversi giorni è un segnale di fatica, stress o malanno."
+    },
+    "hrv": {
+      "label": "HRV",
+      "good": "il sistema nervoso recupera bene",
+      "bad": "recupero più faticoso",
+      "about": "Variabilità tra un battito e l'altro, misurata di notte. Più è alta rispetto ai tuoi valori soliti, meglio stai recuperando. Conta l'andamento, non il singolo numero."
+    },
+    "stress": {
+      "label": "Stress",
+      "good": "giornate più tranquille",
+      "bad": "giornate più cariche",
+      "about": "Stress medio della giornata (0–100), stimato dall'orologio da battito e variabilità."
+    },
+    "spo2": {
+      "label": "SpO₂",
+      "about": "Ossigeno nel sangue misurato dall'orologio. Di norma tra 95 e 100%: conta solo se scende parecchio."
+    },
+    "efficiency": {
+      "label": "Metri per battito",
+      "good": "corri più veloce a parità di cuore",
+      "bad": "a parità di cuore corri più piano (caldo e fatica pesano)",
+      "about": "Quanti metri percorri per ogni battito nelle corse facili: velocità (metri al minuto) divisa per la FC media. Se sale, con gli stessi battiti vai più veloce: il fiato migliora. Ripetute, test e soglie non contano; caldo e salite lo abbassano.",
+      "latest": "Ultima corsa facile"
+    },
+    "steps": {
+      "label": "Passi",
+      "about": "Passi della giornata, corsa compresa."
+    },
+    "pai": {
+      "label": "PAI",
+      "about": "Punteggio Zepp dell'attività degli ultimi 7 giorni, pesata sul battito. Da 100 in su è il livello consigliato per la salute."
+    },
+    "watchLoad": {
+      "label": "Carico dell'orologio",
+      "about": "Carico di allenamento calcolato dall'orologio Zepp sugli ultimi 7 giorni."
+    },
+    "weight": {
+      "label": "Peso",
+      "about": "Peso registrato su Intervals.icu."
+    }
+  }
+}

@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Upload, PenLine } from "lucide-react";
-import { TYPE_LABELS, SPORT_LABELS } from "@/lib/activity-meta";
+import { typeLabel, sportLabel } from "@/lib/activity-meta";
 
 /** Select sport condiviso tra form manuale e review file. */
 function SportSelect({
@@ -36,6 +36,7 @@ function SportSelect({
   onChange: (s: Sport) => void;
 }) {
   const t = useTranslations("activities.fields");
+  const tl = useTranslations("labels");
   return (
     <div className="grid gap-2.5">
       <Label htmlFor="sport">{t("sport")}</Label>
@@ -46,7 +47,7 @@ function SportSelect({
         <SelectContent>
           {SPORTS.map((s) => (
             <SelectItem key={s} value={s}>
-              {SPORT_LABELS[s]}
+              {sportLabel(tl, s)}
             </SelectItem>
           ))}
         </SelectContent>
@@ -60,6 +61,7 @@ function SportSelect({
 function ManualForm() {
   const t = useTranslations("activities.new");
   const tf = useTranslations("activities.fields");
+  const tl = useTranslations("labels");
   const initialState: ActivityFormState = {};
   const [state, formAction, pending] = useActionState(createActivity, initialState);
   const router = useRouter();
@@ -91,7 +93,7 @@ function ManualForm() {
             <SelectContent>
               {WORKOUT_TYPES.map((workoutType) => (
                 <SelectItem key={workoutType} value={workoutType}>
-                  {TYPE_LABELS[workoutType] ?? workoutType}
+                  {typeLabel(tl, workoutType)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -198,6 +200,7 @@ interface GpxReviewFormProps {
 function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
   const t = useTranslations("activities.new");
   const tf = useTranslations("activities.fields");
+  const tl = useTranslations("labels");
   const te = useTranslations("activities.errors");
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -304,7 +307,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
             <SelectContent>
               {ACTIVITY_TYPES.map((activityType) => (
                 <SelectItem key={activityType} value={activityType}>
-                  {TYPE_LABELS[activityType] ?? activityType}
+                  {typeLabel(tl, activityType)}
                 </SelectItem>
               ))}
             </SelectContent>

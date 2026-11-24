@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { getLocale, getTranslations } from "next-intl/server";
+import type { Locale } from "@/i18n/config";
 import { createClient } from "@/lib/supabase/server";
 import { computeATLCTL } from "@/lib/metrics/load";
 import { loadBodyTrends } from "@/lib/metrics/body-data";
@@ -41,7 +43,7 @@ export default async function FormaPage() {
     undefined,
     effectiveHr,
   );
-  const trends = await loadBodyTrends(supabase, user.id, today, load.series, list);
+  const trends = await loadBodyTrends(supabase, user.id, today, load.series, await getTranslations("metrics"), (await getLocale()) as Locale, list);
 
   // Un punto a settimana, come nel profilo: linee leggibili.
   const recentLoad = load.series.slice(-85);

@@ -3,6 +3,8 @@
 // una più recente sugli stessi giorni o con tutti i giorni già passati non si
 // mostra più come da confermare e non si può applicare. Modulo puro.
 
+import type { Translator } from "../../i18n/config.ts";
+
 /** Dopo quanti giorni una proposta non confermata scade. */
 export const PROPOSAL_MAX_AGE_DAYS = 7;
 
@@ -48,11 +50,9 @@ export function proposalExpiry(
   return superseded ? "superseded" : null;
 }
 
-export const PROPOSAL_EXPIRY_TEXT: Record<ProposalExpiry, string> = {
-  too_old: `Proposta scaduta: non è stata confermata entro ${PROPOSAL_MAX_AGE_DAYS} giorni. Chiedi al coach di riproporla.`,
-  superseded: "Proposta superata da una più recente sugli stessi giorni.",
-  past: "Proposta scaduta: i giorni che toccava sono già passati.",
-};
+/** Spiegazione per l'utente di una proposta scaduta (`t` legato al namespace "labels"). */
+export const proposalExpiryText = (t: Translator, reason: ProposalExpiry): string =>
+  t(`expiry.${reason}`, { days: PROPOSAL_MAX_AGE_DAYS });
 
 /**
  * Stato da mostrare: "expired" al posto di "pending" quando la proposta è

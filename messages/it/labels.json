@@ -1,0 +1,133 @@
+{
+  "type": {
+    "unclassified": "Corsa",
+    "easy": "Easy",
+    "tempo": "Tempo",
+    "interval": "Ripetute",
+    "long": "Lungo",
+    "race": "Gara",
+    "recovery": "Recupero",
+    "cross": "Cross"
+  },
+  "sport": {
+    "running": "Corsa",
+    "cycling": "Bici",
+    "swimming": "Nuoto",
+    "strength": "Palestra",
+    "hiking": "Escursione",
+    "walking": "Camminata",
+    "soccer": "Calcio",
+    "beach_volley": "Beach volley",
+    "tennis": "Tennis",
+    "padel": "Padel",
+    "yoga": "Yoga",
+    "pilates": "Pilates",
+    "ski": "Sci",
+    "other": "Altro"
+  },
+  "tone": {
+    "sprint": "Sprint",
+    "hard": "Ripetute",
+    "tempo": "Continuo",
+    "moderate": "Medio",
+    "jog": "Jogging",
+    "easy": "Facile",
+    "walk": "Camminata"
+  },
+  "stepKind": {
+    "warmup": "Riscaldamento",
+    "work": "Tratto veloce",
+    "recovery": "Recupero",
+    "steady": "Corsa continua",
+    "cooldown": "Defaticamento"
+  },
+  "stepVariant": {
+    "sprint": "Sprint",
+    "jog": "Recupero corricchiando",
+    "walk": "Recupero camminando"
+  },
+  "step": {
+    "slowerThan": "più lento di {pace}",
+    "notFasterThan": "non più veloce di {pace}",
+    "byFeel": "a sensazione",
+    "walking": "camminando",
+    "jogging": "corricchiando",
+    "atPace": "a {pace}",
+    "allOut": "a tutta",
+    "heartRate": "(cuore {hr})"
+  },
+  "typeGuide": {
+    "easy": "Corsa facile: ritmo da chiacchierata, devi riuscire a parlare in frasi complete. Se il fiato si accorcia o il cuore sale oltre il limite, rallenta: andare piano qui è la cosa giusta.",
+    "recovery": "Corsa di recupero: ancora più piano di una easy. Serve solo a sciogliere le gambe dopo giorni impegnativi.",
+    "long": "Lungo: la corsa più lunga della settimana, sempre a ritmo facile. Conta il tempo passato sulle gambe, non la velocità.",
+    "tempo": "Tempo (soglia): ritmo «comodamente impegnativo», riesci a dire solo poche parole. Tienilo costante dall'inizio alla fine del tratto, senza partire forte.",
+    "interval": "Ripetute: tratti veloci alternati a recuperi. Corri ogni tratto veloce al passo indicato, poi recupera (camminando o corricchiando piano) per il tempo indicato e ripeti il blocco il numero di volte indicato. Punta a tenere lo stesso passo su tutte le ripetute: meglio la prima un filo più lenta che l'ultima in crisi.",
+    "race": "Gara o test: sforzo massimo che riesci a sostenere su tutta la distanza. Riscaldati bene prima e parti controllato.",
+    "cross": "Allenamento alternativo (es. palestra o altro sport): segui la durata indicata."
+  },
+  "adapt": {
+    "reason": {
+      "tired": {
+        "label": "Sono stanco",
+        "hint": "Sedute più facili e più corte"
+      },
+      "busy": {
+        "label": "Ho poco tempo",
+        "hint": "Sedute più brevi, stessa struttura"
+      },
+      "sick": {
+        "label": "Sono malato o ho un fastidio",
+        "hint": "Metto in pausa le sedute"
+      }
+    },
+    "duration": {
+      "d3": "3 giorni",
+      "d7": "1 settimana",
+      "d14": "2 settimane"
+    }
+  },
+  "expiry": {
+    "too_old": "Proposta scaduta: non è stata confermata entro {days} giorni. Chiedi al coach di riproporla.",
+    "superseded": "Proposta superata da una più recente sugli stessi giorni.",
+    "past": "Proposta scaduta: i giorni che toccava sono già passati."
+  },
+  "dayPart": {
+    "morning": "Mattina",
+    "afternoon": "Pomeriggio",
+    "evening": "Sera"
+  },
+  "placement": {
+    "afterPrevious": "Subito dopo la precedente"
+  },
+  "phase": {
+    "base": "Base",
+    "build": "Costruzione",
+    "peak": "Picco",
+    "taper": "Scarico"
+  },
+  "theme": {
+    "accent": {
+      "coral": "Arancio",
+      "amber": "Ambra",
+      "green": "Verde",
+      "blue": "Blu",
+      "violet": "Viola",
+      "pink": "Rosa"
+    },
+    "style": {
+      "warm": "Classico",
+      "night": "Notte",
+      "ocean": "Oceano",
+      "forest": "Foresta"
+    }
+  },
+  "price": {
+    "free": "gratis",
+    "perMillionTokens": "{input} / {output} per M token"
+  },
+  "share": {
+    "time": "Tempo",
+    "pace": "Passo",
+    "elevation": "Dislivello"
+  }
+}

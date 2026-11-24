@@ -1,15 +1,22 @@
 import type { MetadataRoute } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 
 const SHORTCUT_ICON = [{ src: "/icon-192x192.png", sizes: "192x192", type: "image/png" }];
 
-export default function manifest(): MetadataRoute.Manifest {
+/**
+ * Legge la lingua dalla richiesta (cookie, poi Accept-Language): il manifest
+ * diventa dinamico. Il browser può chiederlo senza cookie: allora vale la
+ * lingua del telefono.
+ */
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const [t, locale] = await Promise.all([getTranslations("status.manifest"), getLocale()]);
   return {
     // `id` stabile: l'installazione resta la stessa anche se cambia start_url.
     id: "/",
     name: "Zitto e Corri",
     short_name: "Zitto&Corri",
-    description: "Il tuo coach di corsa personale. Traccia, migliora, corri.",
-    lang: "it",
+    description: t("description"),
+    lang: locale,
     dir: "ltr",
     start_url: "/",
     scope: "/",
@@ -44,23 +51,23 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       {
-        name: "Nuova corsa",
-        short_name: "Nuova corsa",
-        description: "Registra o importa una corsa",
+        name: t("shortcuts.newRun.name"),
+        short_name: t("shortcuts.newRun.name"),
+        description: t("shortcuts.newRun.description"),
         url: "/activities/new",
         icons: SHORTCUT_ICON,
       },
       {
-        name: "Piano",
-        short_name: "Piano",
-        description: "Il piano di allenamento",
+        name: t("shortcuts.plan.name"),
+        short_name: t("shortcuts.plan.name"),
+        description: t("shortcuts.plan.description"),
         url: "/plan",
         icons: SHORTCUT_ICON,
       },
       {
-        name: "Coach",
-        short_name: "Coach",
-        description: "Chiedi al coach",
+        name: t("shortcuts.coach.name"),
+        short_name: t("shortcuts.coach.name"),
+        description: t("shortcuts.coach.description"),
         url: "/",
         icons: SHORTCUT_ICON,
       },

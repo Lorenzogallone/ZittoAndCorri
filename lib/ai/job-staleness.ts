@@ -1,6 +1,8 @@
 // Job AI rimasti "pending" per sempre (funzione scaduta, deploy a metà).
 // Funzioni pure, usate da server action, pagine e componenti client.
 
+import type { Translator } from "../../i18n/config.ts";
+
 /**
  * Oltre questo tempo dalla creazione un job ancora "pending" è scaduto: la
  * funzione che lo eseguiva è già stata fermata (maxDuration più lungo: 300 s)
@@ -8,7 +10,17 @@
  */
 export const STALE_AI_JOB_MS = 6 * 60_000;
 
+/** Testo scritto nel database (ai_jobs.error): resta italiano. Per la UI si passa da localizeAiJobError. */
 export const STALE_AI_JOB_ERROR = "Analisi interrotta. Riprova.";
+
+/**
+ * Errore di un job da mostrare all'utente: quello di "analisi interrotta",
+ * scritto in italiano nel database, si traduce; gli altri restano come sono.
+ * `t` è legato al namespace "status".
+ */
+export function localizeAiJobError<T extends string | null | undefined>(error: T, t: Translator): T | string {
+  return error === STALE_AI_JOB_ERROR ? t("aiJob.stale") : error;
+}
 
 export interface AiJobLike {
   status: string;

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { Check, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
@@ -15,8 +16,8 @@ import { updateWorkoutStatus } from "../actions";
 import { DeleteWorkoutButton } from "./delete-workout-button";
 import { MarkDoneButton } from "./mark-done-button";
 import { activeDuration, formatDistance, formatDuration, formatPace } from "@/lib/format";
-import { TYPE_LABELS } from "@/lib/activity-meta";
-import { WORKOUT_TYPE_GUIDE, workoutHeadline } from "@/lib/workout-guide";
+import { typeLabel } from "@/lib/activity-meta";
+import { workoutTypeGuide, workoutHeadline } from "@/lib/workout-guide";
 import { workoutStepsOrLegacy } from "@/lib/workout-steps";
 import { estimateWorkout } from "@/lib/workout-estimate";
 import { plannedMeters } from "@/lib/plan/planned-distance";
@@ -31,10 +32,12 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-const kmText = (meters: number) => `${(meters / 1000).toLocaleString("it-IT", { maximumFractionDigits: 1 })} km`;
+const kmText = (meters: number, locale: Locale) => `${(meters / 1000).toLocaleString(intlLocale(locale), { maximumFractionDigits: 1 })} km`;
 
 export default async function PlannedWorkoutPage({ params }: Props) {
   const t = await getTranslations("plan");
+  const tl = await getTranslations("labels");
+  const locale = (await getLocale()) as Locale;
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -83,7 +86,7 @@ export default async function PlannedWorkoutPage({ params }: Props) {
   const baseSteps = workoutStepsOrLegacy(workout.workout_steps, workout);
   const hot = heat && heat.pct > 0 ? heat : null;
   const steps = hot ? adjustStepsForHeat(baseSteps, hot.pct) : baseSteps;
-  const headline = workoutHeadline(steps);
+  const headline = workoutHeadline(steps, locale);
   const estimate = estimateWorkout(steps);
   const meters = plannedMeters({ ...workout, workout_steps: steps });
   const seconds = workout.target_duration_s ?? estimate.seconds;
@@ -123,7 +126,7 @@ export default async function PlannedWorkoutPage({ params }: Props) {
       if (goalTarget) {
         // Tempo obiettivo, ma con accanto il passo di partenza onesto della
         // previsione: lo stesso consiglio che si legge nel profilo.
-        const advice = reference ? goalRaceRange(reference, base, { distance_m: distance, target_time_s: goalTarget }, today).advice_text : undefined;
+        const advice = reference ? goalRaceRange(reference, base, { distance_m: distance, target_time_s: goalTarget }, today, await getTranslations("metrics"), locale).advice_text : undefined;
         race = { distance, target: goalTarget, source: "goal", advice };
       } else if (reference) {
         // Stima centrale della forbice: tiene conto di volume e lungo, non solo di Riegel.
@@ -135,7 +138,7 @@ export default async function PlannedWorkoutPage({ params }: Props) {
   }
 
   const summary = [
-    meters > 0 ? `${workout.target_distance_m ? "" : "≈ "}${kmText(meters)}` : null,
+    meters > 0 ? `${workout.target_distance_m ? "" : "≈ "}${kmText(meters, locale)}` : null,
     seconds ? `${Math.round(seconds / 60)} min` : null,
     workout.target_hr_bpm ? `♥ ≤ ${workout.target_hr_bpm}` : null,
   ].filter(Boolean).join(" · ");
@@ -149,11 +152,11 @@ export default async function PlannedWorkoutPage({ params }: Props) {
       <div className="contents lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:block">
       <header className="mb-5">
         <p className="text-sm text-muted-foreground">
-          <span className="capitalize">{relativeDayLabel(workout.date, today)}</span> · {TYPE_LABELS[workout.type]}
+          <span className="capitalize">{relativeDayLabel(workout.date, today, locale)}</span> · {typeLabel(tl, workout.type)}
           {workout.adapted_from && workout.status !== "skipped" && ` · ${t("detail.lightened")}`}
         </p>
         <h1 className="mt-1 text-3xl font-bold tracking-tight">
-          {headline ?? (meters > 0 ? kmText(meters) : TYPE_LABELS[workout.type])}
+          {headline ?? (meters > 0 ? kmText(meters, locale) : typeLabel(tl, workout.type))}
         </h1>
         {summary && <p className="mt-1 text-sm text-muted-foreground tabular-nums">{summary}</p>}
         {workout.status === "skipped" && <p className="mt-2 text-sm font-medium text-muted-foreground">{t("detail.paused")}</p>}
@@ -169,9 +172,9 @@ export default async function PlannedWorkoutPage({ params }: Props) {
         <Link href={`/activities/${doneActivity.id}`} className="pressable animate-enter mb-6 flex items-center gap-3 rounded-2xl bg-primary/[0.07] px-4 py-3">
           <span className="animate-pop flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground"><Check size={15} strokeWidth={3} /></span>
           <span className="min-w-0 flex-1 text-sm">
-            <span className="font-medium">{doneDay && doneDay !== workout.date ? t("detail.doneOn", { weekday: weekdayName(doneDay) }) : t("detail.done")}</span>
+            <span className="font-medium">{doneDay && doneDay !== workout.date ? t("detail.doneOn", { weekday: weekdayName(doneDay, locale) }) : t("detail.done")}</span>
             <span className="text-muted-foreground tabular-nums">
-              {" · "}{doneActivity.distance_m > 0 ? formatDistance(doneActivity.distance_m) : formatDuration(activeDuration(doneActivity))}
+              {" · "}{doneActivity.distance_m > 0 ? formatDistance(doneActivity.distance_m, locale) : formatDuration(activeDuration(doneActivity))}
               {doneActivity.avg_pace_s_km ? ` · ${formatPace(doneActivity.avg_pace_s_km)}` : ""}
             </span>
           </span>
@@ -202,17 +205,15 @@ export default async function PlannedWorkoutPage({ params }: Props) {
 
       {race && <RacePacingCard distance_m={race.distance} target_s={race.target} source={race.source} advice={race.advice} heatPct={hot?.pct ?? 0} />}
 
-      {WORKOUT_TYPE_GUIDE[workout.type] && (
-        <details className="group mb-8 text-sm">
-          <summary className="cursor-pointer list-none text-muted-foreground">
-            {t.rich("detail.typeGuide", {
-              type: TYPE_LABELS[workout.type].toLowerCase(),
-              read: (chunks) => <span className="text-primary">{chunks}</span>,
-            })}
-          </summary>
-          <p className="mt-2 leading-relaxed text-foreground/90">{WORKOUT_TYPE_GUIDE[workout.type]}</p>
-        </details>
-      )}
+      <details className="group mb-8 text-sm">
+        <summary className="cursor-pointer list-none text-muted-foreground">
+          {t.rich("detail.typeGuide", {
+            type: typeLabel(tl, workout.type).toLowerCase(),
+            read: (chunks) => <span className="text-primary">{chunks}</span>,
+          })}
+        </summary>
+        <p className="mt-2 leading-relaxed text-foreground/90">{workoutTypeGuide(tl, workout.type)}</p>
+      </details>
       </div>
 
       <div className="contents lg:col-start-2 lg:row-start-2 lg:block lg:self-start">

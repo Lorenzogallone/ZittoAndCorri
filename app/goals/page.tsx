@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
@@ -16,9 +17,9 @@ function weeksLeft(raceDate: string | null): number | null {
   return Math.max(0, Math.ceil(diff / (7 * 24 * 3600 * 1000)));
 }
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null, locale: Locale): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("it-IT", {
+  return new Date(iso).toLocaleDateString(intlLocale(locale), {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -28,9 +29,10 @@ function formatDate(iso: string | null): string {
 interface GoalCardProps {
   goal: Goal;
   isActive: boolean;
+  locale: Locale;
 }
 
-function GoalCard({ goal, isActive }: GoalCardProps) {
+function GoalCard({ goal, isActive, locale }: GoalCardProps) {
   const t = useTranslations("goals.card");
   const weeks = weeksLeft(goal.race_date);
   return (
@@ -46,8 +48,8 @@ function GoalCard({ goal, isActive }: GoalCardProps) {
       <h2 className="text-heading font-semibold pr-16">{goal.race_name}</h2>
 
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-        <span>{goal.race_date ? formatDate(goal.race_date) : t("general")}</span>
-        <span>{formatDistance(goal.distance_m)}</span>
+        <span>{goal.race_date ? formatDate(goal.race_date, locale) : t("general")}</span>
+        <span>{formatDistance(goal.distance_m, locale)}</span>
         {goal.target_time_s && (
           <span>{t("target", { time: formatDuration(goal.target_time_s) })}</span>
         )}
@@ -93,6 +95,7 @@ function GoalCard({ goal, isActive }: GoalCardProps) {
 
 export default async function GoalsPage() {
   const t = await getTranslations("goals");
+  const locale = (await getLocale()) as Locale;
   const supabase = await createClient();
   const {
     data: { user },
@@ -140,7 +143,7 @@ export default async function GoalsPage() {
       {activeGoal && (
         <div className="mb-6">
           <p className="mb-2 px-1 text-caption font-medium text-muted-foreground">{t("list.active")}</p>
-          <GoalCard goal={activeGoal} isActive />
+          <GoalCard goal={activeGoal} isActive locale={locale} />
         </div>
       )}
 
@@ -151,7 +154,7 @@ export default async function GoalsPage() {
             <p className="px-1 text-caption font-medium text-muted-foreground">{t("list.others")}</p>
           )}
           {otherGoals.map((g) => (
-            <GoalCard key={g.id} goal={g} isActive={false} />
+            <GoalCard key={g.id} goal={g} isActive={false} locale={locale} />
           ))}
         </div>
       )}

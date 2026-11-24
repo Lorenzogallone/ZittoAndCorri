@@ -34,20 +34,20 @@ export const DEFAULT_PREFS: ThemePrefs = {
 };
 
 // ── Colori principali (accento / brand) ────────────────────────────────────
+// Nomi e descrizioni di colori e stili: namespace "labels" (theme.accent.*, theme.style.*).
 export interface AccentDef {
-  label: string;
   /** Valore oklch del brand: usato per --primary, --ring, --brand, glow… */
   brand: string;
 }
 
 export const ACCENTS: Record<AccentKey, AccentDef> = {
   // La chiave "coral" resta per le preferenze salvate: ora è l'arancio del brand.
-  coral: { label: "Arancio", brand: "oklch(0.662 0.221 36.9)" },
-  amber: { label: "Ambra", brand: "oklch(0.72 0.15 70)" },
-  green: { label: "Verde", brand: "oklch(0.66 0.15 155)" },
-  blue: { label: "Blu", brand: "oklch(0.60 0.16 250)" },
-  violet: { label: "Viola", brand: "oklch(0.58 0.18 295)" },
-  pink: { label: "Rosa", brand: "oklch(0.65 0.2 355)" },
+  coral: { brand: "oklch(0.662 0.221 36.9)" },
+  amber: { brand: "oklch(0.72 0.15 70)" },
+  green: { brand: "oklch(0.66 0.15 155)" },
+  blue: { brand: "oklch(0.60 0.16 250)" },
+  violet: { brand: "oklch(0.58 0.18 295)" },
+  pink: { brand: "oklch(0.65 0.2 355)" },
 };
 
 export const ACCENT_ORDER: AccentKey[] = [
@@ -154,8 +154,6 @@ function neutrals(
 }
 
 export interface StyleDef {
-  label: string;
-  description: string;
   /** Variabili neutre per chiaro/scuro, oppure null = usa il CSS (warm). */
   vars: { light: Record<string, string>; dark: Record<string, string> } | null;
   /** Colori di anteprima per la UI delle impostazioni (bg, card). */
@@ -165,26 +163,18 @@ export interface StyleDef {
 export const STYLES: Record<StyleKey, StyleDef> = {
   // La chiave "warm" resta per compatibilità con le preferenze salvate.
   warm: {
-    label: "Classico",
-    description: "Bianco e grigio, come le app sportive.",
     vars: null,
     preview: { light: "oklch(0.977 0.004 286)", dark: "oklch(0.175 0 0)" },
   },
   night: {
-    label: "Notte",
-    description: "Grigio freddo.",
     vars: { light: neutrals(280, 0.008, false), dark: neutrals(280, 0.016, true) },
     preview: { light: "oklch(0.97 0.01 280)", dark: "oklch(0.14 0.02 280)" },
   },
   ocean: {
-    label: "Oceano",
-    description: "Grigio-blu.",
     vars: { light: neutrals(240, 0.012, false), dark: neutrals(240, 0.026, true) },
     preview: { light: "oklch(0.97 0.014 240)", dark: "oklch(0.14 0.03 240)" },
   },
   forest: {
-    label: "Foresta",
-    description: "Verde salvia.",
     vars: { light: neutrals(155, 0.012, false), dark: neutrals(155, 0.02, true) },
     preview: { light: "oklch(0.97 0.014 155)", dark: "oklch(0.14 0.024 155)" },
   },

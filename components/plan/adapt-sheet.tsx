@@ -3,20 +3,23 @@
 import { useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { BatteryLow, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { adaptPlan } from "@/app/plan/actions";
-import { ADAPT_DURATIONS, ADAPT_REASONS, type AdaptReason } from "@/lib/plan/adapt";
+import { ADAPT_DURATIONS, ADAPT_REASON_KEYS, adaptDurationLabel, adaptReasonText, type AdaptReason } from "@/lib/plan/adapt";
 
-function untilLabel(iso: string): string {
-  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+function untilLabel(iso: string, locale: Locale): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 }
 
 /** "Non mi sento al 100%": motivo + durata, poi il piano si adatta da solo. */
 export function AdaptSheet({ variant = "header" }: { variant?: "header" | "inline" }) {
   const t = useTranslations("plan.adapt");
+  const tl = useTranslations("labels");
+  const locale = useLocale() as Locale;
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<AdaptReason | null>(null);
@@ -40,7 +43,7 @@ export function AdaptSheet({ variant = "header" }: { variant?: "header" | "inlin
       if (response.error) return setError(response.error);
       setResult(
         response.count
-          ? t("result", { count: response.count, date: untilLabel(response.until!) })
+          ? t("result", { count: response.count, date: untilLabel(response.until!, locale) })
           : t("resultNone"),
       );
       router.refresh();
@@ -90,7 +93,7 @@ export function AdaptSheet({ variant = "header" }: { variant?: "header" | "inlin
             ) : (
               <>
                 <div className="flex flex-col gap-2">
-                  {(Object.keys(ADAPT_REASONS) as AdaptReason[]).map((key) => (
+                  {ADAPT_REASON_KEYS.map((key) => (
                     <button
                       key={key}
                       type="button"
@@ -101,8 +104,8 @@ export function AdaptSheet({ variant = "header" }: { variant?: "header" | "inlin
                       )}
                       aria-pressed={reason === key}
                     >
-                      <p className="text-sm font-medium">{ADAPT_REASONS[key].label}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{ADAPT_REASONS[key].hint}</p>
+                      <p className="text-sm font-medium">{adaptReasonText(tl, key).label}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{adaptReasonText(tl, key).hint}</p>
                     </button>
                   ))}
                 </div>
@@ -120,7 +123,7 @@ export function AdaptSheet({ variant = "header" }: { variant?: "header" | "inlin
                       )}
                       aria-pressed={days === option.days}
                     >
-                      {option.label}
+                      {adaptDurationLabel(tl, option.days)}
                     </button>
                   ))}
                 </div>

@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale, type Translator } from "@/i18n/config";
 import { useSearchParams } from "next/navigation";
 import { CircleAlert, Check, LoaderCircle, Maximize2, Minimize2, RotateCw, Send, Sparkles, SquarePen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,37 +17,41 @@ import { useRefreshWhile } from "@/lib/use-app-refresh";
 import type { AiJobStatus } from "@/app/actions/ai-jobs";
 import { applyPlanProposal, rejectPlanProposal, retryCoachMessage, sendCoachMessage, startNewCoachChat, type CoachActionResult } from "@/app/coach/actions";
 import { isSessionMarker, splitSessions } from "@/lib/coach-session";
-import { TYPE_LABELS } from "@/lib/activity-meta";
+import { typeLabel } from "@/lib/activity-meta";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
 import type { CoachMessage, PlanProposal, ProposedWorkout } from "@/lib/types";
 import type { WorkoutBrief } from "@/lib/plan/proposal-diff";
-import { DAY_PART_LABELS } from "@/lib/plan/day-sessions";
+import { dayPartLabel } from "@/lib/plan/day-sessions";
 import { WorkoutSteps } from "@/components/workout-steps";
 import { AiModelLine, type AiSwitchState } from "@/components/ai-provider-switch";
 import { workoutHeadline } from "@/lib/workout-guide";
 import { AiCost } from "@/components/ai-cost";
 import { readUsage } from "@/lib/ai/usage";
 import { markSendError, sendErrorOf } from "@/lib/coach-failures";
-import { PROPOSAL_EXPIRY_TEXT, withProposalExpiry } from "@/lib/plan/proposal-expiry";
+import { proposalExpiryText, withProposalExpiry } from "@/lib/plan/proposal-expiry";
 import { romeDay } from "@/lib/local-date";
 
-const dayLabel = (iso: string) =>
-  new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", timeZone: "UTC" });
+const dayLabel = (iso: string, locale: Locale) =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { weekday: "short", day: "numeric", timeZone: "UTC" });
 
-function briefText(brief: WorkoutBrief): string {
-  const amount = brief.headline ?? (brief.meters ? formatDistance(brief.meters).replace(",00", "") : brief.minutes ? `${brief.minutes} min` : null);
-  const part = brief.day_part && !brief.chained ? DAY_PART_LABELS[brief.day_part].toLowerCase() : null;
-  return [TYPE_LABELS[brief.type], amount, part].filter(Boolean).join(" · ");
+/** "10 km" se tondi, altrimenti "8,50 km" (it) / "8.50 km" (en). */
+const briefDistance = (meters: number, locale: Locale) =>
+  Math.round(meters / 10) % 100 === 0 ? `${Math.round(meters / 1000)} km` : formatDistance(meters, locale);
+
+function briefText(brief: WorkoutBrief, tl: Translator, locale: Locale): string {
+  const amount = brief.headline ?? (brief.meters ? briefDistance(brief.meters, locale) : brief.minutes ? `${brief.minutes} min` : null);
+  const part = brief.day_part && !brief.chained ? dayPartLabel(tl, brief.day_part).toLowerCase() : null;
+  return [typeLabel(tl, brief.type), amount, part].filter(Boolean).join(" · ");
 }
 
 /** Sedute di un giorno: quelle concatenate (un'unica uscita) unite da "+". */
-function briefsText(briefs: WorkoutBrief[]): string {
+function briefsText(briefs: WorkoutBrief[], tl: Translator, locale: Locale): string {
   return briefs.reduce((text, brief, index) =>
-    index === 0 ? briefText(brief) : `${text}${brief.chained ? " + " : ", "}${briefText(brief)}`, "");
+    index === 0 ? briefText(brief, tl, locale) : `${text}${brief.chained ? " + " : ", "}${briefText(brief, tl, locale)}`, "");
 }
 
-const messageTime = (iso: string) =>
-  new Date(iso).toLocaleString("it-IT", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const messageTime = (iso: string, locale: Locale) =>
+  new Date(iso).toLocaleString(intlLocale(locale), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 /**
  * Data e costo sotto il messaggio: sotto la domanda il costo del prompt (tutto
@@ -54,7 +59,8 @@ const messageTime = (iso: string) =>
  * dettaglio. Analisi e riepiloghi, senza domanda, mostrano il totale.
  */
 function MessageFooter({ item, replyUsage }: { item: CoachMessage; replyUsage: ReturnType<typeof readUsage> }) {
-  const time = messageTime(item.created_at);
+  const locale = useLocale() as Locale;
+  const time = messageTime(item.created_at, locale);
   const own = item.role === "assistant" ? readUsage(item.metadata?.ai_usage) : null;
   const usage = item.role === "user" ? replyUsage : own;
   if (!usage) {
@@ -64,27 +70,29 @@ function MessageFooter({ item, replyUsage }: { item: CoachMessage; replyUsage: R
   return <AiCost usage={usage} part={part} prefix={time} className={cn("mt-1", item.role === "user" && "text-right")} />;
 }
 
-const statusText = (proposal: PlanProposal, t: ReturnType<typeof useTranslations<"coach.chat">>) => proposal.status === "expired"
-  ? PROPOSAL_EXPIRY_TEXT[proposal.expired_reason ?? "too_old"]
+const statusText = (proposal: PlanProposal, t: ReturnType<typeof useTranslations<"coach.chat">>, tl: Translator) => proposal.status === "expired"
+  ? proposalExpiryText(tl, proposal.expired_reason ?? "too_old")
   // Il testo di ogni stato è in messages/it/coach.json (chat.proposalStatus.*).
   : t(`proposalStatus.${proposal.status as "applied" | "rejected" | "stale"}`);
 
 /** Prima/dopo giorno per giorno: si vede subito cosa cambia e cosa no. */
 function ChangeList({ proposal }: { proposal: PlanProposal }) {
   const t = useTranslations("coach.chat");
+  const tl = useTranslations("labels");
+  const locale = useLocale() as Locale;
   const changes = proposal.changes ?? [];
   if (!changes.length) return null;
   return (
     <ul className="divide-y divide-border/50">
       {changes.map((change) => (
         <li key={change.date} className="flex items-baseline gap-3 px-4 py-2.5 text-xs">
-          <span className="w-12 shrink-0 font-semibold capitalize">{dayLabel(change.date)}</span>
+          <span className="w-12 shrink-0 font-semibold capitalize">{dayLabel(change.date, locale)}</span>
           <span className="min-w-0 flex-1">
             {change.before.length > 0 && (
-              <span className="text-muted-foreground line-through decoration-muted-foreground/60">{briefsText(change.before)}</span>
+              <span className="text-muted-foreground line-through decoration-muted-foreground/60">{briefsText(change.before, tl, locale)}</span>
             )}
             {change.before.length > 0 && <span className="px-1.5 text-muted-foreground">→</span>}
-            <span className="font-medium">{change.after.length ? briefsText(change.after) : t("rest")}</span>
+            <span className="font-medium">{change.after.length ? briefsText(change.after, tl, locale) : t("rest")}</span>
           </span>
         </li>
       ))}
@@ -94,15 +102,17 @@ function ChangeList({ proposal }: { proposal: PlanProposal }) {
 
 function WorkoutDetails({ workout }: { workout: ProposedWorkout }) {
   const t = useTranslations("coach.chat");
+  const tl = useTranslations("labels");
+  const locale = useLocale() as Locale;
   return (
     <div className="px-4 py-3 text-xs">
       <div className="flex items-center justify-between gap-3">
-        <span className="font-semibold capitalize">{dayLabel(workout.date)}</span>
-        <span className="text-primary">{TYPE_LABELS[workout.type]}</span>
+        <span className="font-semibold capitalize">{dayLabel(workout.date, locale)}</span>
+        <span className="text-primary">{typeLabel(tl, workout.type)}</span>
       </div>
       <p className="mt-1 text-muted-foreground">{[
-        workoutHeadline(workout.workout_steps ?? []),
-        workout.target_distance_m ? formatDistance(workout.target_distance_m) : null,
+        workoutHeadline(workout.workout_steps ?? [], locale),
+        workout.target_distance_m ? formatDistance(workout.target_distance_m, locale) : null,
         workout.target_duration_s ? formatDuration(workout.target_duration_s) : null,
         workout.target_pace_s_km ? formatPace(workout.target_pace_s_km) : null,
         workout.target_hr_bpm ? t("hrCap", { bpm: workout.target_hr_bpm }) : null,
@@ -128,10 +138,11 @@ function WorkoutDetails({ workout }: { workout: ProposedWorkout }) {
 
 function ProposalCard({ proposal, onStatusChange }: { proposal: PlanProposal; onStatusChange: (status: PlanProposal["status"]) => void }) {
   const t = useTranslations("coach.chat");
+  const tl = useTranslations("labels");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (proposal.status !== "pending") {
-    return <p className="mt-3 text-xs text-muted-foreground">{statusText(proposal, t)}</p>;
+    return <p className="mt-3 text-xs text-muted-foreground">{statusText(proposal, t, tl)}</p>;
   }
 
   async function decide(apply: boolean) {
@@ -210,10 +221,11 @@ function useVisibleViewport() {
 
 function SessionDivider({ item }: { item: CoachMessage }) {
   const t = useTranslations("coach.chat");
+  const locale = useLocale() as Locale;
   return (
     <div className="flex items-center gap-3 py-1 text-micro font-medium text-muted-foreground" role="separator">
       <span className="h-px flex-1 bg-border" />
-      {t("newChatDivider", { time: messageTime(item.created_at) })}
+      {t("newChatDivider", { time: messageTime(item.created_at, locale) })}
       <span className="h-px flex-1 bg-border" />
     </div>
   );

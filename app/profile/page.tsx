@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import type { Locale } from "@/i18n/config";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeATLCTL } from "@/lib/metrics/load";
@@ -66,6 +67,8 @@ function lastWatchSync(zepp: Awaited<ReturnType<typeof getZeppDashboard>>): stri
 
 export default async function ProfilePage() {
   const t = await getTranslations("profile.page");
+  const tMetrics = await getTranslations("metrics");
+  const locale = (await getLocale()) as Locale;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -118,7 +121,7 @@ export default async function ProfilePage() {
   );
   const [zepp, trends] = await Promise.all([
     getZeppDashboard(supabase, user.id, load),
-    loadBodyTrends(supabase, user.id, today, load.series),
+    loadBodyTrends(supabase, user.id, today, load.series, tMetrics, locale),
   ]);
   // In evidenza: VO₂max, carico 7 giorni e sonno (media delle ultime 2
   // settimane, la stessa del confronto); il resto è nella vista Stato di forma.

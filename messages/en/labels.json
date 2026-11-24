@@ -1,0 +1,133 @@
+{
+  "type": {
+    "unclassified": "Run",
+    "easy": "Easy",
+    "tempo": "Tempo",
+    "interval": "Intervals",
+    "long": "Long run",
+    "race": "Race",
+    "recovery": "Recovery",
+    "cross": "Cross"
+  },
+  "sport": {
+    "running": "Run",
+    "cycling": "Bike",
+    "swimming": "Swim",
+    "strength": "Gym",
+    "hiking": "Hike",
+    "walking": "Walk",
+    "soccer": "Football",
+    "beach_volley": "Beach volleyball",
+    "tennis": "Tennis",
+    "padel": "Padel",
+    "yoga": "Yoga",
+    "pilates": "Pilates",
+    "ski": "Skiing",
+    "other": "Other"
+  },
+  "tone": {
+    "sprint": "Sprint",
+    "hard": "Intervals",
+    "tempo": "Continuous",
+    "moderate": "Steady",
+    "jog": "Jog",
+    "easy": "Easy",
+    "walk": "Walk"
+  },
+  "stepKind": {
+    "warmup": "Warm-up",
+    "work": "Fast rep",
+    "recovery": "Recovery",
+    "steady": "Continuous run",
+    "cooldown": "Cool-down"
+  },
+  "stepVariant": {
+    "sprint": "Sprint",
+    "jog": "Jog recovery",
+    "walk": "Walk recovery"
+  },
+  "step": {
+    "slowerThan": "slower than {pace}",
+    "notFasterThan": "no faster than {pace}",
+    "byFeel": "by feel",
+    "walking": "walking",
+    "jogging": "jogging",
+    "atPace": "at {pace}",
+    "allOut": "all out",
+    "heartRate": "(HR {hr})"
+  },
+  "typeGuide": {
+    "easy": "Easy run: conversational pace, you should be able to speak in full sentences. If your breathing gets short or your heart rate goes past the limit, slow down: going slow here is the right call.",
+    "recovery": "Recovery run: even slower than an easy run. It only loosens your legs after hard days.",
+    "long": "Long run: the longest run of the week, always at an easy pace. What counts is the time on your feet, not the speed.",
+    "tempo": "Tempo (threshold): a “comfortably hard” pace, you can only say a few words. Keep it steady from the start to the end of the segment, without starting too fast.",
+    "interval": "Intervals: fast reps alternated with recoveries. Run each fast rep at the pace shown, then recover (walking or jogging slowly) for the time shown and repeat the block as many times as shown. Aim to hold the same pace on every rep: better a slightly slower first one than a last one that falls apart.",
+    "race": "Race or test: the maximum effort you can sustain over the whole distance. Warm up well beforehand and start under control.",
+    "cross": "Cross-training (e.g. gym or another sport): follow the duration shown."
+  },
+  "adapt": {
+    "reason": {
+      "tired": {
+        "label": "I'm tired",
+        "hint": "Easier, shorter sessions"
+      },
+      "busy": {
+        "label": "I'm short on time",
+        "hint": "Shorter sessions, same structure"
+      },
+      "sick": {
+        "label": "I'm sick or have a niggle",
+        "hint": "I'll pause your sessions"
+      }
+    },
+    "duration": {
+      "d3": "3 days",
+      "d7": "1 week",
+      "d14": "2 weeks"
+    }
+  },
+  "expiry": {
+    "too_old": "Proposal expired: it wasn't confirmed within {days} days. Ask the coach to propose it again.",
+    "superseded": "Proposal superseded by a newer one for the same days.",
+    "past": "Proposal expired: the days it covered have already passed."
+  },
+  "dayPart": {
+    "morning": "Morning",
+    "afternoon": "Afternoon",
+    "evening": "Evening"
+  },
+  "placement": {
+    "afterPrevious": "Right after the previous one"
+  },
+  "phase": {
+    "base": "Base",
+    "build": "Build",
+    "peak": "Peak",
+    "taper": "Taper"
+  },
+  "theme": {
+    "accent": {
+      "coral": "Orange",
+      "amber": "Amber",
+      "green": "Green",
+      "blue": "Blue",
+      "violet": "Purple",
+      "pink": "Pink"
+    },
+    "style": {
+      "warm": "Classic",
+      "night": "Night",
+      "ocean": "Ocean",
+      "forest": "Forest"
+    }
+  },
+  "price": {
+    "free": "free",
+    "perMillionTokens": "{input} / {output} per M tokens"
+  },
+  "share": {
+    "time": "Time",
+    "pace": "Pace",
+    "elevation": "Elevation"
+  }
+}

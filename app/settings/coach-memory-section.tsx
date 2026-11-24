@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,8 +21,8 @@ const CATEGORIES: CoachMemoryCategory[] = [
   "fatigue", "limitation", "pace_hr", "long_term",
 ];
 
-function shortDate(iso: string): string {
-  return new Date(`${iso}T12:00:00`).toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" });
+function shortDate(iso: string, locale: Locale): string {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "short", year: "numeric" });
 }
 
 function todayIso(): string {
@@ -141,6 +142,7 @@ function MemoryEditor({
 export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
   const router = useRouter();
   const t = useTranslations("settingsLinks.memory");
+  const locale = useLocale() as Locale;
   const [pending, setPending] = useState(false);
   // Id del ricordo aperto in modifica, "new" per uno nuovo.
   const [editing, setEditing] = useState<string | null>(null);
@@ -206,8 +208,8 @@ export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
                     <p className="text-micro font-medium uppercase tracking-wide text-muted-foreground">
                       {t.has(`categories.${memory.category}`) ? t(`categories.${memory.category}`) : memory.category}
                       {memory.valid_until && (expired(memory)
-                        ? ` · ${t("expiredOn", { date: shortDate(memory.valid_until) })}`
-                        : ` · ${t("validUntil", { date: shortDate(memory.valid_until) })}`)}
+                        ? ` · ${t("expiredOn", { date: shortDate(memory.valid_until, locale) })}`
+                        : ` · ${t("validUntil", { date: shortDate(memory.valid_until, locale) })}`)}
                     </p>
                     <p className="mt-0.5 text-sm leading-relaxed">{memory.content}</p>
                   </div>

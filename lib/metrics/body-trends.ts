@@ -1,7 +1,10 @@
 // Funzioni pure: come cambia il corpo nel tempo, dai dati dell'orologio
 // (Zepp e Intervals.icu) e dalle corse. Una serie per metrica, un confronto
 // tra le ultime 2 settimane e lo stesso periodo di 4 settimane prima, e una
-// frase breve su cosa migliora o peggiora.
+// frase breve su cosa migliora o peggiora. I testi (etichette, frasi,
+// spiegazioni) vengono da messages/<lingua>/metrics.json (chiavi body.*).
+
+import { DEFAULT_LOCALE, intlLocale, type Locale, type Translator } from "../../i18n/config.ts";
 
 export interface DayValue {
   date: string;
@@ -41,9 +44,9 @@ export interface MetricTrend {
   sentence: string;
 }
 
-/** Il valore come lo si legge: «44», «7h 20′», «1,18». */
-export function formatMetric(key: BodyMetricKey, value: number): string {
-  return BODY_METRICS[key].format(value);
+/** Il valore come lo si legge: «44», «7h 20′», «1,18» (it) / «1.18» (en). */
+export function formatMetric(key: BodyMetricKey, value: number, locale: Locale = DEFAULT_LOCALE): string {
+  return BODY_METRICS[key].format(value, locale);
 }
 
 /** Riga giornaliera di zepp_daily_metrics (solo i campi che servono qui). */
@@ -103,7 +106,6 @@ export interface LoadPoint {
 type Better = "up" | "down" | "none";
 
 interface MetricSpec {
-  label: string;
   unit?: string;
   better: Better;
   /** Sotto questa differenza (assoluta, o relativa se `relative`) è stabile. */
@@ -111,19 +113,21 @@ interface MetricSpec {
   relative?: boolean;
   /** Punti minimi in ciascuna finestra per dire qualcosa. */
   minPoints: number;
-  format: (value: number) => string;
-  /** Cosa vuol dire se migliora / peggiora. */
-  good?: string;
-  bad?: string;
-  /** Cos'è e cosa indica, in due righe. */
-  about: string;
-  /** Cosa è il numero grande, se non è un dato giornaliero. */
-  latestLabel?: string;
+  format: (value: number, locale: Locale) => string;
+  /**
+   * Testi in messages (metrics.body.<chiave>): label e about ci sono sempre.
+   * Qui solo quali sono presenti degli altri: cosa vuol dire se migliora
+   * (good) / peggiora (bad), e come si chiama il numero grande quando non è
+   * un dato giornaliero (latest).
+   */
+  good?: true;
+  bad?: true;
+  latest?: true;
 }
 
-const decimal = (digits: number) => (value: number) =>
-  value.toLocaleString("it-IT", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-const integer = (value: number) => Math.round(value).toLocaleString("it-IT");
+const decimal = (digits: number) => (value: number, locale: Locale) =>
+  value.toLocaleString(intlLocale(locale), { minimumFractionDigits: digits, maximumFractionDigits: digits });
+const integer = (value: number, locale: Locale) => Math.round(value).toLocaleString(intlLocale(locale));
 
 export function formatMinutes(value: number): string {
   const minutes = Math.round(value);
@@ -132,75 +136,21 @@ export function formatMinutes(value: number): string {
 }
 
 export const BODY_METRICS: Record<BodyMetricKey, MetricSpec> = {
-  vo2max: {
-    label: "VO₂max", better: "up", stable: 0.5, minPoints: 1, format: (v) => decimal(Number.isInteger(v) ? 0 : 1)(v),
-    good: "il motore aerobico cresce", bad: "spesso segue settimane con meno corsa o più fatica",
-    about: "Stima dell'orologio di quanto ossigeno riesci a usare al massimo sforzo (ml per kg al minuto). Più è alto, più è grande il motore aerobico. Cambia lentamente: conta l'andamento su settimane.",
-  },
-  fitness: {
-    label: "Forma (CTL)", better: "up", stable: 0.06, relative: true, minPoints: 1, format: integer,
-    good: "stai costruendo allenamento", bad: "stai facendo meno di prima",
-    about: "Media del carico di allenamento delle ultime 6 settimane. Sale se ti alleni con costanza, scende quando fai meno.",
-  },
-  load7: {
-    label: "Carico 7 giorni", better: "none", stable: 0.12, relative: true, minPoints: 1, format: integer,
-    about: "Somma del carico degli ultimi 7 giorni, da durata e intensità delle attività.",
-  },
-  sleep: {
-    label: "Sonno", better: "up", stable: 12, minPoints: 3, format: formatMinutes,
-    good: "più ore per recuperare", bad: "meno ore per recuperare",
-    about: "Ore dormite a notte secondo l'orologio. È il primo mattone del recupero dagli allenamenti.",
-  },
-  sleepDeep: {
-    label: "Sonno profondo", better: "up", stable: 6, minPoints: 3, format: formatMinutes,
-    good: "recupero fisico migliore", bad: "recupero fisico più corto",
-    about: "Minuti di sonno profondo: la fase in cui il corpo ripara muscoli e tessuti.",
-  },
-  sleepScore: {
-    label: "Punteggio sonno", better: "up", stable: 3, minPoints: 3, format: integer,
-    about: "Voto dell'orologio alla notte (0–100): mette insieme durata, fasi e risvegli.",
-  },
-  restingHr: {
-    label: "FC a riposo", unit: "bpm", better: "down", stable: 1, minPoints: 3, format: integer,
-    good: "segno di adattamento", bad: "può voler dire fatica, stress o un malanno in arrivo",
-    about: "Battiti al minuto a riposo, misurati di notte. Scende quando il cuore si allena; qualche battito in più per diversi giorni è un segnale di fatica, stress o malanno.",
-  },
-  hrv: {
-    label: "HRV", unit: "ms", better: "up", stable: 0.05, relative: true, minPoints: 3, format: integer,
-    good: "il sistema nervoso recupera bene", bad: "recupero più faticoso",
-    about: "Variabilità tra un battito e l'altro, misurata di notte. Più è alta rispetto ai tuoi valori soliti, meglio stai recuperando. Conta l'andamento, non il singolo numero.",
-  },
-  stress: {
-    label: "Stress", better: "down", stable: 3, minPoints: 3, format: integer,
-    good: "giornate più tranquille", bad: "giornate più cariche",
-    about: "Stress medio della giornata (0–100), stimato dall'orologio da battito e variabilità.",
-  },
-  spo2: {
-    label: "SpO₂", unit: "%", better: "up", stable: 0.6, minPoints: 3, format: integer,
-    about: "Ossigeno nel sangue misurato dall'orologio. Di norma tra 95 e 100%: conta solo se scende parecchio.",
-  },
-  efficiency: {
-    label: "Metri per battito", better: "up", stable: 0.025, relative: true, minPoints: 2, format: decimal(2),
-    good: "corri più veloce a parità di cuore", bad: "a parità di cuore corri più piano (caldo e fatica pesano)",
-    about: "Quanti metri percorri per ogni battito nelle corse facili: velocità (metri al minuto) divisa per la FC media. Se sale, con gli stessi battiti vai più veloce: il fiato migliora. Ripetute, test e soglie non contano; caldo e salite lo abbassano.",
-    latestLabel: "Ultima corsa facile",
-  },
-  steps: {
-    label: "Passi", better: "none", stable: 0.1, relative: true, minPoints: 3, format: integer,
-    about: "Passi della giornata, corsa compresa.",
-  },
-  pai: {
-    label: "PAI", better: "up", stable: 5, minPoints: 2, format: integer,
-    about: "Punteggio Zepp dell'attività degli ultimi 7 giorni, pesata sul battito. Da 100 in su è il livello consigliato per la salute.",
-  },
-  watchLoad: {
-    label: "Carico dell'orologio", better: "none", stable: 0.12, relative: true, minPoints: 1, format: integer,
-    about: "Carico di allenamento calcolato dall'orologio Zepp sugli ultimi 7 giorni.",
-  },
-  weight: {
-    label: "Peso", unit: "kg", better: "none", stable: 0.5, minPoints: 2, format: decimal(1),
-    about: "Peso registrato su Intervals.icu.",
-  },
+  vo2max: { better: "up", stable: 0.5, minPoints: 1, format: (v, locale) => decimal(Number.isInteger(v) ? 0 : 1)(v, locale), good: true, bad: true },
+  fitness: { better: "up", stable: 0.06, relative: true, minPoints: 1, format: integer, good: true, bad: true },
+  load7: { better: "none", stable: 0.12, relative: true, minPoints: 1, format: integer },
+  sleep: { better: "up", stable: 12, minPoints: 3, format: formatMinutes, good: true, bad: true },
+  sleepDeep: { better: "up", stable: 6, minPoints: 3, format: formatMinutes, good: true, bad: true },
+  sleepScore: { better: "up", stable: 3, minPoints: 3, format: integer },
+  restingHr: { unit: "bpm", better: "down", stable: 1, minPoints: 3, format: integer, good: true, bad: true },
+  hrv: { unit: "ms", better: "up", stable: 0.05, relative: true, minPoints: 3, format: integer, good: true, bad: true },
+  stress: { better: "down", stable: 3, minPoints: 3, format: integer, good: true, bad: true },
+  spo2: { unit: "%", better: "up", stable: 0.6, minPoints: 3, format: integer },
+  efficiency: { better: "up", stable: 0.025, relative: true, minPoints: 2, format: decimal(2), good: true, bad: true, latest: true },
+  steps: { better: "none", stable: 0.1, relative: true, minPoints: 3, format: integer },
+  pai: { better: "up", stable: 5, minPoints: 2, format: integer },
+  watchLoad: { better: "none", stable: 0.12, relative: true, minPoints: 1, format: integer },
+  weight: { unit: "kg", better: "none", stable: 0.5, minPoints: 2, format: decimal(1) },
 };
 
 const DAY_MS = 86_400_000;
@@ -221,7 +171,7 @@ function valid(value: number | null | undefined, min: number, max: number): numb
  * Confronta le ultime 2 settimane con le 2 settimane di 4 settimane prima
  * (giorni 28–41 prima di oggi) e scrive la frase.
  */
-export function trendFor(key: BodyMetricKey, series: DayValue[], today: string): MetricTrend {
+export function trendFor(key: BodyMetricKey, series: DayValue[], today: string, t: Translator, locale: Locale): MetricTrend {
   const spec = BODY_METRICS[key];
   const sorted = [...series].sort((a, b) => a.date.localeCompare(b.date));
   const end = dayIndex(today);
@@ -248,38 +198,48 @@ export function trendFor(key: BodyMetricKey, series: DayValue[], today: string):
 
   return {
     key,
-    label: spec.label,
+    label: t(`body.${key}.label`),
     unit: spec.unit,
     series: sorted,
     latest,
     recent,
     previous,
     direction,
-    sentence: sentenceFor(spec, direction, recent, previous, latest),
+    sentence: sentenceFor(key, spec, direction, recent, previous, latest, t, locale),
   };
 }
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-function sentenceFor(spec: MetricSpec, direction: TrendDirection | null, recent: number | null, previous: number | null, latest: DayValue | null): string {
+function sentenceFor(
+  key: BodyMetricKey,
+  spec: MetricSpec,
+  direction: TrendDirection | null,
+  recent: number | null,
+  previous: number | null,
+  latest: DayValue | null,
+  t: Translator,
+  locale: Locale,
+): string {
   const unit = spec.unit ? ` ${spec.unit}` : "";
   // Le due medie confrontate, dette per esteso: il numero grande è l'ultimo dato, non una media.
   const range = recent != null && previous != null
-    ? `media delle ultime 2 settimane ${spec.format(recent)}${unit}, un mese fa ${spec.format(previous)}${unit}`
+    ? t("body.sentence.range", { recent: `${spec.format(recent, locale)}${unit}`, previous: `${spec.format(previous, locale)}${unit}` })
     : "";
+  const note = (kind: "good" | "bad") => (spec[kind] ? ` ${capitalize(t(`body.${key}.${kind}`))}.` : "");
   switch (direction) {
     case "better":
-      return `In miglioramento: ${range}.${spec.good ? ` ${capitalize(spec.good)}.` : ""}`;
+      return `${t("body.sentence.better", { range })}${note("good")}`;
     case "worse":
-      return `In peggioramento: ${range}.${spec.bad ? ` ${capitalize(spec.bad)}.` : ""}`;
+      return `${t("body.sentence.worse", { range })}${note("bad")}`;
     case "up":
-      return `In aumento: ${range}.`;
+      return t("body.sentence.up", { range });
     case "down":
-      return `In calo: ${range}.`;
+      return t("body.sentence.down", { range });
     case "stable":
-      return `Stabile: media delle ultime 2 settimane ${spec.format(recent!)}${unit}, come un mese fa.`;
+      return t("body.sentence.stable", { value: `${spec.format(recent!, locale)}${unit}` });
     default:
-      return latest ? "Servono ancora qualche settimana di dati per vedere un andamento." : "Nessun dato dall'orologio.";
+      return t(latest ? "body.sentence.notEnough" : "body.sentence.noData");
   }
 }
 
@@ -364,7 +324,7 @@ export interface BodyTrendsInput {
  * Tutte le metriche con almeno un dato. Per ogni giorno vale Zepp (l'app
  * sull'orologio) e, dove manca, Intervals.icu; l'HRV arriva solo da Intervals.
  */
-export function bodyTrends({ today, zepp, wellness, runs, load }: BodyTrendsInput): Record<BodyMetricKey, MetricTrend> {
+export function bodyTrends({ today, zepp, wellness, runs, load }: BodyTrendsInput, t: Translator, locale: Locale): Record<BodyMetricKey, MetricTrend> {
   const byDate = new Map<string, { zepp?: ZeppDayInput; wellness?: WellnessDayInput }>();
   for (const row of zepp) byDate.set(row.date, { ...byDate.get(row.date), zepp: row });
   for (const row of wellness) byDate.set(row.date, { ...byDate.get(row.date), wellness: row });
@@ -399,6 +359,6 @@ export function bodyTrends({ today, zepp, wellness, runs, load }: BodyTrendsInpu
   };
 
   return Object.fromEntries(
-    (Object.keys(series) as BodyMetricKey[]).map((key) => [key, trendFor(key, series[key], today)]),
+    (Object.keys(series) as BodyMetricKey[]).map((key) => [key, trendFor(key, series[key], today, t, locale)]),
   ) as Record<BodyMetricKey, MetricTrend>;
 }

@@ -1,8 +1,9 @@
 "use server";
 
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import type { CoachMessage, Evaluation, PlanProposal } from "@/lib/types";
-import { isStaleAiJob, STALE_AI_JOB_ERROR } from "@/lib/ai/job-staleness";
+import { isStaleAiJob, localizeAiJobError, STALE_AI_JOB_ERROR } from "@/lib/ai/job-staleness";
 
 export type AiJobState = "pending" | "done" | "error" | "missing";
 
@@ -48,7 +49,8 @@ export async function pollAiJob(jobId: string): Promise<AiJobStatus> {
   if (!data) return { status: "missing" };
   // Pendente oltre il tempo massimo della funzione (anche per la chat): non
   // finirà più, il client mostra l'errore e il tasto per riprovare.
-  if (isStaleAiJob(data)) return { status: "error", error: data.error ?? STALE_AI_JOB_ERROR };
+  const t = await getTranslations("status");
+  if (isStaleAiJob(data)) return { status: "error", error: localizeAiJobError(data.error ?? STALE_AI_JOB_ERROR, t) };
   if (data.status === "done" && data.kind === "chat" && data.output_message_id) {
     const { data: message } = await supabase
       .from("coach_messages")
@@ -67,7 +69,7 @@ export async function pollAiJob(jobId: string): Promise<AiJobStatus> {
         : { data: null };
       return {
         status: data.status,
-        error: data.error,
+        error: localizeAiJobError(data.error, t),
         coachResult: { message, proposal: proposal ?? null },
       };
     }
@@ -84,7 +86,7 @@ export async function pollAiJob(jobId: string): Promise<AiJobStatus> {
     if (evaluation) {
       return {
         status: data.status,
-        error: data.error,
+        error: localizeAiJobError(data.error, t),
         evaluationResult: {
           summary: evaluation.summary,
           details: evaluation.details,
@@ -94,5 +96,5 @@ export async function pollAiJob(jobId: string): Promise<AiJobStatus> {
       };
     }
   }
-  return { status: data.status, error: data.error };
+  return { status: data.status, error: localizeAiJobError(data.error, t) };
 }

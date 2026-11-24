@@ -1,5 +1,6 @@
 import { Repeat } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import type { Locale } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 import type { WorkoutStepInput, WorkoutType } from "@/lib/types";
 import {
@@ -13,16 +14,18 @@ import { intensityTone } from "@/components/workout-graph";
 
 function StepRow({ step, type, compact }: { step: WorkoutStepInput; type?: WorkoutType | null; compact?: boolean }) {
   const t = useTranslations("plan.steps");
+  const tl = useTranslations("labels");
+  const locale = useLocale() as Locale;
   const tone = intensityTone(step, type);
-  const amount = formatStepAmount(step);
-  const pace = formatStepPace(step);
+  const amount = formatStepAmount(step, locale);
+  const pace = formatStepPace(tl, step);
   const hr = formatStepHr(step);
   return (
     <li className="flex gap-3">
       <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", tone.dot)} />
       <div className="min-w-0 flex-1">
         <p className={cn("text-micro font-semibold uppercase tracking-wide", tone.text)}>
-          {stepKindLabel(step)}
+          {stepKindLabel(tl, step)}
         </p>
         <p className={cn("font-medium leading-snug", compact ? "text-xs" : "text-sm")}>
           {amount && <span className="tabular-nums">{amount}</span>}

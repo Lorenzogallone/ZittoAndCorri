@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 import type { PaceCheck } from "@/lib/metrics/pace-check";
 
@@ -26,6 +27,7 @@ function deviationText(seconds: number, ok: string): string {
  */
 export function PaceHistory({ sessions }: { sessions: PaceSession[] }) {
   const t = useTranslations("profile.pace");
+  const locale = useLocale() as Locale;
   const ordered = [...sessions].reverse();
   const latest = sessions.slice(0, 3).map((session) => session.check.status);
   const trend = latest.length === 3 && latest.every((status) => status === latest[0]) && latest[0] !== "on_target"
@@ -39,7 +41,7 @@ export function PaceHistory({ sessions }: { sessions: PaceSession[] }) {
             <span className={cn("h-2.5 w-2.5 rounded-full", STATUS_TONE[session.check.status])} title={t(`status.${session.check.status}`)} />
             <span className="text-sm font-semibold tabular-nums">{deviationText(session.check.avg_deviation_s, t("deviationOk"))}</span>
             <span className="text-micro text-muted-foreground">
-              {new Date(session.started_at).toLocaleDateString("it-IT", { day: "numeric", month: "short" })}
+              {new Date(session.started_at).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "short" })}
             </span>
           </Link>
         ))}
