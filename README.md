@@ -86,8 +86,13 @@ Messages live in `messages/<language>/<area>.json`, one file per area, so areas
 can be translated independently. A new area must be added to `NAMESPACES` in
 `i18n/config.ts`; `tests/i18n.test.ts` checks that every language has the same
 keys and placeholders. `messages/GLOSSARY.md` lists the fixed running terms.
-Translated so far: onboarding. The other screens, the AI coach prompts, and
-date and number formats (still `it-IT`) are being converted area by area.
+All screens, date and number formats (`intlLocale()`: `it-IT` or `en-GB`) and
+the labels built in `lib/` follow the chosen language. The AI coach answers in
+that language through one language rule added to each prompt
+(`languageRule()` in `lib/ai/prompt.ts`); the instructions themselves stay in
+Italian. Still Italian: text already stored in the database (past coach
+messages, notes, memories), push notifications sent by cron jobs, and the text
+written into workouts published to the watch.
 
 ## First-run onboarding
 

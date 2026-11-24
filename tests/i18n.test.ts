@@ -59,3 +59,14 @@ test("i18n: la lingua si sceglie da cookie, poi da Accept-Language, poi italiano
   assert.equal(resolveLocale("fr", null), "it");
   assert.equal(resolveLocale(undefined, undefined), "it");
 });
+
+test("i18n: ogni prompt del coach riceve la regola di lingua, vuota in italiano", () => {
+  // lib/ai/prompt.ts importa con alias "@/": qui si verifica il sorgente.
+  const source = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
+  assert.match(source, /if \(locale === DEFAULT_LOCALE\) return "";/);
+  assert.equal((source.match(/languageRule\(locale\),/g) ?? []).length, 3);
+  for (const builder of ["buildEvaluationPrompt", "buildPlanPrompt", "buildCoachPrompt"]) {
+    const start = source.indexOf(`export function ${builder}`);
+    assert.ok(source.slice(start, start + 600).includes("locale: Locale = DEFAULT_LOCALE"), `${builder} senza locale`);
+  }
+});

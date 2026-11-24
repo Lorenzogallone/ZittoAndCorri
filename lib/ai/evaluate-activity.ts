@@ -21,6 +21,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isStaleAiJob, STALE_AI_JOB_ERROR } from "@/lib/ai/job-staleness";
 import { evaluationAfterIngest, type IngestOutcome } from "@/lib/ingest/enrichment";
 import { romeDay } from "@/lib/local-date";
+import { requestLocale } from "@/lib/ai/request-locale";
+import type { Locale } from "../../i18n/config.ts";
 import { staticTranslator } from "@/lib/static-translator";
 import { sortByDayOrder } from "@/lib/plan/day-sessions";
 
@@ -91,6 +93,7 @@ export async function enqueueActivityEvaluation(
   options: { notify?: boolean } = {},
 ): Promise<string | null> {
   const notify = options.notify !== false;
+  const locale = await requestLocale();
   const ai = await getAiConfig(userId, "analysis");
   if (!ai) return null;
   const admin = createAdminClient();
@@ -105,7 +108,7 @@ export async function enqueueActivityEvaluation(
   if (current) return current.id;
   const { data: job, error } = await admin.from("ai_jobs").insert({ user_id: userId, kind: "evaluation", ref_id: activityId, status: "pending" }).select("id").single<{ id: string }>();
   if (error || !job) throw error ?? new Error("Job non creato");
-  after(() => runActivityEvaluation(job.id, userId, activityId, ai, notify));
+  after(() => runActivityEvaluation(job.id, userId, activityId, ai, notify, locale));
   return job.id;
 }
 
@@ -170,6 +173,7 @@ async function runActivityEvaluation(
   activityId: string,
   ai: AiConfig,
   notify: boolean,
+  locale: Locale,
 ) {
   const admin = createAdminClient();
   try {
@@ -263,6 +267,7 @@ async function runActivityEvaluation(
         detail,
         nearbyPlan?.length ? JSON.stringify(nearbyPlan) : null,
         sameDay,
+        locale,
       ),
       evaluationSchema,
       ai,

@@ -4,6 +4,17 @@ import { WORKOUT_TYPES } from "@/lib/types";
 import { z } from "zod";
 import { COACH_METHODOLOGY } from "@/lib/ai/methodology";
 import type { PromptParts } from "@/lib/ai/prompt-cache";
+import { DEFAULT_LOCALE, type Locale } from "../../i18n/config.ts";
+
+/**
+ * Lingua delle risposte. Le istruzioni restano in italiano (sono tarate così),
+ * l'inglese si ottiene con una regola esplicita che prevale su ogni "in italiano".
+ * Vuota in italiano: nessun cambio rispetto a prima.
+ */
+export function languageRule(locale: Locale): string {
+  if (locale === DEFAULT_LOCALE) return "";
+  return "- LINGUA (prevale su ogni altra indicazione di lingua in questo prompt): l'atleta usa l'app in inglese. Scrivi in inglese naturale TUTTO il testo destinato a lui o salvato per lui: reply, summary, review, description, focus, label degli step, note, motivi, riassunti e ricordi, con la terminologia di corsa usata in inglese (easy run, tempo run, intervals, long run, recovery, pace, cadence). Nomi di campi, chiavi e valori enumerati dello schema non si traducono. Il contesto può contenere frasi in italiano (note, ricordi, etichette): capiscile e rispondi comunque in inglese.";
+}
 
 // ── Valutazione di una singola corsa ─────────────────────────────────────────
 
@@ -89,10 +100,12 @@ export function buildEvaluationPrompt(
   activityDetail: string,
   nearbyPlannedWorkouts?: string | null,
   sameDayActivities?: string | null,
+  locale: Locale = DEFAULT_LOCALE,
 ): string {
   return [
     "Sei il coach di corsa personale di questo atleta: lo segui da settimane, conosci il suo piano, il suo storico e i feedback che gli hai già dato. Valuti una singola attività con tono diretto, concreto e incoraggiante, come farebbe un vero allenatore.",
     "Regole:",
+    languageRule(locale),
     "- I numeri (passi, volumi, carico, predizioni) sono già calcolati e te li fornisco — NON inventarne di nuovi, puoi solo commentarli. Produci solo testo qualitativo in italiano.",
     "- Piano e attività NON hanno un collegamento esplicito. La seduta con matched=true è quella abbinata a questa attività confrontando le sedute e le corse dello stesso giorno (distanza, durata, ordine, momento): con due sedute e due corse nello stesso giorno non è per forza la prima. Usala come riferimento, ma verifica con passo, HR, descrizione e note: se i dati dicono altro (o nessuna seduta ha matched=true), deduci tu la corrispondenza più probabile. Non forzare un abbinamento: se è incerto o non c'è, dillo.",
     "- Il tag 'unclassified' significa soltanto corsa importata e non classificata: NON trattarla automaticamente come easy. Deduci la natura dello sforzo dai dati reali e dall'eventuale seduta pianificata compatibile.",
@@ -236,10 +249,12 @@ export function buildPlanPrompt(
   windowStart: string,
   windowEnd: string,
   comments: string | null,
+  locale: Locale = DEFAULT_LOCALE,
 ): string {
   return [
     "Sei il coach di corsa personale di questo atleta: lo segui ciclo dopo ciclo e conosci il percorso fatto finora. Genera un piano di allenamento per le prossime 2 settimane, una review del periodo appena trascorso e l'aggiornamento della tua memoria di coach.",
     "Regole:",
+    languageRule(locale),
     "- I numeri di forma (passi, volumi, carico TSB, predizioni) sono già calcolati e te li fornisco: usali per dimensionare il piano, ma resta realistico e progressivo.",
     LOAD_READING_RULE,
     ZONE_TOLERANCE_RULE,
@@ -450,9 +465,10 @@ export const coachResponseSchema: Schema = {
  * Prompt della chat in tre parti per la cache del provider (lib/ai/prompt-cache.ts):
  * istruzioni fisse, contesto stabile, poi data, conversazione e messaggio nuovo.
  */
-export function buildCoachPrompt(context: { stable: string; variable: string }, userMessage: string): PromptParts {
+export function buildCoachPrompt(context: { stable: string; variable: string }, userMessage: string, locale: Locale = DEFAULT_LOCALE): PromptParts {
   const system = [
     "Sei l'allenatore di corsa di questo atleta, non un assistente compiacente. Lo segui da settimane: conosci il suo storico, il piano, la conversazione e le proposte che gli hai già fatto. Rispondi in italiano, diretto e concreto, come un coach vero a bordo pista.",
+    languageRule(locale),
     "",
     "# Come ti comporti",
     "- La 'Metodologia di riferimento' qui sotto (il piano dell'allenatore da cui è nata l'app) è la spina dorsale: struttura della settimana, progressione, tipi di seduta e recuperi. I commenti e le richieste dell'atleta la ADATTANO, non la sostituiscono.",

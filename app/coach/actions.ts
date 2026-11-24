@@ -4,7 +4,7 @@ import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { schedulePlanPublish } from "@/lib/intervals/sync";
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAiConfig, type AiConfig } from "@/lib/ai/credentials";
@@ -27,7 +27,7 @@ import { markSendError } from "@/lib/coach-failures";
 import { proposalExpiry, proposalExpiryText } from "@/lib/plan/proposal-expiry";
 import { discardedPlanNote, workoutDiscardReason, type DiscardReason } from "@/lib/plan/proposal-notes";
 import { romeDay } from "@/lib/local-date";
-import type { Translator } from "@/i18n/config";
+import type { Locale, Translator } from "@/i18n/config";
 
 /**
  * Tempo per una risposta del coach, dall'invio del messaggio: la funzione può
@@ -294,6 +294,7 @@ async function queueCoachTurn(userId: string, userMessage: CoachMessage, ai: AiC
   const t = await getTranslations("coach.actions");
   // `after()` non ha il cookie della lingua: il traduttore si prende qui.
   const tStatus = await getTranslations("status");
+  const locale = (await getLocale()) as Locale;
   const supabase = await createClient();
   const { data: job, error: jobError } = await supabase
     .from("ai_jobs")
@@ -304,7 +305,7 @@ async function queueCoachTurn(userId: string, userMessage: CoachMessage, ai: AiC
     const failed = await markMessageFailed(createAdminClient(), userId, userMessage.id, t("startFailed"));
     return { error: t("startFailed"), userMessage: failed ?? userMessage };
   }
-  after(() => runCoachTurn(job.id, userId, userMessage.id, userMessage.content, ai, startedAt + COACH_BUDGET_MS, tStatus));
+  after(() => runCoachTurn(job.id, userId, userMessage.id, userMessage.content, ai, startedAt + COACH_BUDGET_MS, tStatus, locale));
   return { jobId: job.id, userMessage };
 }
 
@@ -345,6 +346,7 @@ async function runCoachTurn(
   ai: AiConfig,
   deadlineAt: number,
   tStatus: Translator,
+  locale: Locale,
 ) {
   const admin = createAdminClient();
   // Dopo il salvataggio della risposta un errore (ricordi, proposta) non rende il messaggio "non inviato".
@@ -356,7 +358,7 @@ async function runCoachTurn(
     // Risposta non valida (JSON o struttura) o errore passeggero: un nuovo
     // tentativo automatico, poi l'errore (lib/ai/llm.ts, lib/ai/retry.ts).
     const { data: parsed, usage } = await generateAi<ParsedCoachResponse>(
-      buildCoachPrompt(serializeCoachContext(context), userText),
+      buildCoachPrompt(serializeCoachContext(context), userText, locale),
       coachResponseSchema,
       ai,
       "coach",
