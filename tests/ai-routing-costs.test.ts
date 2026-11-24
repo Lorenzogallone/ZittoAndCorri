@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { parseRouting, resolveTask, taskModel, withRoute, type ProviderAvailability } from "../lib/ai/routing.ts";
 import { formatTokens, formatUsd, geminiUsage, openRouterUsage, readUsage, sumUsage, summarizeUsage } from "../lib/ai/usage.ts";
-import { itLabels } from "./it-labels.ts";
+import { itLabels } from "../lib/italian-translator.ts";
 import { groupByProvider, modelTitle, priceLabel, providerOf, type OpenRouterModel } from "../lib/ai/openrouter-models.ts";
 
 const both: ProviderAvailability = {

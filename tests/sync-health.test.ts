@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { syncHealthIssues, syncIssuePush, syncIssueText, type SyncHealthInput } from "../lib/sync-health.ts";
-import { itStatus } from "./it-status.ts";
+import { itStatus } from "../lib/italian-translator.ts";
 import { nextIntervalsError } from "../lib/intervals/sync-errors.ts";
 
 const NOW = "2026-11-22T10:00:00Z";

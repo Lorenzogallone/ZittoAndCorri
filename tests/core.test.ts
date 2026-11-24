@@ -8,7 +8,7 @@ import { computeATLCTL, sessionLoad } from "../lib/metrics/load.ts";
 import { generalGoalName, goalKind } from "../lib/goals.ts";
 import { COACH_METHODOLOGY } from "../lib/ai/methodology.ts";
 import { describeStep, groupWorkoutSteps, workoutHeadline } from "../lib/workout-guide.ts";
-import { itLabels } from "./it-labels.ts";
+import { itLabels } from "../lib/italian-translator.ts";
 import { parseDecimal, parseDuration as parseFormDuration } from "../lib/format.ts";
 
 test("il carico interno privilegia HR, poi RPE e infine la stima per sport", () => {

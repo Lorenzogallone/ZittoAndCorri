@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { analyzeIntervals, areAutoLaps, describeStructure, type FitLap } from "../lib/metrics/intervals.ts";
-import { itLabels } from "./it-labels.ts";
+import { itLabels } from "../lib/italian-translator.ts";
 import type { WorkoutStepInput } from "../lib/types.ts";
 
 // Corsa sintetica: fasi a velocità costante con rumore deterministico.

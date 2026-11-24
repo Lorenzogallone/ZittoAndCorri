@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { itLabels } from "./it-labels.ts";
+import { itLabels } from "../lib/italian-translator.ts";
 import { planProposalDiff, type PlanDayWorkout } from "../lib/plan/proposal-diff.ts";
 
 // Settimana tipo: oggi è venerdì 23 ottobre 2026.

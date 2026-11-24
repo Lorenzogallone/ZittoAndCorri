@@ -14,7 +14,7 @@ import {
 import { daysBetween, romeDay } from "../local-date.ts";
 import { formatDuration, formatPace } from "../format.ts";
 import { DEFAULT_LOCALE, intlLocale, type Locale, type Translator } from "../../i18n/config.ts";
-import { metricsIt } from "./italian.ts";
+import { itMetrics } from "../italian-translator.ts";
 
 export interface PredictionReference {
   meters: number;
@@ -255,7 +255,7 @@ export function rangeExplanation(
   range: RaceRange,
   base: EnduranceBase,
   today: string,
-  t: Translator = metricsIt,
+  t: Translator = itMetrics,
   locale: Locale = DEFAULT_LOCALE,
 ): string {
   const longer = range.target_m > reference.meters;
@@ -309,7 +309,7 @@ export function rangeLabel(range: RaceRange): string {
 }
 
 /** Frase onesta su obiettivo e passo di partenza. */
-export function paceAdviceText(advice: PaceAdvice, range: RaceRange, goal_s: number | null, t: Translator = metricsIt): string {
+export function paceAdviceText(advice: PaceAdvice, range: RaceRange, goal_s: number | null, t: Translator = itMetrics): string {
   const pace = `${formatPace(advice.fast_s_km).replace("/km", "")}–${formatPace(advice.slow_s_km)}`;
   if (goal_s == null || advice.goal_fit == null) return t("racePrediction.advice.noGoal", { pace });
   const goal = formatDuration(goal_s);
@@ -338,7 +338,7 @@ export function goalRaceRange(
   base: EnduranceBase,
   goal: { distance_m: number; target_time_s: number | null },
   today: string,
-  t: Translator = metricsIt,
+  t: Translator = itMetrics,
   locale: Locale = DEFAULT_LOCALE,
 ): GoalRaceRange {
   const range = predictTimeRange(reference, goal.distance_m, base, today);

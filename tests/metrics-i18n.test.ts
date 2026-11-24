@@ -6,7 +6,7 @@ import type { Translator } from "../i18n/config.ts";
 import { countdownLabel, formatDistance, formatPlannedDistance } from "../lib/format.ts";
 import { effortLabel } from "../lib/metrics/best-efforts.ts";
 import { trendFor } from "../lib/metrics/body-trends.ts";
-import { metricsIt } from "../lib/metrics/italian.ts";
+import { itMetrics } from "../lib/italian-translator.ts";
 import { paceAdviceText } from "../lib/metrics/race-prediction.ts";
 import { periodTotals } from "../lib/metrics/totals.ts";
 
@@ -23,13 +23,13 @@ test("distanze: il separatore decimale segue la lingua", () => {
 
 test("conto alla rovescia e nomi delle distanze nelle due lingue", () => {
   const inDays = (days: number) => new Date(Date.now() + days * 86_400_000 - 3_600_000).toISOString();
-  assert.equal(countdownLabel(inDays(0), metricsIt), "Oggi!");
-  assert.equal(countdownLabel(inDays(1), metricsIt), "1 giorno");
-  assert.equal(countdownLabel(inDays(142), metricsIt), "142 giorni");
+  assert.equal(countdownLabel(inDays(0), itMetrics), "Oggi!");
+  assert.equal(countdownLabel(inDays(1), itMetrics), "1 giorno");
+  assert.equal(countdownLabel(inDays(142), itMetrics), "142 giorni");
   assert.equal(countdownLabel(inDays(1), metricsEn), "1 day");
   assert.equal(countdownLabel(inDays(142), metricsEn), "142 days");
   assert.equal(countdownLabel(null, metricsEn), null);
-  assert.equal(effortLabel("half", metricsIt), "Mezza");
+  assert.equal(effortLabel("half", itMetrics), "Mezza");
   assert.equal(effortLabel("half", metricsEn), "Half");
 });
 
