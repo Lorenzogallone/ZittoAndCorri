@@ -60,9 +60,20 @@ SUPABASE_SECRET_KEY=your-server-side-secret-key
 Initialize the Supabase database by applying every SQL file in
 `supabase/migrations` in order (`0001` to `0032`; numbers 0020 and 0031 do not
 exist). On an existing database apply only the files newer than the last one
-you ran. Paste each file into the Supabase SQL editor (or run them with `psql`). Then enable
-Google as an authentication provider and add your application's
-`/auth/callback` URL to the allowed redirect URLs in Supabase.
+you ran. Paste each file into the Supabase SQL editor (or run them with `psql`).
+
+Sign-in uses Google through Supabase Auth:
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), configure
+   the OAuth consent screen, then **APIs & Services → Credentials → Create
+   credentials → OAuth client ID**, type **Web application**.
+2. Add `https://<your-project-ref>.supabase.co/auth/v1/callback` as an
+   authorized redirect URI and copy the client ID and secret.
+3. In Supabase, **Authentication → Sign In / Providers → Google**: enable it and
+   paste the client ID and secret.
+4. In Supabase, **Authentication → URL Configuration**: set the Site URL to
+   your app's URL and add `http://localhost:3000/auth/callback` and
+   `https://<your-app>/auth/callback` to the redirect URLs.
 
 Start the development server:
 
@@ -302,6 +313,16 @@ npm run build
 The production environment uses the same three Supabase variables shown above.
 Make sure the public application URL is configured in Supabase Authentication
 and that the deployment supports HTTPS.
+
+## Disclaimer
+
+Zitto e Corri is a personal project, not a medical device. Training plans,
+AI feedback and race predictions are estimates: listen to your body and talk
+to a doctor before starting or changing training, especially with health
+conditions. The AI coach runs on your own Gemini or OpenRouter key, and their
+terms and costs apply. Amazfit, Zepp, Garmin, Intervals.icu and the other names
+mentioned are trademarks of their owners; this project is not affiliated with
+or endorsed by them.
 
 ## License
 

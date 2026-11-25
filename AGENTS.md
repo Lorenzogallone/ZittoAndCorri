@@ -11,7 +11,7 @@ Skills in `.claude/skills/`: `mobile-native` and `apple-design` (Emil Kowalski),
 layout, forms or gestures; run `web-design-guidelines` on changed UI files
 before a merge. When they disagree:
 
-- Copy is Italian, sentence case everywhere (overrides Vercel's Title Case).
+- Copy is Italian and English (`messages/<lang>/*.json`), sentence case everywhere (overrides Vercel's Title Case).
 - `overscroll-behavior: none` stays global: the app is a standalone iOS PWA.
 - Tailwind `hover:` is already gated behind `(hover: hover)`; never write raw `:hover` CSS.
 - Design tokens live in `app/globals.css` (`@theme`): no new hex colours or font sizes in components.
