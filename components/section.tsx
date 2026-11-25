@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** Blocco di pagina con titolo: separa i contenuti senza card annidate.
- *  Unico componente per le sezioni titolate (piano, profilo…). */
+/** Page block with a title: separates content without nested cards.
+ *  Single component for titled sections (plan, profile…). */
 export function Section({
   title,
   action,

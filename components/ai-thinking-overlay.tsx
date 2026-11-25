@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-// Step "di pensiero" che si accumulano durante i ~50s medi della chiamata AI.
-// Ogni step compare ogni ~3-4s nei primi 30s (frequente, sembra vivo), poi
-// rallenta leggermente. Gli step restano visibili man mano che si aggiungono.
-// Chiavi in messages/it/coach.json (thinking.plan.* e thinking.evaluation.*).
+// "Thinking" steps that accumulate during the ~50s average of the AI call.
+// Each step appears every ~3-4s in the first 30s (frequent, feels alive), then
+// slows slightly. Steps stay visible as they are added.
+// Keys in messages/it/coach.json (thinking.plan.* and thinking.evaluation.*).
 const PLAN_STEPS = [
   "readHistory",
   "measureLoad",
@@ -40,8 +40,8 @@ const EVALUATION_STEPS = [
   "finalize",
 ] as const;
 
-// Uno step nuovo ogni ~3-4s per i primi 30s, poi ogni ~5s fino a ~55s.
-// L'array ha tanti elementi quanti PLAN_STEPS / EVALUATION_STEPS.
+// A new step every ~3-4s for the first 30s, then every ~5s up to ~55s.
+// The array has as many elements as PLAN_STEPS / EVALUATION_STEPS.
 const STEP_DELAYS_MS = [
   0, 3_000, 6_000, 9_500, 13_000, 16_500,
   20_000, 24_000, 28_000, 33_000, 38_000, 44_000, 51_000,
@@ -58,8 +58,8 @@ export function AiThinkingOverlay({ pending, variant }: AiThinkingOverlayProps) 
   const [elapsed, setElapsed] = useState(0);
   const steps = (variant === "plan" ? PLAN_STEPS : EVALUATION_STEPS).map((key) => t(`${variant}.${key}`));
 
-  // Reset quando pending cambia: adattamento dello stato durante il render
-  // (niente setState dentro un effect → niente render a cascata).
+  // Reset when pending changes: adjusting state during render
+  // (no setState inside an effect → no cascading renders).
   const [prevPending, setPrevPending] = useState(pending);
   if (pending !== prevPending) {
     setPrevPending(pending);

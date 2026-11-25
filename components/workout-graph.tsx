@@ -5,7 +5,7 @@ import { estimateStep, stepIntensity } from "@/lib/workout-estimate";
 import { stepVariant } from "@/lib/workout-guide";
 import { TONES, type StepTone } from "@/lib/step-tones";
 
-/** Colore per intensità, coerente con le zone cardiache (Z1 azzurro → Z5 rosso). */
+/** Colour by intensity, consistent with heart rate zones (Z1 light blue → Z5 red). */
 export function intensityTone(step: WorkoutStepInput, type?: WorkoutType | null): StepTone {
   const variant = stepVariant(step);
   if (variant === "sprint") return TONES.sprint;
@@ -18,8 +18,8 @@ export function intensityTone(step: WorkoutStepInput, type?: WorkoutType | null)
   return TONES.easy;
 }
 
-// Sulla card hero (in scuro più chiara delle card) i tratti tenui del tema
-// scuro (corsetta, camminata) sparirebbero: lì si usano versioni fisse.
+// On the hero card (lighter than cards in dark mode) the muted dark-theme strokes
+// (easy jog, walk) would disappear: fixed versions are used there.
 const ON_DARK = new Map<StepTone, string>([
   [TONES.jog, "bg-sky-300"],
   [TONES.walk, "bg-hero-foreground/35"],
@@ -35,8 +35,8 @@ const HEIGHT: Record<number, string> = {
 };
 
 /**
- * Profilo della seduta a blocchi: larghezza = durata stimata, altezza e
- * colore = intensità. Si legge a colpo d'occhio, senza legenda.
+ * Profile of the block session: width = estimated duration, height and
+ * colour = intensity. Readable at a glance, no legend.
  */
 export function WorkoutGraph({
   steps,
@@ -48,7 +48,7 @@ export function WorkoutGraph({
   steps: WorkoutStepInput[];
   type?: WorkoutType | null;
   size?: "sm" | "md";
-  /** Su sfondo scuro fisso (card hero): colori leggibili in entrambi i temi. */
+  /** On a fixed dark background (hero card): colours readable in both themes. */
   onDark?: boolean;
   className?: string;
 }) {

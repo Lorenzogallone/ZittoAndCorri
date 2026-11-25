@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { UpdateToast } from "@/components/update-toast";
 
-/** Controllo aggiornamenti al ritorno in primo piano: al massimo ogni 30 min. */
+/** Update check on return to the foreground: at most every 30 min. */
 const UPDATE_CHECK_KEY = "zc-sw-update-check";
 const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
 
@@ -18,12 +18,12 @@ function shouldCheckForUpdate(): boolean {
   }
 }
 
-/** Registra il service worker e offre l'aggiornamento quando ne arriva uno nuovo. */
+/** Registers the service worker and offers the update when a new one arrives. */
 export function PwaRegister() {
   const [waiting, setWaiting] = useState<ServiceWorker | null>(null);
   const [updating, setUpdating] = useState(false);
-  // Ricarica solo dopo un "Aggiorna" esplicito: anche il primo clients.claim()
-  // emette controllerchange e non deve ricaricare la pagina.
+  // Reloads only after an explicit "Aggiorna": even the first clients.claim()
+  // emits controllerchange and must not reload the page.
   const updateRequested = useRef(false);
 
   useEffect(() => {
@@ -41,8 +41,8 @@ export function PwaRegister() {
     let registration: ServiceWorkerRegistration | null = null;
     let cancelled = false;
 
-    // Un worker installato mentre la pagina ha già un controller è un
-    // aggiornamento (al primo install non c'è controller: niente toast).
+    // A worker installed while the page already has a controller is an
+    // update (on first install there is no controller: no toast).
     const offerIfWaiting = (worker: ServiceWorker | null) => {
       if (!cancelled && worker && worker.state === "installed" && navigator.serviceWorker.controller) {
         setWaiting(worker);

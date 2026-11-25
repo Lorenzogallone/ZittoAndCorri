@@ -47,9 +47,9 @@ function ModelRow({ model, selected, onPick, withProvider = false }: { model: Op
 }
 
 /**
- * Elenco dei modelli OpenRouter da scegliere toccando, senza scrivere:
- * filtri per azienda e per i gratuiti, ricerca facoltativa. Se il catalogo non
- * risponde resta il campo per scrivere l'id a mano.
+ * List of OpenRouter models to pick by tapping, without typing:
+ * filters by company and for free ones, optional search. If the catalogue does not
+ * respond, the field to type the id by hand remains.
  */
 export function OpenRouterModelPicker({
   open,

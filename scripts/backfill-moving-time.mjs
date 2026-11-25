@@ -1,24 +1,24 @@
 /**
- * Backfill del tempo in movimento (moving_time_s) per le corse già importate.
+ * Backfill of moving time (moving_time_s) for runs that were already imported.
  *
- * Ricalcola il tempo "in movimento" (pause escluse) dai punti GPS salvati in
- * activity_streams.gps_series, con lo stesso algoritmo di lib/ingest/adapters/
- * gpx.ts (esclude i buchi di registrazione e i tratti da fermo). Aggiorna
- * activities.moving_time_s e ricalcola avg_pace_s_km sul tempo in movimento,
- * così le corse vecchie mostrano il tempo di allenamento come quelle nuove.
+ * Recomputes the "moving" time (pauses excluded) from the GPS points stored in
+ * activity_streams.gps_series, using the same algorithm as lib/ingest/adapters/
+ * gpx.ts (it excludes recording gaps and stationary stretches). Updates
+ * activities.moving_time_s and recomputes avg_pace_s_km on the moving time,
+ * so old runs show the training time like new ones do.
  *
- * Usa la secret key Supabase (bypassa RLS): non richiede sessione browser.
+ * Uses the Supabase secret key (bypasses RLS): no browser session needed.
  *
- * Uso:
+ * Usage:
  *   export PATH="$HOME/.nvm/versions/node/v24.16.0/bin:$PATH"
- *   node scripts/backfill-moving-time.mjs            # dry-run: stampa cosa farebbe
- *   node scripts/backfill-moving-time.mjs --apply    # applica le modifiche
- *   node scripts/backfill-moving-time.mjs --apply <user-id>   # solo un utente
+ *   node scripts/backfill-moving-time.mjs            # dry run: prints what it would do
+ *   node scripts/backfill-moving-time.mjs --apply    # applies the changes
+ *   node scripts/backfill-moving-time.mjs --apply <user-id>   # a single user only
  */
 
 import { readFileSync } from "node:fs";
 
-// --- Legge .env.local -------------------------------------------------------
+// --- Reads .env.local -------------------------------------------------------
 function loadEnv(path = ".env.local") {
   const lines = readFileSync(path, "utf8").split("\n");
   for (const line of lines) {
@@ -44,9 +44,9 @@ const args = process.argv.slice(2);
 const APPLY = args.includes("--apply");
 const userId = args.find((a) => !a.startsWith("--")) ?? null;
 
-// --- Stesso algoritmo di lib/ingest/adapters/gpx.ts -------------------------
-const PAUSE_GAP_S = 10; // gap oltre i ~10s = pausa/auto-pause (Strava smette di registrare)
-const MIN_SPEED_MS = 0.5; // sotto ~0.5 m/s sei di fatto fermo
+// --- Same algorithm as lib/ingest/adapters/gpx.ts -------------------------
+const PAUSE_GAP_S = 10; // gap over ~10s = pause/auto-pause (Strava stops recording)
+const MIN_SPEED_MS = 0.5; // below ~0.5 m/s you are effectively stopped
 
 function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371000; // m
@@ -59,7 +59,7 @@ function haversine(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-/** Tempo in movimento (s) da una gps_series con t in secondi-da-inizio. */
+/** Moving time (s) from a gps_series with t in seconds since start. */
 function estimateMovingTimeS(points) {
   let moving = 0;
   for (let i = 1; i < points.length; i++) {
@@ -119,7 +119,7 @@ async function main() {
   console.log(APPLY ? "MODALITÀ: APPLICA modifiche" : "MODALITÀ: DRY-RUN (nessuna scrittura). Usa --apply per scrivere.");
   if (userId) console.log(`Filtro utente: ${userId}`);
 
-  // Corse con i loro stream GPS. Embedding PostgREST attraverso la FK.
+  // Runs with their GPS streams. PostgREST embedding through the FK.
   const userFilter = userId ? `&user_id=eq.${userId}` : "";
   const activities = await restGet(
     `activities?select=id,distance_m,duration_s,moving_time_s,started_at,activity_streams(gps_series)&limit=100000${userFilter}`,
@@ -140,7 +140,7 @@ async function main() {
     }
 
     const moving = estimateMovingTimeS(gps);
-    // Solo se c'è stata davvero una pausa (moving < totale).
+    // Only if there was really a pause (moving < total).
     if (!(moving > 0 && moving < a.duration_s)) {
       skippedNoPause++;
       continue;

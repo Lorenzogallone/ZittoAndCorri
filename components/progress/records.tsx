@@ -5,7 +5,7 @@ import { intlLocale, type Locale } from "@/i18n/config";
 import { formatDuration } from "@/lib/format";
 import { effortLabel, type PersonalRecord } from "@/lib/metrics/best-efforts";
 
-/** Record personali per distanza, con link alla corsa che li detiene. */
+/** Personal records by distance, with a link to the run that holds them. */
 export function Records({ records }: { records: PersonalRecord[] }) {
   const locale = useLocale() as Locale;
   const t = useTranslations("metrics");

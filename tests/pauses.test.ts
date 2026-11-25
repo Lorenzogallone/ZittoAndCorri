@@ -4,11 +4,11 @@ import { detectPauses, movingClock, withoutPauses } from "../lib/metrics/pauses.
 import { computeSplits } from "../lib/metrics/splits.ts";
 import type { GpsPoint } from "../lib/types.ts";
 
-// Corsa a 5:10/km (≈3,23 m/s) verso nord, un punto al secondo.
+// Run at 5:10/km (≈3.23 m/s) heading north, one point per second.
 const SPEED = 1000 / 310;
 const METERS_PER_DEG_LAT = 111_195;
 
-/** Traccia GPS: `pauses` sono [secondo di corsa, durata] in cui l'orologio è fermo. */
+/** GPS track: `pauses` are [run second, duration] in which the watch is stopped. */
 function track(runSeconds: number, pauses: Array<[number, number]> = []): GpsPoint[] {
   const points: GpsPoint[] = [];
   let clock = 0;
@@ -20,18 +20,18 @@ function track(runSeconds: number, pauses: Array<[number, number]> = []): GpsPoi
   return points;
 }
 
-test("una pausa dell'orologio non allunga il km", () => {
+test("a watch pause does not lengthen the km", () => {
   const plain = computeSplits(track(1300))!;
   const paused = computeSplits(track(1300, [[200, 50], [700, 10]]))!;
   assert.equal(plain[0].time_s, 310);
   assert.deepEqual(paused.map((s) => s.time_s), plain.map((s) => s.time_s));
 });
 
-test("le pause si riconoscono dal buco senza avanzare; la registrazione smart no", () => {
+test("pauses are recognised by the gap with no progress; smart recording is not", () => {
   const distance = [
     { t: 0, d: 0 }, { t: 1, d: 3 }, { t: 2, d: 6 },
-    { t: 12, d: 7 },   // 10" fermo: pausa
-    { t: 13, d: 10 }, { t: 18, d: 26 }, // 5" correndo (registrazione smart): non è pausa
+    { t: 12, d: 7 },   // 10" stopped: pause
+    { t: 13, d: 10 }, { t: 18, d: 26 }, // 5" while running (smart recording): not a pause
     { t: 19, d: 29 }, { t: 20, d: 32 },
   ];
   const pauses = detectPauses(distance);
@@ -42,27 +42,27 @@ test("le pause si riconoscono dal buco senza avanzare; la registrazione smart no
   assert.equal(clock(20), 11);
 });
 
-test("i lap si accorciano dei secondi di pausa che contengono", () => {
+test("laps are shortened by the seconds of pause they contain", () => {
   const distance = Array.from({ length: 40 }, (_, i) => ({ t: i < 20 ? i : i + 30, d: i * 3 }));
   const { laps } = withoutPauses({ distance, laps: [{ start_s: 0, duration_s: 19 }, { start_s: 19, duration_s: 51 }] });
   assert.deepEqual(laps, [{ start_s: 0, duration_s: 19 }, { start_s: 19, duration_s: 21 }]);
 });
 
-test("senza pause gli stream restano identici", () => {
+test("without pauses the streams stay identical", () => {
   const gps = track(120);
   const streams = { gps };
   assert.equal(withoutPauses(streams), streams);
 });
 
-test("tempo in movimento dalle pause, quando il file non lo dice", async () => {
+test("moving time from pauses, when the file doesn't say", async () => {
   const { movingTimeFromStreams, bestMovingTime } = await import("../lib/metrics/pauses.ts");
   const gps = track(1300, [[200, 50], [700, 10]]);
   const duration = gps[gps.length - 1].t;
   assert.equal(duration, 1360);
-  // Tolti esattamente i 50" e 10" di pausa: restano i 1300" di corsa.
+  // Exactly the 50" and 10" of pause removed: the 1300" of running remain.
   assert.equal(movingTimeFromStreams(duration, { gps }), 1300);
   assert.equal(movingTimeFromStreams(1300, { gps: track(1300) }), null);
-  // Vince il più corto sotto il totale; un valore pari al totale non conta.
+  // The shortest below the total wins; a value equal to the total doesn't count.
   assert.equal(bestMovingTime(1360, 1360, 1300), 1300);
   assert.equal(bestMovingTime(1360, null, null), null);
   assert.equal(bestMovingTime(1360, 1290, 1300), 1290);

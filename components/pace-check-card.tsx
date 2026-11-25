@@ -17,7 +17,7 @@ function repTone(deviation: number): string {
   return "border-emerald-500/40 text-emerald-700 dark:text-emerald-300";
 }
 
-/** Passo reale dei tratti veloci contro il range previsto dalla seduta. */
+/** Actual pace of the fast segments against the range planned for the session. */
 export function PaceCheckCard({ check, workoutId }: { check: PaceCheck; workoutId: string }) {
   const t = useTranslations("activities.paceCheck");
   const tl = useTranslations("labels");

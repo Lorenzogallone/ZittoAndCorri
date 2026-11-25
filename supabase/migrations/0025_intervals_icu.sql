@@ -1,25 +1,25 @@
--- Intervals.icu: canale ufficiale Zepp → Intervals.icu → ZittoAndCorri.
--- 1. Chiave API personale (cifrata in Vault come Gemini e OpenRouter) con le
---    preferenze dell'integrazione e lo stato dell'ultima sincronizzazione.
--- 2. Wellness giornaliero generico (sonno, FC a riposo, HRV, SpO2, passi) con
---    sorgente esplicita: le metriche proprietarie Zepp restano in
+-- Intervals.icu: official channel Zepp → Intervals.icu → ZittoAndCorri.
+-- 1. Personal API key (encrypted in Vault like Gemini and OpenRouter) with the
+--    integration preferences and the state of the last sync.
+-- 2. Generic daily wellness (sleep, resting HR, HRV, SpO2, steps) with an
+--    explicit source: proprietary Zepp metrics stay in
 --    zepp_daily_metrics.
--- 3. Identificativo esterno sulle attività per importare i FIT senza duplicati.
+-- 3. External identifier on activities to import FIT files without duplicates.
 
--- ── 1. Credenziali e preferenze ───────────────────────────────────────────────
+-- ── 1. Credentials and preferences ─────────────────────────────────────────────
 
 create table if not exists public.user_intervals_credentials (
   user_id           uuid primary key references auth.users on delete cascade,
   vault_secret_id   uuid not null,
   last_four         text not null check (char_length(last_four) = 4),
-  -- Id atleta Intervals.icu, es. "i12345". Verificato al salvataggio.
+  -- Intervals.icu athlete id, e.g. "i12345". Verified on save.
   athlete_id        text not null,
   athlete_name      text,
   import_activities boolean not null default true,
   import_wellness   boolean not null default true,
   publish_plan      boolean not null default true,
-  -- Target da scrivere nelle fasi: "auto" (passo dove c'è, altrimenti FC),
-  -- "pace" o "hr". Utile se l'orologio perde i target di passo.
+  -- Target to write into the phases: "auto" (pace where available, otherwise HR),
+  -- "pace" or "hr". Useful if the watch loses pace targets.
   target_preference text not null default 'auto'
     check (target_preference in ('auto', 'pace', 'hr')),
   last_import_at    timestamptz,
@@ -120,7 +120,7 @@ grant execute on function public.admin_set_intervals_credential(uuid, text, text
 grant execute on function public.admin_get_intervals_credential(uuid) to service_role;
 grant execute on function public.admin_delete_intervals_credential(uuid) to service_role;
 
--- ── 2. Wellness giornaliero per sorgente ─────────────────────────────────────
+-- ── 2. Daily wellness by source ──────────────────────────────────────────────
 
 create table if not exists public.wellness_daily (
   user_id      uuid not null references auth.users on delete cascade,
@@ -154,7 +154,7 @@ create policy "own wellness" on public.wellness_daily
 comment on table public.wellness_daily is
   'Sonno, FC a riposo, HRV e simili per giorno e sorgente. Le metriche proprietarie Zepp restano in zepp_daily_metrics.';
 
--- ── 3. Attività importate da Intervals.icu ───────────────────────────────────
+-- ── 3. Activities imported from Intervals.icu ────────────────────────────────
 
 alter table public.activities
   add column if not exists external_id text;
@@ -163,6 +163,6 @@ create unique index if not exists activities_user_external_id_key
   on public.activities (user_id, external_id)
   where external_id is not null;
 
--- Nuova sorgente. L'enum si estende fuori dalla transazione che lo usa: dopo
--- questa migrazione il valore è disponibile alle prossime istruzioni.
+-- New source. The enum is extended outside the transaction that uses it: after
+-- this migration the value is available to the next statements.
 alter type public.activity_source add value if not exists 'intervals';

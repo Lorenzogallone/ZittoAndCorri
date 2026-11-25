@@ -1,9 +1,9 @@
--- Prerequisito: 0009_unclassified_activity_type.sql già eseguita e committata.
--- Gli import futuri senza un tag esplicito partono come corsa non classificata.
+-- Prerequisite: 0009_unclassified_activity_type.sql already run and committed.
+-- Future imports without an explicit tag start as an unclassified run.
 alter table public.activities alter column type set default 'unclassified';
 
--- Le proposte del coach lavorano soltanto sul piano a calendario. Non esiste
--- più una relazione persistita con una specifica attività reale.
+-- Coach proposals only work on the calendar plan. There is no longer
+-- a persisted relationship with a specific real activity.
 create or replace function public.apply_plan_proposal(p_proposal_id uuid)
 returns text
 language plpgsql security definer set search_path = public as $$
@@ -69,8 +69,8 @@ end; $$;
 revoke all on function public.apply_plan_proposal(uuid) from public, anon;
 grant execute on function public.apply_plan_proposal(uuid) to authenticated;
 
--- Gli stati completati creati automaticamente dal vecchio collegamento non
--- devono sopravvivere come falsa prova di aderenza. Gli stati impostati a mano
+-- Completed states created automatically by the old link
+-- must not survive as false proof of adherence. States set by hand
 -- senza activity_id restano invece invariati.
 update public.planned_workouts
 set status = 'planned'

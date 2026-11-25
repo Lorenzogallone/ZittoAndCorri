@@ -25,7 +25,7 @@ const workout = {
   ],
 };
 
-test("lo schema accetta fasi complete e rifiuta conclusioni incoerenti", () => {
+test("the schema accepts complete phases and rejects inconsistent conclusions", () => {
   const valid = workout.steps.map((step) => ({
     kind: step.kind,
     label: step.label,
@@ -42,7 +42,7 @@ test("lo schema accetta fasi complete e rifiuta conclusioni incoerenti", () => {
   assert.deepEqual(normalizeWorkoutSteps(valid).map((step) => [step.id, step.order]), [["step-1", 0], ["step-2", 1]]);
 });
 
-test("un allenamento legacy viene convertito in una fase guidata", () => {
+test("a legacy workout is converted into a guided phase", () => {
   const [step] = legacyWorkoutStep({
     type: "easy",
     target_distance_m: 5000,
@@ -56,7 +56,7 @@ test("un allenamento legacy viene convertito in una fase guidata", () => {
   assert.equal(step.hr_max_bpm, 155);
 });
 
-test("pairing distingue health e workout; il piano in sola lettura serve a entrambi", () => {
+test("pairing distinguishes health and workout; the read-only plan serves both", () => {
   assert.equal(ZeppPairRequestSchema.parse({ code: "123456", clientId: "watch-health", device: {} }).clientKind, "health");
   assert.equal(ZeppPairRequestSchema.parse({ code: "123456", clientId: "watch-workout", clientKind: "workout", device: {} }).clientKind, "workout");
   assert.equal(ZeppWorkoutPullRequestSchema.safeParse({ localDate: "2026-08-26", timezoneOffsetMinutes: 120 }).success, true);
@@ -67,12 +67,12 @@ test("pairing distingue health e workout; il piano in sola lettura serve a entra
   assert.match(data, /onConflict: "user_id,client_kind"/);
   assert.match(data, /\.eq\("user_id", userId\)\.eq\("client_kind", clientKind\)/);
   assert.match(healthRoute, /authorizeZeppToken\(token, "health"\)/);
-  // Il pull è in sola lettura: lo usa il widget "Oggi" della Mini App salute.
+  // The pull is read-only: used by the "Oggi" widget of the health Mini App.
   assert.match(workoutRoute, /authorizeZeppToken\(token\)/);
   assert.doesNotMatch(healthRoute, /authorizeZeppToken\(token\)/);
 });
 
-test("il pull preferisce un override valido e richiede un solo allenamento oggi", () => {
+test("the pull prefers a valid override and requires a single workout today", () => {
   const rows = [
     { id: "a", date: "2026-08-26" },
     { id: "b", date: "2026-08-27" },
@@ -91,7 +91,7 @@ test("il pull preferisce un override valido e richiede un solo allenamento oggi"
   });
 });
 
-test("la pipeline AI produce le fasi guidate", () => {
+test("the AI pipeline produces the guided phases", () => {
   const prompt = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
   const migration = readFileSync(new URL("../supabase/migrations/0016_zepp_workout_extension.sql", import.meta.url), "utf8");
   assert.ok((prompt.match(/workout_steps/g) ?? []).length >= 5);

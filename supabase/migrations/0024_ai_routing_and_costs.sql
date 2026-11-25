@@ -1,13 +1,13 @@
--- Modello per compito e costo di ogni chiamata AI.
+-- Model per task and cost of each AI call.
 --
--- 1. profiles.ai_routing: provider e modello per la chat del coach e per
---    l'analisi delle corse, es.
+-- 1. profiles.ai_routing: provider and model for the coach chat and for
+--    run analysis, e.g.
 --    {"chat": {"provider": "openrouter", "gemini": null, "openrouter": "anthropic/claude-sonnet-5-5"},
 --     "analysis": {"provider": "gemini", "gemini": "gemini-3.5-flash-lite", "openrouter": null}}
---    Senza valore vale ai_provider (migrazione 0023) per entrambi.
--- 2. evaluations.ai_usage: token e costo dell'analisi, mostrati sotto il
---    commento del coach. Per i messaggi della chat basta coach_messages.metadata.
--- 3. ai_usage_events: una riga per chiamata, per il totale del mese.
+--    Without a value, ai_provider (migration 0023) applies to both.
+-- 2. evaluations.ai_usage: tokens and cost of the analysis, shown under the
+--    coach's comment. For chat messages coach_messages.metadata is enough.
+-- 3. ai_usage_events: one row per call, for the monthly total.
 
 alter table public.profiles
   add column if not exists ai_routing jsonb;
@@ -28,9 +28,9 @@ create table if not exists public.ai_usage_events (
   output_tokens    integer not null default 0,
   cached_tokens    integer not null default 0,
   reasoning_tokens integer not null default 0,
-  -- Dollari; null se il prezzo del modello non è noto.
+  -- Dollars; null if the model price is unknown.
   cost_usd         numeric(12, 6),
-  -- true se stimato da listino (Gemini), false se addebitato (OpenRouter).
+  -- true if estimated from the price list (Gemini), false if charged (OpenRouter).
   estimated        boolean not null default false
 );
 

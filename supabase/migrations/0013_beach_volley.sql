@@ -1,4 +1,4 @@
--- Aggiunge Beach volley alla tassonomia sport senza modificare i dati esistenti.
+-- Adds Beach volley to the sport taxonomy without changing existing data.
 alter table public.activities
   drop constraint if exists activities_sport_check;
 

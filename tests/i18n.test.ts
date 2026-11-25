@@ -10,7 +10,7 @@ function load(locale: string, namespace: string): Tree {
   return JSON.parse(readFileSync(new URL(`../messages/${locale}/${namespace}.json`, import.meta.url), "utf8")) as Tree;
 }
 
-/** Chiavi foglia, es. "welcome.features.coach.title". */
+/** Leaf keys, e.g. "welcome.features.coach.title". */
 function leaves(tree: Tree, prefix = ""): Map<string, string> {
   const out = new Map<string, string>();
   for (const [key, value] of Object.entries(tree)) {
@@ -23,12 +23,12 @@ function leaves(tree: Tree, prefix = ""): Map<string, string> {
 
 type IcuNode = { type: number; value?: string; options?: Record<string, { value: IcuNode[] }>; children?: IcuNode[] };
 
-/** Segnaposto e tag di un messaggio ICU (anche dentro plurali e select); fallisce se la sintassi è rotta. */
+/** Placeholders and tags of an ICU message (also inside plural and select); fails if the syntax is broken. */
 function placeholders(text: string): string {
   const names = new Set<string>();
   const walk = (nodes: IcuNode[]) => {
     for (const node of nodes) {
-      // 0 testo, 7 "#": niente. 1 argomento, 2-4 numero/data/ora, 5 select, 6 plural, 8 tag.
+      // 0 text, 7 "#": nothing. 1 argument, 2-4 number/date/time, 5 select, 6 plural, 8 tag.
       if (node.type === 8) names.add(`<${node.value}>`);
       else if (node.type >= 1 && node.type <= 6) names.add(String(node.value));
       if (node.options) for (const option of Object.values(node.options)) walk(option.value);
@@ -40,7 +40,7 @@ function placeholders(text: string): string {
 }
 
 for (const namespace of NAMESPACES) {
-  test(`i18n: ${namespace} ha le stesse chiavi e gli stessi segnaposto in tutte le lingue`, () => {
+  test(`i18n: ${namespace} has the same keys and placeholders in all languages`, () => {
     const [reference, ...others] = LOCALES.map((locale) => ({ locale, keys: leaves(load(locale, namespace)) }));
     for (const other of others) {
       assert.deepEqual([...other.keys.keys()].sort(), [...reference.keys.keys()].sort(), `${namespace}: chiavi diverse tra ${reference.locale} e ${other.locale}`);
@@ -52,7 +52,7 @@ for (const namespace of NAMESPACES) {
   });
 }
 
-test("i18n: la lingua si sceglie da cookie, poi da Accept-Language, poi italiano", () => {
+test("i18n: the language is chosen from cookie, then Accept-Language, then Italian", () => {
   assert.equal(resolveLocale("en", "it-IT"), "en");
   assert.equal(resolveLocale(undefined, "it-IT,it;q=0.9"), "it");
   assert.equal(resolveLocale(undefined, "en-GB,en;q=0.8"), "en");
@@ -60,8 +60,8 @@ test("i18n: la lingua si sceglie da cookie, poi da Accept-Language, poi italiano
   assert.equal(resolveLocale(undefined, undefined), "it");
 });
 
-test("i18n: ogni prompt del coach riceve la regola di lingua, vuota in italiano", () => {
-  // lib/ai/prompt.ts importa con alias "@/": qui si verifica il sorgente.
+test("i18n: every coach prompt gets the language rule, empty in Italian", () => {
+  // lib/ai/prompt.ts imports with the "@/" alias: here we check the source.
   const source = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
   assert.match(source, /if \(locale === DEFAULT_LOCALE\) return "";/);
   assert.equal((source.match(/languageRule\(locale\),/g) ?? []).length, 3);

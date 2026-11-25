@@ -24,13 +24,13 @@ function rangeLabel(start: string, end: string, locale: Locale): string {
   return `${format(start, !sameMonth)} – ${format(end, true)}`;
 }
 
-/** `tl` è il traduttore del namespace "labels". */
+/** `tl` is the translator of the "labels" namespace. */
 export function workoutTitle(workout: PlannedWorkout, tl: Translator, locale: Locale = DEFAULT_LOCALE): string {
   const detail = workoutHeadline(workout.workout_steps ?? [], locale);
   return detail ? `${typeLabel(tl, workout.type)} · ${detail}` : typeLabel(tl, workout.type);
 }
 
-/** `t` è il traduttore dell'ambito "plan.week" (chiavi `paused` e `lightened`). */
+/** `t` is the translator of the "plan.week" scope (keys `paused` and `lightened`). */
 export function workoutSubtitle(workout: PlannedWorkout, t: (key: "paused" | "lightened") => string, locale: Locale = DEFAULT_LOCALE): string {
   if (workout.status === "skipped") return t("paused");
   const meters = plannedMeters(workout);
@@ -68,7 +68,7 @@ function DayRow({ day, today }: { day: PlanDay; today: string }) {
   const isToday = day.date === today;
   const done = day.state === "done" || day.state === "extra";
   const activity = day.activities[0];
-  // Seduta fatta in un altro giorno (entro due giorni prima o dopo).
+  // Session done on another day (within two days before or after).
   const moved = workout ? day.doneOn[workout.id] : undefined;
   const sameDayRun = !moved && activity && !(activity.id in day.countsFor) ? activity : undefined;
 
@@ -96,11 +96,11 @@ function DayRow({ day, today }: { day: PlanDay; today: string }) {
       <Link
         href={dayHref(day)}
         className={cn(
-          // -mx-2/px-2: la tinta della pressione arriva oltre il testo senza spostarlo.
+          // -mx-2/px-2: the press tint extends beyond the text without shifting it.
           "-mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-muted/60 active:bg-muted/60",
-          // Da 2xl il giorno è una casella della settimana (sette in riga).
+          // From 2xl the day is a box of the week (seven in a row).
           "2xl:relative 2xl:mx-0 2xl:h-full 2xl:min-h-24 2xl:flex-col 2xl:items-stretch 2xl:gap-2 2xl:rounded-xl 2xl:bg-surface-2 2xl:p-3",
-          // Oggi: tinta dell'accento e segno pieno a sinistra.
+          // Today: accent tint and solid mark on the left.
           isToday && "bg-primary/10 2xl:bg-primary/10",
         )}
       >
@@ -127,7 +127,7 @@ function DayRow({ day, today }: { day: PlanDay; today: string }) {
   );
 }
 
-/** Una settimana del piano: km fatti/previsti e un giorno per riga. */
+/** A plan week: km done/planned and one day per row. */
 export function PlanWeek({ days, today, title, highlight = false }: { days: PlanDay[]; today: string; title?: string; highlight?: boolean }) {
   const t = useTranslations("plan.week");
   const locale = useLocale() as Locale;

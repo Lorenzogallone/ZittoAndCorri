@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 export interface ConfirmOptions {
   title: string;
   description?: string;
-  /** Verbo specifico sul pulsante distruttivo: "Scollega", "Elimina", "Rimuovi"… */
+  /** Specific verb on the destructive button: "Unlink", "Delete", "Remove"… */
   action: string;
   cancel?: string;
 }
@@ -17,18 +17,18 @@ export interface ConfirmOptions {
 interface ConfirmSheetProps extends ConfirmOptions {
   open: boolean;
   onResolve: (confirmed: boolean) => void;
-  /** Chiamato a fine animazione di uscita: il chiamante può smontare lo sheet. */
+  /** Called at the end of the exit animation: the caller can unmount the sheet. */
   onExited?: () => void;
 }
 
-/** Durata dell'uscita; con reduced motion le transizioni sono spente. */
+/** Exit duration; with reduced motion transitions are off. */
 const EXIT_MS = 260;
 
 /**
- * Foglio di conferma dal basso (al posto di window.confirm, che su iOS
- * standalone apre un alert di sistema fuori tema). Entrata con @starting-style
- * (`starting:`), uscita con transizione su transform+opacity: le transizioni
- * CSS ripartono dal valore corrente, quindi aprire/chiudere a metà non salta.
+ * Confirmation sheet from the bottom (instead of window.confirm, which on iOS
+ * standalone opens an off-theme system alert). Entry with @starting-style
+ * (`starting:`), exit with a transition on transform+opacity: CSS
+ * transitions restart from the current value, so opening/closing midway does not jump.
  */
 export function ConfirmSheet({
   open,
@@ -50,7 +50,7 @@ export function ConfirmSheet({
     onExitedRef.current = onExited;
   });
 
-  // Focus sul pulsante sicuro all'apertura, ritorno al trigger alla chiusura.
+  // Focus on the safe button on open, back to the trigger on close.
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -58,7 +58,7 @@ export function ConfirmSheet({
     return () => previous?.focus({ preventScroll: true });
   }, [open]);
 
-  // Blocco dello scroll della pagina finché lo sheet è aperto.
+  // Lock page scroll while the sheet is open.
   useEffect(() => {
     if (!open) return;
     const { overflow } = document.body.style;
@@ -68,7 +68,7 @@ export function ConfirmSheet({
     };
   }, [open]);
 
-  // Escape chiude; Tab resta dentro lo sheet (due soli pulsanti).
+  // Escape closes; Tab stays inside the sheet (only two buttons).
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -96,8 +96,8 @@ export function ConfirmSheet({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, onResolve]);
 
-  // Smontaggio dopo l'uscita: timer al posto di transitionend, che non arriva
-  // con reduced motion (transizioni spente).
+  // Unmount after the exit: timer instead of transitionend, which does not fire
+  // with reduced motion (transitions off).
   useEffect(() => {
     if (open) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -107,8 +107,8 @@ export function ConfirmSheet({
 
   if (typeof document === "undefined") return null;
 
-  // Portal sul body: un antenato con backdrop-filter o transform intrappolerebbe
-  // il pannello fixed.
+  // Portal on the body: an ancestor with backdrop-filter or transform would trap
+  // the fixed panel.
   return createPortal(
     <div className={cn("fixed inset-0 z-[80]", !open && "pointer-events-none")}>
       <div
@@ -178,7 +178,7 @@ interface PendingConfirm {
 /**
  * `const { confirm, element } = useConfirm();`
  * `if (!(await confirm({ title, description, action: "Scollega" }))) return;`
- * Renderizzare `{element}` nel componente.
+ * Render `{element}` in the component.
  */
 export function useConfirm(): {
   confirm: (options: ConfirmOptions) => Promise<boolean>;
@@ -189,7 +189,7 @@ export function useConfirm(): {
   const resolveRef = useRef<PendingConfirm["resolve"] | null>(null);
 
   const confirm = useCallback((options: ConfirmOptions) => {
-    // Una richiesta ancora aperta viene annullata da quella nuova.
+    // A pending request is cancelled by the new one.
     resolveRef.current?.(false);
     return new Promise<boolean>((resolve) => {
       resolveRef.current = resolve;
@@ -206,7 +206,7 @@ export function useConfirm(): {
 
   const onExited = useCallback(() => setPending(null), []);
 
-  // Smontaggio del componente con una conferma in sospeso: risponde "no".
+  // Component unmounted with a confirmation pending: answers "no".
   useEffect(() => () => resolveRef.current?.(false), []);
 
   const element = pending ? (

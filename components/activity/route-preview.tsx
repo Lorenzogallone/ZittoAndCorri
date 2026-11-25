@@ -10,16 +10,16 @@ import type { RoutePart } from "@/components/activity-map-client";
 import { segmentToneKey, toneLabel, TONES, type ToneKey } from "@/lib/step-tones";
 import type { GpsPoint } from "@/lib/types";
 
-// Mappa interattiva (WebGL) di base, ma solo quando la card entra nello schermo
-// e con memoria contenuta: su iOS standalone una mappa pesante fa ricaricare la
-// PWA. Sotto c'è un'anteprima statica (tessere raster e percorso) che si vede
-// subito e resta se WebGL non parte.
+// Interactive (WebGL) map by default, but only when the card is on screen
+// and with limited memory: on standalone iOS a heavy map makes the PWA
+// reload. Below it sits a static preview (raster tiles and route) that shows
+// immediately and stays if WebGL fails to start.
 const ActivityMapClient = dynamic(() => import("@/components/activity-map-client"), { ssr: false });
 
 const W = 340;
 const H = 210;
 
-/** Tema scuro attivo: classe forzata sull'<html>, altrimenti preferenza di sistema. */
+/** Dark theme active: class forced on <html>, otherwise system preference. */
 function subscribeTheme(onChange: () => void) {
   const media = window.matchMedia("(prefers-color-scheme: dark)");
   const observer = new MutationObserver(onChange);
@@ -38,7 +38,7 @@ function isDarkTheme(): boolean {
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
-/** Null sul server: le tessere arrivano dopo l'idratazione, il percorso subito. */
+/** Null on the server: tiles arrive after hydration, the route right away. */
 function useDarkTheme(): boolean | null {
   return useSyncExternalStore(subscribeTheme, isDarkTheme, () => null);
 }
@@ -46,7 +46,7 @@ function useDarkTheme(): boolean | null {
 const tileUrl = (tile: MapTile, dark: boolean) =>
   `https://${"abcd"[(tile.x + tile.y) % 4]}.basemaps.cartocdn.com/${dark ? "dark_all" : "light_all"}/${tile.z}/${tile.x}/${tile.y}@2x.png`;
 
-/** Monta la mappa WebGL quando il riquadro è vicino allo schermo. */
+/** Mounts the WebGL map when the box is near the screen. */
 function useNearViewport<T extends Element>() {
   const ref = useRef<T>(null);
   const [near, setNear] = useState(false);
@@ -62,7 +62,7 @@ function useNearViewport<T extends Element>() {
   return [ref, near] as const;
 }
 
-/** Percorso colorato per tratto (ripetute) o per velocità su mappa interattiva, con anteprima statica sotto. */
+/** Route coloured by segment (intervals) or by speed on an interactive map, with a static preview below. */
 export function RoutePreview({ gps }: { gps: GpsPoint[] }) {
   const t = useTranslations("activities.map");
   const tl = useTranslations("labels");
@@ -71,8 +71,8 @@ export function RoutePreview({ gps }: { gps: GpsPoint[] }) {
   const [failed, setFailed] = useState(false);
   const onFail = useCallback(() => setFailed(true), []);
   const { segments: spans, selected } = useSegmentSelection();
-  // Con le ripetute il percorso prende i colori dei tratti (come la card),
-  // altrimenti quelli del passo. Un tratto scelto nella card resta in primo piano.
+  // With intervals the route takes the segment colours (like the card),
+  // otherwise the pace colours. A segment chosen in the card stays in front.
   const parts = useMemo<Array<RoutePart & { tone: ToneKey }> | null>(() => {
     if (!spans.some((segment) => segment.kind === "work")) return null;
     return spans.map((segment) => {
@@ -88,7 +88,7 @@ export function RoutePreview({ gps }: { gps: GpsPoint[] }) {
   const partAt = (t: number) => parts?.find((part) => t >= part.start && t < part.end) ?? null;
   const path = (slice: Array<[number, number]>) => slice.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
 
-  // Spezzoni: con le ripetute uno per tratto, altrimenti di pochi punti col colore del passo.
+  // Chunks: one per segment with intervals, otherwise a few points with the pace colour.
   const pieces: Array<{ d: string; color: string; part: number | null }> = [];
   if (parts) {
     let from = 0;
@@ -130,7 +130,7 @@ export function RoutePreview({ gps }: { gps: GpsPoint[] }) {
             ))}
           </g>
         )}
-        {/* Bordo del colore della card: il percorso resta leggibile su strade e scritte. */}
+        {/* Border in the card colour: the route stays readable over roads and labels. */}
         <path d={outline} fill="none" stroke="var(--card)" strokeOpacity={0.85} strokeWidth={7} strokeLinecap="round" strokeLinejoin="round" />
         {pieces.map((piece, index) => (
           <path

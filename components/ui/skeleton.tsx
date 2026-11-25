@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-/** Segnaposto di caricamento con riflesso che scorre. */
+/** Loading placeholder with a sweeping shine. */
 function Skeleton({
   className,
   ...props

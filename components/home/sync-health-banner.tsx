@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 const STORAGE_KEY = "zc:sync-banner-dismissed";
 const CHANGE_EVENT = "zc:sync-banner-change";
 
-/** Firma dei problemi: se cambia (nuovo problema o nuova data) il banner torna. */
+/** Signature of the problems: if it changes (new problem or new date) the banner returns. */
 const signature = (issues: SyncIssue[]) => issues.map((issue) => `${issue.kind}:${issue.since ?? ""}`).join("|");
 
 function readDismissed(): string | null {
@@ -32,13 +32,13 @@ function subscribe(onChange: () => void) {
 }
 
 /**
- * Avviso compatto "dati fermi": una riga con il problema più importante, il
- * link alle impostazioni dell'integrazione e la X per chiuderlo. Chiuso resta
- * nascosto finché i problemi sono gli stessi. Non compare se è tutto a posto.
+ * Compact "data stalled" notice: one line with the most important problem, the
+ * link to the integration settings and the X to dismiss it. Once dismissed it stays
+ * hidden as long as the problems are the same. Does not appear when all is well.
  */
 export function SyncHealthBanner({ issues, className }: { issues: SyncIssue[]; className?: string }) {
-  // undefined sul server: si mostra solo dopo aver letto se era stato chiuso,
-  // così un avviso già chiuso non lampeggia all'apertura.
+  // undefined on the server: shown only after reading whether it was dismissed,
+  // so an already dismissed notice does not flash on open.
   const t = useTranslations("home.syncBanner");
   const tStatus = useTranslations("status");
   const locale = useLocale() as Locale;
@@ -52,7 +52,7 @@ export function SyncHealthBanner({ issues, className }: { issues: SyncIssue[]; c
     try {
       window.localStorage.setItem(STORAGE_KEY, current);
     } catch {
-      // Senza storage (navigazione privata) si chiude solo fino al prossimo caricamento.
+      // Without storage (private browsing) it is dismissed only until the next load.
     }
     window.dispatchEvent(new Event(CHANGE_EVENT));
   };

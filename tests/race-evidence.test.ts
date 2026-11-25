@@ -9,7 +9,7 @@ const seg = (kind: string, duration_s: number, pace_s_km: number, variant: strin
 const run = (date: string, extra: Partial<EnduranceActivity>): EnduranceActivity =>
   ({ sport: "running", started_at: `${date}T07:00:00Z`, distance_m: 6000, moving_time_s: 2100, ...extra });
 
-// L'atleta: 5 km in 25:28, 17 km a settimana, lungo 13 km, soglie a 5:32 e 5:18.
+// The athlete: 5 km in 25:28, 17 km a week, long run 13 km, thresholds at 5:32 and 5:18.
 const tempo19 = run("2026-11-19", { intervals: { source: "laps", segments: [seg("warmup", 300, 411), seg("work", 480, 327), seg("recovery", 120, 441), seg("work", 480, 314), seg("recovery", 121, 720), seg("work", 484, 312)] } });
 const tempo04 = run("2026-11-04", { intervals: { source: "laps", segments: [seg("work", 20, 264, "sprint"), seg("work", 480, 333), seg("recovery", 90, 450), seg("work", 481, 331)] } });
 const test5k = run("2026-11-14", { intervals: { source: "laps", segments: [327, 318, 308, 285, 296].map((s) => seg("work", s, s)) } });
@@ -17,20 +17,20 @@ const reps = run("2026-10-28", { intervals: { source: "laps", segments: [seg("wo
 const reference = { meters: 5000, time_s: 1528 };
 const base = { weekly_km: 16.5, longest_m: 13_006 };
 
-test("soglia: contano solo i tratti da 6 a 30 minuti, con almeno 15 minuti di lavoro", () => {
+test("threshold: only stretches of 6 to 30 minutes count, with at least 15 minutes of work", () => {
   const evidence = thresholdEvidence([tempo19, tempo04, test5k, reps], today)!;
-  // Il test sui 5 km (tratti da un km) e le ripetute da 5 minuti restano fuori.
+  // The 5 km test (one-km stretches) and the 5-minute repeats stay out.
   assert.deepEqual(evidence.dates, ["2026-11-19", "2026-11-04"]);
   assert.equal(evidence.sessions, 2);
   assert.equal(evidence.age_days, 3);
-  // Più vicina alla seduta recente (5:18) che a quella vecchia (5:32).
+  // Closer to the recent session (5:18) than to the old one (5:32).
   assert.ok(evidence.pace_s_km > 318 && evidence.pace_s_km < 325, `passo ${evidence.pace_s_km}`);
   assert.equal(thresholdEvidence([test5k, reps], today), null);
-  // Oltre 6 settimane non descrive più la forma di oggi.
+  // Beyond 6 weeks it no longer describes today's form.
   assert.equal(thresholdEvidence([tempo04], "2026-12-20"), null);
 });
 
-test("tenuta: deriva mediana dei lunghi da almeno 70 minuti, letture sballate escluse", () => {
+test("endurance: median drift of long runs of at least 70 minutes, skewed readings excluded", () => {
   const long = (date: string, minutes: number, drift: number) => run(date, { moving_time_s: minutes * 60, distance_m: 12_000, hr_drift_pct: drift });
   const evidence = durabilityEvidence([long("2026-10-18", 73, 3.9), long("2026-10-25", 74, 3.3), long("2026-11-01", 85, 0.5), long("2026-11-08", 87, 4.1), long("2026-11-10", 35, 12), long("2026-11-02", 80, 38.6)], today)!;
   assert.equal(evidence.runs, 4);
@@ -40,23 +40,23 @@ test("tenuta: deriva mediana dei lunghi da almeno 70 minuti, letture sballate es
   assert.equal(durabilityFactor(null), 1);
 });
 
-test("due stime: la centrale sta in mezzo, la forbice è più stretta di quella da una prova sola", () => {
+test("two estimates: the central one sits in between, the range is narrower than from a single test", () => {
   const single = predictRange({ reference, reference_age_days: 8, target_m: 21_097, base });
   const full = enduranceBase([tempo19, tempo04, test5k], today);
   const both = predictRange({ reference, reference_age_days: 8, target_m: 21_097, base: { ...base, threshold: full.threshold } });
   const [effort, pace] = both.sources!;
   assert.equal(effort.kind, "effort");
   assert.ok(Math.abs(effort.weight + pace.weight - 1) < 1e-9);
-  // La soglia estrapola meno della prova sui 5 km: pesa un po' di più.
+  // Threshold extrapolates less than the 5 km test: it weighs a bit more.
   assert.ok(pace.weight > effort.weight);
   assert.ok(both.central_s >= Math.min(effort.central_s, pace.central_s) && both.central_s <= Math.max(effort.central_s, pace.central_s));
   assert.ok(both.prudent_s - both.optimistic_s < single.prudent_s - single.optimistic_s, "forbice non più stretta");
-  // Resta onesta: con 17 km a settimana e lungo di 13 km la prudente è oltre 3 minuti sopra la centrale.
+  // Stays honest: with 17 km a week and a 13 km long run the cautious estimate is over 3 minutes above the central one.
   assert.ok(both.prudent_s - both.central_s >= 180, `margine prudente ${both.prudent_s - both.central_s}s`);
   assert.ok(both.optimistic_s < both.central_s && both.central_s < both.prudent_s);
 });
 
-test("stime in disaccordo: la forbice le contiene entrambe e non si stringe", () => {
+test("disagreeing estimates: the range contains both and doesn't narrow", () => {
   const fast = { pace_s_km: 290, sessions: 2, age_days: 3, dates: ["2026-11-19"] };
   const range = predictRange({ reference, reference_age_days: 8, target_m: 21_097, base: { ...base, threshold: fast } });
   assert.equal(range.agreement, 0);
@@ -65,14 +65,14 @@ test("stime in disaccordo: la forbice le contiene entrambe e non si stringe", ()
   }
 });
 
-test("spiegazione: dice su quali dati si basa e se concordano", () => {
+test("explanation: says what data it is based on and whether they agree", () => {
   const full = { ...base, ...{ threshold: thresholdEvidence([tempo19, tempo04], today), durability: { drift_pct: 3.9, runs: 4 } } };
   const range = predictRange({ reference, reference_age_days: 8, target_m: 21_097, base: full });
   const text = rangeExplanation({ ...reference, activity_id: "a", started_at: "2026-11-14T11:11:20Z" }, range, full, today);
   assert.match(text, /^Combina i 5 km del 14 nov \(da soli: \d:\d\d:\d\d\) e le sedute di soglia del 4 nov e del 19 nov a 5:2\d\/km/);
   assert.match(text, /Nei lunghi il cuore resta stabile \(deriva 3,9%\)/);
   assert.match(text, /volume basso \(17 km a settimana\) e il lungo corto \(massimo 13 km\) tengono larga la forbice/);
-  // Senza soglie resta la frase di prima.
+  // Without thresholds the earlier sentence stays.
   const alone = predictRange({ reference, reference_age_days: 8, target_m: 21_097, base });
   assert.match(rangeExplanation({ ...reference, activity_id: "a", started_at: "2026-11-14T11:11:20Z" }, alone, base, today), /^Si basa sui 5 km del 14 nov\./);
 });

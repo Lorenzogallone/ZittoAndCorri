@@ -20,13 +20,13 @@ function dayLabel(day: string, locale: Locale): string {
   return new Date(`${day}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { weekday: "short", day: "numeric", timeZone: "UTC" }).replace(".", "");
 }
 
-// Desktop largo: la riga diventa una tabella (tempo e passo da xl, dislivello
-// da 2xl) con le intestazioni sopra ogni mese. Sul telefono resta compatta.
+// Wide desktop: the row becomes a table (time and pace from xl, elevation
+// gain from 2xl) with headers above each month. On phones it stays compact.
 const COLUMN = "hidden shrink-0 text-right tabular-nums xl:block xl:w-20 3xl:w-28";
 const ELEVATION_COLUMN = "hidden shrink-0 text-right tabular-nums 2xl:block 2xl:w-20 3xl:w-28";
 const DISTANCE_COLUMN = "shrink-0 text-right xl:w-24 3xl:w-28";
 
-/** "12,34": come formatDistance, senza unità (resa a parte, più piccola). */
+/** "12,34": like formatDistance, without the unit (rendered separately, smaller). */
 const kmValue = (meters: number, locale: Locale) => formatDistance(meters, locale).replace(" km", "");
 
 function ActivityRow({ activity, analyzing }: { activity: ListActivity; analyzing: boolean }) {
@@ -40,7 +40,7 @@ function ActivityRow({ activity, analyzing }: { activity: ListActivity; analyzin
   return (
     <li>
       <Link href={`/activities/${activity.id}`} className={cn("-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition-colors active:bg-muted/60", activity.excluded_at && "opacity-55")}>
-        {/* Tessera nel colore del tipo di seduta (corse) o dello sport. */}
+        {/* Tile in the session type colour (runs) or the sport colour. */}
         <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", isRun ? TYPE_COLORS[activity.type] : SPORT_COLORS[activity.sport ?? "other"])}>
           <Icon size={18} strokeWidth={2.2} />
         </span>
@@ -79,7 +79,7 @@ function ActivityRow({ activity, analyzing }: { activity: ListActivity; analyzin
   );
 }
 
-/** Corse raggruppate per mese, una riga compatta ciascuna. */
+/** Runs grouped by month, one compact row each. */
 export function ActivitiesList({ activities, analyzing }: { activities: ListActivity[]; analyzing: Set<string> }) {
   const t = useTranslations("activities.list");
   const locale = useLocale() as Locale;

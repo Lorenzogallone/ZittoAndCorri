@@ -22,7 +22,7 @@ function dayLabel(iso: string, locale: Locale): string {
   return new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "short", timeZone: "UTC" });
 }
 
-/** Forma (carico costruito nel tempo) e fatica (carico recente), stessa scala. */
+/** Fitness (load built up over time) and fatigue (recent load), same scale. */
 export function FormChart({ points }: { points: FormPoint[] }) {
   const t = useTranslations("activities.charts.form");
   const locale = useLocale() as Locale;
@@ -39,7 +39,7 @@ export function FormChart({ points }: { points: FormPoint[] }) {
   const y = (value: number) => PAD.top + innerH - (value / top) * innerH;
   const path = (key: "form" | "fatigue") =>
     points.map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(p[key]).toFixed(1)}`).join(" ");
-  // Etichetta del mese sul primo punto di ogni nuovo mese.
+  // Month label on the first point of each new month.
   const months = points
     .map((p, i) => ({ i, date: p.date }))
     .filter(({ date }, i) => i > 0 && date.slice(0, 7) !== points[i - 1].date.slice(0, 7));
@@ -91,7 +91,7 @@ export function FormChart({ points }: { points: FormPoint[] }) {
             ))}
             {SERIES.map((series, index) => (
               <path
-                // key sulla larghezza: Chromium non ricalcola il tratteggio se cambia solo `d`.
+                // key on the width: Chromium does not recompute the dash pattern if only `d` changes.
                 key={`${series.key}-${width}`}
                 d={path(series.key)}
                 pathLength={1}

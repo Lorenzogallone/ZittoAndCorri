@@ -17,9 +17,9 @@ function dayLabel(iso: string, locale: Locale): string {
 const time = (iso: string) => Date.parse(`${iso}T12:00:00Z`);
 
 /**
- * Andamento di una metrica nel tempo: linea con i punti sull'asse delle date
- * reali (i giorni senza sync restano vuoti, non vengono inventati), scala
- * stretta sui valori e il periodo di 4 settimane fa evidenziato come confronto.
+ * Trend of a metric over time: line with points on the real date axis
+ * (days without sync stay empty, they are not invented), scale tight on
+ * the values and the period from 4 weeks ago highlighted as a comparison.
  */
 export function TrendChart({
   metric,
@@ -56,7 +56,7 @@ export function TrendChart({
   const path = points.map((point, i) => `${i === 0 ? "M" : "L"}${x(point.date).toFixed(1)},${y(point.value).toFixed(1)}`).join(" ");
   const sparse = points.length < 25;
   const last = points[points.length - 1];
-  // Finestre del confronto: ultime 2 settimane e le 2 settimane di 4 settimane prima.
+  // Comparison windows: last 2 weeks and the 2 weeks from 4 weeks earlier.
   const band = (fromAge: number, toAge: number) => {
     const left = Math.max(PAD.left, x(new Date(end - toAge * DAY_MS).toISOString().slice(0, 10)));
     const right = x(new Date(end - fromAge * DAY_MS).toISOString().slice(0, 10));

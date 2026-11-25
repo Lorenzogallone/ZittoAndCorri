@@ -1,10 +1,10 @@
--- Progressi e adattamenti del piano.
--- - best_efforts: migliori tempi su 1k/5k/10k/mezza/maratona di ogni corsa.
--- - pace_check: confronto tra passo previsto e reale nelle sedute con target.
--- - adapted_from: valori originali di una seduta alleggerita ("Non mi sento al
---   100%"), così l'adattamento si può annullare.
--- - heat_adjust: adatta i passi a caldo e umidità (default attivo).
--- - Le sedute in pausa usano lo stato 'skipped' (già presente nell'enum).
+-- Progress and plan adaptations.
+-- - best_efforts: best times over 1k/5k/10k/half/marathon of each run.
+-- - pace_check: comparison of planned vs actual pace in sessions with a target.
+-- - adapted_from: original values of a lightened session ("I don't feel
+--   100%"), so the adaptation can be undone.
+-- - heat_adjust: adapts paces to heat and humidity (on by default).
+-- - Paused sessions use the 'skipped' state (already in the enum).
 
 alter table public.activities
   add column if not exists best_efforts jsonb,
@@ -16,8 +16,8 @@ alter table public.planned_workouts
 alter table public.profiles
   add column if not exists heat_adjust boolean not null default true;
 
--- Le proposte del coach sostituiscono anche le sedute messe in pausa: il nuovo
--- piano tiene già conto del motivo (ricordo del coach) e non deve sovrapporsi.
+-- Coach proposals also replace paused sessions: the new
+-- plan already accounts for the reason (coach memory) and must not overlap.
 create or replace function public.apply_plan_proposal(p_proposal_id uuid)
 returns text
 language plpgsql security definer set search_path = public as $$

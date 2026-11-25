@@ -6,7 +6,7 @@ export interface AiSwitchState {
 
 const NAMES = { gemini: "Gemini", openrouter: "OpenRouter" } as const;
 
-/** Chi risponde in chat: modello e provider. Si cambia da Impostazioni → Coach. */
+/** Who answers in chat: model and provider. Changed from Settings → Coach. */
 export function AiModelLine({ state }: { state: AiSwitchState }) {
   if (!state.active) return null;
   const label = state.active === "gemini" ? state.gemini.modelLabel : state.openrouter?.modelLabel;

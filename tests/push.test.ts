@@ -22,7 +22,7 @@ const pushT = (locale: Locale): Translator => {
 const it = pushT("it");
 const en = pushT("en");
 
-test("la lingua salvata nel profilo vale solo se è una lingua dell'app", () => {
+test("the saved profile language counts only if it is an app language", () => {
   assert.equal(localeOrDefault("en"), "en");
   assert.equal(localeOrDefault("it"), "it");
   assert.equal(localeOrDefault("fr"), "it");
@@ -30,7 +30,7 @@ test("la lingua salvata nel profilo vale solo se è una lingua dell'app", () => 
   assert.equal(localeOrDefault(undefined, "en"), "en");
 });
 
-test("le notifiche escono nella lingua dell'utente, con numeri e plurali locali", () => {
+test("notifications go out in the user's language, with local numbers and plurals", () => {
   const week = { start: "2026-10-05", end: "2026-10-11" };
   const stats = computeWeeklyStats(
     week,
@@ -53,30 +53,30 @@ test("le notifiche escono nella lingua dell'utente, con numeri e plurali locali"
   assert.equal(en("reminder.title", { types: "Easy + Long" }), "Tomorrow: Easy + Long");
 });
 
-test("la settimana precedente è lunedì–domenica secondo l'ora di Roma", () => {
-  // Lunedì 12/10 alle 08:00 di Roma (06:00 UTC, orario del cron).
+test("the previous week is Monday–Sunday by Rome time", () => {
+  // Monday 12/10 at 08:00 Rome time (06:00 UTC, cron time).
   assert.deepEqual(previousWeek(new Date("2026-10-12T06:00:00Z")), { start: "2026-10-05", end: "2026-10-11" });
-  // Domenica 11/10 alle 23:30 UTC è già lunedì 12/10 a Roma.
+  // Sunday 11/10 at 23:30 UTC is already Monday 12/10 in Rome.
   assert.deepEqual(previousWeek(new Date("2026-10-11T23:30:00Z")), { start: "2026-10-05", end: "2026-10-11" });
-  // Domenica sera a Roma: la settimana corrente non è ancora conclusa.
+  // Sunday evening in Rome: the current week is not over yet.
   assert.deepEqual(previousWeek(new Date("2026-10-11T20:00:00Z")), { start: "2026-09-28", end: "2026-10-04" });
-  // Cambio d'ora (25/10/2026): lunedì 26/10 alle 00:30 di Roma = 23:30 UTC del 25.
+  // Clock change (25/10/2026): Monday 26/10 at 00:30 Rome = 23:30 UTC on the 25th.
   assert.deepEqual(previousWeek(new Date("2026-10-25T23:30:00Z")), { start: "2026-10-19", end: "2026-10-25" });
   assert.equal(romeDate(new Date("2026-10-15T22:30:00Z")), "2026-10-16");
 });
 
-test("le statistiche usano le date di Roma e contano l'aderenza per giorno", () => {
+test("statistics use Rome dates and count adherence per day", () => {
   const week = { start: "2026-10-05", end: "2026-10-11" };
   const stats = computeWeeklyStats(
     week,
     [
-      // Domenica 4/10 23:30 UTC = lunedì 5/10 01:30 a Roma: dentro.
+      // Sunday 4/10 23:30 UTC = Monday 5/10 01:30 in Rome: inside.
       { started_at: "2026-10-04T23:30:00Z", sport: "running", distance_m: 8_040 },
       { started_at: "2026-10-07T17:00:00+02:00", sport: "running", distance_m: 6_000 },
       { started_at: "2026-10-07T19:00:00+02:00", sport: "strength", distance_m: 0 },
       { started_at: "2026-10-10T08:00:00Z", sport: "running", distance_m: 12_345 },
       { started_at: "2026-10-09T18:00:00Z", sport: "cycling", distance_m: 30_000 },
-      // Domenica 11/10 22:30 UTC = lunedì 12/10 a Roma: fuori.
+      // Sunday 11/10 22:30 UTC = Monday 12/10 in Rome: outside.
       { started_at: "2026-10-11T22:30:00Z", sport: "running", distance_m: 10_000 },
     ],
     [
@@ -100,7 +100,7 @@ test("le statistiche usano le date di Roma e contano l'aderenza per giorno", () 
   assert.equal(weeklyPushBody(stats, it, "it"), "26,4 km · 5 uscite · piano 3/5");
 });
 
-test("km arrotondati a un decimale e testi senza piano o senza attività", () => {
+test("km rounded to one decimal and texts without plan or without activity", () => {
   const week = { start: "2026-10-05", end: "2026-10-11" };
   const one = computeWeeklyStats(week, [{ started_at: "2026-10-06T07:00:00Z", sport: "running", distance_m: 9_951 }], []);
   assert.equal(one.running_km, 10);
@@ -120,7 +120,7 @@ test("km arrotondati a un decimale e testi senza piano o senza attività", () =>
   assert.match(deterministicWeeklyRecap(full, it, "it"), /Piano rispettato in pieno/);
 });
 
-test("il corpo dell'analisi è la prima frase, troncata con ellissi", () => {
+test("the analysis body is the first sentence, truncated with an ellipsis", () => {
   assert.equal(firstSentence("Ottima corsa a 5.2 km di media. Il cuore è rimasto basso."), "Ottima corsa a 5.2 km di media.");
   assert.equal(firstSentence("**Bene** così!  Continua"), "Bene così!");
   const long = `${"parola ".repeat(40)}fine.`;
@@ -131,7 +131,7 @@ test("il corpo dell'analisi è la prima frase, troncata con ellissi", () => {
   assert.equal(analysisPushBody("", it), "Il coach ha commentato la tua corsa.");
 });
 
-test("il promemoria riassume ripetute e distanza", () => {
+test("the reminder summarises repeats and distance", () => {
   const step = {
     label: "Veloce",
     completion_type: "distance" as const,

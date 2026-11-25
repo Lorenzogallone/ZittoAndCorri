@@ -11,16 +11,16 @@ import {
 } from "@/lib/clientlog";
 
 /**
- * Diagnostica PWA: logga il ciclo di vita della pagina (utile per capire i
- * blocchi su iOS standalone) e, quando attivo, mostra un overlay a schermo con
- * gli ultimi eventi — così si leggono i log direttamente sul telefono, senza
- * devtools. Gli stessi eventi finiscono anche nei log di Vercel (/api/clientlog).
+ * PWA diagnostics: logs the page lifecycle (useful to understand
+ * hangs on standalone iOS) and, when enabled, shows an on-screen overlay with
+ * the latest events — so logs can be read directly on the phone, without
+ * devtools. The same events also go to the Vercel logs (/api/clientlog).
  *
- * Attivazione overlay/beacon: apri l'app con ?debug=1 (resta attivo finché non
- * apri con ?debug=0). In PWA standalone i beacon partono comunque.
+ * Overlay/beacon activation: open the app with ?debug=1 (stays on until you
+ * open with ?debug=0). In standalone PWA the beacons are sent anyway.
  */
 export function PwaDiagnostics() {
-  // Attiva/disattiva il debug da query string e logga l'avvio.
+  // Turns debug on/off from the query string and logs startup.
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -28,7 +28,7 @@ export function PwaDiagnostics() {
       if (dbg === "1") window.localStorage.setItem("clientlog", "1");
       else if (dbg === "0") window.localStorage.removeItem("clientlog");
     } catch {
-      // ignora
+      // ignore
     }
 
     clientLog("page:load", {
@@ -73,8 +73,8 @@ function DebugOverlay() {
   const [enabled, setEnabled] = useState(false);
   const [open, setOpen] = useState(true);
 
-  // isDebugEnabled legge localStorage: solo dopo il mount (evita mismatch SSR).
-  // Lettura client-only intenzionale: il pannello non fa parte dell'UI normale.
+  // isDebugEnabled reads localStorage: only after mount (avoids SSR mismatch).
+  // Intentional client-only read: the panel is not part of the normal UI.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setEnabled(isDebugEnabled()), []);
 
@@ -94,7 +94,7 @@ function DebugOverlay() {
     try {
       window.localStorage.removeItem("clientlog");
     } catch {
-      // ignora
+      // ignore
     }
     setEnabled(false);
   };

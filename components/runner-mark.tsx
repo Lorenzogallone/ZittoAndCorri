@@ -1,8 +1,8 @@
-// Omino dell'icona in posa di volo, statico: stessa geometria dello splash PWA
-// (components/pwa-splash.tsx) con le articolazioni ferme nella posa che lo
-// splash mostra con il movimento ridotto. Disegnato verso destra e specchiato.
-// Corpo in currentColor; `cutout` è il colore dello sfondo, usato per staccare
-// gamba e braccio vicini dal busto e per il bordo dei nodi.
+// The icon's little runner in flight pose, static: same geometry as the PWA splash
+// (components/pwa-splash.tsx) with the joints frozen in the pose the
+// splash shows with reduced motion. Drawn facing right and mirrored.
+// Body in currentColor; `cutout` is the background colour, used to detach
+// the near leg and arm from the torso and for the border of the nodes.
 
 const UPPER = "M44.8 37L45.5 50.5A3.1 3.1 0 0 0 51.7 50.5L52.4 37A3.8 3.8 0 0 0 44.8 37Z";
 const FORE = "M45.5 50.5L46.1 61.5A2.5 2.5 0 0 0 51.1 61.5L51.7 50.5A3.1 3.1 0 0 0 45.5 50.5Z";
@@ -40,9 +40,9 @@ export function RunnerMark({
   className,
 }: {
   size?: number;
-  /** Colore dello sfondo su cui sta l'omino. */
+  /** Background colour the runner sits on. */
   cutout: string;
-  /** Colore dei nodi sulla schiena (default: come il corpo). */
+  /** Colour of the nodes on the back (default: same as the body). */
   node?: string;
   className?: string;
 }) {

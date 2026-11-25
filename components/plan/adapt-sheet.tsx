@@ -15,7 +15,7 @@ function untilLabel(iso: string, locale: Locale): string {
   return new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 }
 
-/** "Non mi sento al 100%": motivo + durata, poi il piano si adatta da solo. */
+/** "I don't feel 100%": reason + duration, then the plan adapts by itself. */
 export function AdaptSheet({ variant = "header" }: { variant?: "header" | "inline" }) {
   const t = useTranslations("plan.adapt");
   const tl = useTranslations("labels");
@@ -64,8 +64,8 @@ export function AdaptSheet({ variant = "header" }: { variant?: "header" | "inlin
         </Button>
       )}
 
-      {/* Portal sul body: l'header ha backdrop-filter, che intrappolerebbe il
-          pannello fisso sotto la tab bar. */}
+      {/* Portal on the body: the header has backdrop-filter, which would trap the
+          fixed panel under the tab bar. */}
       {open && createPortal(
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 backdrop-blur-[2px]" onClick={close}>
           <div

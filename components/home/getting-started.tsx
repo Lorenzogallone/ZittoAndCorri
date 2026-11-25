@@ -8,9 +8,9 @@ import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "zc:getting-started-hidden";
 
-// Flag "Nascondi" in localStorage, letto come store esterno: sul server e al
-// primo render del client vale "sconosciuto" e la card non appare, così chi
-// l'ha nascosta non la vede lampeggiare a ogni apertura.
+// "Hide" flag in localStorage, read as an external store: on the server and at
+// the first client render it is "unknown" and the card does not appear, so whoever
+// hid it does not see it flash on every open.
 const listeners = new Set<() => void>();
 function subscribe(listener: () => void) {
   listeners.add(listener);
@@ -31,7 +31,7 @@ function hide() {
   try {
     window.localStorage.setItem(STORAGE_KEY, "1");
   } catch {
-    // Storage bloccato (navigazione privata): la card resta, nessun errore.
+    // Storage blocked (private browsing): the card stays, no error.
   }
   listeners.forEach((listener) => listener());
 }
@@ -76,10 +76,10 @@ function StepRow({ step }: { step: Step }) {
 }
 
 /**
- * "Inizia da qui": tre passi del primo uso con stato fatto/da fare. Sparisce
- * quando sono fatti tutti e tre, o con "Nascondi" (per sempre, su questo
- * dispositivo). Compatta: con nessun passo fatto sta sotto i 180px, così la
- * chat sotto resta usabile su iPhone.
+ * "Start here": three first-use steps with done/to-do state. Disappears
+ * when all three are done, or with "Hide" (forever, on this
+ * device). Compact: with no step done it stays under 180px, so the
+ * chat below stays usable on iPhone.
  */
 export function GettingStarted({
   hasActivity,

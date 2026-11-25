@@ -20,32 +20,32 @@ const gpxOnly: EnrichmentSnapshot = {
   notes: null,
 };
 
-test("lo stesso file reimportato o la sola cadenza non sono un cambiamento", () => {
+test("the same file reimported or cadence alone is not a change", () => {
   assert.equal(enrichmentIsSubstantial(gpxOnly, { ...gpxOnly }), false);
-  // Qualche secondo di differenza sul tempo in movimento: stesso passo.
+  // A few seconds' difference in moving time: same pace.
   assert.equal(enrichmentIsSubstantial(gpxOnly, { ...gpxOnly, moving_time_s: 1_790 }), false);
 });
 
-test("stream nuovi, FC mancante o passo diverso sono un cambiamento", () => {
+test("new streams, missing HR or a different pace are a change", () => {
   assert.equal(enrichmentIsSubstantial(gpxOnly, { ...gpxOnly, hasLaps: true, hasDistance: true }), true);
   assert.equal(enrichmentIsSubstantial({ ...gpxOnly, hasHr: false, avg_hr: null }, gpxOnly), true);
   assert.equal(enrichmentIsSubstantial(gpxOnly, { ...gpxOnly, moving_time_s: 1_650 }), true);
   assert.equal(enrichmentIsSubstantial({ ...gpxOnly, moving_time_s: null }, gpxOnly), true);
-  // Nota o RPE arrivati con il secondo file: l'analisi li deve leggere.
+  // Note or RPE arrived with the second file: the analysis must read them.
   assert.equal(enrichmentIsSubstantial(gpxOnly, { ...gpxOnly, notes: "Gambe pesanti" }), true);
   assert.equal(enrichmentIsSubstantial(gpxOnly, { ...gpxOnly, rpe: 7 }), true);
   assert.equal(enrichmentIsSubstantial({ ...gpxOnly, notes: "Gambe pesanti" }, { ...gpxOnly, notes: "Gambe pesanti" }), false);
 });
 
-test("un arricchimento non rimanda la push se l'analisi c'era già", () => {
+test("an enrichment does not resend the push if the analysis already existed", () => {
   assert.equal(evaluationAfterIngest({ created: true, substantial: true }, false), "notify");
   assert.equal(evaluationAfterIngest({ created: false, substantial: false }, true), "skip");
   assert.equal(evaluationAfterIngest({ created: false, substantial: true }, true), "silent");
-  // Mai analizzata prima (es. chiave AI aggiunta dopo): è la prima analisi.
+  // Never analysed before (e.g. AI key added later): it's the first analysis.
   assert.equal(evaluationAfterIngest({ created: false, substantial: false }, false), "notify");
 });
 
-test("gli import accodano l'analisi in base all'esito dell'ingest", () => {
+test("imports queue the analysis based on the ingest outcome", () => {
   const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
   for (const path of ["lib/intervals/import.ts", "app/api/import/route.ts", "app/api/import/file/route.ts", "app/api/import/gpx/route.ts", "app/activities/actions.ts"]) {
     const source = read(path);

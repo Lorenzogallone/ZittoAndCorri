@@ -1,16 +1,16 @@
--- Affidabilità e costi del coach.
+-- Coach reliability and costs.
 --
--- Lo stato "non inviato" dei messaggi della chat NON richiede colonne: vive in
--- coach_messages.metadata.send_error ({message, at}), scritto quando il turno
--- del coach fallisce e tolto da "Riprova" (lib/coach-failures.ts).
--- Anche la scadenza delle proposte in attesa è solo logica dell'app
--- (lib/plan/proposal-expiry.ts): nel db lo stato resta 'pending'.
+-- The "not sent" state of chat messages does NOT require columns: it lives in
+-- coach_messages.metadata.send_error ({message, at}), written when the coach
+-- turn fails and removed by "Retry" (lib/coach-failures.ts).
+-- The expiry of pending proposals is also just app logic
+-- (lib/plan/proposal-expiry.ts): in the db the state stays 'pending'.
 --
--- Qui solo il dettaglio delle chiamate AI (lib/ai/llm.ts funziona anche senza):
--- 1. failed: la chiamata è fallita (risposta non valida o errore del provider);
---    il costo, se il provider l'ha addebitato, resta in cost_usd.
--- 2. cache_write_tokens: token di input scritti nella cache del prompt (Claude
---    via OpenRouter). Quelli letti dalla cache sono già in cached_tokens.
+-- Here only the AI call detail (lib/ai/llm.ts also works without it):
+-- 1. failed: the call failed (invalid response or provider error);
+--    the cost, if the provider charged it, stays in cost_usd.
+-- 2. cache_write_tokens: input tokens written to the prompt cache (Claude
+--    via OpenRouter). Those read from the cache are already in cached_tokens.
 
 alter table public.ai_usage_events
   add column if not exists failed boolean not null default false,

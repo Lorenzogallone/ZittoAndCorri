@@ -1,9 +1,9 @@
--- Corse importate cancellate dall'atleta. Senza traccia, l'import successivo
--- da Intervals.icu (finestra di 28 giorni) le ricreava. Una riga per corsa
--- cancellata: l'id esterno quando c'è, altrimenti sport e inizio per
--- riconoscerla dopo aver letto il FIT.
--- Il codice funziona anche senza questa tabella (la cancellazione resta come
--- prima): è un no-op finché la migrazione non è applicata.
+-- Imported runs deleted by the athlete. Without a trace, the next import
+-- from Intervals.icu (28-day window) would recreate them. One row per deleted
+-- run: the external id when present, otherwise sport and start, to
+-- recognise it after reading the FIT.
+-- The code also works without this table (deletion stays as
+-- before): it is a no-op until the migration is applied.
 
 create table if not exists public.deleted_imports (
   id          bigint generated always as identity primary key,

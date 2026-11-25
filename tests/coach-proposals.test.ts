@@ -3,7 +3,7 @@ import test from "node:test";
 import { itLabels } from "../lib/italian-translator.ts";
 import { planProposalDiff, type PlanDayWorkout } from "../lib/plan/proposal-diff.ts";
 
-// Settimana tipo: oggi è venerdì 23 ottobre 2026.
+// Typical week: today is Friday 23 October 2026.
 const today = "2026-10-23";
 const windowEnd = "2026-11-19";
 
@@ -19,17 +19,17 @@ const session = (date: string, type: PlanDayWorkout["type"], km: number, status 
 });
 
 const plan = [
-  session("2026-10-20", "easy", 7),     // martedì, già corso
-  session("2026-10-22", "interval", 8), // ieri, corso ma non segnato come fatto
-  session("2026-10-24", "easy", 6),     // sabato
-  session("2026-10-25", "long", 16),    // domenica
-  session("2026-10-27", "easy", 7),     // settimana prossima
+  session("2026-10-20", "easy", 7),     // Tuesday, already run
+  session("2026-10-22", "interval", 8), // yesterday, run but not marked as done
+  session("2026-10-24", "easy", 6),     // Saturday
+  session("2026-10-25", "long", 16),    // Sunday
+  session("2026-10-27", "easy", 7),     // next week
   session("2026-10-29", "tempo", 9),
   session("2026-11-01", "long", 18),
 ];
 const ran = new Set(["2026-10-20", "2026-10-22"]);
 
-test("cambiare solo gli ultimi due allenamenti della settimana tocca solo quei giorni", () => {
+test("changing only the last two workouts of the week touches only those days", () => {
   const diff = planProposalDiff({
     today, windowEnd, existing: plan, activityDates: ran,
     proposed: [session("2026-10-24", "recovery", 5), session("2026-10-25", "long", 14)],
@@ -41,13 +41,13 @@ test("cambiare solo gli ultimi due allenamenti della settimana tocca solo quei g
   assert.equal(diff.changes[1].after[0].meters, 14000);
 });
 
-test("se il modello rimanda tutto il piano, cambiano solo i giorni davvero diversi", () => {
+test("if the model resends the whole plan, only the days that really differ change", () => {
   const resent = plan.filter((w) => w.date >= today).map((w) => (w.date === "2026-10-29" ? session(w.date, "interval", 8) : { ...w }));
   const diff = planProposalDiff({ today, windowEnd, existing: plan, activityDates: ran, proposed: resent, removeDates: [] });
   assert.deepEqual(diff.touched, ["2026-10-29"]);
 });
 
-test("modificare la settimana prossima non tocca quella attuale", () => {
+test("changing next week does not touch the current one", () => {
   const diff = planProposalDiff({
     today, windowEnd, existing: plan, activityDates: ran,
     proposed: [session("2026-10-27", "easy", 8), session("2026-10-30", "easy", 6), session("2026-11-01", "long", 20)],
@@ -59,18 +59,18 @@ test("modificare la settimana prossima non tocca quella attuale", () => {
   assert.deepEqual(diff.changes.find((c) => c.date === "2026-10-29")!.after, []);
 });
 
-test("i giorni passati e quelli già corsi sono intoccabili", () => {
+test("past days and days already run are untouchable", () => {
   const diff = planProposalDiff({
     today, windowEnd, existing: plan, activityDates: new Set([...ran, today]),
     proposed: [session("2026-10-22", "easy", 5), session("2026-10-24", "easy", 6)],
     removeDates: ["2026-10-20", today],
   });
-  // Sabato era già così: nessuna modifica. Ieri e martedì bloccati; oggi già corso non si svuota.
+  // Saturday was already like that: no change. Yesterday and Tuesday are locked; today, already run, is not emptied.
   assert.deepEqual(diff.touched, []);
   assert.deepEqual(diff.locked, ["2026-10-20", "2026-10-22"]);
 });
 
-test("un giorno può avere due sedute: la proposta sostituisce tutte quelle del giorno", () => {
+test("a day can have two sessions: the proposal replaces all of that day's sessions", () => {
   const diff = planProposalDiff({
     today, windowEnd, existing: plan, activityDates: ran,
     proposed: [session("2026-10-24", "easy", 6), session("2026-10-24", "recovery", 4)],
@@ -80,7 +80,7 @@ test("un giorno può avere due sedute: la proposta sostituisce tutte quelle del 
   assert.equal(diff.workouts.length, 2);
   assert.deepEqual(diff.changes[0].before.map((b) => b.meters), [6000]);
   assert.deepEqual(diff.changes[0].after.map((b) => b.meters), [6000, 4000]);
-  // Rimandare le stesse due sedute non è una modifica.
+  // Resending the same two sessions is not a change.
   const twice = [...plan, { ...session("2026-10-24", "recovery", 4), day_order: 2 }];
   const same = planProposalDiff({
     today, windowEnd, existing: twice, activityDates: ran,
@@ -90,7 +90,7 @@ test("un giorno può avere due sedute: la proposta sostituisce tutte quelle del 
   assert.deepEqual(same.touched, []);
 });
 
-test("oggi già corso: una seconda seduta si aggiunge senza toccare la prima", () => {
+test("today already run: a second session is added without touching the first", () => {
   const existing = [...plan, session(today, "easy", 6)];
   const diff = planProposalDiff({
     today, windowEnd, existing, activityDates: new Set([...ran, today]),
@@ -102,7 +102,7 @@ test("oggi già corso: una seconda seduta si aggiunge senza toccare la prima", (
   assert.equal(diff.workouts.length, 1);
   assert.equal(diff.workouts[0].type, "recovery");
   assert.deepEqual(diff.changes[0].after.map((b) => b.meters), [6000, 4000]);
-  // Ripetere solo la seduta già fatta non cambia nulla.
+  // Repeating only the session already done changes nothing.
   const repeat = planProposalDiff({
     today, windowEnd, existing, activityDates: new Set([...ran, today]),
     proposed: [session(today, "easy", 6)], removeDates: [],
@@ -110,7 +110,7 @@ test("oggi già corso: una seconda seduta si aggiunge senza toccare la prima", (
   assert.deepEqual(repeat.touched, []);
 });
 
-test("un giorno si svuota solo se richiesto e se c'è qualcosa da togliere", () => {
+test("a day is emptied only if requested and if there is something to remove", () => {
   const diff = planProposalDiff({
     today, windowEnd, existing: plan, activityDates: ran,
     proposed: [],
@@ -120,7 +120,7 @@ test("un giorno si svuota solo se richiesto e se c'è qualcosa da togliere", () 
   assert.deepEqual(diff.touched, ["2026-10-24"]);
 });
 
-test("una seduta completata non viene sostituita: la nuova si aggiunge", () => {
+test("a completed session is not replaced: the new one is added", () => {
   const existing = [...plan, session("2026-10-28", "easy", 6, "completed")];
   const diff = planProposalDiff({ today, windowEnd, existing, activityDates: ran, proposed: [session("2026-10-28", "tempo", 8)], removeDates: ["2026-10-28"] });
   assert.deepEqual(diff.removeDates, []);
@@ -129,7 +129,7 @@ test("una seduta completata non viene sostituita: la nuova si aggiunge", () => {
   assert.deepEqual(diff.changes[0].after.map((b) => b.type), ["easy", "tempo"]);
 });
 
-test("il calendario del coach dice settimana e giorni bloccati", async () => {
+test("the coach calendar states the week and locked days", async () => {
   const { planCalendar } = await import("../lib/ai/plan-calendar.ts");
   const days = planCalendar({
     today, from: "2026-10-19", to: "2026-11-01",
@@ -147,7 +147,7 @@ test("il calendario del coach dice settimana e giorni bloccati", async () => {
   assert.match(day("2026-10-25").planned[0].what, /^long · 16 km$/);
 });
 
-test("lo schema Gemini diventa JSON Schema e il JSON si estrae dalle risposte", async () => {
+test("the Gemini schema becomes JSON Schema and the JSON is extracted from replies", async () => {
   const { toJsonSchema, extractJson } = await import("../lib/ai/json-schema.ts");
   const schema = toJsonSchema({
     type: "OBJECT" as never,
@@ -175,22 +175,22 @@ test("lo schema Gemini diventa JSON Schema e il JSON si estrae dalle risposte", 
   assert.throws(() => extractJson("nessun json"));
 });
 
-test("una seduta di ieri non corsa si può togliere e rifare oggi", () => {
+test("yesterday's session that wasn't run can be removed and redone today", () => {
   const diff = planProposalDiff({
     today, windowEnd, removeFrom: "2026-10-09",
-    existing: [...plan, session("2026-10-21", "tempo", 8)], // mercoledì, non corso
+    existing: [...plan, session("2026-10-21", "tempo", 8)], // Wednesday, not run
     activityDates: ran,
     proposed: [session("2026-10-23", "tempo", 8)],
     removeDates: ["2026-10-21", "2026-10-22", "2026-10-20"],
   });
-  // Ieri (22) e martedì (20) sono stati corsi: restano. Mercoledì (21) si svuota.
+  // Yesterday (22) and Tuesday (20) were run: they stay. Wednesday (21) is emptied.
   assert.deepEqual(diff.removeDates, ["2026-10-21"]);
   assert.deepEqual(diff.touched, ["2026-10-21", "2026-10-23"]);
   assert.deepEqual(diff.locked, ["2026-10-20", "2026-10-22"]);
   assert.equal(diff.changes[0].after.length, 0);
 });
 
-test("nel passato non si aggiungono sedute e senza removeFrom nulla cambia", () => {
+test("no sessions are added in the past and without removeFrom nothing changes", () => {
   const existing = [...plan, session("2026-10-21", "tempo", 8)];
   const added = planProposalDiff({
     today, windowEnd, removeFrom: "2026-10-09", existing, activityDates: ran,
@@ -205,12 +205,12 @@ test("nel passato non si aggiungono sedute e senza removeFrom nulla cambia", () 
   assert.deepEqual(strict.touched, []);
 });
 
-test("seduta divisa: la seconda parte è concatenata e segue la prima", async () => {
+test("split session: the second part is chained and follows the first", async () => {
   const { sessionStartTime, sessionPlacement } = await import("../lib/plan/day-sessions.ts");
   const diff = planProposalDiff({
     today, windowEnd, existing: plan, activityDates: ran,
     proposed: [
-      { ...session("2026-10-29", "easy", 2), chained: true }, // la prima non può essere concatenata
+      { ...session("2026-10-29", "easy", 2), chained: true }, // the first one cannot be chained
       { ...session("2026-10-29", "interval", 6), chained: true },
     ],
     removeDates: [],
@@ -219,11 +219,11 @@ test("seduta divisa: la seconda parte è concatenata e segue la prima", async ()
   assert.deepEqual(diff.changes[0].after.map((b) => b.chained), [false, true]);
   assert.equal(sessionPlacement(itLabels, diff.workouts[1], 2), "Subito dopo la precedente");
   assert.equal(sessionPlacement(itLabels, diff.workouts[0], 1), null);
-  // Sul calendario dell'orologio le due parti restano in fila.
+  // On the watch calendar the two parts stay in a row.
   assert.deepEqual(diff.workouts.map((w) => sessionStartTime(w)), ["00:00:00", "00:01:00"]);
 });
 
-test("doppia seduta: mattina e sera separate, la concatenata eredita il momento", async () => {
+test("double session: morning and evening separate, the chained one inherits the time of day", async () => {
   const { numberDaySessions, sessionStartTime } = await import("../lib/plan/day-sessions.ts");
   const input: Array<{ date: string; day_part?: "morning" | "evening"; chained?: boolean }> = [
     { date: "2026-10-29", day_part: "morning" },
@@ -235,7 +235,7 @@ test("doppia seduta: mattina e sera separate, la concatenata eredita il momento"
   assert.deepEqual(day.map((s) => sessionStartTime(s)), ["07:00:00", "18:01:00", "18:02:00"]);
 });
 
-test("cambiare solo il legame tra due sedute è una modifica; ripeterlo no", () => {
+test("changing only the link between two sessions is a change; repeating it is not", () => {
   const existing = [
     ...plan.filter((w) => w.date !== "2026-10-29"),
     { ...session("2026-10-29", "easy", 2), day_order: 1 },
@@ -255,7 +255,7 @@ test("cambiare solo il legame tra due sedute è una modifica; ripeterlo no", () 
   assert.deepEqual(split.touched, ["2026-10-29"]);
 });
 
-test("oggi già corso: la seduta aggiunta va dopo quelle esistenti", () => {
+test("today already run: the added session goes after the existing ones", () => {
   const existing = [...plan, { ...session(today, "easy", 6), day_part: "morning" as const }];
   const diff = planProposalDiff({
     today, windowEnd, existing, activityDates: new Set([...ran, today]),

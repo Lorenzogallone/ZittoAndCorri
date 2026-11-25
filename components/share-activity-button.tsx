@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { LoaderCircle, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-/** Condivide l'immagine della corsa con il menu nativo (o la apre per salvarla). */
+/** Shares the run image with the native menu (or opens it to save). */
 export function ShareActivityButton({ activityId, title }: { activityId: string; title: string }) {
   const t = useTranslations("activities.share");
   const [pending, setPending] = useState(false);
@@ -23,7 +23,7 @@ export function ShareActivityButton({ activityId, title }: { activityId: string;
         window.open(URL.createObjectURL(blob), "_blank");
       }
     } catch (error) {
-      // L'utente che chiude il foglio di condivisione non è un errore.
+      // The user closing the share sheet is not an error.
       if (!(error instanceof DOMException && error.name === "AbortError")) console.error("share:", error);
     } finally {
       setPending(false);

@@ -6,7 +6,7 @@ import {
   sanitizeClientLog,
 } from "../lib/clientlog/sanitize.ts";
 
-test("clientlog: tiene solo i campi noti, con l'utente della sessione", () => {
+test("clientlog: keeps only known fields, with the session's user", () => {
   const line = sanitizeClientLog(
     JSON.stringify({ ev: "nav", data: { a: 1 }, url: "/plan", standalone: true, ts: "2026-11-22T10:00:00Z", extra: "x", user: "finto" }),
     "u1",
@@ -19,13 +19,13 @@ test("clientlog: tiene solo i campi noti, con l'utente della sessione", () => {
   assert.equal(parsed.extra, undefined);
 });
 
-test("clientlog: scarta corpi che non sono eventi", () => {
+test("clientlog: discards bodies that are not events", () => {
   assert.equal(sanitizeClientLog("non json", "u1"), null);
   assert.equal(sanitizeClientLog("[1,2]", "u1"), null);
   assert.equal(sanitizeClientLog(JSON.stringify({ data: 1 }), "u1"), null);
 });
 
-test("clientlog: tronca i contenuti lunghi e toglie gli a capo", () => {
+test("clientlog: truncates long content and strips newlines", () => {
   const line = sanitizeClientLog(
     JSON.stringify({ ev: "a\nb", data: "x".repeat(10_000), url: "/".repeat(1000) }),
     "u1",
@@ -35,7 +35,7 @@ test("clientlog: tronca i contenuti lunghi e toglie gli a capo", () => {
   assert.doesNotMatch(line, /\n/);
 });
 
-test("clientlog: limite di frequenza per utente con finestra", () => {
+test("clientlog: per-user rate limit with a window", () => {
   const allow = createRateLimiter(2, 1000);
   assert.equal(allow("u1", 0), true);
   assert.equal(allow("u1", 10), true);

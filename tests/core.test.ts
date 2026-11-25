@@ -11,7 +11,7 @@ import { describeStep, groupWorkoutSteps, workoutHeadline } from "../lib/workout
 import { itLabels } from "../lib/italian-translator.ts";
 import { parseDecimal, parseDuration as parseFormDuration } from "../lib/format.ts";
 
-test("il carico interno privilegia HR, poi RPE e infine la stima per sport", () => {
+test("internal load favours HR, then RPE and finally the per-sport estimate", () => {
   assert.deepEqual(
     sessionLoad({
       duration_s: 3600,
@@ -31,7 +31,7 @@ test("il carico interno privilegia HR, poi RPE e infine la stima per sport", () 
   );
 });
 
-test("lo storico breve resta neutro invece di dichiarare fatica estrema", () => {
+test("short history stays neutral instead of declaring extreme fatigue", () => {
   const result = computeATLCTL([
     { started_at: "2026-08-24T08:00:00+02:00", duration_s: 3600, rpe: 5, sport: "running" },
   ], "2026-08-24");
@@ -43,7 +43,7 @@ test("lo storico breve resta neutro invece di dichiarare fatica estrema", () => 
   assert.equal(result.confidence, "low");
 });
 
-test("il carico 7gg viene confrontato con una baseline personale", () => {
+test("the 7-day load is compared with a personal baseline", () => {
   const asOf = "2026-08-24";
   const dateAtOffset = (days: number) =>
     new Date(new Date(`${asOf}T12:00:00Z`).getTime() + days * 86_400_000)
@@ -81,10 +81,10 @@ test("il carico 7gg viene confrontato con una baseline personale", () => {
   assert.equal(fatigued.status, "fatigued");
 });
 
-test("una settimana anomala nella baseline non fa sembrare affaticato un carico normale", () => {
-  // Carichi reali dal 23/9 al 10/11/2026: ripresa (69) e settimana col mal di
-  // gola (112) nelle 6 settimane prima. Con la media la baseline scendeva a 344
-  // e il rapporto a 1,40; con la mediana delle ultime 4 settimane è 1,16.
+test("an anomalous week in the baseline doesn't make a normal load look tiring", () => {
+  // Real loads from 23/9 to 10/11/2026: return to running (69) and the sore-throat
+  // week (112) in the 6 weeks before. With the mean the baseline dropped to 344
+  // and the ratio to 1.40; with the median of the last 4 weeks it is 1.16.
   const asOf = "2026-11-10";
   const runs: Array<[string, number]> = [
     ["2026-09-24", 69], ["2026-09-30", 182], ["2026-10-02", 48], ["2026-10-03", 230],
@@ -107,14 +107,14 @@ test("una settimana anomala nella baseline non fa sembrare affaticato un carico 
   assert.equal(result.status, "balanced");
 });
 
-test("le attività vicino a mezzanotte usano la data Europe/Rome", () => {
+test("activities near midnight use the Europe/Rome date", () => {
   const result = computeATLCTL([
     { started_at: "2026-08-23T22:30:00Z", duration_s: 1800, rpe: 4, sport: "running" },
   ], "2026-08-24");
   assert.equal(result.series[0]?.date, "2026-08-24");
 });
 
-test("normalizza RPE e titolo dalla sessione FIT", () => {
+test("normalises RPE and title from the FIT session", () => {
   assert.deepEqual(extractFitSessionMetadata({ workoutRpe: 40, sportProfileName: " Corsa facile " }), {
     rpe: 4,
     rpe_source: "fit",
@@ -132,13 +132,13 @@ test("normalizza RPE e titolo dalla sessione FIT", () => {
   });
 });
 
-test("il contratto del contesto AI segnala ogni sezione mancante", () => {
+test("the AI context contract flags every missing section", () => {
   assert.deepEqual(missingAiContextSections({}), [...AI_CONTEXT_SECTIONS]);
   const complete = Object.fromEntries(AI_CONTEXT_SECTIONS.map((key) => [key, null]));
   assert.deepEqual(missingAiContextSections(complete), []);
 });
 
-test("il contesto AI esplicita provenienza e dati mancanti", () => {
+test("the AI context spells out provenance and missing data", () => {
   const source = readFileSync(new URL("../lib/ai/context-envelope.ts", import.meta.url), "utf8");
   assert.match(source, /data_origin/);
   assert.match(source, /rpe_estimates_used/);
@@ -146,23 +146,23 @@ test("il contesto AI esplicita provenienza e dati mancanti", () => {
   assert.match(source, /Contesto AI non disponibile/);
 });
 
-test("la proposta non scrive il piano prima della conferma", () => {
+test("the proposal does not write the plan before confirmation", () => {
   const source = readFileSync(new URL("../app/coach/actions.ts", import.meta.url), "utf8");
   const sendTurn = source.slice(source.indexOf("async function runCoachTurn"), source.indexOf("export async function applyPlanProposal"));
   const applyTurn = source.slice(source.indexOf("export async function applyPlanProposal"), source.indexOf("export async function rejectPlanProposal"));
   assert.doesNotMatch(sendTurn, /from\("planned_workouts"\)\.(insert|delete|update)/);
-  // Solo la funzione giorno per giorno: la vecchia cancellava l'intera finestra.
+  // Only the day-by-day function: the old one wiped the whole window.
   assert.match(applyTurn, /rpc\("apply_plan_proposal_v2"/);
   assert.doesNotMatch(applyTurn, /rpc\("apply_plan_proposal"/);
   assert.doesNotMatch(applyTurn, /router\.refresh|location\.reload/);
 });
 
-test("l'import salva l'attività prima di accodare il feedback", () => {
+test("the import saves the activity before queuing the feedback", () => {
   const source = readFileSync(new URL("../app/api/import/file/route.ts", import.meta.url), "utf8");
   assert.ok(source.indexOf("await ingestActivity") < source.indexOf("await enqueueEvaluationAfterIngest"));
 });
 
-test("le nuove tabelle coach sono protette da RLS per user_id", () => {
+test("the new coach tables are protected by RLS on user_id", () => {
   const sql = readFileSync(new URL("../supabase/migrations/0008_multiuser_coach.sql", import.meta.url), "utf8");
   for (const table of ["coach_messages", "coach_memories", "coach_state", "plan_proposals"]) {
     assert.match(sql, new RegExp(`alter table public\\.${table} enable row level security`));
@@ -170,14 +170,14 @@ test("le nuove tabelle coach sono protette da RLS per user_id", () => {
   assert.ok((sql.match(/auth\.uid\(\) = user_id/g) ?? []).length >= 6);
 });
 
-test("gli import di corsa usano un tipo neutro, non easy", () => {
+test("run imports use a neutral type, not easy", () => {
   const gpx = readFileSync(new URL("../lib/ingest/adapters/gpx.ts", import.meta.url), "utf8");
   const fit = readFileSync(new URL("../lib/ingest/adapters/fit.ts", import.meta.url), "utf8");
   assert.match(gpx, /type: "unclassified"/);
   assert.match(fit, /sport === "running" \? "unclassified" : "cross"/);
 });
 
-test("piano e attività non hanno più un'associazione esplicita", () => {
+test("plan and activities no longer have an explicit association", () => {
   const migration = readFileSync(new URL("../supabase/migrations/0010_decouple_plan_and_activities.sql", import.meta.url), "utf8");
   const activityForm = readFileSync(new URL("../app/activities/new/activity-form.tsx", import.meta.url), "utf8");
   const actions = readFileSync(new URL("../app/activities/actions.ts", import.meta.url), "utf8");
@@ -186,7 +186,7 @@ test("piano e attività non hanno più un'associazione esplicita", () => {
   assert.doesNotMatch(actions, /planned_workout_id/);
 });
 
-test("il coach deduce piano vs svolto dai dati senza forzare un match", () => {
+test("the coach infers plan vs done from the data without forcing a match", () => {
   const prompt = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
   const evaluation = readFileSync(new URL("../lib/ai/evaluate-activity.ts", import.meta.url), "utf8");
   assert.match(prompt, /NON hanno un collegamento esplicito/);
@@ -195,14 +195,14 @@ test("il coach deduce piano vs svolto dai dati senza forzare un match", () => {
   assert.match(evaluation, /isoDateShift\(activityDay, 3\)/);
 });
 
-test("la home mostra la chat senza i feedback automatici delle attività", () => {
+test("the home shows the chat without the automatic activity feedback", () => {
   const home = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
-  // "status" porta i segni di "Nuova chat"; i feedback delle attività restano fuori.
+  // "status" carries the "Nuova chat" markers; activity feedback stays out.
   assert.match(home, /\.in\("kind", \["chat", "plan_proposal", "status"\]\)/);
   assert.doesNotMatch(home, /activity_feedback/);
 });
 
-test("le risposte del coach supportano Markdown senza renderizzare HTML arbitrario", () => {
+test("coach replies support Markdown without rendering arbitrary HTML", () => {
   const chat = readFileSync(new URL("../components/coach-chat.tsx", import.meta.url), "utf8");
   const markdown = readFileSync(new URL("../components/markdown-message.tsx", import.meta.url), "utf8");
   assert.match(chat, /item\.role === "assistant"[\s\S]*<MarkdownMessage>/);
@@ -211,13 +211,13 @@ test("le risposte del coach supportano Markdown senza renderizzare HTML arbitrar
   assert.doesNotMatch(markdown, /dangerouslySetInnerHTML|rehypeRaw/);
 });
 
-test("il piano usa la chat e ogni proposta spiega obiettivo e focus", () => {
+test("the plan uses the chat and every proposal explains goal and focus", () => {
   const plan = readFileSync(new URL("../app/plan/page.tsx", import.meta.url), "utf8");
   const prompt = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
   const chat = readFileSync(new URL("../components/coach-chat.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(plan, /plan_reviews|Review del coach|Chiedi al coach di adattare il piano/);
   assert.match(prompt, /Per ogni workout proposto compila sempre description e focus/);
-  // I testi italiani stanno nei messaggi, la chat li legge da lì.
+  // The Italian texts live in the messages, the chat reads them from there.
   const messages = readFileSync(new URL("../messages/it/coach.json", import.meta.url), "utf8");
   assert.match(messages, /Cosa fare e perché/);
   assert.match(messages, /Su cosa concentrarti/);
@@ -226,22 +226,22 @@ test("il piano usa la chat e ogni proposta spiega obiettivo e focus", () => {
   assert.match(chat, /<WorkoutSteps/);
 });
 
-test("il dettaglio attività è essenziale: un grafico Andamento, i km in tabella e mappa leggera di base", () => {
+test("the activity detail is essential: one Andamento chart, km in a table and a light map by default", () => {
   const view = readFileSync(new URL("../app/activities/[id]/activity-view.tsx", import.meta.url), "utf8");
   const route = readFileSync(new URL("../components/activity/route-preview.tsx", import.meta.url), "utf8");
-  // Il titolo «Andamento» sta nei messaggi (activities.detail.progress).
+  // The «Andamento» title lives in the messages (activities.detail.progress).
   const messages = readFileSync(new URL("../messages/it/activities.json", import.meta.url), "utf8");
   assert.match(messages, /"progress": "Andamento"/);
   assert.match(view, /<h2[^>]*>\{t\("detail\.progress"\)\}<\/h2>/);
-  // I km non hanno più un grafico a parte: stanno nella tabella «Km per km».
+  // Km no longer have a separate chart: they live in the «Km per km» table.
   assert.doesNotMatch(view, /SplitsChart/);
   assert.match(view, /<KmSplitsCard analysis=\{props\.km\} \/>/);
-  // Cuore, passo, quota e cadenza sovrapposti nello stesso grafico.
+  // Heart rate, pace, elevation and cadence overlaid on the same chart.
   assert.match(view, /<OverlayChart series=\{overlay\}/);
   assert.match(view, /<ZonesBar/);
-  // La mappa WebGL c'è di base ma con cautele: su iOS standalone una mappa
-  // pesante ricarica la PWA. Si carica a parte, solo vicino allo schermo, con
-  // memoria ridotta e torna all'anteprima statica se WebGL cede.
+  // The WebGL map is there by default but with precautions: on standalone iOS a heavy map
+  // reloads the PWA. It loads separately, only near the screen, with
+  // reduced memory, and falls back to the static preview if WebGL gives up.
   const map = readFileSync(new URL("../components/activity-map-client.tsx", import.meta.url), "utf8");
   assert.match(route, /dynamic\(\(\) => import\("@\/components\/activity-map-client"\)/);
   assert.match(route, /IntersectionObserver/);
@@ -251,7 +251,7 @@ test("il dettaglio attività è essenziale: un grafico Andamento, i km in tabell
   assert.match(map, /cooperativeGestures: embedded/);
 });
 
-test("le note del coach diventano dettagli strutturati senza chip diagnostici", () => {
+test("coach notes become structured details without diagnostic chips", () => {
   const prompt = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
   const evaluation = readFileSync(new URL("../components/activity-evaluation.tsx", import.meta.url), "utf8");
   const migration = readFileSync(new URL("../supabase/migrations/0011_evaluation_details.sql", import.meta.url), "utf8");
@@ -262,14 +262,14 @@ test("le note del coach diventano dettagli strutturati senza chip diagnostici", 
   assert.match(migration, /add column if not exists details jsonb/);
 });
 
-test("durante la rivalutazione spariscono subito review e form", () => {
+test("during re-evaluation review and form disappear at once", () => {
   const evaluation = readFileSync(new URL("../components/activity-evaluation.tsx", import.meta.url), "utf8");
   assert.match(evaluation, /displayedEvaluation\?\.summary && !isAnalyzing/);
   assert.match(evaluation, /!isAnalyzing && \(/);
   assert.match(evaluation, /form\.reset\(\)/);
 });
 
-test("la valutazione AI aggiorna la sezione senza ricaricare la pagina", () => {
+test("the AI evaluation updates the section without reloading the page", () => {
   const action = readFileSync(new URL("../app/activities/ai-actions.ts", import.meta.url), "utf8");
   const component = readFileSync(new URL("../components/activity-evaluation.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(action, /revalidatePath|router\.refresh|location\.reload/);
@@ -277,7 +277,7 @@ test("la valutazione AI aggiorna la sezione senza ricaricare la pagina", () => {
   assert.match(component, /setDisplayedEvaluation\(status\.evaluationResult\)/);
 });
 
-test("l'errore quota interrompe il caricamento e resta leggibile", () => {
+test("the quota error stops loading and stays readable", () => {
   const evaluation = readFileSync(new URL("../components/activity-evaluation.tsx", import.meta.url), "utf8");
   const gemini = readFileSync(new URL("../lib/ai/gemini.ts", import.meta.url), "utf8");
   const status = readFileSync(new URL("../messages/it/status.json", import.meta.url), "utf8");
@@ -289,7 +289,7 @@ test("l'errore quota interrompe il caricamento e resta leggibile", () => {
   assert.doesNotMatch(gemini, /Quota Gemini[^\n]*più/);
 });
 
-test("chat e analisi usano provider e modello del proprio compito, e ogni chiamata registra il costo", () => {
+test("chat and analysis use their own task's provider and model, and every call records the cost", () => {
   const models = readFileSync(new URL("../lib/ai/models.ts", import.meta.url), "utf8");
   const migration = readFileSync(new URL("../supabase/migrations/0024_ai_routing_and_costs.sql", import.meta.url), "utf8");
   const credentials = readFileSync(new URL("../lib/ai/credentials.ts", import.meta.url), "utf8");
@@ -302,7 +302,7 @@ test("chat e analisi usano provider e modello del proprio compito, e ogni chiama
   assert.match(migration, /create table if not exists public\.ai_usage_events/);
   assert.match(credentials, /export async function getAiConfig\(userId: string, task: AiTask\)/);
   assert.match(llm, /from\("ai_usage_events"\)\.insert/);
-  // Chat e analisi passano dal provider del compito, non da Gemini direttamente.
+  // Chat and analysis go through the task's provider, not through Gemini directly.
   assert.match(coach, /getAiConfig\(user\.id, "chat"\)/);
   assert.match(evaluation, /getAiConfig\(userId, "analysis"\)/);
   assert.match(recap, /getAiConfig\(userId, "analysis"\)/);
@@ -311,12 +311,12 @@ test("chat e analisi usano provider e modello del proprio compito, e ogni chiama
     assert.doesNotMatch(source, /from "@\/lib\/ai\/gemini"/);
   }
   assert.match(evaluation, /model: ai\.model/);
-  // Il costo resta sul messaggio della chat, accanto alla domanda a cui risponde.
+  // The cost stays on the chat message, next to the question it answers.
   assert.match(coach, /metadata: \{ ai_usage: usage, reply_to: sourceMessageId \}/);
   assert.match(evaluation, /ai_usage: usage/);
 });
 
-test("il tasto Profilo apre sempre la pagina profilo", () => {
+test("the Profile button always opens the profile page", () => {
   const tabs = readFileSync(new URL("../components/tab-bar.tsx", import.meta.url), "utf8");
   const settings = readFileSync(new URL("../app/settings/settings-view.tsx", import.meta.url), "utf8");
   const backButton = readFileSync(new URL("../components/back-button.tsx", import.meta.url), "utf8");
@@ -328,22 +328,22 @@ test("il tasto Profilo apre sempre la pagina profilo", () => {
   assert.doesNotMatch(backButton, /window\.history\.length/);
 });
 
-test("i riepiloghi includono corsa, camminata ed escursione", () => {
+test("summaries include running, walking and hiking", () => {
   assert.equal(isFootDistanceSport("running"), true);
   assert.equal(isFootDistanceSport("walking"), true);
   assert.equal(isFootDistanceSport("hiking"), true);
   assert.equal(isFootDistanceSport("cycling"), false);
   assert.equal(isFootDistanceSport("beach_volley"), false);
 
-  // Home e totali contano i km di corsa; camminate ed escursioni restano
-  // visibili come dato a parte nel riepilogo della pagina attività.
+  // Home and totals count running km; walks and hikes stay
+  // visible as a separate figure in the activity page summary.
   const activities = readFileSync(new URL("../app/activities/page.tsx", import.meta.url), "utf8");
   const totals = readFileSync(new URL("../lib/metrics/totals.ts", import.meta.url), "utf8");
   assert.match(activities, /<TotalsCard periods=\{totals\}[^>]*\/>/);
   assert.match(totals, /activity\.sport === "walking" \|\| activity\.sport === "hiking"/);
 });
 
-test("Beach volley è disponibile e riconosciuto dai file FIT", () => {
+test("Beach volley is available and recognised by FIT files", () => {
   const types = readFileSync(new URL("../lib/types.ts", import.meta.url), "utf8");
   const metadata = readFileSync(new URL("../lib/activity-meta.ts", import.meta.url), "utf8");
   const fit = readFileSync(new URL("../lib/ingest/adapters/fit.ts", import.meta.url), "utf8");
@@ -354,7 +354,7 @@ test("Beach volley è disponibile e riconosciuto dai file FIT", () => {
   assert.match(migration, /'beach_volley'/);
 });
 
-test("un obiettivo senza data è generico e prende un nome dalla distanza", () => {
+test("a goal without a date is generic and takes a name from the distance", () => {
   assert.equal(goalKind({ race_date: null }), "general");
   assert.equal(goalKind({ race_date: "2026-10-18" }), "race");
   assert.equal(generalGoalName(21097), "Migliorare nella mezza maratona");
@@ -362,7 +362,7 @@ test("un obiettivo senza data è generico e prende un nome dalla distanza", () =
   assert.equal(generalGoalName(10000), "Migliorare sui 10 km");
 });
 
-test("i prompt di piano includono la metodologia e non richiedono una gara", () => {
+test("plan prompts include the methodology and don't require a race", () => {
   const source = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
   assert.equal(source.match(/COACH_METHODOLOGY,/g)?.length, 2);
   assert.match(source, /Una gara obiettivo NON è necessaria/);
@@ -371,14 +371,14 @@ test("i prompt di piano includono la metodologia e non richiedono una gara", () 
   assert.match(COACH_METHODOLOGY, /Niente sessioni di forza o palestra di default/);
 });
 
-test("il coach può cambiare l'obiettivo dalla chat", () => {
+test("the coach can change the goal from the chat", () => {
   const prompt = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
   assert.match(prompt, /goal_update/);
   const actions = readFileSync(new URL("../app/coach/actions.ts", import.meta.url), "utf8");
   assert.match(actions, /applyGoalUpdate\(admin, userId, result\.goal_update/);
 });
 
-test("le ripetute vengono raggruppate e descritte a parole", () => {
+test("repeats are grouped and described in words", () => {
   const base = { pace_min_s_km: null, pace_max_s_km: null, hr_min_bpm: null, hr_max_bpm: null };
   const warmup = { ...base, kind: "warmup" as const, label: "Corsa lenta", completion_type: "time" as const, completion_value: 600 };
   const work = { ...base, kind: "work" as const, label: "Veloce", completion_type: "distance" as const, completion_value: 400, pace_min_s_km: 260, pace_max_s_km: 270 };
@@ -393,16 +393,16 @@ test("le ripetute vengono raggruppate e descritte a parole", () => {
   assert.equal(describeStep(itLabels, recovery), '90"');
 });
 
-test("lo splash PWA non viene reinserito dalle server action", () => {
-  // Nel layout server ogni server action/refresh rimanda un oggetto
-  // dangerouslySetInnerHTML nuovo: React 19 riscrive innerHTML e lo splash
-  // torna sopra l'app con la barra di caricamento infinita.
+test("the PWA splash is not reinserted by server actions", () => {
+  // In the server layout every server action/refresh sends back a new
+  // dangerouslySetInnerHTML object: React 19 rewrites innerHTML and the splash
+  // comes back over the app with an endless loading bar.
   const layout = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(layout, /pwa-splash-root/);
   const splash = readFileSync(new URL("../components/pwa-splash.tsx", import.meta.url), "utf8");
   assert.match(splash, /^"use client";/);
-  // L'HTML dipende dalla lingua: l'oggetto resta stabile con useMemo, così
-  // React non riscrive innerHTML a ogni render.
+  // The HTML depends on the language: the object stays stable with useMemo, so
+  // React doesn't rewrite innerHTML on every render.
   assert.match(splash, /const markup = useMemo\(/);
   assert.match(splash, /dangerouslySetInnerHTML=\{markup\}/);
 });

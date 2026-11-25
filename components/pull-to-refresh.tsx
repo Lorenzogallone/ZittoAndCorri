@@ -7,26 +7,26 @@ import { cn } from "@/lib/utils";
 import { tap } from "@/lib/haptics";
 import { refreshMessage, useAppRefresh } from "@/lib/use-app-refresh";
 
-/** Distanza (dopo la resistenza) oltre la quale, al rilascio, si ricarica. */
+/** Distance (after resistance) beyond which, on release, it reloads. */
 const THRESHOLD = 72;
-/** Altezza a cui il contenuto resta mentre gira lo spinner. */
+/** Height at which the content stays while the spinner spins. */
 const HOLD = 56;
-/** Tetto della resistenza: il contenuto non scende mai oltre. */
+/** Resistance cap: the content never goes lower than this. */
 const MAX_PULL = 140;
-/** Quanto resta visibile l'esito («Aggiornato») dopo la ricarica. */
+/** How long the result («Aggiornato») stays visible after the reload. */
 const RESULT_MS = 1_400;
 
-/** Resistenza elastica: all'inizio segue il dito, poi rallenta verso MAX_PULL. */
+/** Elastic resistance: at first it follows the finger, then slows toward MAX_PULL. */
 function resist(dy: number): number {
   return MAX_PULL * (1 - Math.exp(-dy / (MAX_PULL * 1.6)));
 }
 
-/** Il tocco parte da un campo o da una zona che gestisce già i suoi gesti. */
+/** The touch starts from a field or an area that already handles its own gestures. */
 function ignoresPull(target: Element): boolean {
   return !!target.closest("input, textarea, select, [contenteditable]:not([contenteditable='false']), [data-no-pull]");
 }
 
-/** Un contenitore interno (es. la lista della chat) non è in cima: scorre lui. */
+/** An inner container (e.g. the chat list) is not at the top: it scrolls itself. */
 function innerScrollerAway(target: Element, root: HTMLElement): boolean {
   for (let node: Element | null = target; node && node !== root; node = node.parentElement) {
     if (node instanceof HTMLElement && node.scrollTop > 0) {
@@ -38,12 +38,12 @@ function innerScrollerAway(target: Element, root: HTMLElement): boolean {
 }
 
 /**
- * Il contenitore che scorre di AppShell, con il trascina-giù per ricaricare.
+ * The AppShell scrolling container, with pull-down to refresh.
  *
- * `overscroll-behavior: none` resta globale (PWA standalone su iOS), quindi il
- * gesto è fatto a mano: si attiva solo partendo dalla cima, con un tocco
- * verticale verso il basso; tutto il resto (scroll, swipe orizzontali, campi,
- * chat a tutto schermo e sheet, che stanno in un portale) resta al browser.
+ * `overscroll-behavior: none` stays global (standalone PWA on iOS), so the
+ * gesture is hand-made: it activates only when starting from the top, with a
+ * downward vertical touch; everything else (scroll, horizontal swipes, fields,
+ * full-screen chat and sheets, which live in a portal) is left to the browser.
  */
 export function PullToRefresh({ className, children }: { className?: string; children: React.ReactNode }) {
   const t = useTranslations("shell");
@@ -57,7 +57,7 @@ export function PullToRefresh({ className, children }: { className?: string; chi
   const [showResult, setShowResult] = useState(false);
   const [held, setHeld] = useState(false);
 
-  // Sposta contenuto e indicatore senza passare da React a ogni touchmove.
+  // Moves content and indicator without going through React on every touchmove.
   const paint = useCallback((distance: number, animate: boolean) => {
     const content = contentRef.current;
     const indicator = indicatorRef.current;
@@ -75,7 +75,7 @@ export function PullToRefresh({ className, children }: { className?: string; chi
   useEffect(() => {
     refreshingRef.current = refreshing;
     if (refreshing) return;
-    // Ricarica finita: mostra l'esito un attimo, poi tutto torna su.
+    // Reload done: show the result for a moment, then everything goes back up.
     if (!held) return;
     const show = window.setTimeout(() => setShowResult(true), 0);
     const hide = window.setTimeout(() => {
@@ -118,14 +118,14 @@ export function PullToRefresh({ className, children }: { className?: string; chi
       const dy = event.touches[0].clientY - startY;
       if (!pulling) {
         if (dx === 0 && dy === 0) return;
-        // Verso l'alto, in orizzontale o con la pagina già scesa: è scroll.
+        // Upward, horizontal or with the page already scrolled down: it is scroll.
         if (dy <= 0 || Math.abs(dx) > dy || main.scrollTop > 0) {
           tracking = false;
           return;
         }
         pulling = true;
       }
-      // Da qui il gesto è nostro: niente scroll o rimbalzo nativo sotto.
+      // From here the gesture is ours: no native scroll or bounce underneath.
       if (event.cancelable) event.preventDefault();
       distance = resist(Math.max(dy, 0));
       paint(distance, false);
@@ -149,7 +149,7 @@ export function PullToRefresh({ className, children }: { className?: string; chi
     };
 
     main.addEventListener("touchstart", onStart, { passive: true });
-    // Non passivo: deve poter fermare lo scroll nativo, ma solo durante il gesto.
+    // Non-passive: it must be able to stop native scroll, but only during the gesture.
     main.addEventListener("touchmove", onMove, { passive: false });
     main.addEventListener("touchend", onEnd, { passive: true });
     main.addEventListener("touchcancel", onEnd, { passive: true });
@@ -166,7 +166,7 @@ export function PullToRefresh({ className, children }: { className?: string; chi
 
   return (
     <main ref={mainRef} className={className}>
-      {/* Alternativa al gesto per tastiera e VoiceOver; su desktop c'è «Aggiorna» nella barra laterale. */}
+      {/* Alternative to the gesture for keyboard and VoiceOver; on desktop there is «Aggiorna» in the sidebar. */}
       <div className="sticky top-0 z-40 flex h-0 justify-center lg:hidden">
         <button
           type="button"
@@ -176,7 +176,7 @@ export function PullToRefresh({ className, children }: { className?: string; chi
           {t("pullToRefresh.manual")}
         </button>
       </div>
-      {/* Alta zero e attaccata in cima: l'indicatore non sposta il layout. */}
+      {/* Zero height and stuck to the top: the indicator does not shift the layout. */}
       <div className="pointer-events-none sticky top-0 z-30 flex h-0 justify-center" aria-live="polite">
         <div
           ref={indicatorRef}

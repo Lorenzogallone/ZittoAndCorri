@@ -2,16 +2,16 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 
-/** Tratto della seduta nel tempo: reale (per la mappa) e in movimento (per il grafico). */
+/** Segment of the session in time: real (for the map) and moving (for the chart). */
 export interface SegmentTime {
   index: number;
   kind: string;
   variant: string | null;
   label: string;
-  /** Secondi dall'inizio, orologio reale (pause comprese): come i punti GPS. */
+  /** Seconds from the start, real clock (pauses included): like the GPS points. */
   start: number;
   end: number;
-  /** Gli stessi istanti sul tempo in movimento: come il grafico Andamento. */
+  /** The same instants on moving time: like the Trend chart. */
   movingStart: number;
   movingEnd: number;
 }
@@ -24,7 +24,7 @@ interface Selection {
 
 const SelectionContext = createContext<Selection>({ segments: [], selected: null, toggle: () => {} });
 
-/** Tratto scelto nella card Ripetute, condiviso con grafico e mappa. */
+/** Segment chosen in the Intervals card, shared with chart and map. */
 export function SegmentSelectionProvider({ segments, children }: { segments: SegmentTime[]; children: ReactNode }) {
   const [selected, setSelected] = useState<number | null>(null);
   const toggle = (index: number) => setSelected((current) => (current === index ? null : index));

@@ -15,12 +15,12 @@ import { clientLog, isStandalone } from "@/lib/clientlog";
  *  - programmatic navigation (router.push / router.replace, server-action
  *    redirects) by patching history.pushState / replaceState
  *
- * WATCHDOG (fix PWA iOS): su iOS standalone le fetch RSC di una navigazione
- * possono restare appese all'infinito → la pagina resta sullo skeleton di
- * loading anche se la mutazione lato server è già andata a buon fine. Se la
- * navigazione non si completa entro NAV_WATCHDOG_MS, forziamo una navigazione
- * "vera" (full document load) verso la destinazione: un caricamento completo è
- * affidabile dove la fetch RSC si impalla.
+ * WATCHDOG (PWA iOS fix): on standalone iOS the RSC fetches of a navigation
+ * can hang forever → the page stays on the loading skeleton
+ * even though the server-side mutation already succeeded. If the
+ * navigation does not complete within NAV_WATCHDOG_MS, we force a "real"
+ * navigation (full document load) to the destination: a full load is
+ * reliable where the RSC fetch stalls.
  */
 const NAV_WATCHDOG_MS = 6000;
 
@@ -35,7 +35,7 @@ export function NavigationProgress() {
   const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const runningRef = useRef(false);
   const prevRouteRef = useRef(`${pathname}?${searchParams}`);
-  // URL di destinazione della navigazione in corso (per il watchdog).
+  // Destination URL of the navigation in progress (for the watchdog).
   const pendingTargetRef = useRef<string | null>(null);
 
   function clearTimers() {
@@ -76,10 +76,10 @@ export function NavigationProgress() {
     // or an aborted transition) auto-complete so the bar never gets stuck.
     safetyRef.current = setTimeout(() => completeProgress(), 10000);
 
-    // Watchdog: se la navigazione resta appesa (bug RSC su iOS standalone),
-    // forza un full document load verso la destinazione. Solo in standalone:
-    // da browser le navigazioni RSC si completano sempre e non vogliamo reload
-    // a sorpresa.
+    // Watchdog: if the navigation hangs (RSC bug on standalone iOS),
+    // force a full document load to the destination. Standalone only:
+    // in a browser RSC navigations always complete and we do not want surprise
+    // reloads.
     watchdogRef.current = setTimeout(() => {
       if (!runningRef.current) return;
       const target = pendingTargetRef.current ?? window.location.href;

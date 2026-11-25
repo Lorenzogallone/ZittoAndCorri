@@ -21,16 +21,16 @@ const kmNumber = (meters: number, locale: Locale) => (meters / 1000).toLocaleStr
 const kmText = (meters: number, locale: Locale) => `${kmNumber(meters, locale)} km`;
 const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 
-// Titolo della card hero: è l'H1 visivo della home.
+// Hero card title: it is the visual H1 of the home.
 const HEADLINE = "font-display text-display font-bold tracking-tight text-balance tabular-nums";
 
 type WeekDay = DayView<PlannedWorkout, { started_at: string; sport: string; distance_m: number }>;
 
 interface Props {
   next: PlannedWorkout | null;
-  /** Le altre sedute dello stesso giorno della prossima, in ordine; done = già corsa oggi. */
+  /** The other sessions on the same day as the next one, in order; done = already run today. */
   sameDay: Array<{ workout: PlannedWorkout; done: boolean }>;
-  /** Quante sedute ha quel giorno (per dire "mattina", "subito dopo"…). */
+  /** How many sessions that day has (to say "morning", "right after"…). */
   sessionsThatDay: number;
   today: string;
   heat: HeatInfo | null;
@@ -114,7 +114,7 @@ function RaceCard({ race, next, today }: { race: NonNullable<Props["race"]>; nex
   );
 }
 
-/** Le altre sedute dello stesso giorno, compatte sotto la card hero. */
+/** The other sessions on the same day, compact under the hero card. */
 function SameDaySessions({ sessions, sessionsThatDay }: { sessions: Props["sameDay"]; sessionsThatDay: number }) {
   const t = useTranslations("home.today");
   const tl = useTranslations("labels");
@@ -149,7 +149,7 @@ function SameDaySessions({ sessions, sessionsThatDay }: { sessions: Props["sameD
   );
 }
 
-/** Home: la prossima seduta in evidenza (card hero), le altre dello stesso giorno e la settimana. */
+/** Home: the next session featured (hero card), the others on the same day and the week. */
 export function TodayCard({ next, sameDay, sessionsThatDay, today, heat, week, race }: Props) {
   const t = useTranslations("home.today");
   const locale = useLocale() as Locale;

@@ -1,5 +1,5 @@
--- Riepiloghi Zepp compatti: i dati grezzi minuto-per-minuto e la temperatura
--- non vengono più scritti. Manteniamo solo indicatori utili a profilo e coach.
+-- Compact Zepp summaries: raw minute-by-minute data and temperature
+-- are no longer written. We keep only indicators useful to the profile and coach.
 
 alter table public.zepp_daily_metrics
   add column if not exists sleep_start_min int,

@@ -3,15 +3,15 @@
 import { useLayoutEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 
-// Splash PWA pre-hydration: arriva con l'HTML del server (CSS+markup+script
-// inline) così appare appena la risposta viene parsata, prima del JS. Lo script
-// lo toglie subito fuori dalla PWA o se è già stato mostrato in questa sessione.
+// PWA splash before hydration: it arrives with the server HTML (CSS+markup+script
+// inline) so it appears as soon as the response is parsed, before JS. The script
+// removes it right away outside the PWA or if it was already shown in this session.
 //
-// L'omino dell'icona corre sul posto (180 passi al minuto, busto inclinato e
-// fase di volo come nell'icona) davanti a un sole nel colore principale, con
-// la pista che scorre e lo sfondo a puntini in parallasse. I colori sono le variabili del tema, già impostate dallo script
-// del tema che nel layout viene prima: chiaro/scuro e accento scelti dall'utente.
-// La figura è disegnata verso destra e poi specchiata, come nell'icona.
+// The icon's little runner runs in place (180 steps per minute, leaning torso and
+// flight phase as in the icon) in front of a sun in the main colour, with
+// the scrolling track and the dotted background in parallax. Colours are the theme variables, already set by the theme script
+// that comes first in the layout: light/dark and accent chosen by the user.
+// The figure is drawn facing right and then mirrored, as in the icon.
 const PWA_SPLASH_HTML = `
 <style>
   #pwa-splash{display:none}
@@ -107,16 +107,16 @@ const PWA_SPLASH_HTML = `
 <script>(function(){try{window.__zcSplashAt=Date.now();var s=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;if(!s||sessionStorage.getItem("pwa-splash-shown")){var e=document.getElementById("pwa-splash");if(e)e.remove();}}catch(err){}try{setTimeout(function(){var e=document.getElementById("pwa-splash");if(e){e.style.opacity="0";e.style.pointerEvents="none";setTimeout(function(){if(e&&e.parentNode)e.parentNode.removeChild(e);},450);}},6000);}catch(err){}})();</script>
 `;
 
-// Oggetto stabile (memoizzato sulla frase): React 19 confronta le prop per
-// identità e, con un oggetto nuovo, riscrive innerHTML. Quando il markup stava
-// nel layout server, ogni server action (es. elimina obiettivo) o
-// router.refresh() mandava un layout nuovo → lo splash veniva reinserito e,
-// senza più script a toglierlo, restava sopra l'app con la barra di
-// caricamento all'infinito.
+// Stable object (memoised on the phrase): React 19 compares props by
+// identity and, with a new object, rewrites innerHTML. When the markup lived
+// in the server layout, every server action (e.g. delete goal) or
+// router.refresh() sent a new layout → the splash was reinserted and,
+// with no script left to remove it, stayed on top of the app with the
+// loading bar forever.
 const escapeHtml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-// Tempo minimo a schermo dalla comparsa: se l'app si idrata subito, l'omino fa
-// comunque qualche passo invece di lampeggiare.
+// Minimum time on screen from appearing: if the app hydrates immediately, the runner
+// still takes a few steps instead of flashing.
 const MIN_VISIBLE_MS = 900;
 
 function removeSplash(el: HTMLElement) {
@@ -125,7 +125,7 @@ function removeSplash(el: HTMLElement) {
   setTimeout(() => el.remove(), 450);
 }
 
-/** Splash della PWA: si dissolve appena l'app è idratata. */
+/** PWA splash: fades out as soon as the app is hydrated. */
 export function PwaSplash() {
   const t = useTranslations("shell");
   const tagline = t("splash.tagline");
@@ -139,18 +139,18 @@ export function PwaSplash() {
     let shown = false;
     try {
       shown = sessionStorage.getItem("pwa-splash-shown") === "true";
-      // Segna subito la sessione: se iOS rilancia il documento mentre la
-      // dissolvenza è in corso, lo script inline non deve rimostrarla.
+      // Mark the session right away: if iOS relaunches the document while the
+      // fade is in progress, the inline script must not show it again.
       sessionStorage.setItem("pwa-splash-shown", "true");
     } catch {
-      // sessionStorage non disponibile: la splash resta comunque temporizzata.
+      // sessionStorage unavailable: the splash is still timed.
     }
-    // Già vista (es. il componente è stato rimontato): via subito, senza flash.
+    // Already seen (e.g. the component was remounted): gone at once, no flash.
     if (shown) {
       el.remove();
       return;
     }
-    // Un attimo visibile dopo l'hydration per evitare un flash, poi dissolve.
+    // A moment visible after hydration to avoid a flash, then it fades.
     const since = (window as { __zcSplashAt?: number }).__zcSplashAt;
     const elapsed = since ? Date.now() - since : 0;
     const timer = setTimeout(() => removeSplash(el), Math.max(350, MIN_VISIBLE_MS - elapsed));

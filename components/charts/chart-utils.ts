@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-/** Larghezza reale del contenitore: i grafici si disegnano in pixel veri. */
+/** Real container width: charts are drawn in true pixels. */
 export function useMeasuredWidth<T extends HTMLElement>() {
   const ref = useRef<T>(null);
   const [width, setWidth] = useState(0);
@@ -16,7 +16,7 @@ export function useMeasuredWidth<T extends HTMLElement>() {
   return { ref, width };
 }
 
-/** Rettangolo con angoli superiori arrotondati e base squadrata. */
+/** Rectangle with rounded top corners and square base. */
 export function roundedTopBar(x: number, y: number, width: number, height: number, radius = 4): string {
   if (height <= 0 || width <= 0) return "";
   const r = Math.min(radius, width / 2, height);
@@ -31,7 +31,7 @@ export function roundedTopBar(x: number, y: number, width: number, height: numbe
   ].join(" ");
 }
 
-/** Tick "puliti" per un asse che parte da zero. */
+/** "Clean" ticks for an axis starting at zero. */
 export function niceTicks(max: number, count = 3): number[] {
   if (max <= 0) return [0];
   const raw = max / count;

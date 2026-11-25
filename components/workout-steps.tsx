@@ -42,7 +42,7 @@ function StepRow({ step, type, compact }: { step: WorkoutStepInput; type?: Worko
   );
 }
 
-/** Sequenza guidata della seduta con i blocchi ripetuti raggruppati. */
+/** Guided session sequence with repeated blocks grouped. */
 export function WorkoutSteps({ steps, type, compact }: { steps: WorkoutStepInput[]; type?: WorkoutType | null; compact?: boolean }) {
   const t = useTranslations("plan.steps");
   const blocks = groupWorkoutSteps(steps);
