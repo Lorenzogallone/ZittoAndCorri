@@ -59,7 +59,7 @@ code from the Zepp phone app while Developer Mode is active.
 
 ## Connect to Zitto e Corri
 
-1. In the PWA, open **Settings → Zepp OS**, enable the integration, and generate
+1. In the PWA, open **Settings → Connections → Zepp OS**, enable the integration, and generate
    a six-digit pairing code.
 2. In the Zepp phone app, open the watch's app list and select **Zitto e Corri →
    Settings**.
@@ -68,7 +68,7 @@ code from the Zepp phone app while Developer Mode is active.
 4. Open Zitto e Corri on the watch and select **Sync now**.
 
 The access token is created and stored automatically; it never needs to be
-copied by the user. Pairing codes expire after ten minutes and can be used only
+copied by the user. Pairing codes expire after five minutes and can be used only
 once.
 
 ## Synchronization
@@ -168,7 +168,7 @@ change (zml's `onSettingsChange` receives `sideService.launchArgs`), the
 service picks it up at `onInit`, and the watch app completes it when it asks
 for the connection state at every opening. So if the status stays on
 "Richiesta inviata…", open **Zitto e Corri on the watch**: the pairing finishes
-as long as the code has not expired (10 minutes). A network error is retried at
+as long as the code has not expired (5 minutes). A network error is retried at
 the next opening; an invalid code needs a new code and a new press of
 **Collega a ZittoAndCorri**. The status line "Richiesta inviata…" appears only
 from 1.0.6: if it does not, the phone is still running an older build.

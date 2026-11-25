@@ -1,175 +1,175 @@
 # Zitto e Corri Coach — Workout Extension Zepp OS
 
-Questa cartella contiene una seconda applicazione Zepp indipendente dalla Mini App `zepp-app`.
+This folder contains a second Zepp application, independent of the `zepp-app` Mini App.
 
-- **Mini App salute (`zepp-app`)**: legge e invia a ZittoAndCorri i riepiloghi salute disponibili sul dispositivo.
-- **Workout Extension (`zepp-workout-extension`)**: si apre dentro l'app di sistema **Exercise/Allenamento** mentre una corsa è in corso. Exercise continua a gestire GPS, pausa, ripresa, salvataggio e file attività; l'estensione aggiunge la guida delle fasi, i target e gli avvisi.
+- **Health Mini App (`zepp-app`)**: reads the health summaries available on the device and sends them to ZittoAndCorri.
+- **Workout Extension (`zepp-workout-extension`)**: opens inside the system **Exercise/Allenamento** app (Exercise) while a run is in progress. Exercise keeps handling GPS, pause, resume, saving and activity files; the extension adds phase guidance, targets and alerts.
 
-Le due applicazioni hanno token, pairing e `appId` separati. Si possono installare e collegare entrambe oppure soltanto una.
+The two applications have separate tokens, pairing and `appId`. You can install and link both, or just one.
 
-## Prerequisiti
+## Prerequisites
 
-- Backend ZittoAndCorri raggiungibile con un URL HTTPS pubblico.
-- Migrazione Supabase `0016_zepp_workout_extension.sql` applicata.
-- Node.js e dipendenze installate con `npm ci` nella root e in questa cartella.
-- Zeus CLI incluso nelle dipendenze del progetto.
-- Account Zepp Developer e un dispositivo/firmware che esponga Workout Extension.
-- API level 4.2 sul dispositivo.
+- ZittoAndCorri backend reachable at a public HTTPS URL.
+- Supabase migration `0016_zepp_workout_extension.sql` applied.
+- Node.js and dependencies installed with `npm ci` in the root and in this folder.
+- Zeus CLI included in the project dependencies.
+- Zepp Developer account and a device/firmware that exposes Workout Extension.
+- API level 4.2 on the device.
 
-Il manifest contiene l'`appId` segnaposto `1000000`. Nel portale Zepp Developer creare una **nuova applicazione Workout Extension**, distinta dalla Mini App salute, copiare il nuovo ID e sostituire `app.appId` in `app.json`. Non riutilizzare `1124767` o l'ID di un'altra applicazione.
+The manifest contains the placeholder `appId` `1000000`. In the Zepp Developer portal, create a **new Workout Extension application**, separate from the health Mini App, copy the new ID and replace `app.appId` in `app.json`. Do not reuse `1124767` or the ID of another application.
 
-> Nota Active 3 Premium: il progetto include i quattro `deviceSource` già usati dal repository. La documentazione pubblica Zepp non elenca ancora ogni variante Active 3 tra i modelli Workout Extension. Prima della pubblicazione verificare nel portale e sul firmware installato che la voce Workout Extension sia effettivamente disponibile.
+> Active 3 Premium note: the project includes the four `deviceSource` values already used by the repository. The public Zepp documentation does not yet list every Active 3 variant among the Workout Extension models. Before publishing, check in the portal and on the installed firmware that the Workout Extension entry is actually available.
 
-## Configurazione e pairing
+## Setup and pairing
 
-1. Pubblicare ZittoAndCorri su un dominio HTTPS. `localhost` e gli URL HTTP non sono accettati dall'App Side Service.
-2. Applicare la migrazione Supabase e distribuire il backend che contiene `POST /api/zepp/workouts/pull`.
-3. In ZittoAndCorri aprire **Impostazioni > Zepp** e generare un codice di collegamento di 6 cifre.
-4. Nell'app Zepp sul telefono aprire le impostazioni di **Zitto e Corri Coach**.
-5. Inserire l'origine pubblica, per esempio `https://corri.example.it`, senza aggiungere il percorso API.
-6. Inserire il codice e toccare **Collega Zitto e Corri Coach**.
+1. Publish ZittoAndCorri on an HTTPS domain. `localhost` and HTTP URLs are not accepted by the App Side Service.
+2. Apply the Supabase migration and deploy the backend that contains `POST /api/zepp/workouts/pull`.
+3. In ZittoAndCorri, open **Settings → Connections → Zepp OS** and generate a 6-digit linking code. The code is valid for 5 minutes.
+4. In the Zepp app on your phone, open the settings of **Zitto e Corri Coach** (Zitto e Corri Coach).
+5. Enter the public origin, for example `https://corri.example.it`, without adding the API path.
+6. Enter the code and tap **Collega Zitto e Corri Coach** (Link Zitto e Corri Coach).
 
-Il codice viene consumato dal client `workout`; un eventuale collegamento `health` rimane indipendente. Per cambiare account usare **Disconnetti estensione** e ripetere il pairing.
+The code is consumed by the `workout` client; a `health` connection, if any, remains independent. To switch accounts, use **Disconnetti estensione** (Disconnect extension) and repeat the pairing.
 
-## Build, simulatore e installazione fisica
+## Build, simulator and physical installation
 
-Dalla cartella `zepp-workout-extension`:
+From the `zepp-workout-extension` folder:
 
 ```bash
 npm ci
 npm run build
 ```
 
-Il pacchetto `.zab` viene scritto in `dist/`.
+The `.zab` package is written to `dist/`.
 
-Per lo sviluppo nel simulatore:
+For development in the simulator:
 
 ```bash
 npm run dev
 ```
 
-Per creare e inviare una preview tramite Zeus:
+To create and send a preview through Zeus:
 
 ```bash
 npm run preview
 ```
 
-Nel simulatore l'estensione può comparire nell'elenco applicazioni per agevolare lo sviluppo. Sul dispositivo fisico non viene aperta come una normale app: installare la preview seguendo il QR/flusso mostrato da Zeus e poi abilitarla da Exercise.
+In the simulator the extension may appear in the application list to make development easier. On a physical device it is not opened like a normal app: install the preview by following the QR/flow shown by Zeus, then enable it from Exercise.
 
-## Attivazione dentro Exercise
+## Activation inside Exercise
 
-La posizione delle voci può cambiare leggermente tra firmware:
+The position of the menu items may vary slightly between firmware versions:
 
-1. Aprire **Exercise/Allenamento** sull'orologio.
-2. Selezionare **Corsa all'aperto** oppure **Tapis roulant**.
-3. Prima di iniziare, aprire le impostazioni della disciplina.
-4. Entrare in **Workout Extension**, **Estensioni allenamento** o **Altre pagine dati**.
-5. Aggiungere/abilitare **Zitto e Corri Coach**.
-6. Avviare la corsa e scorrere tra le pagine dati di Exercise fino alla pagina del Coach.
+1. Open **Exercise/Allenamento** (Exercise) on the watch.
+2. Select **Corsa all'aperto** (Outdoor run) or **Tapis roulant** (Treadmill).
+3. Before starting, open the settings for the activity type.
+4. Go to **Workout Extension**, **Estensioni allenamento** (Workout extensions) or **Altre pagine dati** (Other data pages).
+5. Add/enable **Zitto e Corri Coach**.
+6. Start the run and scroll through Exercise's data pages until you reach the Coach page.
 
-L'estensione supporta soltanto i sottotipi Zepp `1` (Corsa all'aperto) e `2` (Tapis roulant). È configurata a schermo intero (`isPinned: 1`).
+The extension supports only the Zepp subtypes `1` (Outdoor run) and `2` (Treadmill). It is set to full screen (`isPinned: 1`).
 
-## Sincronizzazione del piano
+## Plan sync
 
-Il backend restituisce gli allenamenti pianificati dei successivi 14 giorni e una revisione deterministica.
+The backend returns the planned workouts for the next 14 days and a deterministic revision.
 
-- Alle **06:00** e alle **18:00** locali un App Service esegue un controllo incrementale.
-- Ogni volta che la pagina dell'estensione prende il primo piano viene eseguito un altro controllo.
-- **Aggiorna piano ora** nelle impostazioni forza il download.
-- Se è impostato un override ancora presente nella finestra di 14 giorni, viene scelto quello.
-- Senza override viene scelto automaticamente l'allenamento di oggi soltanto quando è unico. Con zero o più allenamenti odierni la selezione rimane vuota/ambigua.
+- At **06:00** and **18:00** local time, an App Service runs an incremental check.
+- Every time the extension page loads the first plan, another check runs.
+- **Aggiorna piano ora** (Update plan now) in the settings forces a download.
+- If an override is set and still falls within the 14-day window, it is chosen.
+- Without an override, today's workout is chosen automatically only when there is exactly one. With zero or more than one workout today, the selection stays empty/ambiguous.
 
-L'elenco scaricato e la revisione vengono conservati sia dal servizio telefonico sia sul watch. Se telefono o rete non sono raggiungibili, l'ultima versione valida resta utilizzabile. Un piano non viene sostituito dopo che la sessione è iniziata; un aggiornamento ricevuto durante la corsa sarà disponibile alla sessione successiva.
+The downloaded list and the revision are stored both by the phone service and on the watch. If the phone or network is unreachable, the last valid version remains usable. A plan is not replaced once the session has started; an update received during the run will be available in the next session.
 
-Per cambiare manualmente seduta aprire le impostazioni di **Zitto e Corri Coach**, scegliere **Allenamento da guidare** e sincronizzare. La voce automatica rimuove l'override.
+To manually choose a session, open the **Zitto e Corri Coach** settings, select **Allenamento da guidare** (Workout to follow) and sync. The automatic option removes the override.
 
-## Schermata durante la corsa
+## Run screen
 
-La pagina mostra:
+The page shows:
 
-- nome della fase corrente;
-- tempo o distanza residua, oppure `Manuale`;
-- range target di passo e frequenza cardiaca;
-- passo e HR nativi di Exercise tramite widget `SPORT_DATA`;
-- previsione di chiusura del chilometro corrente;
-- nome della fase successiva;
-- stato degli avvisi e dell'eventuale sensore HR.
+- name of the current phase;
+- remaining time or distance, or `Manuale` (Manual);
+- target pace and heart rate range;
+- Exercise's native pace and HR via the `SPORT_DATA` widget;
+- predicted completion of the current kilometre;
+- name of the next phase;
+- status of the alerts and of the HR sensor, if any.
 
-Ogni secondo vengono letti durata netta, distanza e velocità di Exercise. Le pause quindi non consumano una fase temporale e non aggiungono distanza. Al ritorno sulla pagina lo stato viene riallineato alle metriche native.
+Every second, the extension reads Exercise's net duration, distance and speed. Pauses therefore do not consume a time phase and do not add distance. When you return to the page, the state is realigned with the native metrics.
 
-### Previsione del prossimo chilometro
+### Next kilometre prediction
 
-La velocità viene mediata sugli ultimi 15 secondi e trasformata in passo. Al passaggio di ogni confine chilometrico, il tempo esatto viene interpolato tra i due campioni che circondano il confine. La previsione è:
+The speed is averaged over the last 15 seconds and converted into pace. At each kilometre boundary, the exact time is interpolated between the two samples surrounding the boundary. The prediction is:
 
-`tempo trascorso nel km + distanza restante × passo medio mobile`
+`time elapsed in the km + remaining distance × rolling average pace`
 
-Per esempio `Km 4 previsto 5:12` indica il tempo stimato del quarto chilometro, non il tempo totale dell'allenamento. Se l'estensione è stata aperta dopo l'inizio e non ha ancora osservato un confine, mostra `—` fino al passaggio successivo.
+For example, `Km 4 previsto 5:12` (Km 4 expected 5:12) means the estimated time for the fourth kilometre, not the total workout time. If the extension was opened after the start and has not yet observed a boundary, it shows `—` until the next crossing.
 
-## Avvisi, suoni e comandi
+## Alerts, sounds and controls
 
-Vibrazioni:
+Vibrations:
 
-- cambio fase o conclusione: quattro impulsi;
-- passo troppo veloce: due impulsi brevi;
-- passo troppo lento: un impulso lungo;
-- HR sopra il limite: sequenza urgente.
+- phase change or completion: four pulses;
+- pace too fast: two short pulses;
+- pace too slow: one long pulse;
+- HR above the limit: urgent sequence.
 
-Il passo deve restare fuori range per 20 secondi consecutivi prima dell'avviso; la HR deve restare sopra il limite per 30 secondi consecutivi. Ogni tipo di avviso ha 60 secondi di cooldown. Se il sensore `HeartRate` non è disponibile, `SPORT_DATA` continua a mostrare il valore nativo ma gli avvisi HR vengono disabilitati.
+Pace must stay outside the range for 20 consecutive seconds before an alert; HR must stay above the limit for 30 consecutive seconds. Each type of alert has a 60-second cooldown. If the `HeartRate` sensor is not available, `SPORT_DATA` keeps showing the native value but HR alerts are disabled.
 
-I suoni vengono usati soltanto al cambio fase e alla conclusione. Vengono riprodotti solo se abilitati nelle impostazioni del Coach e se i suoni di sistema dell'orologio sono attivi.
+Sounds are used only at phase change and completion. They play only if enabled in the Coach settings and if the watch's system sounds are on.
 
-Comandi:
+Controls:
 
-- doppio clic `KEY_DOWN`: fase successiva;
-- doppio clic `KEY_UP`: fase precedente;
-- Home, Back e clic singoli vengono restituiti a Exercise;
-- aree touch **PRECEDENTE** e **SUCCESSIVA**: fallback sempre visibile.
+- double press of `KEY_DOWN`: next phase;
+- double press of `KEY_UP`: previous phase;
+- Home, Back and single clicks are passed back to Exercise;
+- touch areas **PRECEDENTE** (Previous) and **SUCCESSIVA** (Next): an always-visible fallback.
 
-Zepp documenta `CLICK` come interazione garantita, mentre avverte che la risposta ai tasti può non essere esposta alle Workout Extension. Se il doppio clic non funziona sul firmware in uso, utilizzare le due aree touch; non è un errore del piano o del pairing.
+Zepp documents `CLICK` as a guaranteed interaction, while warning that key responses may not be exposed to Workout Extensions. If the double press does not work on your firmware, use the two touch areas; this is not an error in the plan or the pairing.
 
-## Limite del primo piano
+## First-plan limitation
 
-Quando la pagina perde il focus, Zepp mette la Workout Extension in pausa: timer, callback e avvisi real-time non continuano su un'altra pagina di Exercise. GPS, registrazione e pausa nativi proseguono normalmente. Tornando alla pagina Coach, il motore riallinea fase e confini usando durata e distanza nette, ma non può recuperare una vibrazione che avrebbe dovuto avvenire mentre era fuori primo piano.
+When the page loses focus, Zepp pauses the Workout Extension: timers, callbacks and real-time alerts do not keep running on another Exercise page. Native GPS, recording and pause keep working normally. When you return to the Coach page, the engine realigns phase and boundaries using net duration and distance, but it cannot recover a vibration that should have happened while the page was out of focus.
 
-Per una guida continua lasciare normalmente **Zitto e Corri Coach** come pagina visibile.
+For continuous guidance, keep **Zitto e Corri Coach** as the visible page.
 
-## Diagnostica e problemi comuni
+## Diagnostics and common problems
 
-Nelle impostazioni sono visibili tipo client, revisione, disponibilità cache, override, ultimo aggiornamento e ultimo stato.
+The settings show the client type, revision, cache availability, override, last update and last status.
 
-- **URL pubblico non valido**: usare l'origine HTTPS completa, senza spazi, `/api/...` o slash ripetuti.
-- **Codice rifiutato/scaduto**: generare un nuovo codice nella PWA; ogni codice è monouso.
-- **Piano vuoto**: verificare che esista esattamente un allenamento `planned` per oggi oppure scegliere un override.
-- **Override sparito**: è stato eliminato, completato o è fuori dalla finestra dei prossimi 14 giorni; il server lo rimuove automaticamente.
-- **Offline senza piano**: almeno una sincronizzazione riuscita deve avvenire prima di uscire senza telefono/rete.
-- **Nessun avviso HR**: controllare permesso HR, disponibilità del sensore e presenza di `hr_max_bpm` nella fase.
-- **Nessun suono**: controllare sia il toggle del Coach sia suoni/silenzioso dell'orologio.
-- **Doppi clic ignorati**: usare i controlli touch; alcuni firmware non inoltrano `onKey` alle estensioni.
-- **L'estensione non appare in Exercise**: controllare nuovo `appId`, API level, compatibilità del modello/firmware, sottotipo 1/2 e installazione della preview.
-- **Build con ID errato**: sostituire il placeholder in `app.json`; Zeus può compilare il placeholder, ma non consente una distribuzione corretta.
+- **Invalid public URL**: use the full HTTPS origin, with no spaces, `/api/...` or repeated slashes.
+- **Code rejected/expired**: generate a new code in the PWA; each code is single-use per app.
+- **Empty plan**: check that there is exactly one `planned` workout for today, or choose an override.
+- **Override disappeared**: it was deleted, completed, or is outside the next 14 days; the server removes it automatically.
+- **Offline with no plan**: at least one successful sync must happen before going out without phone/network.
+- **No HR alerts**: check the HR permission, sensor availability, and whether `hr_max_bpm` is set in the phase.
+- **No sound**: check both the Coach toggle and the watch's sound/silent setting.
+- **Double presses ignored**: use the touch controls; some firmware versions do not forward `onKey` to extensions.
+- **Extension does not appear in Exercise**: check the new `appId`, API level, model/firmware compatibility, subtype 1/2 and the preview installation.
+- **Build with wrong ID**: replace the placeholder in `app.json`; Zeus can build the placeholder, but it does not allow a correct distribution.
 
-## Checklist della prima corsa
+## First run checklist
 
-- [ ] Migrazione `0016_zepp_workout_extension.sql` applicata.
-- [ ] Backend pubblico aggiornato e raggiungibile via HTTPS.
-- [ ] Nuovo `appId` Workout Extension creato e inserito in `app.json`.
-- [ ] `npm ci` e `npm run build` completati senza errori.
-- [ ] `.zab`/preview installata sull'Active 3 Premium.
-- [ ] Estensione collegata con client `workout` e stato **Piano aggiornato**.
-- [ ] Allenamento di prova con riscaldamento, ripetuta, recupero e defaticamento presente nel piano.
-- [ ] Estensione abilitata sia per Corsa all'aperto sia per Tapis roulant.
-- [ ] Fase, residuo, target, passo, HR e fase successiva visibili.
-- [ ] Pausa di Exercise verificata: il residuo temporale non diminuisce.
-- [ ] Avanzamento automatico verificato su una fase a tempo.
-- [ ] Avanzamento automatico verificato su una fase a distanza.
-- [ ] PRECEDENTE/SUCCESSIVA touch verificati.
-- [ ] Doppi clic fisici verificati; annotato l'eventuale limite firmware.
-- [ ] Vibrazione cambio fase, passo veloce/lento e HR alta verificate.
-- [ ] Suono cambio fase verificato con suoni di sistema attivi e assenza verificata in silenzioso.
-- [ ] Previsione `Km N previsto` verificata dopo un confine osservato.
-- [ ] Override selezionato, sincronizzato e poi rimosso tornando ad automatico.
-- [ ] Avvio senza rete verificato usando la cache locale.
-- [ ] Aggiornamento durante una sessione verificato: il piano attivo non cambia.
-- [ ] Cambio pagina e ritorno verificati: stato riallineato e avvisi riattivati in primo piano.
+- [ ] Migration `0016_zepp_workout_extension.sql` applied.
+- [ ] Public backend updated and reachable via HTTPS.
+- [ ] New Workout Extension `appId` created and entered in `app.json`.
+- [ ] `npm ci` and `npm run build` completed without errors.
+- [ ] `.zab`/preview installed on the Active 3 Premium.
+- [ ] Extension linked with the `workout` client and status **Piano aggiornato** (Plan updated).
+- [ ] Test workout with warm-up, repeat, recovery and cool-down present in the plan.
+- [ ] Extension enabled for both Corsa all'aperto (Outdoor run) and Tapis roulant (Treadmill).
+- [ ] Phase, remaining time, target, pace, HR and next phase visible.
+- [ ] Exercise pause verified: the remaining time does not decrease.
+- [ ] Automatic advance verified on a time-based phase.
+- [ ] Automatic advance verified on a distance-based phase.
+- [ ] PRECEDENTE/SUCCESSIVA touch controls verified.
+- [ ] Physical double presses verified; any firmware limitation noted.
+- [ ] Phase-change vibration, fast/slow pace and high HR verified.
+- [ ] Phase-change sound verified with system sounds on, and absence verified in silent mode.
+- [ ] `Km N previsto` prediction verified after an observed boundary.
+- [ ] Override selected, synced and then removed, returning to automatic.
+- [ ] Start without network verified using the local cache.
+- [ ] Update during a session verified: the active plan does not change.
+- [ ] Page switch and return verified: state realigned and alerts re-enabled in the foreground.
 
-Il collaudo fisico di vibrazioni, suoni, tasti e disponibilità Workout Extension non può essere sostituito dal simulatore: va completato sul firmware reale prima della pubblicazione.
+Physical testing of vibrations, sounds, buttons and Workout Extension availability cannot be replaced by the simulator: it must be completed on real firmware before publication.

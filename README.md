@@ -57,17 +57,23 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 SUPABASE_SECRET_KEY=your-server-side-secret-key
 ```
 
-Initialize the Supabase database with the SQL files in
-`supabase/migrations` (in order; on an existing database apply only the new
-ones, e.g. `0025`–`0026`), then enable Google as an authentication provider. Add
-your application's `/auth/callback` URL to the allowed redirect URLs in
-Supabase.
+Initialize the Supabase database by applying every SQL file in
+`supabase/migrations` in order (`0001` to `0032`; numbers 0020 and 0031 do not
+exist). On an existing database apply only the files newer than the last one
+you ran. Paste each file into the Supabase SQL editor (or run them with `psql`). Then enable
+Google as an authentication provider and add your application's
+`/auth/callback` URL to the allowed redirect URLs in Supabase.
 
 Start the development server:
 
 ```bash
 npm run dev
 ```
+
+Optional variables (see `.env.example`): `NEXT_PUBLIC_VAPID_PUBLIC_KEY`,
+`VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` for push notifications, and
+`CRON_SECRET` for the scheduled jobs. Without the VAPID keys the app works,
+minus notifications; the cron endpoints reject calls without `CRON_SECRET`.
 
 Open [http://localhost:3000](http://localhost:3000), sign in with Google, and
 complete the onboarding flow. AI features remain disabled until the user adds a
@@ -163,10 +169,23 @@ Intervals.icu public API with the athlete's personal key:
   settings), updated after every plan change and removed when a session
   disappears; Zepp loads the next 7 days onto the watch.
 
-Setup: apply `supabase/migrations/0025_intervals_icu.sql`, link Intervals.icu in
-the Zepp app (Profile → Third-party accounts), enable wellness and HRV download
-in the Amazfit box of Intervals.icu settings, then paste the Intervals.icu API
-key in **Settings → Connections → Intervals.icu**.
+Setup, step by step:
+
+1. Apply `supabase/migrations/0025_intervals_icu.sql` (included if you applied
+   every migration).
+2. Create a free account on [Intervals.icu](https://intervals.icu).
+3. In the Zepp phone app: **Profile → Third-party accounts → Intervals.icu**
+   and sign in. From now on Zepp uploads your runs and wellness data there.
+4. On Intervals.icu: **Settings → Amazfit** box, turn on downloading of
+   wellness data and HRV.
+5. Still in Intervals.icu Settings, at the bottom (**Developer settings**),
+   copy your API key.
+6. In Zitto e Corri: **Settings → Connections → Intervals.icu**, paste the key
+   and save. Syncing then runs on its own (see the schedule below).
+
+After a run, open the Zepp app: it reaches Intervals.icu within seconds and
+Zitto e Corri within an hour (or immediately when you open the app). The next 7
+days of the plan appear on the watch in the Workout app.
 
 The sync runs from `/api/cron/intervals` in the morning and again inside
 `/api/cron/daily` in the afternoon, so it happens twice a day even on the
@@ -179,9 +198,18 @@ The optional Zepp OS companion sends Zepp-only health and recovery summaries
 Balance 2 or Active 3 Premium, and shows today's session in a watch widget. It does not replace FIT/GPX activity imports and it
 does not create workouts automatically.
 
-Enable Zepp OS in Settings, generate the six-digit pairing code, and complete
-the connection from the Zepp phone app. Build and installation instructions are
-available in the [Zepp OS companion README](zepp-app/README.md).
+There are two independent watch apps, both optional: the **health app**
+(`zepp-app`: recovery summaries and the "Today" widget) and the **coach
+extension** (`zepp-workout-extension`: guided phases, targets and alerts inside
+the watch's Exercise app during a run). They share the same pairing code but
+each needs its own connection.
+
+To connect: enable Zepp OS in **Settings → Connections**, generate the six-digit
+pairing code (valid for 5 minutes, one use per app) and enter it in each app's
+settings in the Zepp phone app. Build and installation instructions are in the
+[health app README](zepp-app/README.md) and the
+[coach extension README](zepp-workout-extension/README.md). Both need a Zepp
+developer account and Developer Mode on the phone.
 
 ## What the coach can change
 
