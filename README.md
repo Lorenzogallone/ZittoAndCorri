@@ -4,7 +4,7 @@ Zitto e Corri is a mobile-first running coach delivered as a Progressive Web
 App. It combines activity tracking, training plans, performance insights, and a
 personal AI coach (Gemini or OpenRouter) in one installable web app.
 
-The interface is currently in Italian.
+The app is available in English and Italian (see [Languages](#languages)).
 
 ## What it does
 
@@ -76,7 +76,7 @@ personal Gemini or OpenRouter key, in onboarding or later under
 
 ## Languages
 
-The interface is moving from Italian-only to Italian and English, with
+The interface is available in Italian and English, with
 [next-intl](https://next-intl.dev) and no language prefix in the URLs. The
 language is stored in the `NEXT_LOCALE` cookie, chosen on the first onboarding
 step or in **Settings → App**; without a cookie it follows the browser's
@@ -110,7 +110,7 @@ where noted. Everything can be changed later in Settings.
    enough to start the coach. OpenRouter needs
    `supabase/migrations/0023_coach_proposals_and_openrouter.sql`.
 5. **Watch** — which watches are supported (Amazfit today, other brands in
-   progress) and an option to open **Settings → Collegamenti** right after.
+   progress) and an option to open **Settings → Connections** right after.
 
 ## Main areas
 
@@ -119,7 +119,7 @@ where noted. Everything can be changed later in Settings.
 - **Activities** — running totals, manual entries, FIT/GPX uploads, pace-coloured
   maps, pace checks, records, shareable images and AI feedback.
 - **Plan** — week-by-week plan with what was done or missed, a month view,
-  training phases, moving sessions and "Non al 100%".
+  training phases, moving sessions and "Not feeling 100%".
 - **Profile** — goal, training status, fitness and fatigue, weekly distance,
   race predictions, personal records and pace trend.
 - **Settings** — athlete data, heat adjustment, appearance, notifications,
@@ -166,7 +166,7 @@ Intervals.icu public API with the athlete's personal key:
 Setup: apply `supabase/migrations/0025_intervals_icu.sql`, link Intervals.icu in
 the Zepp app (Profile → Third-party accounts), enable wellness and HRV download
 in the Amazfit box of Intervals.icu settings, then paste the Intervals.icu API
-key in **Settings → Collegamenti → Intervals.icu**.
+key in **Settings → Connections → Intervals.icu**.
 
 The sync runs from `/api/cron/intervals` in the morning and again inside
 `/api/cron/daily` in the afternoon, so it happens twice a day even on the
@@ -225,7 +225,7 @@ pair and set the variables listed in `.env.example`:
 npx web-push generate-vapid-keys
 ```
 
-Users enable notifications per device in **Settings → Notifiche** (on iPhone,
+Users enable notifications per device in **Settings → Notifications** (on iPhone,
 the app must be added to the Home Screen first). The section is hidden when
 `NEXT_PUBLIC_VAPID_PUBLIC_KEY` is not set.
 
