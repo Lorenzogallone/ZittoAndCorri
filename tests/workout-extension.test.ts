@@ -2,14 +2,6 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
-  ALERT_COOLDOWN_MS,
-  createRuntime,
-  kilometerProjection,
-  moveStep,
-  parseDuration,
-  updateRuntime,
-} from "../zepp-workout-extension/shared/engine.js";
-import {
   WorkoutStepsInputSchema,
   legacyWorkoutStep,
   normalizeWorkoutSteps,
@@ -64,67 +56,6 @@ test("un allenamento legacy viene convertito in una fase guidata", () => {
   assert.equal(step.hr_max_bpm, 155);
 });
 
-test("la macchina a stati usa tempo e distanza netti e non avanza in pausa", () => {
-  assert.equal(parseDuration("1:15:15"), 4515);
-  const runtime = createRuntime(workout, { duration: 10, distance: 100 });
-  const paused = updateRuntime(runtime, workout, { duration: 10, distance: 100, speed: 10, hr: 130 }, 10_000);
-  assert.equal(runtime.stepIndex, 0);
-  assert.equal(paused.remaining, 60);
-
-  const transition = updateRuntime(runtime, workout, { duration: 70, distance: 260, speed: 10, hr: 140 }, 70_000);
-  assert.deepEqual(transition.events, ["phase_transition"]);
-  assert.equal(runtime.stepIndex, 1);
-  assert.equal(runtime.stepStartDistance, 260);
-
-  updateRuntime(runtime, workout, { duration: 370, distance: 1260, speed: 12, hr: 165 }, 370_000);
-  assert.equal(runtime.complete, true);
-});
-
-test("avanzamento manuale rispetta i confini e può tornare alla fase precedente", () => {
-  const runtime = createRuntime(workout, { duration: 0, distance: 0 });
-  assert.equal(moveStep(runtime, workout, 1, { duration: 20, distance: 100 }), "phase_transition");
-  assert.equal(runtime.stepIndex, 1);
-  assert.equal(moveStep(runtime, workout, -1, { duration: 21, distance: 103 }), "phase_transition");
-  assert.equal(runtime.stepIndex, 0);
-});
-
-test("al ritorno in primo piano riallinea più fasi usando le basi cumulative", () => {
-  const runtime = createRuntime(workout, { duration: 0, distance: 0 });
-  const result = updateRuntime(runtime, workout, { duration: 360, distance: 1500, speed: 12, hr: 160 }, 360_000);
-  assert.deepEqual(result.events, ["phase_transition", "complete"]);
-  assert.equal(runtime.complete, true);
-  assert.ok(Math.abs(runtime.stepStartDuration - 300) < 0.001);
-  assert.equal(runtime.stepStartDistance, 1250);
-});
-
-test("gli avvisi richiedono permanenza fuori target e cooldown", () => {
-  const alertWorkout = { ...workout, steps: [{ ...workout.steps[0], completion_value: 500 }] };
-  const runtime = createRuntime(alertWorkout, { duration: 0, distance: 0 });
-  for (let second = 1; second <= 19; second += 1) {
-    const result = updateRuntime(runtime, alertWorkout, { duration: second, distance: second * 4, speed: 15, hr: 140 }, second * 1000);
-    assert.doesNotMatch(result.events.join(","), /pace_fast/);
-  }
-  assert.match(updateRuntime(runtime, alertWorkout, { duration: 21, distance: 84, speed: 15, hr: 140 }, 21_000).events.join(","), /pace_fast/);
-  assert.doesNotMatch(updateRuntime(runtime, alertWorkout, { duration: 22, distance: 88, speed: 15, hr: 140 }, 22_000).events.join(","), /pace_fast/);
-  assert.match(updateRuntime(runtime, alertWorkout, { duration: 21 + ALERT_COOLDOWN_MS / 1000, distance: 324, speed: 15, hr: 140 }, 21_000 + ALERT_COOLDOWN_MS).events.join(","), /pace_fast/);
-
-  const hrWorkout = { ...workout, steps: [{ ...workout.steps[0], completion_value: 500, hr_max_bpm: 130 }] };
-  const hrRuntime = createRuntime(hrWorkout, { duration: 0, distance: 0 });
-  updateRuntime(hrRuntime, hrWorkout, { duration: 1, distance: 2, speed: null, hr: 150 }, 1_000);
-  assert.match(updateRuntime(hrRuntime, hrWorkout, { duration: 31, distance: 62, speed: null, hr: 150 }, 31_000).events.join(","), /hr_high/);
-});
-
-test("la previsione chilometrica interpola il passaggio e usa la media mobile", () => {
-  const longWorkout = { ...workout, steps: [{ ...workout.steps[1], completion_value: 5000 }] };
-  const runtime = createRuntime(longWorkout, { duration: 0, distance: 0 });
-  updateRuntime(runtime, longWorkout, { duration: 290, distance: 990, speed: 12, hr: 150 }, 290_000);
-  const result = updateRuntime(runtime, longWorkout, { duration: 300, distance: 1010, speed: 12, hr: 150 }, 300_000);
-  assert.ok(Math.abs((runtime.kmBoundaries as Record<number, number>)[1] - 295) < 0.001);
-  assert.equal(result.projection?.kilometer, 2);
-  assert.ok(Math.abs((result.projection?.projectedSeconds ?? 0) - 302) < 0.001);
-  assert.equal(kilometerProjection({ ...runtime, kmBoundaries: {} }, { duration: 300, distance: 1010 }, 300), null);
-});
-
 test("pairing distingue health e workout; il piano in sola lettura serve a entrambi", () => {
   assert.equal(ZeppPairRequestSchema.parse({ code: "123456", clientId: "watch-health", device: {} }).clientKind, "health");
   assert.equal(ZeppPairRequestSchema.parse({ code: "123456", clientId: "watch-workout", clientKind: "workout", device: {} }).clientKind, "workout");
@@ -136,7 +67,7 @@ test("pairing distingue health e workout; il piano in sola lettura serve a entra
   assert.match(data, /onConflict: "user_id,client_kind"/);
   assert.match(data, /\.eq\("user_id", userId\)\.eq\("client_kind", clientKind\)/);
   assert.match(healthRoute, /authorizeZeppToken\(token, "health"\)/);
-  // Il pull è in sola lettura: lo usano la Workout Extension e il widget "Oggi" della Mini App salute.
+  // Il pull è in sola lettura: lo usa il widget "Oggi" della Mini App salute.
   assert.match(workoutRoute, /authorizeZeppToken\(token\)/);
   assert.doesNotMatch(healthRoute, /authorizeZeppToken\(token\)/);
 });
@@ -160,24 +91,10 @@ test("il pull preferisce un override valido e richiede un solo allenamento oggi"
   });
 });
 
-test("pipeline AI, cache offline e controlli dell'estensione restano nel contratto", () => {
+test("la pipeline AI produce le fasi guidate", () => {
   const prompt = readFileSync(new URL("../lib/ai/prompt.ts", import.meta.url), "utf8");
   const migration = readFileSync(new URL("../supabase/migrations/0016_zepp_workout_extension.sql", import.meta.url), "utf8");
-  const sync = readFileSync(new URL("../zepp-workout-extension/shared/sync.js", import.meta.url), "utf8");
-  const widget = readFileSync(new URL("../zepp-workout-extension/data-widget/common/index.js", import.meta.url), "utf8");
   assert.ok((prompt.match(/workout_steps/g) ?? []).length >= 5);
   assert.match(prompt, /ogni singola ripetuta/);
   assert.match(migration, /jsonb_build_array/);
-  assert.match(sync, /result\.notModified && cached/);
-  assert.match(widget, /Offline · uso piano salvato/);
-  // Le Workout Extension non ricevono i tasti fisici (docs Zepp): solo tocchi.
-  assert.doesNotMatch(widget, /onKey|KEY_EVENT_DOUBLE_CLICK/);
-  assert.match(widget, /event\.CLICK/);
-  assert.match(widget, /radius: px\(233\)/);
-  assert.match(widget, /RESIDUO FASE/);
-  assert.match(widget, /DISTANZA KM/);
-  assert.match(widget, /TEMPO NETTO/);
-  assert.match(widget, /showPhasePrompt/);
-  assert.match(widget, /TOCCA PER CONTINUARE/);
-  assert.doesNotMatch(widget, /onGesture|widget\.BUTTON/);
 });
