@@ -10,6 +10,9 @@ involved.
   coach memory and guidelines, and fake Gemini/Intervals.icu/Zepp connections. It
   also creates a second user (`newrunner@example.com`) that has not finished
   onboarding, for the welcome screen.
+- `record.mjs` records a 14-second walk through the app (home, coach chat, 14-day
+  plan, run detail with map and splits) as `docs/screenshots/demo.gif` and a lighter
+  `demo.mp4`.
 - `capture.mjs` opens the app in Chrome as an iPhone 15 Pro (393×852, light theme,
   English), signs in with the session cookies the seed wrote, and saves optimized
   PNGs.
@@ -84,6 +87,24 @@ Run steps 2 and 4 within ten minutes of each other: the seed marks the fake
 Intervals.icu connection as just synced, and opening the app later than that would
 try to import from the real Intervals.icu API with the fake key and show a sync
 error banner.
+
+## Regenerate the demo video
+
+Same stack as above (steps 1-3: Supabase, seed, app), then:
+
+```bash
+brew install ffmpeg                                   # the GIF and MP4 are encoded with it
+(cd /tmp/demo-tools && npx playwright-core install ffmpeg)   # Playwright's own recorder
+DEMO_TOOLS_DIR=/tmp/demo-tools node scripts/demo/record.mjs
+```
+
+`record.mjs` visits every page once without recording (the app computes derived
+metrics in the background), then records a 393×852 Chrome video with Playwright's
+`recordVideo`, trims the page-load lead-in and encodes it with ffmpeg
+(`palettegen`/`paletteuse`). The GIF is 360 px wide, 8 fps, 28 colours (about
+2.9 MB); the MP4 is 720 px wide (about 1.3 MB). `DEMO_GIF_WIDTH`, `DEMO_GIF_FPS`,
+`DEMO_GIF_COLORS` and `DEMO_MAX_SECONDS` tune size and length. The 10-minute rule
+above applies here too: seed, then record.
 
 ## Screenshots
 
