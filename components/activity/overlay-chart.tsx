@@ -6,6 +6,7 @@ import { useMeasuredWidth } from "@/components/charts/chart-utils";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/format";
 import { useSegmentSelection } from "@/components/activity/segment-selection";
+import { axisRange, smoothSeries } from "@/lib/chart-scale";
 
 type Point = { t: number; v: number };
 type Key = "hr" | "pace" | "elevation" | "cadence";
@@ -19,6 +20,10 @@ interface SeriesSpec {
   area?: boolean;
   /** Extreme values clipped: a skipped GPS point must not squash the line. */
   trim?: boolean;
+  /** Smallest vertical range, in the series' unit. */
+  minSpan?: number;
+  /** Moving average over this many seconds, against sensor noise. */
+  smoothS?: number;
 }
 
 const pace = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, "0")}`;
@@ -26,7 +31,8 @@ const pace = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.rou
 const SPECS: Record<Key, SeriesSpec> = {
   hr: { color: "var(--viz-2)", format: (v) => `${Math.round(v)} bpm` },
   pace: { color: "var(--viz-1)", format: (v) => `${pace(v)}/km`, invert: true, trim: true },
-  elevation: { color: "var(--muted-foreground)", format: (v) => `${Math.round(v)} m`, area: true },
+  // 80 m minimum: a flat run with 20 m of barometer drift must look nearly flat.
+  elevation: { color: "var(--muted-foreground)", format: (v) => `${Math.round(v)} m`, area: true, minSpan: 80, smoothS: 20 },
   cadence: { color: "var(--chart-3)", format: (v) => `${Math.round(v)} spm`, trim: true },
 };
 
@@ -35,10 +41,6 @@ const ORDER: Key[] = ["elevation", "cadence", "pace", "hr"];
 
 const HEIGHT = 180;
 const PAD = { top: 12, right: 6, bottom: 20, left: 6 };
-
-function quantile(sorted: number[], q: number): number {
-  return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * q)))];
-}
 
 /** Point closest to t (sorted series), if not too far away. */
 function nearest(points: Point[], t: number, tolerance: number): Point | null {
@@ -88,13 +90,11 @@ export function OverlayChart({
 
   const drawn = visible.map((key) => {
     const spec = SPECS[key];
-    const points = series[key]!;
-    const sorted = points.map((p) => p.v).sort((a, b) => a - b);
-    let min = spec.trim ? quantile(sorted, 0.02) : sorted[0];
-    let max = spec.trim ? quantile(sorted, 0.98) : sorted[sorted.length - 1];
-    const pad = Math.max((max - min) * 0.12, key === "elevation" ? 5 : 1);
-    min -= pad;
-    max += pad;
+    const points = smoothSeries(series[key]!, spec.smoothS ?? 0);
+    const { min, max } = axisRange(
+      points.map((p) => p.v),
+      { trim: spec.trim, minSpan: spec.minSpan, minPad: key === "elevation" ? 5 : 1 },
+    );
     const y = (v: number) => {
       const clamped = Math.min(max, Math.max(min, v));
       const ratio = (clamped - min) / (max - min || 1);
