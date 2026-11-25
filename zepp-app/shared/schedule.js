@@ -18,7 +18,7 @@ function nextLocalOccurrence(hour) {
   return Math.floor(next.getTime() / 1000)
 }
 
-// Elenco degli alarm di questa Mini App; null se l'API non risponde.
+// List of this Mini App's alarms; null if the API does not respond.
 function existingAlarms() {
   try {
     const ids = getAllAlarms()
@@ -35,7 +35,7 @@ function safeCancel(id) {
 
 function ensureAlarm(trigger, hour, existing) {
   const previous = getAlarmId(trigger)
-  // Alarm già presente, persistente e all'ora giusta: non lo tocchiamo.
+  // Alarm already present, persistent and at the right hour: leave it alone.
   if (previous > 0 && existing?.includes(previous) && getAlarmHour(trigger) === hour) return previous
   safeCancel(previous)
   const alarmId = set({
@@ -54,8 +54,8 @@ export function scheduleDailySyncs() {
   const hours = getScheduleHours()
   const existing = existingAlarms()
   const kept = TRIGGERS.map((trigger) => ensureAlarm(trigger, hours[trigger], existing))
-  // Gli unici alarm di questa app sono i due giornalieri: tutto il resto
-  // (vecchi alarm one-shot, duplicati) va cancellato.
+  // The only alarms of this app are the two daily ones: everything else
+  // (old one-shot alarms, duplicates) gets cancelled.
   for (const id of existing || []) {
     if (!kept.includes(id)) safeCancel(id)
   }

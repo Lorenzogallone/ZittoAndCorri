@@ -10,7 +10,7 @@
     },
     "icon": "icon.png",
     "vender": "ZittoAndCorri",
-    "description": "Sincronizzazione opzionale dei riepiloghi salute Zepp OS"
+    "description": "Optional sync of Zepp OS health summaries"
   },
   "permissions": [
     "data:os.device.info",

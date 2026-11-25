@@ -43,7 +43,7 @@ function copyField(label, value, rows) {
     label,
     multiline: true,
     rows,
-    value: value || "Nessun dato disponibile",
+    value: value || "No data available",
     onChange: () => {},
     labelStyle: { color: COLORS.ink, fontWeight: "600" },
     subStyle: { fontFamily: "monospace", fontSize: "11px", color: COLORS.muted },
@@ -54,13 +54,13 @@ AppSettingsPage({
   build(props) {
     const storage = props.settingsStorage
     const paired = storage.getItem("paired") === "true"
-    const status = storage.getItem("connection_status") || "Non collegato"
-    const lastSync = storage.getItem("last_sync") || "Mai"
-    const hasError = /errore|non valido|fallit|rifiutat|http|payload/i.test(status)
+    const status = storage.getItem("connection_status") || "Not connected"
+    const lastSync = storage.getItem("last_sync") || "Never"
+    const hasError = /error|invalid|fail|reject|http|payload|errore|non valido|fallit|rifiutat/i.test(status)
     const showDiagnostics = storage.getItem("show_diagnostics") === "true"
     const payload = storage.getItem("diagnostic_payload") || ""
     const response = storage.getItem("diagnostic_response") || ""
-    const attemptAt = storage.getItem("diagnostic_attempt_at") || "Mai"
+    const attemptAt = storage.getItem("diagnostic_attempt_at") || "Never"
     const httpStatus = storage.getItem("diagnostic_http_status") || "—"
     const payloadSize = storage.getItem("diagnostic_payload_size") || "0"
     const endpoint = storage.getItem("diagnostic_endpoint") || "—"
@@ -70,87 +70,87 @@ AppSettingsPage({
         bold: true,
         paragraph: true,
         style: { color: hasError ? COLORS.red : paired ? COLORS.green : COLORS.muted, fontSize: "15px", margin: "0 0 5px" },
-      }, hasError ? "Sincronizzazione da controllare" : paired ? "Dispositivo collegato" : "Non ancora collegato"),
+      }, hasError ? "Sync needs attention" : paired ? "Device connected" : "Not connected yet"),
       Text({ paragraph: true, style: { color: COLORS.ink, fontSize: "13px", margin: "0 0 8px", lineHeight: "1.45" } }, status),
-      Text({ style: { color: COLORS.muted, fontSize: "12px" } }, `Ultima sincronizzazione: ${lastSync}`),
+      Text({ style: { color: COLORS.muted, fontSize: "12px" } }, `Last sync: ${lastSync}`),
     ], { background: hasError ? COLORS.redSoft : paired ? COLORS.greenSoft : COLORS.surface })
 
     const connectionCard = paired
       ? card([
-          heading("Sincronizzazione"),
+          heading("Sync"),
           Text({ paragraph: true, style: { color: COLORS.muted, fontSize: "13px", margin: "0 0 14px" } },
-            "Invia ora i dati disponibili dall'orologio. Le attività FIT e GPX restano separate."),
+            "Send the data available from the watch now. FIT and GPX activities stay separate."),
           Button({
-            label: "Sincronizza ora",
+            label: "Sync now",
             color: "primary",
             style: { width: "100%", borderRadius: "12px", background: COLORS.blue, marginBottom: "10px" },
             onClick: () => action(storage, "sync_action"),
           }),
           Button({
-            label: "Disattiva collegamento",
+            label: "Disconnect",
             color: "secondary",
             style: { width: "100%", borderRadius: "12px" },
             onClick: () => action(storage, "disconnect_action"),
           }),
         ])
       : card([
-          heading("Collega l'orologio"),
+          heading("Connect the watch"),
           Text({ paragraph: true, style: { color: COLORS.muted, fontSize: "13px", margin: "0 0 12px", lineHeight: "1.45" } },
-            "Inserisci l'indirizzo pubblico dell'app e il codice di 6 cifre generato in ZittoAndCorri."),
+            "Enter the public address of the app and the 6-digit code generated in ZittoAndCorri."),
           TextInput({
-            label: "URL pubblico HTTPS",
-            placeholder: "https://tuo-dominio.example",
+            label: "Public HTTPS URL",
+            placeholder: "https://your-domain.example",
             value: storage.getItem("api_origin") || "",
             onChange: (value) => storage.setItem("api_origin", value.trim()),
             labelStyle: { color: COLORS.ink, fontWeight: "600" },
           }),
           TextInput({
-            label: "Codice di collegamento",
-            placeholder: "6 cifre",
+            label: "Pairing code",
+            placeholder: "6 digits",
             bold: true,
             value: storage.getItem("pairing_code") || "",
             onChange: (value) => storage.setItem("pairing_code", value.replace(/\D/g, "").slice(0, 6)),
             labelStyle: { color: COLORS.ink, fontWeight: "600" },
           }),
           Button({
-            label: "Collega a ZittoAndCorri",
+            label: "Connect to ZittoAndCorri",
             color: "primary",
             style: { width: "100%", borderRadius: "12px", background: COLORS.blue, marginTop: "8px" },
             onClick: () => {
-              // Feedback immediato: il servizio sul telefono può partire solo
-              // quando l'app sull'orologio è aperta e completa la richiesta dopo.
-              storage.setItem("connection_status", "Richiesta inviata. Se non cambia nulla entro pochi secondi, apri Zitto e Corri sull'orologio: il collegamento si completa da solo.")
+              // Immediate feedback: the phone service may only start when the app on
+              // the watch is open, and it completes the request afterwards.
+              storage.setItem("connection_status", "Request sent. If nothing changes within a few seconds, open Zitto e Corri on the watch: the connection completes by itself.")
               action(storage, "pair_action")
             },
           }),
         ])
 
-    const serviceLoadedAt = storage.getItem("service_loaded_at") || "mai"
+    const serviceLoadedAt = storage.getItem("service_loaded_at") || "never"
     const serviceInitError = storage.getItem("service_init_error") || ""
     const servicePolyfill = storage.getItem("service_polyfill") || ""
-    const serviceStartedAt = storage.getItem("service_started_at") || "mai (nessun avvio registrato)"
+    const serviceStartedAt = storage.getItem("service_started_at") || "never (no start recorded)"
     const serviceReason = storage.getItem("service_launch_reason") || "—"
     const pairRequestedAt = storage.getItem("pair_action")
     const pairHandled = pairRequestedAt && storage.getItem("pair_handled") === pairRequestedAt
-    let pairResultText = "nessun tentativo"
+    let pairResultText = "no attempt"
     try {
       const parsed = JSON.parse(storage.getItem("pair_result") || "null")
-      if (parsed) pairResultText = parsed.ok ? `riuscito alle ${parsed.at}` : `fallito alle ${parsed.at}: ${parsed.error}`
+      if (parsed) pairResultText = parsed.ok ? `succeeded at ${parsed.at}` : `failed at ${parsed.at}: ${parsed.error}`
     } catch {}
 
     const diagnosticChildren = [
-      heading("Diagnostica sincronizzazione"),
+      heading("Sync diagnostics"),
       Text({ paragraph: true, style: { color: COLORS.ink, fontSize: "12px", lineHeight: "1.55", margin: "0 0 10px" } },
-        `Codice del servizio caricato: ${serviceLoadedAt}${servicePolyfill ? ` (sostituiti: ${servicePolyfill})` : ""}\n` +
-        (serviceInitError ? `Errore all'avvio del servizio: ${serviceInitError}\n` : "") +
-        `Servizio telefono: avviato ${serviceStartedAt} (motivo: ${serviceReason})\n` +
-        `Pulsante Collega premuto: ${pairRequestedAt ? new Date(Number(pairRequestedAt)).toISOString() : "mai"}\n` +
-        `Richiesta presa in carico dal servizio: ${pairRequestedAt ? (pairHandled ? "sì" : "no") : "—"}\n` +
-        `Esito collegamento: ${pairResultText}`),
+        `Service code loaded: ${serviceLoadedAt}${servicePolyfill ? ` (replaced: ${servicePolyfill})` : ""}\n` +
+        (serviceInitError ? `Service startup error: ${serviceInitError}\n` : "") +
+        `Phone service: started ${serviceStartedAt} (reason: ${serviceReason})\n` +
+        `Connect button pressed: ${pairRequestedAt ? new Date(Number(pairRequestedAt)).toISOString() : "never"}\n` +
+        `Request picked up by the service: ${pairRequestedAt ? (pairHandled ? "yes" : "no") : "—"}\n` +
+        `Connection result: ${pairResultText}`),
       Text({ paragraph: true, style: { color: COLORS.muted, fontSize: "12px", lineHeight: "1.45", margin: "0 0 10px" } },
-        "Mostra ciò che il telefono ha ricevuto dall'orologio e la risposta del server. Il token non viene incluso."),
+        "Shows what the phone received from the watch and the server response. The token is not included."),
       Toggle({
-        label: "Mostra dettagli tecnici",
+        label: "Show technical details",
         value: showDiagnostics,
         onChange: (value) => storage.setItem("show_diagnostics", value ? "true" : "false"),
       }),
@@ -159,13 +159,13 @@ AppSettingsPage({
     if (showDiagnostics) {
       diagnosticChildren.push(
         Text({ paragraph: true, style: { color: COLORS.muted, fontSize: "12px", margin: "12px 0" } },
-          `Tentativo: ${attemptAt}\nHTTP: ${httpStatus} · Payload: ${payloadSize} byte\nEndpoint: ${endpoint}`),
-        copyField("Risposta del server", response, 7),
-        copyField("Payload inviato (JSON)", payload, 14),
+          `Attempt: ${attemptAt}\nHTTP: ${httpStatus} · Payload: ${payloadSize} bytes\nEndpoint: ${endpoint}`),
+        copyField("Server response", response, 7),
+        copyField("Payload sent (JSON)", payload, 14),
         Text({ paragraph: true, style: { color: COLORS.muted, fontSize: "11px", margin: "8px 0" } },
-          "Puoi selezionare il contenuto dei campi per copiarlo e condividerlo. Contiene dati salute, ma non il token di accesso."),
+          "You can select the contents of the fields to copy and share them. It contains health data, but not the access token."),
         Button({
-          label: "Pulisci diagnostica",
+          label: "Clear diagnostics",
           color: "secondary",
           style: { width: "100%", borderRadius: "12px" },
           onClick: () => {
@@ -181,13 +181,13 @@ AppSettingsPage({
       View({ style: { background: COLORS.blue, borderRadius: "20px", padding: "22px 18px", marginBottom: "14px" } }, [
         Text({ bold: true, paragraph: true, style: { color: "#FFFFFF", fontSize: "23px", margin: "0 0 6px" } }, "Zitto e Corri"),
         Text({ paragraph: true, style: { color: "#DCE8FF", fontSize: "13px", margin: "0", lineHeight: "1.45" } },
-          "Dati salute Zepp OS, in modo opzionale e sotto il tuo controllo."),
+          "Zepp OS health data, optional and under your control."),
       ]),
       statusCard,
       connectionCard,
       card(diagnosticChildren),
       Text({ align: "center", paragraph: true, style: { color: COLORS.muted, fontSize: "11px", margin: "4px 8px 18px", lineHeight: "1.45" } },
-        "Il token resta nello spazio privato del Mini Program. ZittoAndCorri non importa automaticamente le attività."),
+        "The token stays in the Mini Program's private space. ZittoAndCorri does not import activities automatically."),
     ])
   },
 })

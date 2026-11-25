@@ -2,7 +2,7 @@
   "name": "zitto-and-corri-zepp-os",
   "version": "1.0.10",
   "private": true,
-  "description": "Mini Program opzionale Zepp OS per ZittoAndCorri",
+  "description": "Optional Zepp OS Mini Program for ZittoAndCorri",
   "main": "app.js",
   "scripts": {
     "build": "NODE_PATH=./node_modules/@zeppos/zeus-cli/private-modules zeus build",

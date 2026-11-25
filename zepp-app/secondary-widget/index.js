@@ -1,6 +1,6 @@
-// Widget "Oggi" (strisciata a sinistra dal quadrante). Legge solo lo storage
-// locale: i widget non possono usare il Bluetooth. Il tocco apre la pagina,
-// che invia la coda e aggiorna il piano.
+// "Today" widget (swipe left from the watch face). Reads local storage only:
+// widgets cannot use Bluetooth. Tapping opens the page, which sends the queue
+// and refreshes the plan.
 import { createWidget, widget, prop, align, event, text_style } from "@zos/ui"
 import { push } from "@zos/router"
 import { px } from "@zos/utils"
@@ -15,17 +15,17 @@ const COLORS = {
 }
 
 const READINESS_LABELS = {
-  intense: "carica",
-  ready: "pronto",
-  moderate: "moderata",
-  recovery: "recupero",
-  rest: "riposo",
+  intense: "intense",
+  ready: "ready",
+  moderate: "moderate",
+  recovery: "recovery",
+  rest: "rest",
 }
 
 const STEP_PREFIX = {
-  warmup: "risc",
+  warmup: "warm",
   recovery: "rec",
-  cooldown: "defat",
+  cooldown: "cool",
 }
 
 function pad(value) {
@@ -43,7 +43,7 @@ function clock(seconds) {
 function distance(meters) {
   const value = Number(meters) || 0
   if (value >= 1000 && value % 1000 === 0) return `${value / 1000} km`
-  if (value >= 1000) return `${(value / 1000).toFixed(1).replace(".", ",")} km`
+  if (value >= 1000) return `${(value / 1000).toFixed(1)} km`
   return `${Math.round(value)} m`
 }
 
@@ -82,7 +82,7 @@ function todayWorkout(plan) {
 
 function timeLabel(iso) {
   const date = iso ? new Date(iso) : null
-  if (!date || Number.isNaN(date.getTime())) return "mai"
+  if (!date || Number.isNaN(date.getTime())) return "never"
   const value = `${pad(date.getHours())}:${pad(date.getMinutes())}`
   return localDate(date) === localDate() ? value : `${pad(date.getDate())}/${pad(date.getMonth() + 1)} ${value}`
 }
@@ -98,12 +98,12 @@ function readView() {
   const workout = todayWorkout(plan)
   const last = getLastResult()
   return {
-    title: workout?.title || (plan ? "Riposo" : "Nessun piano"),
+    title: workout?.title || (plan ? "Rest" : "No plan"),
     steps: workout
       ? stepsSummary(workout) || workout.description || ""
-      : plan ? "Nessuna seduta in programma" : "Apri l'app per scaricare il piano",
+      : plan ? "No workout scheduled" : "Open the app to download the plan",
     readiness: readinessText(last?.readiness),
-    footer: `Sync ${timeLabel(last?.at)} · coda ${getPendingSyncs().length}`,
+    footer: `Sync ${timeLabel(last?.at)} · queued ${getPendingSyncs().length}`,
   }
 }
 
@@ -114,7 +114,7 @@ SecondaryWidget({
     try {
       this.state.view = readView()
     } catch (error) {
-      console.log("Widget Oggi onInit", String(error))
+      console.log("Today widget onInit", String(error))
     }
   },
 
@@ -127,7 +127,7 @@ SecondaryWidget({
       })
       refs.label = createWidget(widget.TEXT, {
         x: px(113), y: px(52), w: px(240), h: px(44),
-        text: "Oggi", text_size: px(30), color: COLORS.title,
+        text: "Today", text_size: px(30), color: COLORS.title,
         align_h: align.CENTER_H, align_v: align.CENTER_V,
       })
       refs.title = createWidget(widget.TEXT, {
@@ -150,18 +150,18 @@ SecondaryWidget({
         text: view.footer, text_size: px(21), color: COLORS.muted,
         align_h: align.CENTER_H, align_v: align.CENTER_V, text_style: text_style.ELLIPSIS,
       })
-      // Area trasparente sopra a tutto: un tocco ovunque apre la pagina.
+      // Transparent area on top of everything: a tap anywhere opens the page.
       const tap = createWidget(widget.FILL_RECT, {
         x: 0, y: 0, w: px(466), h: px(466), color: COLORS.background, alpha: 0,
       })
       const open = () => {
-        try { push({ url: "page/index" }) } catch (error) { console.log("Widget Oggi push", String(error)) }
+        try { push({ url: "page/index" }) } catch (error) { console.log("Today widget push", String(error)) }
       }
       for (const target of [tap, refs.label, refs.title, refs.steps, refs.readiness, refs.footer]) {
         target.addEventListener(event.CLICK_UP, open)
       }
     } catch (error) {
-      console.log("Widget Oggi build", String(error))
+      console.log("Today widget build", String(error))
     }
   },
 
@@ -174,7 +174,7 @@ SecondaryWidget({
       refs.readiness?.setProperty(prop.TEXT, view.readiness)
       refs.footer?.setProperty(prop.TEXT, view.footer)
     } catch (error) {
-      console.log("Widget Oggi onResume", String(error))
+      console.log("Today widget onResume", String(error))
     }
   },
 
