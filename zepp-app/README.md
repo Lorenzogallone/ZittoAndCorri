@@ -101,7 +101,7 @@ Queued summaries are sent when:
 - the Today widget is tapped (it opens the app page);
 - **Sync now** is selected on the watch or in the Zepp phone settings.
 
-The page shows the time of the last automatic capture ("Raccolta auto") and the
+The page shows the time of the last automatic capture ("Auto capture") and the
 number of queued summaries.
 
 ### Why delivery is not done in the background
@@ -123,9 +123,9 @@ the watch, then swipe left from the watch face. It shows:
 
 - today's workout title and its first steps (for example
   `risc 15:00 · 1 km 4:20–4:10 · rec 2:00 · …`);
-- the readiness from the last successful sync (`Readiness 72 · pronto`);
+- the readiness from the last successful sync (`Readiness 72 · ready`);
 - the time of the last successful sync and the queue size
-  (`Sync 08:02 · coda 1`).
+  (`Sync 08:02 · queued 1`).
 
 The widget reads only data already stored on the watch; widgets cannot use
 Bluetooth. Tap it to open the app page, which sends the queue and downloads the
@@ -167,8 +167,8 @@ completed in three independent ways: Zepp starts the service for the settings
 change (zml's `onSettingsChange` receives `sideService.launchArgs`), the
 service picks it up at `onInit`, and the watch app completes it when it asks
 for the connection state at every opening. So if the status stays on
-"Richiesta inviata…", open **Zitto e Corri on the watch**: the pairing finishes
+"Request sent…", open **Zitto e Corri on the watch**: the pairing finishes
 as long as the code has not expired (5 minutes). A network error is retried at
 the next opening; an invalid code needs a new code and a new press of
-**Collega a ZittoAndCorri**. The status line "Richiesta inviata…" appears only
+**Connect**. The status line "Request sent…" appears only
 from 1.0.6: if it does not, the phone is still running an older build.
