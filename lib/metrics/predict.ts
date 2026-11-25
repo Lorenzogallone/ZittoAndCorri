@@ -1,113 +1,113 @@
-// Funzioni pure: previsione gara. PLAN.md §7.
+// Pure functions: race prediction. PLAN.md §7.
 //
-// Base: formula di Riegel T2 = T1 · (D2/D1)^k (Riegel 1981, come riportata da
-// Vickers & Vertosick). Il k = 1,06 è quello dei calcolatori più diffusi;
-// secondo Vickers & Vertosick, Riegel indica 1,05–1,06 per amatori maschi di
-// 40-70 anni e 1,08 per gli élite.
+// Base: Riegel formula T2 = T1 · (D2/D1)^k (Riegel 1981, as reported by
+// Vickers & Vertosick). k = 1.06 is the one in the most widespread calculators;
+// according to Vickers & Vertosick, Riegel gives 1.05–1.06 for male amateurs aged
+// 40-70 and 1.08 for elites.
 //
 // Vickers & Vertosick 2016, "An empirical study of race times in recreational
 // endurance runners", BMC Sports Sci Med Rehabil, doi:10.1186/s13102-016-0052-y
-// (N = 2303 amatori): con k = 1,07 Riegel è ben calibrato fino alla mezza ma
-// sottostima la maratona; la loro correzione con il chilometraggio settimanale
-// è costruita per la maratona. Il campione correva in mediana 30 miglia
-// (~48 km) a settimana. Lo studio non dice nulla sul volume basso nella mezza:
-// applicare una penalità di volume anche lì è una nostra ASSUNZIONE, motivata
-// dal fatto che chi corre molto meno della mediana è fuori dalla popolazione
-// su cui 1,07 è stato calibrato.
+// (N = 2303 amateurs): with k = 1.07 Riegel is well calibrated up to the half but
+// underestimates the marathon; their correction with weekly mileage
+// is built for the marathon. The sample ran a median of 30 miles
+// (~48 km) per week. The study says nothing about low volume in the half:
+// applying a volume penalty there too is our own ASSUMPTION, motivated
+// by the fact that someone who runs far less than the median is outside the population
+// on which 1.07 was calibrated.
 //
-// Da qui la forbice:
-// - ottimistica: k = 1,06, Riegel classico (resistenza "da allenato");
-// - centrale: k = 1,07 (la media di Vickers) più una penalità di resistenza
-//   quando volume e lungo sono sotto quelli del campione su cui 1,07 è stato
-//   misurato;
-// - prudente: la centrale più un margine che cresce con la stessa penalità.
-// Quando il riferimento è vecchio la forbice si allarga in entrambi i versi.
-// Le costanti senza fonte diretta sono marcate ASSUNZIONE con il motivo.
+// Hence the range:
+// - optimistic: k = 1.06, classic Riegel ("trained" endurance);
+// - central: k = 1.07 (Vickers' mean) plus an endurance penalty
+//   when volume and long run are below those of the sample on which 1.07 was
+//   measured;
+// - cautious: the central plus a margin that grows with the same penalty.
+// When the reference is old the range widens in both directions.
+// Constants without a direct source are marked ASSUMPTION with the reason.
 
 import type { RacePredict } from "@/lib/types";
 
-/** Esponente di Riegel classico (Riegel 1981): estremo ottimistico. */
+/** Classic Riegel exponent (Riegel 1981): optimistic end. */
 export const RIEGEL_K = 1.06;
-/** Esponente medio per amatori, calibrato fino alla mezza (Vickers & Vertosick 2016). */
+/** Mean exponent for amateurs, calibrated up to the half (Vickers & Vertosick 2016). */
 export const RECREATIONAL_K = 1.07;
 /**
- * Volume settimanale (km) del campione di Vickers & Vertosick (mediana 30 mi).
- * Sotto questo volume l'atleta è fuori dalla popolazione su cui k = 1,07 è calibrato.
+ * Weekly volume (km) of the Vickers & Vertosick sample (median 30 mi).
+ * Below this volume the athlete is outside the population on which k = 1.07 is calibrated.
  */
 export const REFERENCE_WEEKLY_KM = 48;
 /**
- * ASSUNZIONE: penalità massima sull'esponente con base di resistenza nulla
- * (k fino a 1,12). Nessuna fonte dà questo valore: è scelto perché con
- * volume e lungo a metà del necessario la mezza stimata da un 5 km esca di
- * circa il 5% più lenta di Riegel classico, un calo plausibile per chi non ha
- * mai coperto la distanza in allenamento.
+ * ASSUMPTION: maximum penalty on the exponent with zero endurance base
+ * (k up to 1.12). No source gives this value: it is chosen so that with
+ * volume and long run at half of what is needed the half estimated from a 5 km comes out
+ * about 5% slower than classic Riegel, a plausible drop for someone who has
+ * never covered the distance in training.
  */
 export const MAX_ENDURANCE_K_PENALTY = 0.05;
 /**
- * ASSUNZIONE: incertezza minima verso il prudente, pari al passo 1,07 → 1,08
- * usato da Vickers & Vertosick nell'analisi di sensibilità.
+ * ASSUMPTION: minimum uncertainty toward the cautious end, equal to the 1.07 → 1.08 step
+ * used by Vickers & Vertosick in the sensitivity analysis.
  */
 export const BASE_K_SPREAD = 0.01;
-/** ASSUNZIONE: margine prudente aggiuntivo con base di resistenza nulla (incertezza, non solo media). */
+/** ASSUMPTION: additional cautious margin with zero endurance base (uncertainty, not just the mean). */
 export const MAX_EXTRA_K_SPREAD = 0.03;
 /**
- * ASSUNZIONE: la forma di un amatore cambia di circa l'1% al mese. Un
- * riferimento più vecchio di due settimane allarga la forbice di tanto.
+ * ASSUMPTION: an amateur's form changes by about 1% per month. A
+ * reference older than two weeks widens the range by that much.
  */
 export const AGE_WIDEN_PER_30D = 0.01;
 export const AGE_GRACE_DAYS = 14;
 export const MAX_AGE_WIDEN = 0.04;
 /**
- * ASSUNZIONE (prassi di allenamento): un lungo pari alla distanza di gara
- * copre la mezza; per la maratona i lunghi raramente superano i 30 km.
+ * ASSUMPTION (training practice): a long run equal to the race distance
+ * covers the half; for the marathon long runs rarely exceed 30 km.
  */
 export const LONG_RUN_CAP_M = 30_000;
 
-// ── Più dati: soglia e tenuta ───────────────────────────────────────────────
+// ── More data: threshold and endurance ──────────────────────────────────────
 //
-// Una prova sola (di solito 5 km) va estrapolata di oltre 4 volte per arrivare
-// alla mezza. Le sedute di soglia danno una seconda stima più vicina alla
-// distanza: il passo di soglia è per definizione quello che si regge circa
-// un'ora in gara (Daniels, "Daniels' Running Formula": passo T ≈ passo di una
-// gara di 60 minuti). I tratti sostenuti diventano quindi una "prova di 60
-// minuti" e passano dalla stessa formula della prova vera.
+// A single effort (usually 5 km) must be extrapolated by more than 4 times to reach
+// the half. Threshold sessions give a second estimate closer to the
+// distance: threshold pace is by definition the one you can hold for about
+// an hour in a race (Daniels, "Daniels' Running Formula": T pace ≈ pace of a
+// 60-minute race). Sustained segments therefore become a "60-minute
+// effort" and go through the same formula as the real effort.
 
-/** Durata della gara equivalente al passo di soglia (Daniels: circa 60 minuti). */
+/** Duration of the race equivalent to threshold pace (Daniels: about 60 minutes). */
 export const THRESHOLD_RACE_S = 3600;
 /**
- * ASSUNZIONE: le sedute di soglia non sono una gara. Il passo dei tratti con
- * recupero in mezzo è un po' più facile di 60 minuti continui, ma spesso si
- * corrono sotto la soglia vera: i due effetti si compensano, però il dato vale
- * meno di una prova massimale. Da qui il peso di partenza più basso.
+ * ASSUMPTION: threshold sessions are not a race. The pace of segments with
+ * recovery in between is a bit easier than 60 continuous minutes, but they are often
+ * run below true threshold: the two effects compensate, yet the data is worth
+ * less than a maximal effort. Hence the lower starting weight.
  */
 export const THRESHOLD_BASE_WEIGHT = 0.8;
 /**
- * ASSUNZIONE: quanto il passo dei tratti di soglia può scostarsi dal vero passo
- * di una gara di 60 minuti, in più o in meno (recuperi in mezzo, giornata,
- * sedute corse sotto soglia). Il 2,5% è circa 8 s/km a 5:20/km: l'ordine di
- * grandezza della differenza tra una seduta controllata e una tirata.
+ * ASSUMPTION: how far the pace of the threshold segments can deviate from the true pace
+ * of a 60-minute race, up or down (recoveries in between, the day,
+ * sessions run below threshold). 2.5% is about 8 s/km at 5:20/km: the order of
+ * magnitude of the difference between a controlled session and an all-out one.
  */
 export const THRESHOLD_UNCERTAINTY = 0.025;
 /**
- * Due stime indipendenti con incertezza simile, se concordano, dimezzano la
- * varianza: l'errore scende di 1/√2, cioè la forbice si stringe del 29%.
- * Vale per l'incertezza sulla forma; quella sulla tenuta oltre il lungo più
- * lungo non cambia, perché nessuna delle due stime la misura.
+ * Two independent estimates with similar uncertainty, if they agree, halve the
+ * variance: the error drops by 1/√2, i.e. the range narrows by 29%.
+ * This holds for the uncertainty about form; the one about endurance beyond the longest
+ * long run does not change, because neither estimate measures it.
  */
 export const AGREEMENT_SHRINK = 1 - Math.SQRT1_2;
-/** ASSUNZIONE: oltre il 4% di distanza tra le stime non c'è accordo e la forbice non si stringe. */
+/** ASSUMPTION: beyond a 4% distance between estimates there is no agreement and the range does not narrow. */
 export const AGREEMENT_SPAN = 0.04;
 /**
- * ASSUNZIONE (prassi di allenamento): una deriva cardiaca sotto il 5% in un
- * lungo indica buona tenuta aerobica, sopra il 10% scarsa. La tenuta sposta la
- * penalità di resistenza al massimo del 25% in un verso o nell'altro: misura
- * il cuore a passo facile, non a passo gara, quindi conta ma non decide.
+ * ASSUMPTION (training practice): heart rate drift under 5% in a
+ * long run indicates good aerobic endurance, over 10% poor. Endurance shifts the
+ * endurance penalty by at most 25% either way: it measures the heart at easy
+ * pace, not race pace, so it counts but does not decide.
  */
 export const DRIFT_GOOD_PCT = 3;
 export const DRIFT_POOR_PCT = 10;
 export const MAX_DURABILITY_SHIFT = 0.25;
 
-/** Riegel con esponente esplicito. */
+/** Riegel with explicit exponent. */
 export function riegelK(d1_m: number, t1_s: number, d2_m: number, k: number): number {
   if (d1_m <= 0 || t1_s <= 0 || d2_m <= 0) {
     throw new Error("riegel: distanza e tempo devono essere positivi");
@@ -116,16 +116,16 @@ export function riegelK(d1_m: number, t1_s: number, d2_m: number, k: number): nu
 }
 
 /**
- * Predizione Riegel: T1/D1 è la prestazione di riferimento (in secondi e metri),
- * D2 è la distanza target (in metri).
+ * Riegel prediction: T1/D1 is the reference performance (in seconds and meters),
+ * D2 is the target distance (in meters).
  */
 export function riegel(d1_m: number, t1_s: number, d2_m: number): number {
   return Math.round(riegelK(d1_m, t1_s, d2_m, RIEGEL_K));
 }
 
 /**
- * Produce stime Riegel per le distanze canoniche (5k/10k/half) più eventuale
- * distanza target personalizzata. best è la corsa di riferimento.
+ * Produces Riegel estimates for the canonical distances (5k/10k/half) plus an optional
+ * custom target distance. best is the reference run.
  */
 export function predictRaces(
   best: { distance_m: number; duration_s: number },
@@ -143,38 +143,38 @@ export function predictRaces(
   return result;
 }
 
-// ── Forbice ─────────────────────────────────────────────────────────────────
+// ── Range ───────────────────────────────────────────────────────────────────
 
 export interface EnduranceBase {
-  /** Km medi a settimana nelle ultime 4 settimane (solo corsa). */
+  /** Average km per week in the last 4 weeks (running only). */
   weekly_km: number;
-  /** Corsa più lunga delle ultime 8 settimane (m). */
+  /** Longest run of the last 8 weeks (m). */
   longest_m: number;
-  /** Passo sostenuto nelle sedute di soglia recenti: una seconda stima, indipendente dalla prova. */
+  /** Pace sustained in recent threshold sessions: a second estimate, independent of the effort. */
   threshold?: ThresholdEvidence | null;
-  /** Tenuta nei lunghi: quanto sale il cuore a passo costante. */
+  /** Endurance in long runs: how much the heart rate rises at constant pace. */
   durability?: DurabilityEvidence | null;
 }
 
 export interface ThresholdEvidence {
-  /** Passo medio dei tratti sostenuti, pesato per durata e recenza (s/km). */
+  /** Average pace of the sustained segments, weighted by duration and recency (s/km). */
   pace_s_km: number;
   sessions: number;
-  /** Giorni dalla seduta più recente. */
+  /** Days since the most recent session. */
   age_days: number;
-  /** Date (ISO) delle sedute usate, dalla più recente. */
+  /** Dates (ISO) of the sessions used, most recent first. */
   dates: string[];
 }
 
 export interface DurabilityEvidence {
-  /** Deriva cardiaca mediana (%) nei lunghi recenti. */
+  /** Median heart rate drift (%) in recent long runs. */
   drift_pct: number;
   runs: number;
 }
 
 export interface RangeInput {
   reference: { meters: number; time_s: number };
-  /** Giorni trascorsi dalla prova di riferimento. */
+  /** Days elapsed since the reference effort. */
   reference_age_days: number;
   target_m: number;
   base: EnduranceBase;
@@ -185,25 +185,25 @@ export interface RaceRange {
   optimistic_s: number;
   central_s: number;
   prudent_s: number;
-  /** Copertura 0–1 del volume settimanale rispetto a quello richiesto. */
+  /** Coverage 0–1 of weekly volume relative to the required one. */
   volume_cover: number;
-  /** Copertura 0–1 del lungo rispetto alla distanza. */
+  /** Coverage 0–1 of the long run relative to the distance. */
   long_cover: number;
-  /** Allargamento relativo dovuto all'età del riferimento (0–MAX_AGE_WIDEN). */
+  /** Relative widening due to the age of the reference (0–MAX_AGE_WIDEN). */
   age_widen: number;
   k: { optimistic: number; central: number; prudent: number };
-  /** Stime combinate, se più di una: cosa direbbe ciascuna da sola e quanto pesa. */
+  /** Combined estimates, if more than one: what each would say alone and how much it weighs. */
   sources?: RangeSource[];
-  /** Accordo 0–1 tra le stime (1 = identiche): più concordano, più la forbice si stringe. */
+  /** Agreement 0–1 between the estimates (1 = identical): the more they agree, the more the range narrows. */
   agreement?: number;
-  /** Fattore applicato alla penalità di resistenza per la tenuta nei lunghi (1 = nessuno). */
+  /** Factor applied to the endurance penalty for endurance in long runs (1 = none). */
   durability_factor?: number;
 }
 
 export interface RangeSource {
   kind: "effort" | "threshold";
   central_s: number;
-  /** Peso 0–1 nella stima combinata (la somma fa 1). */
+  /** Weight 0–1 in the combined estimate (the sum is 1). */
   weight: number;
 }
 
@@ -211,15 +211,15 @@ const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const round10 = (s: number) => Math.round(s / 10) * 10;
 
 /**
- * Volume settimanale richiesto per la distanza. Per mezza e oltre è il volume
- * del campione Vickers; ASSUNZIONE: sotto la mezza scala con la distanza
- * (un 10 km chiede circa metà della base di una mezza).
+ * Weekly volume required for the distance. For half and beyond it is the volume
+ * of the Vickers sample; ASSUMPTION: below the half it scales with distance
+ * (a 10 km asks for about half the base of a half).
  */
 export function requiredWeeklyKm(target_m: number): number {
   return REFERENCE_WEEKLY_KM * Math.min(1, target_m / 21_097);
 }
 
-/** Copertura di volume e lungo per la distanza target, 0–1 ciascuna. */
+/** Volume and long run coverage for the target distance, 0–1 each. */
 export function enduranceCover(base: EnduranceBase, target_m: number): { volume: number; long: number } {
   return {
     volume: clamp01(base.weekly_km / requiredWeeklyKm(target_m)),
@@ -227,29 +227,29 @@ export function enduranceCover(base: EnduranceBase, target_m: number): { volume:
   };
 }
 
-/** Fattore sulla penalità di resistenza dalla tenuta nei lunghi: 0,75 (ottima) – 1,25 (scarsa). */
+/** Factor on the endurance penalty from long-run endurance: 0.75 (excellent) – 1.25 (poor). */
 export function durabilityFactor(durability: DurabilityEvidence | null | undefined): number {
   if (!durability || durability.runs < 1) return 1;
   const position = clamp01((durability.drift_pct - DRIFT_GOOD_PCT) / (DRIFT_POOR_PCT - DRIFT_GOOD_PCT));
   return 1 - MAX_DURABILITY_SHIFT + position * 2 * MAX_DURABILITY_SHIFT;
 }
 
-/** Forbice da una sola prova (vera o equivalente), senza arrotondare. */
+/** Range from a single effort (real or equivalent), without rounding. */
 function singleRange(reference: { meters: number; time_s: number }, age_days: number, target_m: number, base: EnduranceBase) {
   const cover = enduranceCover(base, target_m);
   const longer = target_m > reference.meters;
-  // Prontezza 0–1: media semplice di volume e lungo, pesi uguali (nessuna
-  // evidenza per pesarli diversamente), corretta dalla tenuta nei lunghi.
+  // Readiness 0–1: simple mean of volume and long run, equal weights (no
+  // evidence to weigh them differently), corrected by endurance in long runs.
   const durability = longer ? durabilityFactor(base.durability) : 1;
   const gap = longer ? clamp01((1 - (cover.volume + cover.long) / 2) * durability) : 0;
   const kCentral = RECREATIONAL_K + gap * MAX_ENDURANCE_K_PENALTY;
   const kPrudent = kCentral + BASE_K_SPREAD + gap * MAX_EXTRA_K_SPREAD;
   const age_widen = Math.min(MAX_AGE_WIDEN, Math.max(0, age_days - AGE_GRACE_DAYS) / 30 * AGE_WIDEN_PER_30D);
   const at = (k: number) => riegelK(reference.meters, reference.time_s, target_m, k);
-  // Verso distanze più corte un k più alto dà tempi più bassi: ordina per tempo.
+  // Toward shorter distances a higher k gives lower times: sort by time.
   const [low, mid, high] = [at(RIEGEL_K), at(kCentral), at(kPrudent)].sort((x, y) => x - y);
-  // Quota del margine prudente dovuta alla resistenza mai dimostrata (non alla
-  // forma): un'altra stima della forma non la riduce.
+  // Share of the cautious margin due to never-demonstrated endurance (not to
+  // form): another estimate of form does not reduce it.
   const enduranceMargin = longer ? Math.max(0, at(kPrudent) - at(kCentral + BASE_K_SPREAD)) : 0;
   return {
     optimistic: low * (1 - age_widen),
@@ -264,8 +264,8 @@ function singleRange(reference: { meters: number; time_s: number }, age_days: nu
 }
 
 /**
- * Peso di una stima: cala quanto più si estrapola (in scala logaritmica, come
- * la formula) e quando il dato invecchia.
+ * Weight of an estimate: decreases the more you extrapolate (on a logarithmic scale, like
+ * the formula) and as the data ages.
  */
 function sourceWeight(reference_m: number, target_m: number, age_days: number, baseWeight: number): number {
   const stretch = Math.abs(Math.log(target_m / reference_m));
@@ -274,12 +274,12 @@ function sourceWeight(reference_m: number, target_m: number, age_days: number, b
 }
 
 /**
- * Forbice ottimistica–centrale–prudente per `target_m`.
- * La penalità di resistenza vale solo se si estrapola verso una distanza più
- * lunga del riferimento: su distanze più corte volume e lungo contano poco.
- * Con le sedute di soglia la stima è la media pesata (sui logaritmi dei
- * tempi) di due stime indipendenti: se concordano la forbice si stringe, se
- * divergono si allarga fino a contenerle entrambe.
+ * Optimistic–central–cautious range for `target_m`.
+ * The endurance penalty applies only when extrapolating toward a distance longer
+ * than the reference: toward shorter distances volume and long run matter little.
+ * With threshold sessions the estimate is the weighted mean (on the logarithms of the
+ * times) of two independent estimates: if they agree the range narrows, if
+ * they diverge it widens until it contains both.
  */
 export function predictRange(input: RangeInput): RaceRange {
   const { reference, target_m, base } = input;
@@ -301,10 +301,10 @@ export function predictRange(input: RangeInput): RaceRange {
     return result(effort.optimistic, effort.central, effort.prudent);
   }
 
-  // Le sedute di soglia come prova di 60 minuti al passo di soglia.
+  // Threshold sessions as a 60-minute effort at threshold pace.
   const equivalent = { meters: (THRESHOLD_RACE_S / threshold.pace_s_km) * 1000, time_s: THRESHOLD_RACE_S };
   const paceRange = singleRange(equivalent, threshold.age_days, target_m, base);
-  // Non è una prova massimale: la sua forbice parte già più larga.
+  // Not a maximal effort: its range already starts wider.
   const pace = {
     ...paceRange,
     optimistic: paceRange.optimistic * (1 - THRESHOLD_UNCERTAINTY),
@@ -321,11 +321,11 @@ export function predictRange(input: RangeInput): RaceRange {
   const agreement = clamp01(1 - distance / AGREEMENT_SPAN);
   const shrink = 1 - AGREEMENT_SHRINK * agreement;
   optimistic = central - (central - optimistic) * shrink;
-  // Verso il prudente si stringe solo l'incertezza sulla forma: il margine per
-  // la distanza mai coperta in allenamento resta intero.
+  // Toward the cautious end only the uncertainty about form narrows: the margin for
+  // the distance never covered in training stays whole.
   const endurance = Math.min(prudent - central, blend(effort.enduranceMargin || 1e-9, pace.enduranceMargin || 1e-9));
   prudent = central + (prudent - central - endurance) * shrink + endurance;
-  // In disaccordo la forbice deve contenere entrambe le stime centrali.
+  // In disagreement the range must contain both central estimates.
   optimistic = Math.min(optimistic, effort.central, pace.central);
   prudent = Math.max(prudent, effort.central, pace.central);
   return result(optimistic, central, prudent, {
@@ -337,30 +337,30 @@ export function predictRange(input: RangeInput): RaceRange {
   });
 }
 
-// ── Passo gara consigliato ──────────────────────────────────────────────────
+// ── Recommended race pace ───────────────────────────────────────────────────
 
 export type GoalFit = "inside" | "too_fast" | "too_slow";
 
 export interface PaceAdvice {
-  /** Passo di partenza consigliato (s/km): più veloce e più lento. */
+  /** Recommended starting pace (s/km): faster and slower. */
   fast_s_km: number;
   slow_s_km: number;
-  /** null senza tempo obiettivo. */
+  /** null without a goal time. */
   goal_fit: GoalFit | null;
   goal_pace_s_km: number | null;
-  /** L'obiettivo è dentro la forbice ma più veloce della previsione centrale. */
+  /** The goal is inside the range but faster than the central prediction. */
   goal_ambitious: boolean;
 }
 
 const round5 = (s: number) => Math.round(s / 5) * 5;
 
 /**
- * Passo di partenza: dalla previsione centrale a metà strada verso la
- * prudente. Partire più piano della media attesa e accelerare nel finale è
- * la prassi consolidata (negative split); con poco volume il rischio è il
- * calo negli ultimi km, non i secondi persi all'inizio. Se l'obiettivo è
- * dentro la forbice e più lento della centrale, il passo obiettivo diventa
- * l'estremo veloce: non serve rischiare di più.
+ * Starting pace: from the central prediction halfway toward the
+ * cautious one. Starting slower than the expected average and speeding up at the end is
+ * established practice (negative split); with low volume the risk is the
+ * drop in the last km, not the seconds lost at the start. If the goal is
+ * inside the range and slower than the central, the goal pace becomes
+ * the fast end: no need to risk more.
  */
 export function racePaceAdvice(range: RaceRange, goal_s: number | null): PaceAdvice {
   const km = range.target_m / 1000;

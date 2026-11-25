@@ -1,14 +1,14 @@
-// Passo istante per istante per il grafico della corsa: velocità su una
-// finestra di qualche decina di secondi (il GPS secondo per secondo è troppo
-// nervoso), sul tempo in movimento. Funzioni pure.
+// Instant-by-instant pace for the run chart: speed over a
+// window of a few tens of seconds (second-by-second GPS is too
+// jittery), on moving time. Pure functions.
 
-/** Sotto questa velocità (≈ 16:40/km) si sta camminando o si è fermi: niente passo. */
+/** Below this speed (≈ 16:40/km) you are walking or stopped: no pace. */
 const MIN_SPEED = 1;
 
 /**
- * Passo (s/km) da una traccia tempo/distanza cumulata, mediato su `window`
- * secondi centrati sul punto. Dove si cammina o si è fermi il punto manca,
- * così la linea si interrompe invece di schizzare in basso.
+ * Pace (s/km) from a cumulative time/distance track, averaged over `window`
+ * seconds centred on the point. Where you walk or are stopped the point is missing,
+ * so the line breaks instead of dropping sharply.
  */
 export function paceSeries(track: Array<{ t: number; d: number }>, window = 30): Array<{ t: number; v: number }> {
   const points = track.filter((p) => Number.isFinite(p.t) && Number.isFinite(p.d)).sort((a, b) => a.t - b.t);

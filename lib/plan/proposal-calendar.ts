@@ -5,9 +5,9 @@ import { addDays, romeDay } from "@/lib/local-date";
 import { planProposalDiff, type PlanDayWorkout } from "@/lib/plan/proposal-diff";
 
 /**
- * Confronta una proposta con il calendario reale e con le corse già fatte:
- * restano solo le sedute che cambiano e i giorni da svuotare richiesti, mai
- * giorni passati, già corsi o completati.
+ * Compares a proposal with the real calendar and the runs already done:
+ * only the sessions that change and the requested days to clear remain, never
+ * past, already-run or completed days.
  */
 export async function diffAgainstCalendar<W extends PlanDayWorkout>(
   supabase: SupabaseClient,
@@ -16,14 +16,14 @@ export async function diffAgainstCalendar<W extends PlanDayWorkout>(
   end: string,
   proposed: W[],
   removeDates: string[],
-  /** Quanti giorni indietro una seduta non corsa si può ancora togliere. */
+    /** How many days back an unrun session can still be removed. */
   removeLookbackDays = 0,
 ) {
   const removeFrom = addDays(start, -removeLookbackDays);
   const [{ data: existing, error: planError }, { data: runs, error: runsError }] = await Promise.all([
     supabase
       .from("planned_workouts")
-      // "*": ordine, momento e legame delle sedute esistono solo dalla migrazione 0029.
+            // "*": order, time of day and link of sessions exist only since migration 0029.
       .select("*")
       .eq("user_id", userId)
       .gte("date", addDays(removeFrom, -1))

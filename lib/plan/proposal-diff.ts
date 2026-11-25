@@ -1,10 +1,10 @@
-// Proposte del coach giorno per giorno. Il modello può restituire anche sedute
-// identiche a quelle già in calendario o giorni che non può toccare: qui si
-// tiene solo ciò che cambia davvero, e un giorno si svuota solo se la proposta
-// lo chiede esplicitamente. Le sedute proposte per un giorno sostituiscono
-// tutte quelle in calendario quel giorno (che può averne più d'una); in un
-// giorno già corso, da oggi in poi, si aggiungono e basta. Funzioni pure (la
-// stessa protezione è ripetuta in SQL da apply_plan_proposal_v2).
+// Coach proposals day by day. The model may also return sessions
+// identical to those already on the calendar or days it cannot touch: here we
+// keep only what really changes, and a day is cleared only if the proposal
+// explicitly asks for it. The sessions proposed for a day replace
+// all those on the calendar that day (which may have several); on a
+// day already run, from today on, they are simply added. Pure functions (the
+// same protection is repeated in SQL by apply_plan_proposal_v2).
 
 import type { DayPart, WorkoutStepInput, WorkoutType } from "@/lib/types";
 import { numberDaySessions, sortByDayOrder } from "./day-sessions.ts";
@@ -27,14 +27,14 @@ export interface PlanDayWorkout {
   chained?: boolean | null;
 }
 
-/** Seduta in breve, per il prima/dopo in chat. */
+/** Short session, for the before/after in chat. */
 export interface WorkoutBrief {
   type: WorkoutType;
   headline: string | null;
   meters: number | null;
   minutes: number | null;
   day_part?: DayPart | null;
-  /** Subito dopo la seduta precedente dello stesso giorno. */
+    /** Right after the previous session of the same day. */
   chained?: boolean;
 }
 
@@ -47,12 +47,12 @@ export interface ProposalChange {
 export interface ProposalDiff<W extends PlanDayWorkout> {
   workouts: W[];
   removeDates: string[];
-  /** Giorni che la proposta modifica davvero, in ordine. */
+    /** Days the proposal really modifies, in order. */
   touched: string[];
   changes: ProposalChange[];
-  /** Giorni chiesti ma intoccabili (passati, già corsi, fuori finestra). */
+    /** Days requested but untouchable (past, already run, outside the window). */
   locked: string[];
-  /** Giorni già corsi in cui le nuove sedute si aggiungono senza toccare le esistenti. */
+    /** Already-run days where the new sessions are added without touching the existing ones. */
   added: string[];
 }
 
@@ -71,7 +71,7 @@ export function briefOf(workout: PlanDayWorkout): WorkoutBrief {
   };
 }
 
-/** Impronta di una seduta (con o senza posto nella giornata): uguale = nessuna modifica. */
+/** Fingerprint of a session (with or without place in the day): equal = no change. */
 function fingerprint(workout: PlanDayWorkout, withPlacement = true): string {
   return JSON.stringify([
     withPlacement ? [workout.day_order ?? 1, workout.day_part ?? null, workout.chained === true] : null,
@@ -94,11 +94,11 @@ const sameDay = (a: PlanDayWorkout[], b: PlanDayWorkout[]) =>
 export function planProposalDiff<W extends PlanDayWorkout>(input: {
   today: string;
   windowEnd: string;
-  /** Primo giorno passato che si può ancora svuotare (seduta saltata o spostata). Default: oggi. */
+    /** First past day that can still be cleared (skipped or moved session). Default: today. */
   removeFrom?: string;
-  /** Sedute già in calendario nella finestra (qualsiasi stato). */
+    /** Sessions already on the calendar in the window (any status). */
   existing: PlanDayWorkout[];
-  /** Giorni con una corsa registrata (Europe/Rome). */
+    /** Days with a recorded run (Europe/Rome). */
   activityDates: Set<string>;
   proposed: W[];
   removeDates: string[];
@@ -108,14 +108,14 @@ export function planProposalDiff<W extends PlanDayWorkout>(input: {
   const editable = (w: PlanDayWorkout) => w.status !== "completed";
   const doneOn = (date: string) =>
     activityDates.has(date) || existing.some((w) => w.date === date && w.status === "completed");
-  // Nuove sedute solo da oggi in poi; un giorno passato non corso si può
-  // svuotare (seduta saltata, oppure spostata a oggi) fino a removeFrom.
+    // New sessions only from today on; a past day not run can be
+    // cleared (skipped session, or moved to today) up to removeFrom.
   const isLocked = (date: string) => date < today || date > windowEnd;
   const isRemoveLocked = (date: string) => date < removeFrom || date > windowEnd || doneOn(date);
   const existingOn = (date: string) => sortByDayOrder(existing.filter((w) => w.date === date && editable(w)));
   const allOn = (date: string) => sortByDayOrder(existing.filter((w) => w.date === date));
 
-  // Le sedute di un giorno nell'ordine dato dal modello: 1, 2, … nella giornata.
+    // A day's sessions in the order given by the model: 1, 2, … in the day.
   const grouped = new Map<string, W[]>();
   for (const workout of input.proposed) grouped.set(workout.date, [...(grouped.get(workout.date) ?? []), workout]);
   const byDate = new Map<string, W[]>([...grouped].map(([date, list]) => [date, numberDaySessions(list)]));
@@ -131,8 +131,8 @@ export function planProposalDiff<W extends PlanDayWorkout>(input: {
       continue;
     }
     if (doneOn(date)) {
-      // Giorno già corso: le sedute esistenti restano, si aggiungono solo
-      // quelle nuove (es. una seconda seduta la sera). Ripeterne una non conta.
+            // Day already run: existing sessions stay, only the new ones are
+            // added (e.g. a second session in the evening). Repeating one does not count.
       const before = allOn(date);
       const known = new Set(before.map((w) => fingerprint(w, false)));
       const last = before[before.length - 1];
@@ -148,7 +148,7 @@ export function planProposalDiff<W extends PlanDayWorkout>(input: {
       after.set(date, [...before, ...fresh]);
       continue;
     }
-    // Il modello ripete una seduta senza cambiarla: non è una modifica.
+        // The model repeats a session without changing it: not a change.
     if (sameDay(existingOn(date), list)) continue;
     workouts.push(...list);
     changed.add(date);
@@ -162,7 +162,7 @@ export function planProposalDiff<W extends PlanDayWorkout>(input: {
       if (existingOn(date).length) locked.add(date);
       continue;
     }
-    // Svuotare un giorno già vuoto non cambia nulla.
+        // Clearing an already empty day changes nothing.
     if (!existingOn(date).length) continue;
     removeDates.push(date);
     changed.add(date);

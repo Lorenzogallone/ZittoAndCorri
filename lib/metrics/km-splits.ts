@@ -1,33 +1,33 @@
-// Corsa km per km, per le corse continue (lunghi, facili): tempo in
-// movimento, passo, cuore, cadenza e dislivello di ogni chilometro, più il
-// confronto tra le due metà. Funzione pura.
+// Run km by km, for continuous runs (long, easy): moving time,
+// pace, heart rate, cadence and elevation of each kilometre, plus the
+// comparison between the two halves. Pure function.
 
 import { detectPauses, movingClock, referenceTrack } from "./pauses.ts";
 
 export interface KmSplit {
-  /** Numero del km (1, 2, …); l'ultimo può essere parziale. */
+  /** Km number (1, 2, …); the last one may be partial. */
   km: number;
   distance_m: number;
-  /** Istanti sull'orologio reale, come i punti GPS. */
+  /** Instants on the real watch clock, like the GPS points. */
   start: number;
   end: number;
-  /** Gli stessi istanti sul tempo in movimento (come il grafico Andamento). */
+  /** The same instants on moving time (like the Andamento chart). */
   movingStart: number;
   movingEnd: number;
-  /** Tempo in movimento del km: le pause dell'orologio non contano. */
+  /** Moving time of the km: watch pauses don't count. */
   time_s: number;
   pace_s_km: number;
   avg_hr: number | null;
-  /** Passi al minuto. */
+  /** Steps per minute. */
   cadence_spm: number | null;
-  /** Differenza di quota tra fine e inizio del km, in metri. */
+  /** Elevation difference between end and start of the km, in metres. */
   elevation_m: number | null;
 }
 
 export interface KmHalves {
-  /** Seconda metà meno prima: negativo = più veloce. */
+  /** Second half minus first: negative = faster. */
   pace_delta_s_km: number;
-  /** Seconda metà meno prima, bpm. */
+  /** Second half minus first, bpm. */
   hr_delta: number | null;
 }
 
@@ -40,18 +40,18 @@ interface KmStreams {
   distance?: Array<{ t: number; d: number }> | null;
   gps?: Array<{ t: number; lat: number; lon: number; ele?: number }> | null;
   hr?: Array<{ t: number; bpm: number }> | null;
-  /** Cadenza FIT (rpm = passi al minuto / 2). */
+  /** FIT cadence (rpm = steps per minute / 2). */
   cadence?: Array<{ t: number; rpm: number }> | null;
 }
 
-/** Un ultimo pezzo più corto di così non è un km: è la chiusura dell'attività. */
+/** A final piece shorter than this is not a km: it is the end of the activity. */
 const LAST_MIN_M = 200;
-/** Sotto questa cadenza si cammina o si è fermi: non conta nella media. */
+/** Below this cadence you are walking or stopped: it doesn't count in the average. */
 const RUN_CADENCE_SPM = 120;
-/** Quota come media dei punti in questa finestra (secondi): toglie il rumore. */
+/** Elevation as the average of the points in this window (seconds): removes noise. */
 const ELE_WINDOW_S = 10;
 
-/** Istante in cui la distanza cumulata raggiunge `target` (interpolato). */
+/** Instant when the cumulative distance reaches `target` (interpolated). */
 function timeAt(track: Array<{ t: number; d: number }>, target: number, from: number): { t: number; i: number } {
   for (let i = Math.max(1, from); i < track.length; i++) {
     if (track[i].d >= target) {
@@ -78,12 +78,12 @@ function meanIn<P extends { t: number }>(points: P[] | null | undefined, start: 
   return count ? sum / count : null;
 }
 
-/** Quota attorno all'istante t, media dei punti vicini. */
+/** Elevation around instant t, average of nearby points. */
 function elevationAt(gps: KmStreams["gps"], t: number): number | null {
   return meanIn(gps, t - ELE_WINDOW_S / 2, t + ELE_WINDOW_S / 2, (p) => (typeof p.ele === "number" ? p.ele : null));
 }
 
-/** Media pesata sulla distanza di un gruppo di km. */
+/** Distance-weighted average of a group of km. */
 function weighted(splits: KmSplit[], value: (split: KmSplit) => number | null): number | null {
   let sum = 0;
   let weight = 0;
@@ -96,7 +96,7 @@ function weighted(splits: KmSplit[], value: (split: KmSplit) => number | null): 
   return weight ? sum / weight : null;
 }
 
-/** Prima contro seconda metà, sui km interi (l'ultimo parziale non conta). */
+/** First vs second half, on whole km (the partial last one doesn't count). */
 function halves(splits: KmSplit[]): KmHalves | null {
   const full = splits.filter((split) => split.distance_m >= 990);
   if (full.length < 4) return null;

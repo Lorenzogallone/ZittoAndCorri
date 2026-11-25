@@ -1,21 +1,21 @@
-// Funzioni pure: metriche di sforzo derivate dagli stream. PLAN.md §7.
-// Come tutte le lib/metrics: deterministiche, l'LLM le legge ma non le produce.
+// Pure functions: effort metrics derived from the streams. PLAN.md §7.
+// Like all of lib/metrics: deterministic, the LLM reads them but does not produce them.
 
 import type { GpsPoint, HrPoint } from "@/lib/types";
 import { haversine } from "@/lib/metrics/splits";
 import { withoutPauses } from "./pauses.ts";
 
-/** Punto cadenza normalizzato (dal parser FIT). */
+/** Normalised cadence point (from the FIT parser). */
 export interface CadencePoint {
   t: number;
   rpm: number;
 }
 
 /**
- * Cadenza media in passi/minuto. Nei file FIT la cadenza di corsa è in
- * giri/minuto per gamba (rpm): per la corsa i passi sono il doppio; per gli
- * altri sport (bici…) il valore resta in rpm com'è.
- * Ritorna null se la serie è vuota.
+ * Average cadence in steps/minute. In FIT files running cadence is in
+ * revolutions/minute per leg (rpm): for running steps are double; for
+ * other sports (bike…) the value stays in rpm as is.
+ * Returns null if the series is empty.
  */
 export function avgCadenceSpm(
   cadence_series: CadencePoint[] | undefined,
@@ -29,7 +29,7 @@ export function avgCadenceSpm(
   return spm > 0 ? spm : null;
 }
 
-/** Media dei bpm dei campioni HR con t in [t0, t1). */
+/** Mean bpm of the HR samples with t in [t0, t1). */
 function avgHrInWindow(hr: HrPoint[], t0: number, t1: number): number | null {
   let sum = 0;
   let n = 0;
@@ -42,7 +42,7 @@ function avgHrInWindow(hr: HrPoint[], t0: number, t1: number): number | null {
   return n > 0 ? sum / n : null;
 }
 
-/** Distanza (m) percorsa tra t0 e t1 secondo la serie GPS. */
+/** Distance (m) covered between t0 and t1 according to the GPS series. */
 function distanceInWindow(gps: GpsPoint[], t0: number, t1: number): number {
   let dist = 0;
   for (let i = 1; i < gps.length; i++) {
@@ -56,22 +56,22 @@ function distanceInWindow(gps: GpsPoint[], t0: number, t1: number): number {
 }
 
 /**
- * Deriva cardiaca (aerobic decoupling) in %: confronta il rapporto
- * velocità/HR della prima metà con quello della seconda. Positiva = a parità
- * di passo il cuore sale (fatica, caldo, disidratazione, ritmo troppo alto
- * per lo stato di forma); ±5% è considerato fisiologico su una corsa easy.
+ * Cardiac drift (aerobic decoupling) in %: compares the speed/HR
+ * ratio of the first half with that of the second. Positive = at the same
+ * pace the heart rises (fatigue, heat, dehydration, pace too high
+ * for the form); ±5% is considered physiological on an easy run.
  *
- * Con il GPS usa il vero decoupling passo/HR; senza GPS ripiega sulla sola
- * deriva HR (secondo tempo vs primo). Ritorna null se la seduta è troppo
- * corta (<20 min) o mancano i dati: meglio nessun numero che un numero
- * rumoroso.
+ * With GPS it uses the true pace/HR decoupling; without GPS it falls back to HR
+ * drift alone (second half vs first). Returns null if the session is too
+ * short (<20 min) or data is missing: better no number than a
+ * noisy one.
  */
 export function computeHrDrift(
   hr: HrPoint[] | undefined,
   gps?: GpsPoint[],
 ): number | null {
   if (!hr || hr.length < 10) return null;
-  // Metà calcolate sul tempo in movimento: le pause non falsano il passo.
+  // Halves computed on moving time: pauses don't skew the pace.
   const moving = withoutPauses({ hr, gps });
   const hr_series = moving.hr!;
   const gps_series = moving.gps ?? undefined;
@@ -88,11 +88,11 @@ export function computeHrDrift(
   if (gps_series && gps_series.length >= 4) {
     const d1 = distanceInWindow(gps_series, tStart, tMid);
     const d2 = distanceInWindow(gps_series, tMid, tEnd + 1);
-    // Metà troppo corte (pause lunghe, GPS parziale) → fallback solo-HR.
+    // Halves too short (long pauses, partial GPS) → HR-only fallback.
     if (d1 > 200 && d2 > 200) {
       const v1 = d1 / (tMid - tStart);
       const v2 = d2 / (tEnd - tMid);
-      const eff1 = v1 / hr1; // velocità per battito
+      const eff1 = v1 / hr1; // speed per heartbeat
       const eff2 = v2 / hr2;
       if (eff1 > 0) {
         const drift = ((eff1 - eff2) / eff1) * 100;
@@ -101,7 +101,7 @@ export function computeHrDrift(
     }
   }
 
-  // Fallback: deriva della sola HR (assume passo ~costante).
+  // Fallback: drift of HR alone (assumes roughly constant pace).
   const drift = ((hr2 - hr1) / hr1) * 100;
   return Math.round(drift * 10) / 10;
 }

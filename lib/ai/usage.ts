@@ -1,31 +1,31 @@
-// Token e costo di una chiamata AI: mostrati sotto ogni risposta del coach e
-// sotto l'analisi della corsa, sommati nel totale del mese. Modulo puro: lo
-// usano sia il server (calcolo e salvataggio) sia l'interfaccia.
+// Tokens and cost of an AI call: shown under every coach response and
+// under the run analysis, summed into the month total. Pure module: used
+// by both the server (calculation and saving) and the interface.
 
 export interface AiUsage {
   provider: "gemini" | "openrouter";
   model: string;
   input_tokens: number;
   output_tokens: number;
-  /** Token di input letti dalla cache del provider (già inclusi in input_tokens). */
+  /** Input tokens read from the provider cache (already included in input_tokens). */
   cached_tokens?: number;
-  /** Token di input scritti nella cache in questa chiamata (Claude: costano 1,25x). */
+  /** Input tokens written to the cache in this call (Claude: cost 1.25x). */
   cache_write_tokens?: number;
-  /** Token di ragionamento (già inclusi in output_tokens). */
+  /** Reasoning tokens (already included in output_tokens). */
   reasoning_tokens?: number;
-  /** Dollari; null se il prezzo del modello non è noto. */
+  /** Dollars; null if the model price is unknown. */
   cost_usd: number | null;
-  /** Parte del costo dovuta al prompt e alla risposta, quando il listino è noto. */
+  /** Part of the cost due to the prompt and the response, when the price list is known. */
   input_cost_usd?: number | null;
   output_cost_usd?: number | null;
-  /** true se calcolato da listino (Gemini) invece che addebitato (OpenRouter). */
+  /** true if computed from the price list (Gemini) instead of charged (OpenRouter). */
   estimated: boolean;
-  /** Chiamate sommate: l'analisi può leggere prima la nota e poi valutare. */
+  /** Summed calls: the analysis may first read the note and then evaluate. */
   calls?: number;
 }
 
 export interface TokenPrice {
-  /** Dollari per milione di token. */
+  /** Dollars per million tokens. */
   input: number;
   output: number;
   cached?: number;
@@ -33,7 +33,7 @@ export interface TokenPrice {
 
 const count = (value: unknown) => (typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.round(value) : 0);
 
-/** Costo da listino di prompt e risposta: l'input in cache costa meno, il ragionamento è output. */
+/** Price-list cost of prompt and response: cached input costs less, reasoning is output. */
 export function priceTokens(price: TokenPrice, input: number, output: number, cached = 0): { input: number; output: number } {
   const fresh = Math.max(0, input - cached);
   const cachedPrice = price.cached ?? price.input;
@@ -43,7 +43,7 @@ export function priceTokens(price: TokenPrice, input: number, output: number, ca
   };
 }
 
-/** Usage di Gemini (`usageMetadata`): i token di ragionamento si pagano come output. */
+/** Gemini usage (`usageMetadata`): reasoning tokens are paid as output. */
 export function geminiUsage(
   model: string,
   meta: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number; cachedContentTokenCount?: number; toolUsePromptTokenCount?: number } | null | undefined,
@@ -69,9 +69,9 @@ export function geminiUsage(
 }
 
 /**
- * Usage di OpenRouter: `usage.cost` è l'importo addebitato sul credito. Se manca
- * si stima dal listino del catalogo, che serve anche a dividere l'addebito tra
- * prompt e risposta.
+ * OpenRouter usage: `usage.cost` is the amount charged to the credit. If missing
+ * it is estimated from the catalog price list, which also serves to split the charge between
+ * prompt and response.
  */
 export function openRouterUsage(
   model: string,
@@ -92,7 +92,7 @@ export function openRouterUsage(
   const charged = typeof usage?.cost === "number" && Number.isFinite(usage.cost) ? usage.cost : null;
   const listed = price && usage ? priceTokens(price, input, output, cached) : null;
   const total = charged ?? (listed ? listed.input + listed.output : null);
-  // Divisione in proporzione al listino, riportata all'importo addebitato.
+  // Split proportional to the price list, brought back to the charged amount.
   const listedTotal = listed ? listed.input + listed.output : 0;
   const share = listed && total !== null ? (listedTotal > 0 ? listed.input / listedTotal : 0) : null;
   return {
@@ -113,7 +113,7 @@ export function openRouterUsage(
 const addAll = (values: Array<number | null | undefined>) =>
   values.some((value) => value == null) ? null : values.reduce<number>((sum, value) => sum + value!, 0);
 
-/** Somma più chiamate dello stesso compito; il modello è quello dell'ultima. */
+/** Sums several calls of the same task; the model is that of the last one. */
 export function sumUsage(items: Array<AiUsage | null | undefined>): AiUsage | null {
   const list = items.filter((item): item is AiUsage => !!item);
   if (!list.length) return null;
@@ -139,7 +139,7 @@ export function sumUsage(items: Array<AiUsage | null | undefined>): AiUsage | nu
   };
 }
 
-/** Usage salvato nei metadati (jsonb): null se manca o è malformato. */
+/** Usage saved in the metadata (jsonb): null if missing or malformed. */
 export function readUsage(raw: unknown): AiUsage | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Record<string, unknown>;
@@ -161,7 +161,7 @@ export function readUsage(raw: unknown): AiUsage | null {
   };
 }
 
-/** "$0,012" con la virgola italiana; sotto il millesimo "< $0,001". */
+/** "$0,012" with the Italian comma; below a thousandth "< $0,001". */
 export function formatUsd(value: number | null): string {
   if (value === null) return "costo n.d.";
   if (value === 0) return "gratis";
@@ -177,21 +177,21 @@ export function formatTokens(value: number): string {
   return `${k < 10 ? k.toFixed(1) : Math.round(k)}k`.replace(".", ",");
 }
 
-/** Nome breve del modello: "anthropic/claude-sonnet-5-5" → "claude-sonnet-5-5". */
+/** Short model name: "anthropic/claude-sonnet-5-5" → "claude-sonnet-5-5". */
 export const shortModelName = (model: string) => model.split("/").pop()!.replace(/:free$/, " (free)");
 
 export interface UsageSummary {
-  /** Somma dei costi noti, in dollari. */
+  /** Sum of known costs, in dollars. */
   total: number;
   byTask: { chat: number; analysis: number };
   calls: number;
-  /** Qualche costo è stimato da listino (Gemini). */
+  /** Some costs are estimated from the price list (Gemini). */
   estimated: boolean;
-  /** Chiamate con prezzo sconosciuto, escluse dal totale. */
+  /** Calls with unknown price, excluded from the total. */
   unpriced: number;
 }
 
-/** Totale del mese dalle righe di ai_usage_events. */
+/** Total of the month from the ai_usage_events rows. */
 export function summarizeUsage(rows: Array<{ task: string; cost_usd: number | string | null; estimated: boolean | null }>): UsageSummary {
   const summary: UsageSummary = { total: 0, byTask: { chat: 0, analysis: 0 }, calls: rows.length, estimated: false, unpriced: 0 };
   for (const row of rows) {

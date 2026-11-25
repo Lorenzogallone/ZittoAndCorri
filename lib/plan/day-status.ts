@@ -1,8 +1,8 @@
-// Stato di ogni giorno del piano: fatto, saltato, in programma, riposo.
-// Piano e attività non hanno un legame esplicito: un giorno con una seduta di
-// corsa è "fatto" se quel giorno c'è una corsa (o la seduta è segnata a mano)
-// oppure se la seduta è stata fatta fino a due giorni prima o dopo (matchPlan).
-// Funzioni pure.
+// Status of each day in the plan: done, skipped, scheduled, rest.
+// Plan and activities have no explicit link: a day with a running session is
+// "done" if there is a run that day (or the session is marked by hand)
+// or if the session was done up to two days before or after (matchPlan).
+// Pure functions.
 
 import { addDays, romeDay } from "../local-date.ts";
 import { sortByDayOrder, type DaySession } from "./day-sessions.ts";
@@ -24,7 +24,7 @@ export function dayState(input: {
   today: string;
   planned: DayPlanned[];
   activities: DayActivity[];
-  /** Una seduta del giorno è stata fatta in un altro giorno. */
+    /** A session of the day was done on another day. */
   doneElsewhere?: boolean;
 }): DayState {
   const active = input.planned.filter((workout) => workout.status !== "skipped");
@@ -41,7 +41,7 @@ export function dayState(input: {
   return input.date === input.today ? "today" : "planned";
 }
 
-/** Sedute dovute (passate o di oggi già fatte) e quante sono state fatte. */
+/** Due sessions (past, or today's already done) and how many were done. */
 export function adherence(states: DayState[]): { done: number; due: number } {
   let done = 0;
   let due = 0;
@@ -61,18 +61,18 @@ export interface DayView<W, A> {
   state: DayState;
   workouts: W[];
   activities: A[];
-  /** Sedute del giorno fatte in un altro giorno: id seduta → giorno e corsa. */
+    /** Day's sessions done on another day: session id → day and run. */
   doneOn: Record<string, { date: string; activity: A }>;
-  /** Corse del giorno che valgono per la seduta di un altro giorno: id corsa → giorno della seduta. */
+    /** Runs of the day that count for another day's session: run id → session day. */
   countsFor: Record<string, string>;
 }
 
 /**
- * Giorni consecutivi da `start` con sedute, attività e stato. Per vedere le
- * sedute spostate ai bordi, sedute e attività vanno caricate anche per
- * MATCH_MARGIN_DAYS prima e dopo (matchWindow): si mostrano solo i giorni chiesti.
- * `matchSteps` dà i passi da usare per l'abbinamento (es. quelli ricavati dai
- * campi legacy), senza cambiare le sedute mostrate.
+ * Consecutive days from `start` with sessions, activities and status. To see
+ * sessions moved to the edges, sessions and activities must also be loaded for
+ * MATCH_MARGIN_DAYS before and after (matchWindow): only the requested days are shown.
+ * `matchSteps` gives the steps to use for matching (e.g. those derived from
+ * legacy fields), without changing the sessions shown.
  */
 export function buildDays<W extends DayPlanned & DaySession & PlanMatchWorkout, A extends DayActivity & PlanMatchActivity>(
   start: string,

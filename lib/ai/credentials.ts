@@ -57,7 +57,7 @@ export async function removeGeminiApiKey(userId: string): Promise<void> {
   if (error) throw error;
 }
 
-// ── OpenRouter e modello per compito (migrazioni 0023 e 0024) ───────────────
+// ── OpenRouter and per-task model (migrations 0023 and 0024) ───────────────
 
 export type { AiProvider, AiTask } from "@/lib/ai/routing";
 
@@ -66,12 +66,12 @@ export type AiConfig = (
   | { provider: "openrouter"; model: string }
 ) & {
   apiKey: string;
-  /** Per registrare token e costo della chiamata. */
+  /** To record the call's tokens and cost. */
   userId: string;
   task: AiTask;
 };
 
-/** Funzione o colonna non ancora create: il database non ha la migrazione. */
+/** Function or column not yet created: the database lacks the migration. */
 const notMigrated = (error: { code?: string } | null | undefined) =>
   error?.code === "PGRST202" || error?.code === "42703" || error?.code === "42P01" || error?.code === "PGRST205";
 
@@ -90,9 +90,9 @@ export async function getOpenRouterConfig(userId: string): Promise<{ apiKey: str
 }
 
 /**
- * Provider e modello di chat e analisi (`profiles.ai_routing`). `stored` è
- * false se il database non ha ancora la migrazione 0024: allora vale per
- * tutto il provider scelto prima (`ai_provider`).
+ * Chat and analysis provider and model (`profiles.ai_routing`). `stored` is
+ * false if the database does not have migration 0024 yet: then the previously
+ * chosen provider (`ai_provider`) applies to everything.
  */
 export async function loadAiRouting(client: SupabaseClient, userId: string): Promise<{ routing: AiRouting; stored: boolean }> {
   const legacy = (value: string | null | undefined): AiProvider => (value === "openrouter" ? "openrouter" : "gemini");
@@ -105,8 +105,8 @@ export async function loadAiRouting(client: SupabaseClient, userId: string): Pro
 }
 
 /**
- * Provider e modello per il compito: quelli scelti nelle impostazioni se
- * pronti, altrimenti l'altro provider. Null se nessuna chiave è configurata.
+ * Provider and model for the task: those chosen in settings if
+ * ready, otherwise the other provider. Null if no key is configured.
  */
 export async function getAiConfig(userId: string, task: AiTask): Promise<AiConfig | null> {
   const admin = createAdminClient();
@@ -131,9 +131,9 @@ export async function storeOpenRouterApiKey(userId: string, apiKey: string, mode
     p_user_id: userId,
     p_secret: apiKey,
     p_last_four: apiKey.slice(-4),
-    // Null mantiene il modello già salvato (le impostazioni scelgono il modello
-    // per compito); l'onboarding lo passa perché senza modello la chiave non
-    // basta a far partire il coach.
+    // Null keeps the already saved model (settings choose the model
+    // per task); onboarding passes it because without a model the key
+    // is not enough to start the coach.
     p_model: model,
   });
   if (error) throw error;
@@ -145,14 +145,14 @@ export async function removeOpenRouterApiKey(userId: string): Promise<void> {
   if (error) throw error;
 }
 
-/** Senza la migrazione 0024 resta solo il provider unico di prima. */
+/** Without migration 0024 only the previous single provider remains. */
 export async function setAiProvider(userId: string, provider: AiProvider): Promise<void> {
   const admin = createAdminClient();
   const { error } = await admin.from("profiles").update({ ai_provider: provider }).eq("id", userId);
   if (error) throw error;
 }
 
-/** Cambia provider e/o modello di un compito; la chat aggiorna anche ai_provider. */
+/** Changes provider and/or model of a task; the chat also updates ai_provider. */
 export async function setAiRoute(userId: string, task: AiTask, patch: Partial<TaskRoute>): Promise<void> {
   const admin = createAdminClient();
   const { routing, stored } = await loadAiRouting(admin, userId);

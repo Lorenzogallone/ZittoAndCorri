@@ -1,6 +1,6 @@
-// "Non mi sento al 100%": alleggerisce le sedute dei prossimi giorni in modo
-// deterministico e reversibile (i valori originali restano in adapted_from).
-// Funzioni pure.
+// "Non mi sento al 100%": lightens the next days' sessions in a
+// deterministic, reversible way (original values stay in adapted_from).
+// Pure functions.
 
 import type { Translator } from "../../i18n/config.ts";
 import type { WorkoutStep, WorkoutStepInput, WorkoutType } from "@/lib/types";
@@ -13,7 +13,7 @@ export const ADAPT_REASON_KEYS: readonly AdaptReason[] = ["tired", "busy", "sick
 
 export const ADAPT_DURATIONS = [{ days: 3 }, { days: 7 }, { days: 14 }] as const;
 
-/** Etichetta e spiegazione di un motivo (`t` legato al namespace "labels"). */
+/** Label and explanation of a reason (`t` bound to the "labels" namespace). */
 export function adaptReasonText(t: Translator, reason: AdaptReason): { label: string; hint: string } {
   return { label: t(`adapt.reason.${reason}.label`), hint: t(`adapt.reason.${reason}.hint`) };
 }
@@ -57,7 +57,7 @@ function scaleStep(step: WorkoutStepInput, factor: number): WorkoutStepInput {
   return { ...step, completion_value: roundTo(step.completion_value * factor, unit) };
 }
 
-/** Accorcia: meno ripetizioni e fasi continue più brevi, stessa struttura. */
+/** Shortens: fewer repetitions and shorter continuous phases, same structure. */
 function shortenSteps(steps: WorkoutStep[], factor: number): WorkoutStep[] {
   const out: WorkoutStepInput[] = [];
   for (const block of groupWorkoutSteps(steps)) {
@@ -77,7 +77,7 @@ function shortenSteps(steps: WorkoutStep[], factor: number): WorkoutStep[] {
   return withIds(out);
 }
 
-/** Una sola fase continua facile, a sensazione. */
+/** A single easy continuous phase, by feel. */
 function easySteps(workout: AdaptableWorkout, factor: number): WorkoutStep[] {
   const estimate = estimateWorkout(workout.workout_steps);
   const seconds = workout.target_duration_s ?? Math.round(estimate.seconds);
@@ -93,7 +93,7 @@ function easySteps(workout: AdaptableWorkout, factor: number): WorkoutStep[] {
   }]);
 }
 
-/** Campi aggiornati della seduta, o null se non va toccata. */
+/** Updated session fields, or null if it should be left alone. */
 export function adaptWorkout(workout: AdaptableWorkout, reason: AdaptReason): AdaptedFields | null {
   if (workout.status !== "planned") return null;
   if (reason === "sick") return { status: "skipped" };
@@ -121,7 +121,7 @@ export function adaptWorkout(workout: AdaptableWorkout, reason: AdaptReason): Ad
   };
 }
 
-/** Valori originali da salvare per poter annullare. */
+/** Original values to store so the change can be undone. */
 export function originalFields(workout: AdaptableWorkout, changed: AdaptedFields): AdaptedFields {
   const out: Record<string, unknown> = {};
   for (const key of Object.keys(changed) as Array<keyof AdaptableWorkout>) {

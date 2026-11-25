@@ -1,4 +1,4 @@
-// Geometria di base sulle tracce GPS. Funzioni pure.
+// Basic geometry on GPS tracks. Pure functions.
 
 export interface TrackPoint {
   t: number;
@@ -6,7 +6,7 @@ export interface TrackPoint {
   lon: number;
 }
 
-/** Distanza Haversine tra due punti GPS (metri). */
+/** Haversine distance between two GPS points (metres). */
 export function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6_371_000;
   const toRad = (d: number) => (d * Math.PI) / 180;
@@ -17,8 +17,8 @@ export function haversineM(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 /**
- * Distanza cumulata (m) per ogni punto. I salti più veloci di `maxSpeed` m/s
- * sono glitch del GPS e non aggiungono distanza.
+ * Cumulative distance (m) for each point. Jumps faster than `maxSpeed` m/s
+ * are GPS glitches and add no distance.
  */
 export function cumulativeDistance(points: TrackPoint[], maxSpeed = 12): number[] {
   const out = new Array<number>(points.length).fill(0);

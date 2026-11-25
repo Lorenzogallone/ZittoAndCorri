@@ -1,8 +1,8 @@
-// Funzioni pure: come cambia il corpo nel tempo, dai dati dell'orologio
-// (Zepp e Intervals.icu) e dalle corse. Una serie per metrica, un confronto
-// tra le ultime 2 settimane e lo stesso periodo di 4 settimane prima, e una
-// frase breve su cosa migliora o peggiora. I testi (etichette, frasi,
-// spiegazioni) vengono da messages/<lingua>/metrics.json (chiavi body.*).
+// Pure functions: how the body changes over time, from watch data
+// (Zepp and Intervals.icu) and from runs. One series per metric, a comparison
+// between the last 2 weeks and the same period 4 weeks earlier, and a
+// short sentence on what is improving or getting worse. Texts (labels,
+// sentences, explanations) come from messages/<locale>/metrics.json (body.* keys).
 
 import { DEFAULT_LOCALE, intlLocale, type Locale, type Translator } from "../../i18n/config.ts";
 
@@ -34,22 +34,22 @@ export interface MetricTrend {
   key: BodyMetricKey;
   label: string;
   unit?: string;
-  /** Serie in ordine di data. */
+  /** Series in date order. */
   series: DayValue[];
   latest: DayValue | null;
-  /** Media delle ultime 2 settimane e delle 2 settimane di 4 settimane prima. */
+  /** Average of the last 2 weeks and of the 2 weeks starting 4 weeks earlier. */
   recent: number | null;
   previous: number | null;
   direction: TrendDirection | null;
   sentence: string;
 }
 
-/** Il valore come lo si legge: «44», «7h 20′», «1,18» (it) / «1.18» (en). */
+/** The value as it reads: «44», «7h 20′», «1,18» (it) / «1.18» (en). */
 export function formatMetric(key: BodyMetricKey, value: number, locale: Locale = DEFAULT_LOCALE): string {
   return BODY_METRICS[key].format(value, locale);
 }
 
-/** Riga giornaliera di zepp_daily_metrics (solo i campi che servono qui). */
+/** Daily row of zepp_daily_metrics (only the fields needed here). */
 export interface ZeppDayInput {
   date: string;
   vo2_max: number | null;
@@ -64,7 +64,7 @@ export interface ZeppDayInput {
   pai_total: number | null;
 }
 
-/** Riga giornaliera di wellness_daily (Intervals.icu). */
+/** Daily row of wellness_daily (Intervals.icu). */
 export interface WellnessDayInput {
   date: string;
   sleep_secs: number | null;
@@ -78,13 +78,13 @@ export interface WellnessDayInput {
   weight_kg: number | null;
 }
 
-/** Tratti riconosciuti nella corsa (solo quanto serve a capire se era una seduta di qualità). */
+/** Segments recognised in the run (only what is needed to tell if it was a quality session). */
 export interface RunIntervalsInput {
   source: string;
   segments: Array<{ kind: string; variant: string | null; duration_s: number }>;
 }
 
-/** Corsa con quanto serve per l'efficienza aerobica. */
+/** Run with what is needed for aerobic efficiency. */
 export interface RunInput {
   started_at: string;
   sport: string | null;
@@ -96,7 +96,7 @@ export interface RunInput {
   intervals?: RunIntervalsInput | null;
 }
 
-/** Punto del carico interno (computeATLCTL().series). */
+/** Internal load point (computeATLCTL().series). */
 export interface LoadPoint {
   date: string;
   load7: number;
@@ -108,17 +108,17 @@ type Better = "up" | "down" | "none";
 interface MetricSpec {
   unit?: string;
   better: Better;
-  /** Sotto questa differenza (assoluta, o relativa se `relative`) è stabile. */
+  /** Below this difference (absolute, or relative if `relative`) it is stable. */
   stable: number;
   relative?: boolean;
-  /** Punti minimi in ciascuna finestra per dire qualcosa. */
+  /** Minimum points in each window to say anything. */
   minPoints: number;
   format: (value: number, locale: Locale) => string;
   /**
-   * Testi in messages (metrics.body.<chiave>): label e about ci sono sempre.
-   * Qui solo quali sono presenti degli altri: cosa vuol dire se migliora
-   * (good) / peggiora (bad), e come si chiama il numero grande quando non è
-   * un dato giornaliero (latest).
+   * Texts in messages (metrics.body.<key>): label and about are always there.
+   * Here only which of the others are present: what it means if it improves
+   * (good) / worsens (bad), and what the big number is called when it is not
+   * a daily value (latest).
    */
   good?: true;
   bad?: true;
@@ -168,8 +168,8 @@ function valid(value: number | null | undefined, min: number, max: number): numb
 }
 
 /**
- * Confronta le ultime 2 settimane con le 2 settimane di 4 settimane prima
- * (giorni 28–41 prima di oggi) e scrive la frase.
+ * Compares the last 2 weeks with the 2 weeks starting 4 weeks earlier
+ * (days 28–41 before today) and writes the sentence.
  */
 export function trendFor(key: BodyMetricKey, series: DayValue[], today: string, t: Translator, locale: Locale): MetricTrend {
   const spec = BODY_METRICS[key];
@@ -222,7 +222,7 @@ function sentenceFor(
   locale: Locale,
 ): string {
   const unit = spec.unit ? ` ${spec.unit}` : "";
-  // Le due medie confrontate, dette per esteso: il numero grande è l'ultimo dato, non una media.
+  // The two averages compared, spelled out: the big number is the latest value, not an average.
   const range = recent != null && previous != null
     ? t("body.sentence.range", { recent: `${spec.format(recent, locale)}${unit}`, previous: `${spec.format(previous, locale)}${unit}` })
     : "";
@@ -243,18 +243,18 @@ function sentenceFor(
   }
 }
 
-/** Sotto questa quota di tratti veloci (sul tempo della corsa) una corsa riconosciuta in automatico resta facile. */
+/** Below this share of fast segments (of run time) an automatically recognised run stays easy. */
 const AUTO_WORK_SHARE = 0.2;
 
 /**
- * Seduta di qualità (ripetute, soglia, test): ha tratti veloci dichiarati dal
- * piano, dalla nota o dai lap, oppure trovati in automatico per una parte
- * consistente della corsa. Gli allunghi brevi (sprint) non la rendono tale.
+ * Quality session (repeats, threshold, test): it has fast segments declared by
+ * the plan, the note or the laps, or found automatically over a
+ * substantial part of the run. Short strides (sprints) don't make it one.
  */
 export function isQualityRun(run: Pick<RunInput, "intervals" | "moving_time_s" | "duration_s">): boolean {
   const analysis = run.intervals;
   if (!analysis || analysis.source === "none") return false;
-  // Allunghi e frammenti di pochi secondi non fanno una seduta di qualità.
+  // Strides and fragments of a few seconds don't make a quality session.
   const work = analysis.segments.filter((segment) => segment.kind === "work" && segment.variant !== "sprint" && segment.duration_s >= 30);
   if (!work.length) return false;
   if (analysis.source !== "auto") return true;
@@ -263,13 +263,13 @@ export function isQualityRun(run: Pick<RunInput, "intervals" | "moving_time_s" |
 }
 
 /**
- * Oltre questo scarto dalla mediana dell'atleta il valore non è fisiologia ma
- * una lettura sbagliata del cuore (sensore ottico che aggancia la cadenza o
- * perde il battito): 1,30 quando di solito sei a 1,00 non è un giorno buono.
+ * Beyond this deviation from the athlete's median the value is not physiology but
+ * a wrong heart reading (optical sensor locking onto cadence or
+ * losing the heartbeat): 1.30 when you are usually at 1.00 is not a good day.
  */
 const EFFICIENCY_OUTLIER = 0.25;
 
-/** Valori lontani dalla mediana: letture del cuore sospette, fuori dal trend. */
+/** Values far from the median: suspect heart readings, left out of the trend. */
 export function withoutOutliers(points: DayValue[], tolerance = EFFICIENCY_OUTLIER): DayValue[] {
   if (points.length < 5) return points;
   const sorted = points.map((point) => point.value).sort((a, b) => a - b);
@@ -277,7 +277,7 @@ export function withoutOutliers(points: DayValue[], tolerance = EFFICIENCY_OUTLI
   return points.filter((point) => Math.abs(point.value / median - 1) <= tolerance);
 }
 
-/** Metri percorsi per battito nelle corse facili: sale quando il fiato migliora. */
+/** Metres covered per heartbeat on easy runs: rises as breathing improves. */
 export function aerobicEfficiency(runs: RunInput[]): DayValue[] {
   return withoutOutliers(easyRunEfficiency(runs));
 }
@@ -285,14 +285,14 @@ export function aerobicEfficiency(runs: RunInput[]): DayValue[] {
 function easyRunEfficiency(runs: RunInput[]): DayValue[] {
   const easy = new Set(["easy", "long", "recovery", "unclassified"]);
   return runs
-    // Quasi tutte le corse arrivano "unclassified": le sedute di qualità si
-    // riconoscono dai tratti, altrimenti test e soglie falsano il confronto.
+    // Almost all runs arrive "unclassified": quality sessions are
+    // recognised from the segments, otherwise tests and threshold runs skew the comparison.
     .filter((run) => run.sport === "running" && (run.type == null || easy.has(run.type)) && !isQualityRun(run))
     .flatMap((run) => {
       const seconds = run.moving_time_s ?? run.duration_s;
       if (!run.distance_m || !seconds || !run.avg_hr || seconds < 20 * 60 || run.avg_hr < 90) return [];
       const metersPerMinute = run.distance_m / (seconds / 60);
-      // Fuori scala (camminata, GPS saltato): non è una corsa da confrontare.
+      // Out of range (walk, GPS jump): not a run to compare.
       if (metersPerMinute < 120 || metersPerMinute > 400) return [];
       return [{ date: romeDate(run.started_at), value: metersPerMinute / run.avg_hr }];
     });
@@ -302,7 +302,7 @@ function romeDate(iso: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
 }
 
-/** Media mobile a 7 giorni: una corsa storta non deve far ballare la linea. */
+/** 7-day moving average: one bad run shouldn't make the line wobble. */
 export function rollingMean(series: DayValue[], days = 7): DayValue[] {
   const sorted = [...series].sort((a, b) => a.date.localeCompare(b.date));
   return sorted.map((point, index) => {
@@ -321,8 +321,8 @@ export interface BodyTrendsInput {
 }
 
 /**
- * Tutte le metriche con almeno un dato. Per ogni giorno vale Zepp (l'app
- * sull'orologio) e, dove manca, Intervals.icu; l'HRV arriva solo da Intervals.
+ * All metrics with at least one data point. For each day Zepp wins (the app
+ * on the watch) and, where missing, Intervals.icu; HRV comes only from Intervals.
  */
 export function bodyTrends({ today, zepp, wellness, runs, load }: BodyTrendsInput, t: Translator, locale: Locale): Record<BodyMetricKey, MetricTrend> {
   const byDate = new Map<string, { zepp?: ZeppDayInput; wellness?: WellnessDayInput }>();
@@ -347,7 +347,7 @@ export function bodyTrends({ today, zepp, wellness, runs, load }: BodyTrendsInpu
     sleepDeep: pick((day) => valid(day.zepp?.sleep_deep_min, 1, 600)),
     sleepScore: pick((day) => valid(day.zepp?.sleep_score, 1, 100) ?? valid(day.wellness?.sleep_score, 1, 100)),
     restingHr: pick((day) => valid(day.zepp?.resting_hr, 30, 120) ?? valid(day.wellness?.resting_hr, 30, 120)),
-    // Intervals.icu salva 0 quando la notte non ha HRV: non è una misura.
+    // Intervals.icu stores 0 when the night has no HRV: it is not a measurement.
     hrv: pick((day) => valid(day.wellness?.hrv, 1, 300)),
     stress: pick((day) => valid(day.zepp?.stress_avg, 1, 100) ?? valid(day.wellness?.stress, 1, 100)),
     spo2: pick((day) => valid(day.zepp?.spo2_avg, 80, 100) ?? valid(day.wellness?.spo2, 80, 100)),

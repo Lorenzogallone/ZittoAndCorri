@@ -1,11 +1,11 @@
-// Più sedute nello stesso giorno: ordine, momento della giornata e legame
-// (una seduta "concatenata" si fa subito dopo la precedente, come un'unica
-// uscita divisa in due allenamenti sull'orologio). Funzioni pure.
+// Several sessions on the same day: order, time of day and link
+// (a "chained" session is done right after the previous one, like a single
+// outing split into two workouts on the watch). Pure functions.
 
 import type { Translator } from "../../i18n/config.ts";
 import type { DayPart } from "../types.ts";
 
-/** "Mattina", "Pomeriggio", "Sera" (`t` legato al namespace "labels"). */
+/** "Mattina", "Pomeriggio", "Sera" (`t` bound to the "labels" namespace). */
 export const dayPartLabel = (t: Translator, part: DayPart): string => t(`dayPart.${part}`);
 
 export interface DaySession {
@@ -17,7 +17,7 @@ export interface DaySession {
 
 const orderOf = (session: DaySession) => session.day_order ?? 1;
 
-/** Per data e poi per posizione nella giornata; a parità resta l'ordine dato. */
+/** By date, then by position in the day; ties keep the given order. */
 export function sortByDayOrder<T extends DaySession>(sessions: T[]): T[] {
   return sessions
     .map((session, index) => ({ session, index }))
@@ -28,7 +28,7 @@ export function sortByDayOrder<T extends DaySession>(sessions: T[]): T[] {
     .map(({ session }) => session);
 }
 
-/** Come si colloca la seduta nella giornata, per l'interfaccia; null se è l'unica. */
+/** Where the session sits in the day, for the UI; null if it is the only one. */
 export function sessionPlacement(t: Translator, session: DaySession, sessionsThatDay: number): string | null {
   if (sessionsThatDay < 2) return null;
   if (session.chained && orderOf(session) > 1) return t("placement.afterPrevious");
@@ -38,8 +38,8 @@ export function sessionPlacement(t: Translator, session: DaySession, sessionsTha
 const PART_START: Record<DayPart, number> = { morning: 7 * 60, afternoon: 13 * 60, evening: 18 * 60 };
 
 /**
- * Ora d'inizio dell'evento sul calendario (Intervals.icu, orologio): mette in
- * fila le sedute della giornata. Un'unica seduta senza momento resta a mezzanotte.
+ * Start time of the calendar event (Intervals.icu, watch): lines up the
+ * day's sessions. A single session with no time of day stays at midnight.
  */
 export function sessionStartTime(session: DaySession): string {
   const base = session.day_part ? PART_START[session.day_part] : 0;
@@ -48,9 +48,9 @@ export function sessionStartTime(session: DaySession): string {
 }
 
 /**
- * Normalizza le sedute proposte per un giorno: ordine progressivo da `first`,
- * legame solo dalla seconda seduta in poi e, per una seduta concatenata senza
- * momento, lo stesso momento della precedente (così resta in fila dopo di lei).
+ * Normalizes the sessions proposed for a day: progressive order from `first`,
+ * link only from the second session on and, for a chained session with no
+ * time of day, the same time of day as the previous one (so it stays in line after it).
  */
 export function numberDaySessions<T extends DaySession>(
   sessions: T[],

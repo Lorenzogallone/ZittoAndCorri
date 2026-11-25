@@ -1,8 +1,8 @@
-// Adattamento dei passi a caldo e umidità. Funzioni pure.
-// Usa la somma temperatura + punto di rugiada in °F (tabella diffusa da Mark
-// Hadley): sotto 100 nessun effetto, poi un rallentamento crescente. La tabella
-// da sola scatta già con 20° molto umidi: corriamo con la sensazione dell'atleta
-// e adattiamo solo quando fa davvero caldo.
+// Pace adjustment for heat and humidity. Pure functions.
+// Uses the sum of temperature + dew point in °F (table popularised by Mark
+// Hadley): below 100 no effect, then a growing slowdown. The table
+// alone already kicks in at a very humid 20°: we run by the athlete's feel
+// and adapt only when it is really hot.
 
 import type { WorkoutStepInput } from "@/lib/types";
 
@@ -20,14 +20,14 @@ const TABLE: Array<[number, number]> = [
 
 const toF = (celsius: number) => (celsius * 9) / 5 + 32;
 
-/** Sotto questa temperatura dell'aria non si adatta, anche se è umido. */
+/** Below this air temperature no adjustment, even if humid. */
 export const HEAT_MIN_TEMP_C = 24;
-/** Sotto questa soglia l'effetto è trascurabile (pochi secondi al km). */
+/** Below this threshold the effect is negligible (a few seconds per km). */
 const MIN_PCT = 2;
-/** Da questo punto di rugiada l'aria si percepisce umida. */
+/** From this dew point the air feels humid. */
 export const HUMID_DEW_POINT_C = 16;
 
-/** Percentuale di rallentamento consigliata (0 = nessun adattamento). */
+/** Recommended slowdown percentage (0 = no adjustment). */
 export function heatSlowdownPct(tempC: number, dewPointC: number): number {
   if (!(tempC >= HEAT_MIN_TEMP_C)) return 0;
   const sum = toF(tempC) + toF(dewPointC);
@@ -50,7 +50,7 @@ export function adjustPace(pace: number | null, pct: number): number | null {
   return Math.min(1_200, Math.round(pace * (1 + pct / 100)));
 }
 
-/** Stessi step con i range di passo rallentati della percentuale indicata. */
+/** Same steps with the pace ranges slowed by the given percentage. */
 export function adjustStepsForHeat<S extends WorkoutStepInput>(steps: S[], pct: number): S[] {
   if (pct <= 0) return steps;
   return steps.map((step) => ({
@@ -60,7 +60,7 @@ export function adjustStepsForHeat<S extends WorkoutStepInput>(steps: S[], pct: 
   }));
 }
 
-/** Secondi al km di rallentamento per un passo di riferimento. */
+/** Seconds per km of slowdown for a reference pace. */
 export function heatDeltaSeconds(referencePace: number, pct: number): number {
   return Math.round((referencePace * pct) / 100);
 }

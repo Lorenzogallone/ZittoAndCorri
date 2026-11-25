@@ -1,10 +1,10 @@
-// Funzioni pure: carico ibrido HR/RPE + finestre mobili ATL/CTL/TSB.
+// Pure functions: hybrid HR/RPE load + rolling ATL/CTL/TSB windows.
 //
-// Il punteggio privilegia la risposta cardiaca (minuti pesati per zona), usa
-// l'RPE come fallback sulla stessa scala 1-5 e ricorre a una stima prudente
-// dalla durata solo quando entrambi mancano. Il carico 7gg è una somma mobile,
-// come il Training Load mostrato da Zepp; la scala resta però interna perché
-// l'EPOC proprietario di Zepp non è riproducibile dai soli file esportati.
+// The score favours the heart response (minutes weighted by zone), uses
+// RPE as a fallback on the same 1-5 scale and falls back to a cautious estimate
+// from duration only when both are missing. The 7-day load is a rolling sum,
+// like the Training Load shown by Zepp; the scale stays internal though because
+// Zepp's proprietary EPOC can't be reproduced from the exported files alone.
 
 import type { ATLCTLResult, Sport, TimeInZone, ZoneKey } from "@/lib/types";
 import { ZONE_LOWER_PCT } from "./zones.ts";
@@ -56,7 +56,7 @@ function weightFromAverageHr(
   if (avgHr == null || profile?.max_hr == null || profile.resting_hr == null) return null;
   const reserve = profile.max_hr - profile.resting_hr;
   if (reserve <= 0) return null;
-  // Stessi tagli delle zone (riserva cardiaca, come Zepp).
+  // Same cut-offs as the zones (heart rate reserve, like Zepp).
   const ratio = (avgHr - profile.resting_hr) / reserve;
   if (ratio < ZONE_LOWER_PCT.z2) return 1;
   if (ratio < ZONE_LOWER_PCT.z3) return 2;
@@ -87,9 +87,9 @@ function sumRange(values: number[], from: number, to: number): number {
   return sum;
 }
 
-/** Settimane complete che formano la baseline. */
+/** Complete weeks that make up the baseline. */
 const BASELINE_WEEKS = 4;
-/** Settimane complete minime prima di confrontare il carico con la baseline. */
+/** Minimum complete weeks before comparing the load with the baseline. */
 const BASELINE_MIN_WEEKS = 3;
 
 function median(values: number[]): number {
@@ -99,10 +99,10 @@ function median(values: number[]): number {
 }
 
 /**
- * Carico settimanale abituale: mediana delle ultime 4 settimane complete che
- * precedono i 7 giorni correnti. La mediana non si lascia trascinare in basso
- * da una settimana anomala (malattia, viaggio, ripresa), che con la media
- * gonfiava il rapporto e faceva sembrare "affaticato" un carico normale.
+ * Usual weekly load: median of the last 4 complete weeks preceding
+ * the current 7 days. The median isn't dragged down by an abnormal week
+ * (illness, travel, return to training), which with the mean
+ * inflated the ratio and made a normal load look "fatigued".
  */
 function baselineWeekly(dailyLoads: number[], index: number): number | null {
   const weeks: number[] = [];
@@ -128,8 +128,8 @@ function statusFromRatio(
 }
 
 /**
- * Carico di una sessione su scala interna 1-5 punti/minuto.
- * Priorità: distribuzione HR, HR media, RPE, stima per sport.
+ * Load of a session on an internal scale of 1-5 points/minute.
+ * Priority: HR distribution, average HR, RPE, per-sport estimate.
  */
 export function sessionLoad(
   activity: Omit<TrainingLoadActivity, "started_at">,
@@ -155,8 +155,8 @@ export function sessionLoad(
   }
 
   if (activity.rpe != null) {
-    // RPE 1-10 viene ricondotto alla scala cardiaca 1-5; evita che un RPE
-    // mancante o alto renda il fallback due volte più pesante del carico HR.
+    // RPE 1-10 is brought back to the 1-5 heart scale; avoids a
+    // missing or high RPE making the fallback twice as heavy as the HR load.
     const rpeWeight = Math.min(5, Math.max(1, activity.rpe / 2));
     return { load: Math.round(durationMinutes * rpeWeight), source: "rpe" };
   }
@@ -168,10 +168,10 @@ export function sessionLoad(
 }
 
 /**
- * Calcola il carico mobile a 7gg, ATL (media 7gg), CTL (media 42gg) e
- * TSB = CTL - ATL. La baseline è la mediana delle 4 settimane complete che
- * precedono i 7 giorni correnti; con meno di 3 settimane precedenti lo stato è
- * esplicitamente "in calibrazione" e non emette allarmi di fatica.
+ * Computes the 7-day rolling load, ATL (7-day average), CTL (42-day average) and
+ * TSB = CTL - ATL. The baseline is the median of the 4 complete weeks
+ * preceding the current 7 days; with fewer than 3 preceding weeks the state is
+ * explicitly "calibrating" and raises no fatigue alarms.
  */
 export function computeATLCTL(
   activities: TrainingLoadActivity[],
@@ -223,8 +223,8 @@ export function computeATLCTL(
     const load7 = sumRange(dailyLoads, index - 6, index);
     const load42 = sumRange(dailyLoads, index - 41, index);
     const atl = load7 / 7;
-    // Finché non esiste una finestra cronica completa, il TSB resta neutro:
-    // il dato viene dichiarato in calibrazione invece di inventare una forma 0.
+    // Until a full chronic window exists, TSB stays neutral:
+    // the data is declared as calibrating instead of inventing a form of 0.
     const ctl = historyDays < 42 ? atl : load42 / 42;
     const tsb = ctl - atl;
 
@@ -266,7 +266,7 @@ export function computeATLCTL(
   };
 }
 
-/** TSB (freshness) = CTL - ATL. Positivo = fresco, negativo = affaticato. */
+/** TSB (freshness) = CTL - ATL. Positive = fresh, negative = fatigued. */
 export function tsb(ctl: number, atl: number): number {
   return Math.round(ctl - atl);
 }

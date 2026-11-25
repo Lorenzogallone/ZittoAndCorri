@@ -59,12 +59,12 @@ type ContextActivity = Pick<
 >;
 
 type ContextActivityForAi = Omit<ContextActivity, "intervals"> & {
-  /** Ripetute riconosciute, in una riga: la tabella completa va solo nella valutazione. */
+  /** Recognized repeats, in one line: the full table goes only in the evaluation. */
   intervals: string | null;
   data_origin: {
     device_metrics: DataOrigin;
     pace_zones_drift_splits: "derived";
-    /** Passo reale vs previsto nei tratti con target della seduta dello stesso giorno. */
+    /** Actual vs expected pace in the segments with a target of the same-day session. */
     pace_check: "derived" | null;
     intervals: "derived" | null;
     rpe: DataOrigin | null;
@@ -96,7 +96,7 @@ export interface AiContextEnvelope {
     hr_zones: { value: ReturnType<typeof hrZones>; origin: "zepp" | "derived" | null };
   };
   goal: (Pick<Goal, "id" | "race_name" | "race_date" | "distance_m" | "target_time_s"> & {
-    /** "race" con data di gara, "general" = miglioramento aperto senza data. */
+    /** "race" with a race date, "general" = open-ended improvement without a date. */
     kind: "race" | "general";
     days_remaining: number | null;
     weeks_remaining: number | null;
@@ -139,7 +139,7 @@ export interface AiContextEnvelope {
       note: string;
     };
     predictions: (RacePredict & { origin: "derived"; reference_activity_id: string }) | null;
-    /** Forbice onesta per la gara dell'obiettivo (o la mezza): da preferire alle predictions Riegel. */
+    /** Honest range for the goal race (or the half): preferred over the Riegel predictions. */
     race_range: {
       distance_m: number;
       optimistic_s: number;
@@ -215,7 +215,7 @@ export interface AiContextEnvelope {
       }>;
       note: string;
     } | null;
-    /** Sonno, FC a riposo e HRV per giorno (Intervals.icu, migrazione 0025). */
+    /** Sleep, resting HR and HRV per day (Intervals.icu, migration 0025). */
     wellness: {
       readiness: {
         score: number | null;
@@ -240,7 +240,7 @@ export interface AiContextEnvelope {
   };
   history: {
     detailed_21d: ContextActivityForAi[];
-    /** Corse escluse da totali e carico (ultimi 60 giorni), col motivo: il coach le conosce ma non le somma. */
+    /** Runs excluded from totals and load (last 60 days), with the reason: the coach knows them but does not sum them. */
     excluded_runs: Array<{ id: string; date: string; sport: string; km: number | null; minutes: number; reason: string | null; origin: "user" }>;
     weekly_12w: Array<{
       week_start: string;
@@ -254,18 +254,18 @@ export interface AiContextEnvelope {
   };
   pace_hr_calibration: Array<PaceCalibrationEntry & { origin: "derived" }> | null;
   current_plan: {
-    /** Da 7 giorni fa a 27 giorni avanti, giorno per giorno, con i giorni bloccati. */
+    /** From 7 days ago to 27 days ahead, day by day, with the locked days. */
     calendar: CalendarDay[];
-    /** Dettaglio completo delle sedute dei prossimi 14 giorni. */
+    /** Full detail of the sessions in the next 14 days. */
     upcoming_14d: PlannedWorkout[];
     recent_14d: Array<Pick<PlannedWorkout, "date" | "type" | "status">>;
   };
   memories: Array<Pick<CoachMemory, "id" | "category" | "content" | "valid_from" | "valid_until" | "source" | "source_message_id" | "confidence">>;
   conversation: {
     summary: string | null;
-    /** Chat recente (senza i commenti automatici alle corse), la più vecchia prima. */
+    /** Recent chat (without the automatic comments on runs), oldest first. */
     recent_messages: Array<Pick<CoachMessage, "id" | "role" | "kind" | "content" | "created_at">>;
-    /** Ultime proposte di modifica del piano e cosa ne ha fatto l'atleta. */
+    /** Latest plan-change proposals and what the athlete did with them. */
     proposals: Array<{ created_at: string; summary: string; status: string; days: string[] }>;
   };
   evaluations: Array<{ summary: string; details: string[]; created_at: string; activity_id: string; origin: "derived" }>;
@@ -281,7 +281,7 @@ const PROPOSAL_STATUS: Record<string, string> = {
   expired: "scaduta senza conferma (non più applicabile)",
 };
 
-/** Giorni toccati da una proposta (nuove sedute + giorni svuotati). */
+/** Days touched by a proposal (new sessions + emptied days). */
 function proposalDays(proposal: PlanProposal): string[] {
   const days = new Set<string>([
     ...proposal.workouts.map((w) => w.date),
@@ -291,8 +291,8 @@ function proposalDays(proposal: PlanProposal): string[] {
 }
 
 /**
- * Chat da dare al coach: fino a 40 messaggi entro un budget di testo, i più
- * recenti; ogni proposta di piano porta con sé il suo esito.
+ * Chat to give to the coach: up to 40 messages within a text budget, the most
+ * recent; each plan proposal carries its outcome.
  */
 function selectConversation(
   messages: Array<Pick<CoachMessage, "id" | "role" | "kind" | "content" | "created_at" | "plan_proposal_id">>,
@@ -431,9 +431,9 @@ function activityForAi(activity: ContextActivity): ContextActivityForAi {
 const CONTEXT_ACTIVITY_COLUMNS = "id, source, started_at, type, sport, distance_m, duration_s, moving_time_s, avg_pace_s_km, avg_hr, max_hr, elevation_gain_m, rpe, rpe_source, source_title, notes, time_in_zone, splits, avg_cadence_spm, hr_drift_pct, calories";
 
 /**
- * Attività recenti per il contesto. Se la migrazione 0018 non è ancora
- * applicata (colonna pace_check assente) ripiega sulle colonne storiche,
- * così il coach continua a funzionare.
+ * Recent activities for the context. If migration 0018 is not yet
+ * applied (pace_check column missing) it falls back to the historical columns,
+ * so the coach keeps working.
  */
 async function contextActivities(supabase: SupabaseClient, userId: string, since: string) {
   const query = (columns: string) => supabase
@@ -446,7 +446,7 @@ async function contextActivities(supabase: SupabaseClient, userId: string, since
     .returns<ContextActivity[]>();
   const full = await query(`${CONTEXT_ACTIVITY_COLUMNS}, pace_check, best_efforts, intervals`);
   if (full.error?.code !== "42703") return full;
-  // Migration 0022 (intervals) o 0018 (pace_check) non ancora eseguite.
+  // Migration 0022 (intervals) or 0018 (pace_check) not yet run.
   const result = await query(`${CONTEXT_ACTIVITY_COLUMNS}, pace_check, best_efforts`);
   if (result.error?.code === "42703") return query(CONTEXT_ACTIVITY_COLUMNS);
   return result;
@@ -490,7 +490,7 @@ export async function buildAiContext(
     supabase.from("evaluations").select("summary, details, created_at, activity_id").eq("user_id", userId).order("created_at", { ascending: false }).limit(5).returns<Array<{ summary: string | null; details: string[] | null; created_at: string; activity_id: string }>>(),
     supabase.from("plan_proposals").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(10).returns<PlanProposal[]>(),
   ]);
-  // Corse escluse (migrazione 0026): senza la colonna la lista resta vuota.
+  // Excluded runs (migration 0026): without the column the list stays empty.
   const { data: excludedRows } = await supabase
     .from("activities")
     .select("id, started_at, sport, distance_m, duration_s, moving_time_s, excluded_reason")
@@ -522,11 +522,11 @@ export async function buildAiContext(
       .filter((a) => romeDate(new Date(a.started_at)) >= calendarFrom)
       .map((a) => ({ day: romeDate(new Date(a.started_at)), sport: a.sport, distance_m: a.distance_m, seconds: activeSeconds(a) })),
   });
-  // Dopo "Nuova chat" il coach vede solo la conversazione corrente e le sue proposte.
+  // After "New chat" the coach sees only the current conversation and its proposals.
   const session = currentSession(messages ?? []);
-  // Le domande rimaste senza risposta (invio fallito) non entrano nella storia:
-  // il coach non deve rispondere a domande vecchie né vederle due volte.
-  // Le proposte in attesa scadute arrivano al coach come "scadute".
+  // Questions left unanswered (failed send) do not enter the history:
+  // the coach must not answer old questions nor see them twice.
+  // Expired pending proposals reach the coach as "expired".
   const conversation = selectConversation(
     withoutFailedMessages(session.messages, now.getTime()),
     withProposalExpiry(
@@ -543,7 +543,7 @@ export async function buildAiContext(
   const predictions = best
     ? { ...predictRaces({ distance_m: best.distance_m, duration_s: activeSeconds(best) }, goal?.distance_m), origin: "derived" as const, reference_activity_id: best.id }
     : null;
-  // Stessa forbice del profilo (lib/metrics/race-prediction), qui sulle corse degli ultimi 90 giorni.
+  // Same range as the profile (lib/metrics/race-prediction), here on the runs of the last 90 days.
   const rangeReference = predictionReference(acts.map((a) => ({ ...a, best_efforts: a.best_efforts ?? null, active_s: activeSeconds(a) })));
   const rangeBase = enduranceBase(acts, today);
   const rangeGoal = rangeReference
@@ -786,8 +786,8 @@ export function serializeAiContext(context: AiContextEnvelope): string {
 }
 
 /**
- * Contesto della chat in due JSON compatti per la cache del prompt: prima i
- * dati stabili, poi data/ora, conversazione e attività in esame.
+ * Chat context as two compact JSONs for the prompt cache: stable data
+ * first, then date/time, conversation and the activity under review.
  */
 export function serializeCoachContext(context: AiContextEnvelope): { stable: string; variable: string } {
   const missing = missingAiContextSections(context);

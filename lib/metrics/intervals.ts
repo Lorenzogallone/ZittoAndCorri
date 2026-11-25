@@ -1,51 +1,51 @@
-// Analisi delle ripetute: divide una corsa nei suoi tratti (riscaldamento,
-// tratti veloci, sprint, recuperi corricchiando o camminando, defaticamento) e
-// misura come è stato corso ognuno. La struttura arriva, in ordine di
-// affidabilità, da:
-//   1. i lap del file FIT, se non sono i soliti lap automatici a km;
-//   2. una struttura dichiarata (nota dell'atleta o seduta del piano), che si
-//      allinea sulla curva di velocità con una segmentazione ottima;
-//   3. un rilevamento automatico a più livelli (fermo, camminata, jogging,
-//      corsa facile, veloce, sprint), solo se l'alternanza è netta.
-// Il tipo di ogni tratto (sprint, jogging, camminata) si misura sempre sui
-// dati, relativo al passo facile dell'atleta. Funzioni pure.
+// Interval analysis: splits a run into its segments (warm-up,
+// fast segments, sprints, jog or walk recoveries, cool-down) and
+// measures how each one was run. The structure comes, in order of
+// reliability, from:
+//   1. the FIT file laps, if they are not the usual automatic per-km laps;
+//   2. a declared structure (athlete's note or plan session), which is
+//      aligned to the speed curve with an optimal segmentation;
+//   3. multi-level automatic detection (stopped, walking, jogging,
+//      easy running, fast, sprint), only if the alternation is clear.
+// The type of each segment (sprint, jogging, walking) is always measured on
+// the data, relative to the athlete's easy pace. Pure functions.
 
 import type { GpsPoint, HrPoint, WorkoutStepInput, WorkoutStepKind, WorkoutType } from "@/lib/types";
 import { cumulativeDistance } from "./geo.ts";
 import { formatStepAmount, groupWorkoutSteps } from "../workout-guide.ts";
 import { detectPauses } from "./pauses.ts";
 
-// 3: tratti misurati sul tempo in movimento (pause dell'orologio escluse).
-// 4: lap che combaciano con il piano, riscaldamento e defaticamento facoltativi,
-//    soste da fermi come pause, cadenza per tratto.
-// 5: con un lungo, un facile o un recupero nel piano il rilevamento automatico
-//    vale solo se il disegno è netto (niente ripetute dal rumore del GPS).
+// 3: segments measured on moving time (watch pauses excluded).
+// 4: laps that match the plan, warm-up and cool-down optional,
+//    standing stops as pauses, cadence per segment.
+// 5: with a long run, an easy run or a recovery in the plan, automatic detection
+//    counts only if the pattern is clear (no repeats from GPS noise).
 export const INTERVALS_VERSION = 5;
 
-/** Distanza cumulativa registrata dall'orologio (m) a t secondi dall'inizio. */
+/** Cumulative distance recorded by the watch (m) at t seconds from the start. */
 export interface DistancePoint {
   t: number;
   d: number;
 }
 
-/** Lap del file FIT, già relativo all'inizio dell'attività. */
+/** FIT file lap, already relative to the start of the activity. */
 export interface FitLap {
   start_s: number;
   duration_s: number;
   distance_m: number | null;
   avg_hr: number | null;
   max_hr: number | null;
-  /** intensity FIT: active, rest, warmup, cooldown, recovery, interval… */
+  /** FIT intensity: active, rest, warmup, cooldown, recovery, interval… */
   intensity: string | null;
-  /** lap_trigger FIT: manual, distance, time, session_end… */
+  /** FIT lap_trigger: manual, distance, time, session_end… */
   trigger: string | null;
-  /** Indice dello step del workout guidato, se l'orologio lo seguiva. */
+  /** Index of the guided workout step, if the watch was following it. */
   step: number | null;
 }
 
 export type IntervalSource = "laps" | "notes" | "plan" | "auto";
 
-/** Come è stato corso un tratto: sprint, recupero corricchiando, camminando o da fermo. */
+/** How a segment was run: sprint, jogging recovery, walking, or standing still. */
 export type SegmentVariant = "sprint" | "jog" | "walk" | "stop";
 
 export interface IntervalSegment {
@@ -56,35 +56,35 @@ export interface IntervalSegment {
   duration_s: number;
   distance_m: number | null;
   pace_s_km: number | null;
-  /** Velocità di punta (media su 3 s), utile per gli sprint. */
+  /** Top speed (3 s average), useful for sprints. */
   max_speed_kmh: number | null;
   avg_hr: number | null;
   max_hr: number | null;
-  /** Cadenza media in movimento (passi al minuto). */
+  /** Average cadence while moving (steps per minute). */
   cadence_spm?: number | null;
-  /** Secondi in pausa dentro il tratto: non sono nella durata né nel passo. */
+  /** Seconds paused inside the segment: not in the duration or the pace. */
   paused_s?: number;
-  /** Battiti recuperati durante un recupero (inizio − fine). */
+  /** Heartbeats recovered during a recovery (start − end). */
   hr_drop: number | null;
-  /** Durata o distanza prevista dalla struttura. */
+  /** Duration or distance expected by the structure. */
   target: { type: "time" | "distance"; value: number } | null;
   target_pace: { min: number | null; max: number | null } | null;
-  /** Scarto dal range di passo previsto: negativo = più veloce. */
+  /** Deviation from the expected pace range: negative = faster. */
   pace_deviation_s: number | null;
-  /** Numero della ripetizione tra i tratti uguali (es. 2 di 5). */
+  /** Repetition number among identical segments (e.g. 2 of 5). */
   rep: number | null;
   reps: number | null;
 }
 
 export interface IntervalSummary {
-  /** Su cosa è calcolato il riepilogo principale: tratti veloci o, se ci sono solo quelli, sprint. */
+  /** What the main summary is computed on: fast segments or, if only those exist, sprints. */
   main: "work" | "sprint";
-  /** Tratti veloci (esclusi gli sprint, che hanno il loro riepilogo). */
+  /** Fast segments (excluding sprints, which have their own summary). */
   work_count: number;
   avg_pace_s_km: number | null;
   fastest_pace_s_km: number | null;
   slowest_pace_s_km: number | null;
-  /** Ultima contro prima ripetuta uguale, in %: positivo = calo. */
+  /** Last vs first identical repeat, in %: positive = drop. */
   fade_pct: number | null;
   avg_hr: number | null;
   sprint: { count: number; avg_pace_s_km: number | null; max_speed_kmh: number | null } | null;
@@ -96,9 +96,9 @@ export interface IntervalAnalysis {
   description: string | null;
   segments: IntervalSegment[];
   summary: IntervalSummary | null;
-  /** Struttura letta dalla nota: resta salvata perché la nota viene svuotata. */
+  /** Structure read from the note: kept saved because the note gets cleared. */
   declared?: { steps: WorkoutStepInput[]; description: string | null } | null;
-  /** Il piano chiedeva una corsa continua, ma i dati mostrano ripetute nette. */
+  /** The plan asked for a continuous run, but the data shows clear repeats. */
   contradicts_plan?: ContinuousType | null;
 }
 
@@ -112,35 +112,35 @@ export interface AnalyzeInput {
   distance?: DistancePoint[] | null;
   gps?: GpsPoint[] | null;
   hr?: HrPoint[] | null;
-  /** Cadenza FIT della corsa (rpm = passi al minuto / 2). */
+  /** FIT cadence of the run (rpm = steps per minute / 2). */
   cadence?: Array<{ t: number; rpm: number }> | null;
   laps?: FitLap[] | null;
-  /** Strutture dichiarate, dalla più affidabile (nota) alla meno (piano). */
+  /** Declared structures, from the most reliable (note) to the least (plan). */
   structures?: DeclaredStructure[];
-  /** Tipo della seduta del piano abbinata, anche se non ha una struttura. */
+  /** Type of the matched plan session, even if it has no structure. */
   planned?: WorkoutType | null;
 }
 
-// ── Soglie ───────────────────────────────────────────────────────────────────
+// ── Thresholds ───────────────────────────────────────────────────────────────
 
-/** Sotto questa velocità media si è fermi (m/s). */
+/** Below this average speed you are stopped (m/s). */
 const STOP_SPEED = 0.45;
-/** Sotto ≈ 9:00/km si cammina, se manca la cadenza (m/s). */
+/** Below ≈ 9:00/km you are walking, if cadence is missing (m/s). */
 const WALK_SPEED = 1.85;
-/** Sotto questa cadenza si cammina (passi al minuto). */
+/** Below this cadence you are walking (steps per minute). */
 const WALK_CADENCE = 140;
-/** Rispetto al passo facile: oltre è "veloce", sotto è "jogging". */
+/** Relative to easy pace: above is "fast", below is "jogging". */
 const FAST_RATIO = 1.15;
 const JOG_RATIO = 0.88;
-/** Uno sprint è breve. */
+/** A sprint is short. */
 const SPRINT_MAX_S = 75;
-/** Fermi almeno così a lungo (con l'orologio che registra) è una pausa. */
+/** Stopped at least this long (with the watch recording) is a pause. */
 const STILL_MIN_S = 10;
-/** Riscaldamento o defaticamento più corti di così non sono stati corsi. */
+/** Warm-up or cool-down shorter than this were not run. */
 const EDGE_MIN_S = 30;
-/** Lap finale più corto di così: è la chiusura dell'attività, non un tratto. */
+/** Final lap shorter than this: it is the end of the activity, not a segment. */
 const STUB_LAP_S = 15;
-/** Lap e step coincidono se la durata (o la distanza) differisce al massimo così. */
+/** Lap and step match if the duration (or distance) differs by at most this much. */
 const LAP_MATCH_RATIO = 0.06;
 
 export const VARIANT_LABELS: Record<SegmentVariant, string> = {
@@ -161,7 +161,7 @@ const STEP_LABELS: Record<WorkoutStepKind, string> = {
 const GENERIC_LABEL = /^(recupero|rec\b|veloce|ripetut|tratto|riscaldamento|defaticamento|corsa|continuo|lavoro|allenamento)/i;
 const SPRINT_LABEL = /sprint|allung|scatt|volat/i;
 
-// ── Serie a 1 secondo ────────────────────────────────────────────────────────
+// ── 1-second series ──────────────────────────────────────────────────────────
 
 interface Timeline {
   t0: number;
@@ -169,11 +169,11 @@ interface Timeline {
   dist: Float64Array;
   speed: Float64Array;
   hr: Float64Array;
-  /** Passi al minuto; NaN dove manca. */
+  /** Steps per minute; NaN where missing. */
   cadence: Float64Array;
-  /** 1 nei secondi in pausa (orologio fermo o atleta fermo): non contano nel tempo né nel passo. */
+  /** 1 in paused seconds (watch stopped or athlete stopped): they count neither in time nor in pace. */
   paused: Uint8Array;
-  /** Somma cumulata di `paused`: pausedBefore[i] = secondi in pausa prima di i. */
+  /** Cumulative sum of `paused`: pausedBefore[i] = seconds paused before i. */
   pausedBefore: Int32Array;
 }
 
@@ -188,15 +188,15 @@ function resampleDistance(points: Array<{ t: number; d: number }>, t0: number, n
     const a = points[k];
     const b = points[k + 1];
     if (!b || t <= a.t) out[i] = a.d;
-    // Pausa (orologio fermo, distanza quasi immobile): resta ferma fino alla
-    // ripresa. Un buco con distanza percorsa è solo un campionamento rado.
+    // Pause (watch stopped, distance almost still): stays still until
+    // resume. A gap with distance covered is just sparse sampling.
     else if (b.t - a.t > 10 && (b.d - a.d) / (b.t - a.t) < STOP_SPEED) out[i] = a.d;
     else out[i] = a.d + ((b.d - a.d) * (t - a.t)) / (b.t - a.t);
   }
   return out;
 }
 
-/** Interpola una serie sparsa sui secondi; buchi oltre `maxGap` restano NaN. */
+/** Interpolates a sparse series onto seconds; gaps beyond `maxGap` stay NaN. */
 function resampleValues(points: Array<{ t: number; v: number }>, t0: number, n: number, maxGap: number, hold: number): Float64Array {
   const out = new Float64Array(n).fill(Number.NaN);
   if (!points.length) return out;
@@ -219,8 +219,8 @@ function resampleValues(points: Array<{ t: number; v: number }>, t0: number, n: 
 }
 
 /**
- * Media mobile delle posizioni (±3 punti): lo zig-zag del GPS gonfia la
- * distanza soprattutto quando si va piano, e una camminata sembrerebbe jogging.
+ * Moving average of positions (±3 points): GPS zig-zag inflates
+ * distance especially when going slowly, and a walk would look like jogging.
  */
 function smoothTrack(gps: GpsPoint[]): GpsPoint[] {
   const half = 3;
@@ -229,7 +229,7 @@ function smoothTrack(gps: GpsPoint[]): GpsPoint[] {
     let lon = 0;
     let count = 0;
     for (let k = Math.max(0, i - half); k <= Math.min(gps.length - 1, i + half); k++) {
-      // Solo punti vicini nel tempo: una pausa non va mediata con la ripresa.
+      // Only points close in time: a pause must not be averaged with the resume.
       if (Math.abs(gps[k].t - point.t) > half * 3) continue;
       lat += gps[k].lat;
       lon += gps[k].lon;
@@ -244,13 +244,13 @@ function buildTimeline(input: AnalyzeInput): Timeline | null {
   let half: number;
   if (input.distance && input.distance.length >= 10) {
     points = input.distance.filter((p) => Number.isFinite(p.t) && Number.isFinite(p.d)).map((p) => ({ t: p.t, d: p.d }));
-    // Distanza dell'orologio: già filtrata, basta una finestra corta.
+    // Watch distance: already filtered, a short window is enough.
     half = 2;
   } else if (input.gps && input.gps.length >= 10) {
     const gps = smoothTrack([...input.gps].sort((a, b) => a.t - b.t));
     const cum = cumulativeDistance(gps);
     points = gps.map((p, i) => ({ t: p.t, d: cum[i] }));
-    // GPS rumoroso: finestra più ampia.
+    // Noisy GPS: wider window.
     half = 4;
   } else {
     return null;
@@ -268,17 +268,17 @@ function buildTimeline(input: AnalyzeInput): Timeline | null {
     const b = Math.min(n - 1, i + half);
     speed[i] = b > a ? Math.max(0, (dist[b] - dist[a]) / (b - a)) : 0;
   }
-  // FC: il sensore perde il segnale a tratti; fino a un minuto si interpola.
+  // HR: the sensor loses signal at times; up to a minute is interpolated.
   const hr = resampleValues((input.hr ?? []).filter((p) => p.bpm > 0).map((p) => ({ t: p.t, v: p.bpm })), t0, n, 60, 20);
   const cadence = resampleValues((input.cadence ?? []).filter((p) => p.rpm > 0).map((p) => ({ t: p.t, v: p.rpm * 2 })), t0, n, 15, 5);
-  // Pause dell'orologio: restano sulla linea del tempo (un recupero da fermo
-  // resta un recupero) ma i loro secondi non entrano nel passo dei tratti.
+  // Watch pauses: they stay on the timeline (a standing recovery
+  // stays a recovery) but their seconds don't enter the segment pace.
   const paused = new Uint8Array(n);
   for (const pause of detectPauses(points)) {
     const to = Math.min(n, Math.round(pause.to) - t0);
     for (let i = Math.max(0, to - Math.round(pause.removed)); i < to; i++) paused[i] = 1;
   }
-  // Soste con l'orologio che registra (semaforo, attesa): contano come pause.
+  // Stops with the watch recording (traffic light, waiting): count as pauses.
   for (let i = 0; i < n;) {
     if (speed[i] >= STOP_SPEED) {
       i++;
@@ -294,7 +294,7 @@ function buildTimeline(input: AnalyzeInput): Timeline | null {
   return { t0, n, dist, speed, hr, cadence, paused, pausedBefore };
 }
 
-/** Secondi in movimento tra start ed end (pause escluse). */
+/** Seconds moving between start and end (pauses excluded). */
 function movingSeconds(tl: Timeline, start: number, end: number): number {
   const a = Math.max(0, Math.min(tl.n, start));
   const b = Math.max(a, Math.min(tl.n, end));
@@ -302,16 +302,16 @@ function movingSeconds(tl: Timeline, start: number, end: number): number {
 }
 
 /**
- * Velocità media sul tempo totale, soste comprese: per riconoscere i tratti
- * senza struttura dichiarata (rilevamento automatico, tipo di recupero), dove
- * stare fermi è proprio ciò che distingue un recupero.
+ * Average speed over total time, stops included: to recognise segments
+ * without a declared structure (automatic detection, recovery type), where
+ * standing still is exactly what distinguishes a recovery.
  */
 function elapsedSpeed(tl: Timeline, start: number, end: number): number {
   if (end <= start) return 0;
   return (tl.dist[Math.min(end, tl.n - 1)] - tl.dist[start]) / (end - start);
 }
 
-/** Velocità media in movimento: una pausa dentro il tratto non lo rallenta. */
+/** Average speed while moving: a pause inside the segment doesn't slow it. */
 function meanSpeed(tl: Timeline, start: number, end: number): number {
   if (end <= start) return 0;
   const moving = movingSeconds(tl, start, end);
@@ -342,9 +342,9 @@ function median(values: number[]): number | null {
 }
 
 /**
- * Passo facile di riferimento: il 30° percentile della velocità quando si
- * corre (camminate e soste escluse). Tra riscaldamento, jogging e tratti veloci
- * cade sul ritmo della corsa tranquilla.
+ * Reference easy pace: the 30th percentile of speed while
+ * running (walks and stops excluded). Between warm-up, jogging and fast segments
+ * it falls on the pace of the easy run.
  */
 function easySpeed(tl: Timeline): number | null {
   const running: number[] = [];
@@ -357,7 +357,7 @@ function easySpeed(tl: Timeline): number | null {
   return running[Math.floor(running.length * 0.3)];
 }
 
-/** Recupero misurato: fermo, camminata o jogging. */
+/** Measured recovery: stopped, walking or jogging. */
 function restVariant(tl: Timeline, start: number, end: number): SegmentVariant {
   const v = elapsedSpeed(tl, start, end);
   if (v < STOP_SPEED) return "stop";
@@ -366,7 +366,7 @@ function restVariant(tl: Timeline, start: number, end: number): SegmentVariant {
   return "jog";
 }
 
-// ── Tratti ───────────────────────────────────────────────────────────────────
+// ── Segments ─────────────────────────────────────────────────────────────────
 
 interface Span {
   start: number;
@@ -375,14 +375,14 @@ interface Span {
   variant?: SegmentVariant | null;
   label: string;
   step?: WorkoutStepInput;
-  /** Valori misurati dall'orologio (lap), più precisi della serie. */
+  /** Values measured by the watch (laps), more precise than the series. */
   lap?: FitLap;
 }
 
 /**
- * Tipo misurato di ogni tratto: i recuperi diventano jogging, camminata o
- * sosta; i tratti veloci brevi e nettamente più rapidi degli altri (o
- * dichiarati come tali) diventano sprint. Le etichette generiche seguono.
+ * Measured type of each segment: recoveries become jogging, walking or
+ * stop; short fast segments clearly faster than the others (or
+ * declared as such) become sprints. Generic labels follow.
  */
 function refineVariants(tl: Timeline, spans: Span[]): Span[] {
   const base = easySpeed(tl);
@@ -405,21 +405,21 @@ function refineVariants(tl: Timeline, spans: Span[]): Span[] {
       out.variant = sprint ? "sprint" : null;
       if (sprint && (!span.label || GENERIC_LABEL.test(span.label))) out.label = VARIANT_LABELS.sprint;
     } else if (span.kind === "warmup" || span.kind === "cooldown") {
-      // Riscaldamento o defaticamento camminati: si vede dal colore.
+      // Walked warm-up or cool-down: you can tell from the colour.
       const variant = restVariant(tl, span.start, span.end);
       out.variant = variant === "jog" ? null : variant;
     }
     if (!out.label) out.label = STEP_LABELS[out.kind];
-    // Prima degli allunghi c'era una corsa intera, non un riscaldamento.
+    // Before the strides there was a whole run, not a warm-up.
     if ((span.kind === "warmup" || span.kind === "cooldown") && span.end - span.start > 1200 && GENERIC_LABEL.test(out.label)) out.label = "Corsa facile";
     return out;
   });
 }
 
 /**
- * Recuperi spezzati da frammenti di transizione: si uniscono quelli consecutivi
- * dello stesso tipo e quelli di pochi secondi finiscono nel vicino più lungo.
- * I lap restano come li ha registrati l'orologio.
+ * Recoveries broken up by transition fragments: consecutive ones
+ * of the same type are merged and those of a few seconds go to the longer neighbour.
+ * Laps stay as the watch recorded them.
  */
 function tidyRecoveries(spans: Span[]): Span[] {
   const out: Span[] = [];
@@ -467,9 +467,9 @@ function measure(tl: Timeline, span: Span): IntervalSegment {
   const end = Math.max(start + 1, Math.min(tl.n, span.end));
   const elapsed = span.lap?.duration_s ?? end - start;
   const pausedSeconds = Math.min(elapsed, end - start - movingSeconds(tl, start, end));
-  // Tempo in movimento: le pause non contano né nella durata né nel passo.
+  // Moving time: pauses count neither in duration nor in pace.
   const moving = Math.max(1, elapsed - pausedSeconds);
-  // Tratto tutto da fermi (recupero in pausa): dura quanto la sosta.
+  // Segment entirely stationary (recovery in pause): lasts as long as the stop.
   const stillOnly = elapsed - pausedSeconds < 5;
   const duration = stillOnly ? elapsed : moving;
   let cadenceSum = 0;
@@ -514,9 +514,9 @@ function measure(tl: Timeline, span: Span): IntervalSegment {
 }
 
 /**
- * Tratti "uguali" per numerare le ripetizioni: stesso tipo, variante,
- * etichetta e obiettivo. Senza obiettivo (lap, rilevamento automatico) conta
- * anche la durata, a scaglioni del 25%.
+ * "Identical" segments for numbering repeats: same type, variant,
+ * label and target. Without a target (laps, automatic detection) the
+ * duration counts too, in 25% steps.
  */
 function signature(segment: IntervalSegment): string {
   const shape = segment.target
@@ -537,7 +537,7 @@ function paceStats(list: IntervalSegment[]) {
   };
 }
 
-/** Numera le ripetizioni dei tratti uguali e calcola il riepilogo. */
+/** Numbers the repeats of identical segments and computes the summary. */
 function finalize(segments: IntervalSegment[], source: IntervalSource, description: string | null): IntervalAnalysis {
   const groups = new Map<string, IntervalSegment[]>();
   for (const segment of segments) {
@@ -555,7 +555,7 @@ function finalize(segments: IntervalSegment[], source: IntervalSource, descripti
 
   const sprints = segments.filter((s) => s.kind === "work" && s.variant === "sprint");
   const fast = segments.filter((s) => s.kind === "work" && s.variant !== "sprint");
-  // Senza tratti veloci "normali" il riepilogo principale è quello degli sprint.
+  // Without "normal" fast segments the main summary is the sprints one.
   const main = fast.length ? fast : sprints;
   const stats = paceStats(main);
   const repeated = [...groups.values()]
@@ -588,7 +588,7 @@ function finalize(segments: IntervalSegment[], source: IntervalSource, descripti
   };
 }
 
-// ── Classificazione a livelli (lap senza intensità e rilevamento automatico) ─
+// ── Tiered classification (laps without intensity and automatic detection) ─
 
 type Level = "stop" | "walk" | "jog" | "easy" | "fast";
 
@@ -603,8 +603,8 @@ function levelOf(tl: Timeline, start: number, end: number, base: number): Level 
 }
 
 /**
- * Da pezzi classificati a tratti: prima del primo sforzo è riscaldamento,
- * dopo l'ultimo defaticamento, in mezzo recuperi (jogging, camminata, sosta).
+ * From classified pieces to segments: before the first effort is warm-up,
+ * after the last cool-down, in between recoveries (jogging, walking, stop).
  */
 function levelsToSpans(pieces: Array<{ start: number; end: number; level: Level; lap?: FitLap }>, mergeSame: boolean): Span[] | null {
   const merged: typeof pieces = [];
@@ -624,7 +624,7 @@ function levelsToSpans(pieces: Array<{ start: number; end: number; level: Level;
     else if (index > lastEffort) kind = "cooldown";
     else kind = piece.level === "fast" ? "work" : "recovery";
     const previous = spans[spans.length - 1];
-    // Il riscaldamento (o defaticamento) con più ritmi resta un tratto solo.
+    // A warm-up (or cool-down) with several paces stays a single segment.
     if (mergeSame && previous && previous.kind === kind && (kind === "warmup" || kind === "cooldown")) {
       previous.end = piece.end;
       return;
@@ -634,13 +634,13 @@ function levelsToSpans(pieces: Array<{ start: number; end: number; level: Level;
   return spans;
 }
 
-/** Segmentazione ottima a numero libero di tratti (penalità per ogni cambio). */
+/** Optimal segmentation with a free number of segments (penalty for each change). */
 function partition(tl: Timeline): Array<[number, number]> {
   const factor = Math.max(3, Math.ceil(tl.n / 1200));
   const m = Math.ceil(tl.n / factor);
   const block = new Float64Array(m);
   for (let b = 0; b < m; b++) block[b] = elapsedSpeed(tl, b * factor, Math.min(tl.n, (b + 1) * factor));
-  // Rumore stimato dalle differenze tra blocchi vicini (robusto ai cambi di ritmo).
+  // Noise estimated from differences between nearby blocks (robust to pace changes).
   const diffs: number[] = [];
   for (let b = 1; b < m; b++) diffs.push(Math.abs(block[b] - block[b - 1]));
   const sigma = Math.max(0.08, (1.4826 * (median(diffs) ?? 0.1)) / Math.SQRT2);
@@ -679,7 +679,7 @@ function partition(tl: Timeline): Array<[number, number]> {
   return refineBounds(tl, bounds, factor).slice(1).map((end, i, all) => [i === 0 ? 0 : all[i - 1], end]);
 }
 
-/** Affina i confini al secondo, dentro ± un blocco. */
+/** Refines the boundaries to the second, within ± one block. */
 function refineBounds(tl: Timeline, bounds: number[], radius: number): number[] {
   const s1 = new Float64Array(tl.n + 1);
   const s2 = new Float64Array(tl.n + 1);
@@ -705,10 +705,10 @@ function refineBounds(tl: Timeline, bounds: number[], radius: number): number[] 
 }
 
 /**
- * Rilevamento automatico: tratti veloci veri solo se tra uno sforzo e l'altro
- * c'è un recupero netto (jogging lento, camminata, sosta) oppure se sono molto
- * più veloci del passo facile (sprint, allunghi). Così le salite e discese di
- * una corsa facile non diventano ripetute.
+ * Automatic detection: true fast segments only if between one effort and the next
+ * there is a clear recovery (slow jogging, walking, stop) or if they are much
+ * faster than easy pace (sprints, strides). This way the ups and downs of
+ * an easy run don't become repeats.
  */
 function autoSpans(tl: Timeline): Span[] | null {
   const base = easySpeed(tl);
@@ -727,7 +727,7 @@ function autoSpans(tl: Timeline): Span[] | null {
   return spans;
 }
 
-// ── 1. Lap del file FIT ──────────────────────────────────────────────────────
+// ── 1. FIT file laps ─────────────────────────────────────────────────────────
 
 const LAP_KINDS: Record<string, WorkoutStepKind> = {
   warmup: "warmup",
@@ -740,10 +740,10 @@ const LAP_KINDS: Record<string, WorkoutStepKind> = {
 
 const AUTO_TRIGGERS = new Set(["distance", "time", "positionStart", "positionLap", "positionWaypoint", "positionMarked"]);
 
-/** Lap automatici a distanza o tempo fisso: non dicono nulla della struttura. */
+/** Automatic laps at fixed distance or time: they say nothing about the structure. */
 export function areAutoLaps(laps: FitLap[]): boolean {
-  // Workout guidato sull'orologio: i lap si chiudono a tempo o distanza ma
-  // seguono gli step (indice e intensità), quindi sono la struttura vera.
+  // Guided workout on the watch: laps close on time or distance but
+  // follow the steps (index and intensity), so they are the true structure.
   if (new Set(laps.map((lap) => lap.step).filter((step) => step != null)).size >= 2) return false;
   if (laps.some((lap) => lap.intensity && lap.intensity !== "active")) return false;
   const body = laps.slice(0, -1);
@@ -756,8 +756,8 @@ export function areAutoLaps(laps: FitLap[]): boolean {
 }
 
 /**
- * Il lap finale di pochi secondi (chiusura dell'attività dopo l'ultimo tratto)
- * si unisce al precedente: non è un tratto a sé.
+ * The final lap of a few seconds (end of the activity after the last segment)
+ * merges with the previous one: it is not a segment on its own.
  */
 export function withoutStubLap(laps: FitLap[]): FitLap[] {
   if (laps.length < 2) return laps;
@@ -783,10 +783,10 @@ function locateLaps(laps: FitLap[], tl: Timeline) {
 }
 
 /**
- * Soglia dei tratti veloci ricavata dai lap stessi: divide i lap corsi in due
- * gruppi di velocità (pesati per durata) e la tiene solo se i due gruppi sono
- * nettamente diversi. Serve quando quasi tutta la corsa è a ritmo sostenuto e
- * il passo facile stimato sulla serie cade troppo in alto.
+ * Fast-segment threshold derived from the laps themselves: splits the run laps into two
+ * speed groups (weighted by duration) and keeps it only if the two groups are
+ * clearly different. Needed when almost the whole run is at a sustained pace and
+ * the easy pace estimated on the series falls too high.
  */
 function lapFastThreshold(speeds: Array<{ v: number; w: number }>): number | null {
   const sorted = speeds.filter((s) => s.w > 0).sort((a, b) => a.v - b.v);
@@ -814,7 +814,7 @@ function lapSpans(rawLaps: FitLap[], tl: Timeline): Span[] | null {
     const spans = located.map(({ lap, start, end }): Span => ({ start, end, kind: LAP_KINDS[lap.intensity ?? "active"] ?? "work", label: "", lap }));
     return spans.some((span) => span.kind === "work") ? spans : null;
   }
-  // Lap premuti a mano: ogni lap si classifica sul ritmo, a più livelli.
+  // Manually pressed laps: each lap is classified on pace, in several tiers.
   const base = easySpeed(tl);
   if (!base) return null;
   const pieces = located.map(({ lap, start, end }) => ({ start, end, lap, level: levelOf(tl, start, end, base) }));
@@ -829,7 +829,7 @@ function lapSpans(rawLaps: FitLap[], tl: Timeline): Span[] | null {
   return levelsToSpans(pieces, false);
 }
 
-/** Il lap ha la durata (o la distanza) dello step? Riscaldamento, defaticamento e step liberi vanno sempre bene. */
+/** Does the lap have the step's duration (or distance)? Warm-up, cool-down and free steps always fit. */
 function lapFitsStep(lap: FitLap, step: WorkoutStepInput): boolean {
   if (step.kind === "warmup" || step.kind === "cooldown") return true;
   const value = step.completion_value ?? 0;
@@ -840,10 +840,10 @@ function lapFitsStep(lap: FitLap, step: WorkoutStepInput): boolean {
 }
 
 /**
- * Lap che seguono la seduta dichiarata: l'orologio ha chiuso un lap a ogni
- * step (workout guidato o lap premuti al cambio). Si accettano un
- * riscaldamento o un defaticamento non scritti o saltati e una seduta finita
- * prima, purché i tratti a durata o distanza fissa combacino quasi tutti.
+ * Laps that follow the declared session: the watch closed a lap at each
+ * step (guided workout or laps pressed at the change). An unwritten or
+ * skipped warm-up or cool-down and a session ended
+ * early are accepted, as long as almost all fixed-duration or distance segments match.
  */
 function matchLapsToSteps(rawLaps: FitLap[], steps: WorkoutStepInput[], tl: Timeline): Span[] | null {
   const laps = withoutStubLap(rawLaps);
@@ -851,10 +851,10 @@ function matchLapsToSteps(rawLaps: FitLap[], steps: WorkoutStepInput[], tl: Time
   const located = locateLaps(laps, tl);
   const fixed = (step: WorkoutStepInput) =>
     step.kind !== "warmup" && step.kind !== "cooldown" && step.completion_type !== "manual" && (step.completion_value ?? 0) > 0;
-  // Inizio: dal primo step, oppure saltando il riscaldamento dichiarato.
+  // Start: from the first step, or skipping the declared warm-up.
   const firstOptions = steps[0].kind === "warmup" ? [0, 1] : [0];
   for (const first of firstOptions) {
-    // Un lap in più all'inizio fa da riscaldamento se il piano non lo scrive.
+    // An extra lap at the start acts as warm-up if the plan doesn't write one.
     for (const leading of steps[first]?.kind === "warmup" ? [0] : [0, 1]) {
       const spans: Span[] = [];
       let s = first;
@@ -873,7 +873,7 @@ function matchLapsToSteps(rawLaps: FitLap[], steps: WorkoutStepInput[], tl: Time
           s++;
           return;
         }
-        // Un lap in più alla fine: defaticamento non scritto.
+        // An extra lap at the end: unwritten cool-down.
         if (index === located.length - 1 && (!step || step.kind === "cooldown")) {
           spans.push({ start, end, kind: "cooldown", label: step?.label?.trim() || STEP_LABELS.cooldown, step, lap });
           s++;
@@ -882,8 +882,8 @@ function matchLapsToSteps(rawLaps: FitLap[], steps: WorkoutStepInput[], tl: Time
         ok = false;
       });
       if (!ok) continue;
-      // Step rimasti senza lap: solo se la seduta è stata interrotta dopo
-      // gran parte del lavoro (es. defaticamento non fatto).
+      // Steps left without a lap: only if the session was interrupted after
+      // most of the work (e.g. cool-down not done).
       const remainingFixed = steps.slice(s).filter(fixed).length;
       const totalFixed = steps.filter(fixed).length;
       if (matchedFixed < 2 || remainingFixed > Math.floor(totalFixed / 3)) continue;
@@ -894,25 +894,25 @@ function matchLapsToSteps(rawLaps: FitLap[], steps: WorkoutStepInput[], tl: Time
   return null;
 }
 
-// ── 2. Struttura dichiarata allineata sulla velocità ─────────────────────────
+// ── 2. Declared structure aligned on speed ───────────────────────────────────
 
 interface TemplateEntry {
   kind: WorkoutStepKind;
   label: string;
-  /** free = durata libera (riscaldamento senza durata, pause non dichiarate). */
+  /** free = free duration (warm-up with no duration, undeclared pauses). */
   type: "time" | "distance" | "free";
   value: number;
-  /** Costo per blocco di una parte libera: le pause non dichiarate costano un po'. */
+  /** Cost per block of a free part: undeclared pauses cost a little. */
   freeCost: number;
-  /** Riscaldamento/defaticamento dichiarato: durata o distanza indicativa, può andare a zero. */
+  /** Declared warm-up/cool-down: indicative duration or distance, may go to zero. */
   soft?: { type: "time" | "distance"; value: number };
   step?: WorkoutStepInput;
 }
 
 function entryFor(step: WorkoutStepInput): TemplateEntry {
-  // Riscaldamento e defaticamento si accorciano o si saltano spesso: la loro
-  // durata pesa poco e può andare a zero (altrimenti si mangiano l'ultima
-  // ripetuta), ma a ritmo uguale al resto tiene il confine vicino al previsto.
+  // Warm-up and cool-down are often shortened or skipped: their
+  // duration weighs little and can go to zero (otherwise they eat the last
+  // repeat), but at the same pace as the rest it keeps the boundary near the expected one.
   const edge = step.kind === "warmup" || step.kind === "cooldown";
   const declared = step.completion_type !== "manual" && (step.completion_value ?? 0) > 0;
   const fixed = !edge && declared;
@@ -930,9 +930,9 @@ function entryFor(step: WorkoutStepInput): TemplateEntry {
 const isEffort = (step: WorkoutStepInput) => step.kind === "work" || step.kind === "steady";
 
 /**
- * Sequenza da allineare: gli step dichiarati (già espansi), più parti libere
- * all'inizio e alla fine (riscaldamento/defaticamento non scritti) e tra due
- * tratti di sforzo consecutivi, dove l'atleta può aver recuperato senza dirlo.
+ * Sequence to align: the declared steps (already expanded), plus free parts
+ * at the start and end (unwritten warm-up/cool-down) and between two
+ * consecutive effort segments, where the athlete may have recovered without saying so.
  */
 function buildTemplate(steps: WorkoutStepInput[]): TemplateEntry[] {
   const free = (kind: WorkoutStepKind, cost: number): TemplateEntry => ({ kind, label: STEP_LABELS[kind], type: "free", value: 0, freeCost: cost });
@@ -948,21 +948,21 @@ function buildTemplate(steps: WorkoutStepInput[]): TemplateEntry[] {
 }
 
 const ALPHA = 2;
-/** La distanza misurata è un dato certo (GPS o orologio): un km dichiarato deve durare circa un km. */
+/** The measured distance is a certain datum (GPS or watch): a declared km must last about a km. */
 const ALPHA_DISTANCE = 30;
-/** Peso della durata indicativa di riscaldamento e defaticamento (le ripetute pesano ALPHA). */
+/** Weight of the indicative duration of warm-up and cool-down (repeats weigh ALPHA). */
 const EDGE_ALPHA = 0.3;
-/** Riscaldamento o defaticamento veloce almeno così rispetto alla ripetuta accanto: è la ripetuta. */
+/** Warm-up or cool-down at least this fast relative to the adjacent repeat: it is the repeat. */
 const EDGE_AS_EFFORT = 0.93;
-/** Costo per blocco di pausa dentro uno sforzo: a parità, la sosta sta nel recupero. */
+/** Cost per pause block inside an effort: all else equal, the stop sits in the recovery. */
 const PAUSE_IN_EFFORT_COST = 0.3;
 
-/** Segmentazione ottima: confini dove cambia la velocità, durate vicine a quelle dichiarate. */
+/** Optimal segmentation: boundaries where speed changes, durations close to the declared ones. */
 function alignTemplate(tl: Timeline, template: TemplateEntry[]): number[] | null {
   const factor = Math.max(1, Math.ceil(tl.n / 1500));
   const m = Math.ceil(tl.n / factor);
-  // Ogni blocco pesa per i secondi in movimento: le pause non hanno velocità,
-  // così una sosta a metà ripetuta non sembra un cambio di ritmo.
+  // Each block weighs by its moving seconds: pauses have no speed,
+  // so a stop mid-repeat doesn't look like a pace change.
   const speed = new Float64Array(m);
   const weight = new Float64Array(m);
   for (let b = 0; b < m; b++) {
@@ -1016,7 +1016,7 @@ function alignTemplate(tl: Timeline, template: TemplateEntry[]): number[] | null
       lo = 0;
       hi = m;
     }
-    // Una pausa non dichiarata o è vera (almeno 15 s) o non c'è.
+    // An undeclared pause is either real (at least 15 s) or absent.
     const minGap = entry.freeCost > 0 ? Math.ceil(15 / factor) : 0;
     const cur = new Float64Array(m + 1).fill(INF);
     const arg = new Int32Array(m + 1).fill(-1);
@@ -1027,15 +1027,15 @@ function alignTemplate(tl: Timeline, template: TemplateEntry[]): number[] | null
         const i = j - len;
         const base = prev[i];
         if (base === INF) continue;
-        // Sforzi misurati sul tempo in movimento; le pause al confine con un
-        // recupero vanno al recupero (lì sono riposo).
+        // Efforts measured on moving time; pauses at the boundary with a
+        // recovery go to the recovery (there they are rest).
         const still = len - (s0[j] - s0[i]);
         const effort = entry.kind === "work" || entry.kind === "steady";
         const active = len - still;
         let prior: number;
         if (entry.type === "time") {
           const nominal = entry.value / factor;
-          // Un recupero può contare la sosta come riposo oppure no: vale il più vicino.
+          // A recovery may count the stop as rest or not: the closest one wins.
           const off = effort ? active - nominal : Math.min(Math.abs(len - nominal), Math.abs(active - nominal));
           prior = (ALPHA * off ** 2) / nominal;
         } else if (entry.type === "distance") {
@@ -1072,7 +1072,7 @@ function alignTemplate(tl: Timeline, template: TemplateEntry[]): number[] | null
   return bounds.map((b) => Math.min(tl.n, b * factor));
 }
 
-/** Ogni tratto veloce deve essere davvero più veloce dei recuperi accanto. */
+/** Each fast segment must be truly faster than the recoveries next to it. */
 function plausible(tl: Timeline, spans: Span[]): boolean {
   let checked = 0;
   let ok = 0;
@@ -1089,7 +1089,7 @@ function plausible(tl: Timeline, spans: Span[]): boolean {
 }
 
 function nominalSeconds(steps: WorkoutStepInput[]): number {
-  // Distanze stimate a 3:00/km: serve solo a scartare strutture impossibili.
+  // Distances estimated at 3:00/km: only used to discard impossible structures.
   return steps.reduce((sum, step) => {
     if (step.completion_type === "time") return sum + (step.completion_value ?? 0);
     if (step.completion_type === "distance") return sum + (step.completion_value ?? 0) * 0.18;
@@ -1097,7 +1097,7 @@ function nominalSeconds(steps: WorkoutStepInput[]): number {
   }, 0);
 }
 
-/** Una struttura merita l'analisi se ha tratti veloci o più fasi diverse. */
+/** A structure deserves analysis if it has fast segments or several distinct phases. */
 export function isStructured(steps: WorkoutStepInput[]): boolean {
   const fixed = steps.filter((step) => step.completion_type !== "manual" && (step.completion_value ?? 0) > 0);
   return fixed.some((step) => step.kind === "work") || fixed.length >= 3;
@@ -1114,7 +1114,7 @@ function declaredSpans(tl: Timeline, steps: WorkoutStepInput[]): Span[] | null {
     const end = bounds[k + 1];
     if (end <= start) return;
     const span: Span = { start, end, kind: entry.kind, label: entry.label, step: entry.step };
-    // Parte libera accanto a riscaldamento/defaticamento dichiarati: un tratto solo.
+    // Free part next to declared warm-up/cool-down: a single segment.
     const previous = spans[spans.length - 1];
     if (previous && previous.kind === span.kind && (span.kind === "warmup" || span.kind === "cooldown")) {
       previous.end = end;
@@ -1123,8 +1123,8 @@ function declaredSpans(tl: Timeline, steps: WorkoutStepInput[]): Span[] | null {
     }
     spans.push(span);
   });
-  // Recupero non dichiarato che non è più lento degli sforzi accanto: non c'è
-  // stato. Si divide a metà tra i due tratti.
+  // Undeclared recovery that is no slower than the adjacent efforts: there is
+  // no stop. It is split in half between the two segments.
   for (let index = spans.length - 2; index >= 1; index--) {
     const span = spans[index];
     if (span.kind !== "recovery" || span.step) continue;
@@ -1137,8 +1137,8 @@ function declaredSpans(tl: Timeline, steps: WorkoutStepInput[]): Span[] | null {
     after.start = mid;
     spans.splice(index, 1);
   }
-  // Riscaldamento o defaticamento corso al ritmo della ripetuta accanto: non
-  // è stato fatto (la seduta inizia o finisce lì), quei secondi sono ripetuta.
+  // Warm-up or cool-down run at the pace of the adjacent repeat: it was not
+  // done (the session starts or ends there), those seconds are repeat.
   for (let index = spans.length - 1; index >= 0; index--) {
     const span = spans[index];
     if (span.kind !== "warmup" && span.kind !== "cooldown") continue;
@@ -1149,8 +1149,8 @@ function declaredSpans(tl: Timeline, steps: WorkoutStepInput[]): Span[] | null {
     else neighbour.end = span.end;
     spans.splice(index, 1);
   }
-  // Riscaldamento o defaticamento di pochi secondi: rumore ai bordi, non una
-  // fase corsa. Finiscono nel tratto accanto.
+  // Warm-up or cool-down of a few seconds: noise at the edges, not a
+  // run phase. They end up in the adjacent segment.
   const trimmed = spans.filter((span, index) => {
     const edge = span.kind === "warmup" || span.kind === "cooldown";
     if (!edge || span.end - span.start >= EDGE_MIN_S || spans.length < 2) return true;
@@ -1161,9 +1161,9 @@ function declaredSpans(tl: Timeline, steps: WorkoutStepInput[]): Span[] | null {
   return plausible(tl, trimmed) ? trimmed : null;
 }
 
-// ── Descrizioni ──────────────────────────────────────────────────────────────
+// ── Descriptions ─────────────────────────────────────────────────────────────
 
-/** Parola che distingue un tratto (forte, sprint, jog…), se l'etichetta ne ha una. */
+/** Word that distinguishes a segment (hard, sprint, jog…), if the label has one. */
 function labelWord(step: WorkoutStepInput): string | null {
   if (step.variant === "sprint") return "sprint";
   if (step.variant === "walk") return "camminata";
@@ -1173,13 +1173,13 @@ function labelWord(step: WorkoutStepInput): string | null {
   return word;
 }
 
-/** Descrizione compatta, es. "5 × 1 km" o "3 × (3' forte + 1' jog + 1' sprint)". */
+/** Compact description, e.g. "5 × 1 km" or "3 × (3' forte + 1' jog + 1' sprint)". */
 export function describeStructure(steps: WorkoutStepInput[]): string | null {
   const parts = groupWorkoutSteps(steps)
     .filter((block) => block.kind === "repeat" || (block.step.kind !== "warmup" && block.step.kind !== "cooldown"))
     .map((block) => {
       const items = (block.kind === "repeat" ? block.steps : [block.step])
-        // I recuperi generici non aggiungono nulla: "5 × 1 km", non "5 × (1 km + 2')".
+        // Generic recoveries add nothing: "5 × 1 km", not "5 × (1 km + 2')".
         .filter((step) => step.kind !== "recovery" || labelWord(step))
         .map((step) => [formatStepAmount(step), labelWord(step)].filter(Boolean).join(" ") || STEP_LABELS[step.kind].toLowerCase());
       const body = items.join(" + ");
@@ -1188,7 +1188,7 @@ export function describeStructure(steps: WorkoutStepInput[]): string | null {
   return parts.length ? parts.join(", ") : null;
 }
 
-/** Durata arrotondata in forma leggibile: 30", 3', 2'15". */
+/** Duration rounded to a readable form: 30", 3', 2'15". */
 function niceDuration(seconds: number): string {
   const step = seconds < 60 ? 5 : seconds < 300 ? 15 : 30;
   const value = Math.max(step, Math.round(seconds / step) * step);
@@ -1202,8 +1202,8 @@ function segmentWord(segment: IntervalSegment): string {
 }
 
 /**
- * Descrizione dei tratti misurati: cerca il blocco che si ripete (es. veloce,
- * jogging, sprint, camminata) e lo scrive con le durate tipiche:
+ * Description of the measured segments: finds the repeating block (e.g. fast,
+ * jogging, sprint, walking) and writes it with the typical durations:
  * "4 × (3' veloce + 30" jogging + 30" sprint + 2' camminata)".
  */
 export function describeSegments(segments: IntervalSegment[]): string {
@@ -1224,7 +1224,7 @@ export function describeSegments(segments: IntervalSegment[]): string {
   return [fast ? `${fast} ${fast === 1 ? "tratto veloce" : "tratti veloci"}` : null, sprints ? `${sprints} sprint` : null].filter(Boolean).join(" + ");
 }
 
-/** Etichette e obiettivi della struttura dichiarata sui lap, se combaciano. */
+/** Labels and targets of the declared structure on the laps, if they match. */
 function labelLaps(spans: Span[], steps: WorkoutStepInput[] | undefined): Span[] {
   if (!steps?.length) return spans;
   let offset: number | null = null;
@@ -1237,7 +1237,7 @@ function labelLaps(spans: Span[], steps: WorkoutStepInput[] | undefined): Span[]
   });
 }
 
-// ── Assemblaggio ─────────────────────────────────────────────────────────────
+// ── Assembly ─────────────────────────────────────────────────────────────────
 
 const EMPTY: IntervalAnalysis = { version: INTERVALS_VERSION, source: "none", description: null, segments: [], summary: null };
 
@@ -1250,7 +1250,7 @@ export function analyzeIntervals(input: AnalyzeInput): IntervalAnalysis {
     return finalize(segments, source, description ?? describeSegments(segments));
   };
 
-  // Lap che seguono la seduta dichiarata: la struttura più affidabile.
+  // Laps that follow the declared session: the most reliable structure.
   if (input.laps?.length) {
     for (const structure of structures) {
       const matched = matchLapsToSteps(input.laps, structure.steps, tl);
@@ -1279,28 +1279,28 @@ export function analyzeIntervals(input: AnalyzeInput): IntervalAnalysis {
   return verdict === "reps" ? { ...analysis, contradicts_plan: input.planned } : analysis;
 }
 
-// ── Il piano come riferimento ────────────────────────────────────────────────
+// ── The plan as a reference ──────────────────────────────────────────────────
 
 export type ContinuousType = "long" | "easy" | "recovery";
 
 export const isContinuous = (type: WorkoutType | null | undefined): type is ContinuousType =>
   type === "long" || type === "easy" || type === "recovery";
 
-/** Con una corsa continua nel piano servono almeno tre ripetute vere… */
+/** With a continuous run in the plan, at least three true repeats are needed… */
 const PLAN_MIN_REPS = 3;
-/** …di almeno 30 secondi ciascuna (come per il tipo di corsa, run-type)… */
+/** …of at least 30 seconds each (as for the run type, run-type)… */
 const PLAN_REP_MIN_S = 30;
-/** …che insieme fanno una parte vera della corsa (come AUTO_WORK_SHARE in body-trends). */
+/** …that together make up a real part of the run (as AUTO_WORK_SHARE in body-trends). */
 const PLAN_WORK_SHARE = 0.2;
-/** Oppure almeno tre allunghi: sprint corti, non picchi di pochi secondi del GPS. */
+/** Or at least three strides: short sprints, not GPS spikes of a few seconds. */
 const PLAN_STRIDE_MIN_S = 12;
 
 /**
- * Il piano diceva lungo, facile o recupero: il rilevamento automatico vale solo
- * se trova ripetute nette (tre tratti veloci da almeno 30", che insieme fanno
- * un quinto della corsa) o allunghi veri. Le variazioni di ritmo di una corsa continua
- * (discese, vento, rumore del GPS) non bastano. Gli allunghi in una corsa
- * facile non contraddicono il piano.
+ * The plan said long, easy or recovery: automatic detection counts only
+ * if it finds clear repeats (three fast segments of at least 30", which together make up
+ * a fifth of the run) or true strides. Pace variations in a continuous run
+ * (downhills, wind, GPS noise) are not enough. Strides in an easy
+ * run don't contradict the plan.
  */
 function againstPlan(analysis: IntervalAnalysis, seconds: number): "reps" | "strides" | "noise" {
   const work = analysis.segments.filter((s) => s.kind === "work");

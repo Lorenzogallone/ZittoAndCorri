@@ -1,12 +1,12 @@
 /**
- * Modelli testuali con quota gratuita positiva, ordinati per potenza stimata.
- * I limiti sono quelli mostrati da Google AI Studio per il progetto dell'utente
- * ad agosto 2026 e servono come indicazione: Google può modificarli.
+ * Text models with a positive free quota, sorted by estimated power.
+ * The limits are those shown by Google AI Studio for the user's project
+ * in August 2026 and serve as an indication: Google may change them.
  *
- * `price`: listino a pagamento in dollari per milione di token (input, output
- * compreso il ragionamento, input in cache), da fonti pubbliche di ottobre
- * 2026. Serve a stimare il costo di ogni risposta: con il piano gratuito di
- * Gemini non si paga nulla.
+ * `price`: paid price list in dollars per million tokens (input, output
+ * including reasoning, cached input), from public sources of October
+ * 2026. Used to estimate the cost of each response: with Gemini's free
+ * plan nothing is paid.
  */
 export const GEMINI_MODELS = [
   { id: "gemini-3.7-flash", label: "Gemini 3.7 Flash", rpm: 5, rpd: 20, price: { input: 0.75, output: 3.75, cached: 0.075 } },
@@ -21,7 +21,7 @@ export const GEMINI_MODELS = [
 
 export type GeminiModelId = (typeof GEMINI_MODELS)[number]["id"];
 
-/** Il miglior compromesso per usare quotidianamente il free tier. */
+/** The best compromise for daily use of the free tier. */
 export const DEFAULT_GEMINI_MODEL: GeminiModelId = "gemini-3.5-flash-lite";
 
 export function isGeminiModelId(value: unknown): value is GeminiModelId {

@@ -1,4 +1,4 @@
-// Strategia di gara a ritmo costante: passo e tempi di passaggio. Funzioni pure.
+// Even-pace race strategy: pace and split times. Pure functions.
 
 export interface RaceCheckpoint {
   label: string;

@@ -1,10 +1,10 @@
-// Funzione pura: split per km da gps_series. PLAN.md §7.
-// Se manca il GPS ritorna null — niente dati, niente numeri inventati.
+// Pure function: per-km splits from gps_series. PLAN.md §7.
+// If GPS is missing it returns null — no data, no invented numbers.
 
 import type { GpsPoint, HrPoint, Split } from "@/lib/types";
 import { withoutPauses } from "./pauses.ts";
 
-/** Distanza Haversine tra due punti GPS (metri). */
+/** Haversine distance between two GPS points (meters). */
 export function haversine(
   lat1: number,
   lon1: number,
@@ -22,17 +22,17 @@ export function haversine(
 }
 
 /**
- * Calcola gli split per km da una serie GPS (e opzionalmente HR).
- * Accumula i metri con Haversine; ogni 1000 m registra km, tempo (pause
- * escluse) e HR media.
- * Ritorna null se la serie è vuota o ha meno di 2 punti.
+ * Computes per-km splits from a GPS series (and optionally HR).
+ * Accumulates meters with Haversine; every 1000 m records km, time (pauses
+ * excluded) and average HR.
+ * Returns null if the series is empty or has fewer than 2 points.
  */
 export function computeSplits(
   gps: GpsPoint[],
   hr?: HrPoint[],
 ): Split[] | null {
   if (!gps || gps.length < 2) return null;
-  // Tempi sul tempo in movimento: una pausa dell'orologio non allunga il km.
+  // Times on moving time: a watch pause doesn't lengthen the km.
   const moving = withoutPauses({ gps, hr });
   const gps_series = moving.gps!;
   const hr_series = moving.hr ?? undefined;
@@ -44,7 +44,7 @@ export function computeSplits(
   let hrSum = 0;
   let hrCount = 0;
 
-  // Indice corrente in hr_series per il lookup
+  // Current index in hr_series for the lookup
   let hrIdx = 0;
 
   for (let i = 1; i < gps_series.length; i++) {
@@ -53,7 +53,7 @@ export function computeSplits(
     const seg = haversine(prev.lat, prev.lon, curr.lat, curr.lon);
     const remaining = 1000 - kmAccum;
 
-    // Avanza hr_series fino al tempo corrente
+    // Advance hr_series up to the current time
     if (hr_series) {
       while (hrIdx < hr_series.length && hr_series[hrIdx].t <= curr.t) {
         hrSum += hr_series[hrIdx].bpm;
@@ -63,7 +63,7 @@ export function computeSplits(
     }
 
     if (seg >= remaining) {
-      // Interpolazione lineare del tempo al confine del km
+      // Linear interpolation of the time at the km boundary
       const frac = remaining / seg;
       const tAtBoundary = prev.t + frac * (curr.t - prev.t);
 

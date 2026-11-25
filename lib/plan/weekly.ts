@@ -1,4 +1,4 @@
-// Volume settimanale di corsa: fatto contro previsto. Funzioni pure.
+// Weekly running volume: done vs planned. Pure functions.
 
 import { addDays, romeDay } from "../local-date.ts";
 import { plannedMeters } from "./planned-distance.ts";

@@ -1,15 +1,15 @@
-// Nuovo tentativo di una chiamata AI quando la risposta non è valida (JSON o
-// struttura non leggibile) o il provider ha un errore passeggero. Modulo puro:
-// lo usa lib/ai/llm.ts e si prova in tests/coach-reliability.test.ts.
+// Retry of an AI call when the response is invalid (unreadable JSON or
+// structure) or the provider has a transient error. Pure module:
+// used by lib/ai/llm.ts and tested in tests/coach-reliability.test.ts.
 
-/** Tentativi in tutto, compreso il primo: un solo nuovo tentativo. */
+/** Attempts in total, including the first: a single retry. */
 export const AI_MAX_ATTEMPTS = 2;
-/** Un nuovo tentativo parte solo se resta almeno questo tempo prima della scadenza. */
+/** A retry starts only if at least this much time remains before the deadline. */
 export const AI_MIN_RETRY_MS = 45_000;
 
-/** Risposta arrivata ma non utilizzabile: JSON rotto o struttura sbagliata. */
+/** Response arrived but unusable: broken JSON or wrong structure. */
 export class InvalidAiResponseError extends Error {
-  /** Token e costo della risposta scartata (si paga comunque). */
+  /** Tokens and cost of the discarded response (you pay anyway). */
   readonly usage?: unknown;
   constructor(message: string, usage?: unknown) {
     super(message);
@@ -25,18 +25,18 @@ const statusOf = (error: unknown): number | null => {
 
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error ?? ""));
 
-/** JSON non leggibile o oggetto che non passa la validazione (zod). */
+/** Unreadable JSON or object that fails validation (zod). */
 export function isInvalidResponse(error: unknown): boolean {
   if (error instanceof InvalidAiResponseError || error instanceof SyntaxError) return true;
   const name = (error as { name?: unknown } | null)?.name;
   if (name === "ZodError") return true;
-  // OpenRouter: 422 = risposta non in formato JSON (lib/ai/openrouter.ts).
+  // OpenRouter: 422 = response not in JSON format (lib/ai/openrouter.ts).
   return name === "OpenRouterError" && statusOf(error) === 422;
 }
 
 /**
- * Errore passeggero del provider: sovraccarico, 5xx, rete. Mai chiave, credito,
- * modello o quota (ritentare non serve) né tempo scaduto (non c'è margine).
+ * Transient provider error: overload, 5xx, network. Never key, credit,
+ * model or quota (retrying is pointless) nor timeout (no margin left).
  */
 export function isTransientAiError(error: unknown): boolean {
   const name = (error as { name?: unknown } | null)?.name;
@@ -56,20 +56,20 @@ export function shouldRetryAi(error: unknown): boolean {
 
 export interface RetryOptions {
   maxAttempts?: number;
-  /** Istante (ms) oltre cui non si riprova. */
+  /** Instant (ms) after which no retry is made. */
   deadlineAt?: number;
   minRetryMs?: number;
-  /** Altri tentativi già fatti dentro il client (es. OpenRouter riprova da sé i 5xx). */
+  /** Other attempts already made inside the client (e.g. OpenRouter retries 5xx by itself). */
   retryable?: (error: unknown) => boolean;
   now?: () => number;
   sleep?: (ms: number) => Promise<void>;
-  /** Chiamato dopo ogni tentativo fallito, anche l'ultimo. */
+  /** Called after each failed attempt, even the last. */
   onFailure?: (error: unknown, attempt: number) => void | Promise<void>;
 }
 
 /**
- * Esegue `run` fino a `maxAttempts` volte. Smette subito con un errore non
- * recuperabile o se manca il tempo per un tentativo vero.
+ * Runs `run` up to `maxAttempts` times. Stops immediately on a non-
+ * recoverable error or if there is no time left for a real attempt.
  */
 export async function withAiRetry<T>(run: (attempt: number) => Promise<T>, options: RetryOptions = {}): Promise<T> {
   const maxAttempts = Math.max(1, options.maxAttempts ?? AI_MAX_ATTEMPTS);

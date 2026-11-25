@@ -1,4 +1,4 @@
-// Prompt + responseSchema per i due task del Coach AI. PLAN.md §8.
+// Prompt + responseSchema for the two AI Coach tasks. PLAN.md §8.
 import { Type, type Schema } from "@google/genai";
 import { WORKOUT_TYPES } from "@/lib/types";
 import { z } from "zod";
@@ -7,16 +7,16 @@ import type { PromptParts } from "@/lib/ai/prompt-cache";
 import { DEFAULT_LOCALE, type Locale } from "../../i18n/config.ts";
 
 /**
- * Lingua delle risposte. Le istruzioni restano in italiano (sono tarate così),
- * l'inglese si ottiene con una regola esplicita che prevale su ogni "in italiano".
- * Vuota in italiano: nessun cambio rispetto a prima.
+ * Response language. The instructions stay in Italian (they are tuned that way),
+ * English is obtained with an explicit rule that overrides every "in italiano".
+ * Empty in Italian: no change from before.
  */
 export function languageRule(locale: Locale): string {
   if (locale === DEFAULT_LOCALE) return "";
   return "- LINGUA (prevale su ogni altra indicazione di lingua in questo prompt): l'atleta usa l'app in inglese. Scrivi in inglese naturale TUTTO il testo destinato a lui o salvato per lui: reply, summary, review, description, focus, label degli step, note, motivi, riassunti e ricordi, con la terminologia di corsa usata in inglese (easy run, tempo run, intervals, long run, recovery, pace, cadence). Nomi di campi, chiavi e valori enumerati dello schema non si traducono. Il contesto può contenere frasi in italiano (note, ricordi, etichette): capiscile e rispondi comunque in inglese.";
 }
 
-// ── Valutazione di una singola corsa ─────────────────────────────────────────
+// ── Evaluation of a single run ─────────────────────────────────────────
 
 export const evaluationSchema: Schema = {
   type: Type.OBJECT,
@@ -60,8 +60,8 @@ export const evaluationResponseSchemaZod = z.object({
     injury_risk: z.boolean().nullish(),
     easy_too_fast: z.boolean().nullish(),
     on_track: z.boolean().nullish(),
-    // Verdetto del coach sulla forma della corsa: decide se mostrare le ripetute
-    // riconosciute in automatico. Un valore strano non fa fallire la valutazione.
+    // Coach verdict on the run's shape: decides whether to show the automatically
+    // recognized repeats. An odd value does not make the evaluation fail.
     structured_session: z.boolean().nullish().catch(null),
   }).transform((flags) => {
     const cleaned: Record<string, boolean> = {};
@@ -73,13 +73,13 @@ export const evaluationResponseSchemaZod = z.object({
 });
 
 /**
- * Come leggere carico interno e stato di recupero. Il rapporto di carico è un
- * indicatore di tendenza, non una diagnosi: senza questa regola il coach
- * dichiarava "stanco" un atleta con sonno, HRV e FC a riposo ottimi.
+ * How to read internal load and recovery state. The load ratio is a
+ * trend indicator, not a diagnosis: without this rule the coach
+ * declared an athlete "tired" with excellent sleep, HRV and resting HR.
  */
 /**
- * Tolleranza sulle zone: un coach vero non fa un dramma per 2-3 bpm, ma si fa
- * valere quando lo sforamento è netto o ricorrente.
+ * Zone tolerance: a real coach makes no fuss over 2-3 bpm, but speaks up
+ * when the overshoot is clear or recurring.
  */
 const ZONE_TOLERANCE_RULE =
   "- Tolleranza sulle zone: se la FC media supera il limite della zona prevista di 1-3 bpm, o resta sopra solo per pochi minuti (meno di circa il 10% della seduta), è un dettaglio: segnalalo in mezza frase, senza flag easy_too_fast e senza cambiare il piano. Sii esigente, con flag e conseguenze sul piano, quando lo sforamento è netto (più di 3 bpm di media o buona parte del tempo nella zona sopra) o si ripete in più uscite di fila. Nella calibrazione ritmi conta too_hard, che applica già questa tolleranza (over_bpm = battiti oltre il limite).";
@@ -88,9 +88,9 @@ const LOAD_READING_RULE =
   "- Fatica e recupero: il carico interno (load7, baseline7, load_ratio, TSB, status) dice solo quanto lavoro hai fatto rispetto alle tue settimane abituali, NON se l'atleta è stanco. Lo stato di recupero lo dicono readiness (recupero Zepp, HRV, sonno, FC a riposo) e le sensazioni dichiarate dall'atleta, e hanno la precedenza. Se readiness è buona e l'atleta dice di stare bene, non definirlo affaticato e non togliere qualità o volume per il solo rapporto di carico: al massimo segnala che la settimana è stata più piena del solito. Il carico interno e il training_load dell'orologio hanno scale diverse: non confrontarli e non scegliere date o valori che confermano la tua tesi. Le zone FC sono quelle a riserva cardiaca dell'orologio Zepp (athlete.hr_zones): Z1 facile (easy, lunghi, recuperi), Z2 medio / passo maratona, Z3 soglia, Z4 ripetute, Z5 massimale. Una easy o un lungo con la FC media nella parte alta della Z1 è corretto, non un errore.";
 
 /**
- * Linee guida: regole di allenamento decise per questo atleta e questo periodo,
- * salvate come ricordi 'guideline'. Cambiano con l'obiettivo, quindi non stanno
- * nel codice: le scrive e le chiude il coach (o chi gestisce l'app) dalla chat.
+ * Guidelines: training rules decided for this athlete and this period,
+ * saved as 'guideline' memories. They change with the goal, so they are not
+ * in the code: the coach (or whoever runs the app) writes and closes them from the chat.
  */
 const GUIDELINE_RULE =
   "- Linee guida: i ricordi con category 'guideline' (in memories) sono le regole di allenamento decise per questo atleta nel periodo in corso (volume, progressione dei lunghi, sedute chiave, forza, recupero, avvicinamento gara). Valgono più della metodologia generica: se sono in conflitto segui la linea guida, e la metodologia resta la base per tutto ciò che non coprono. Applicale a piani e valutazioni e citale quando motivi una scelta. Fanno eccezione dolore, malattia e segnali di recupero scarso, che hanno sempre la precedenza.";
@@ -139,7 +139,7 @@ export function buildEvaluationPrompt(
   ].join("\n");
 }
 
-// ── Generazione piano 2 settimane + review ───────────────────────────────────
+// ── 2-week plan generation + review ───────────────────────────────────
 
 export const planSchema: Schema = {
   type: Type.OBJECT,
@@ -295,7 +295,7 @@ export function buildPlanPrompt(
     .join("\n");
 }
 
-// ── Conversazione coach + proposta non applicata ────────────────────────────
+// ── Coach conversation + unapplied proposal ────────────────────────────
 
 export const memoryCategories = [
   "availability", "vacation", "weather", "preference", "fatigue",
@@ -305,8 +305,8 @@ export const memoryCategories = [
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 /**
- * Numero intero tollerante: i modelli via OpenRouter non sono vincolati allo
- * schema come Gemini e scrivono 4.5 o "300". Fuori range diventa null.
+ * Tolerant integer: models via OpenRouter are not bound to the
+ * schema like Gemini and write 4.5 or "300". Out of range becomes null.
  */
 const looseInt = (min: number, max: number) =>
   z.preprocess(
@@ -317,10 +317,10 @@ const looseInt = (min: number, max: number) =>
     z.number().int().min(min).max(max).nullable(),
   ).catch(null);
 
-/** Testo tagliato alla lunghezza massima invece di far fallire tutta la risposta. */
+/** Text cut to the maximum length instead of failing the whole response. */
 const clipped = (max: number) => z.string().trim().min(1).transform((text) => text.slice(0, max));
 
-/** Lista in cui un elemento non valido si scarta, senza perdere il resto. */
+/** List in which an invalid element is discarded, without losing the rest. */
 const lenientArray = <T extends z.ZodTypeAny>(item: T) =>
   z.array(z.unknown()).catch([]).default([]).transform((items) =>
     items.flatMap((entry) => {
@@ -462,8 +462,8 @@ export const coachResponseSchema: Schema = {
 };
 
 /**
- * Prompt della chat in tre parti per la cache del provider (lib/ai/prompt-cache.ts):
- * istruzioni fisse, contesto stabile, poi data, conversazione e messaggio nuovo.
+ * Chat prompt in three parts for the provider cache (lib/ai/prompt-cache.ts):
+ * fixed instructions, stable context, then date, conversation and new message.
  */
 export function buildCoachPrompt(context: { stable: string; variable: string }, userMessage: string, locale: Locale = DEFAULT_LOCALE): PromptParts {
   const system = [

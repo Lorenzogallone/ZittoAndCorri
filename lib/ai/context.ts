@@ -1,5 +1,5 @@
-// Righe compatte di contesto per i prompt. Riusa SOLO funzioni deterministiche:
-// l'LLM legge questi numeri, non li produce.
+// Compact context lines for the prompts. Reuses ONLY deterministic functions:
+// the LLM reads these numbers, it does not produce them.
 import "server-only";
 import { zoneForHr } from "@/lib/metrics/zones";
 import { formatPace, formatDuration, formatDistance } from "@/lib/format";
@@ -13,7 +13,7 @@ function shortDate(iso: string): string {
   });
 }
 
-/** Riga di dettaglio compatta di una singola attività, per la valutazione. */
+/** Compact detail line of a single activity, for the evaluation. */
 export function activityDetailLine(
   a: {
     started_at: string;
@@ -56,7 +56,7 @@ export function activityDetailLine(
   if (a.elevation_gain_m) parts.push(`disl +${a.elevation_gain_m}m`);
   if (a.rpe) parts.push(`RPE ${a.rpe}/10`);
   let line = `${shortDate(a.started_at)} — ${parts.join(", ")}.`;
-  // Distribuzione del tempo per zona HR: più informativa della sola media.
+  // Time distribution by HR zone: more informative than the average alone.
   if (a.time_in_zone && Object.keys(a.time_in_zone).length > 0) {
     const zoneParts = (["z1", "z2", "z3", "z4", "z5"] as const)
       .filter((z) => (a.time_in_zone?.[z] ?? 0) >= 60)

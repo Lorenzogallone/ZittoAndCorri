@@ -1,5 +1,5 @@
-// Totali per periodo (settimana, mese, anno, sempre) con il confronto rispetto
-// allo stesso tratto del periodo precedente. Funzioni pure.
+// Totals per period (week, month, year, all time) with the comparison against
+// the same stretch of the previous period. Pure functions.
 
 import { intlLocale, type Locale, type Translator } from "../../i18n/config.ts";
 import { addDays, mondayOf, romeDay } from "../local-date.ts";
@@ -18,18 +18,18 @@ export interface TotalsActivity {
 export interface PeriodTotals {
   key: TotalsPeriodKey;
   label: string;
-  /** Descrizione del periodo, es. "ottobre 2026". */
+  /** Description of the period, e.g. "ottobre 2026". */
   caption: string;
   running_m: number;
   runs: number;
   seconds: number;
   elevation_m: number;
   longest_m: number;
-  /** Camminate ed escursioni nello stesso periodo. */
+  /** Walks and hikes in the same period. */
   walking_m: number;
   /**
-   * Km di corsa nello stesso tratto del periodo precedente (null se non ha senso);
-   * previous_label segue "rispetto": "alla settimana scorsa", "allo stesso punto di settembre"…
+   * Running km in the same stretch of the previous period (null if it makes no sense);
+   * previous_label follows "rispetto": "alla settimana scorsa", "allo stesso punto di settembre"…
    */
   previous_m: number | null;
   previous_label: string | null;
@@ -58,7 +58,7 @@ function sum(activities: TotalsActivity[], range: Range) {
   };
 }
 
-/** Stessa data spostata indietro di `months` mesi, senza sforare la fine del mese. */
+/** Same date shifted back by `months` months, without overshooting the end of the month. */
 function monthsBack(iso: string, months: number): string {
   const [y, m, d] = iso.split("-").map(Number);
   const target = new Date(Date.UTC(y, m - 1 - months, 1));
@@ -70,7 +70,7 @@ function monthsBack(iso: string, months: number): string {
 const monthName = (iso: string, locale: Locale) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { month: "long", timeZone: "UTC" });
 
-/** `t` è legato al namespace "metrics"; `locale` serve ai nomi dei mesi. */
+/** `t` is bound to the "metrics" namespace; `locale` is needed for month names. */
 export function periodTotals(activities: TotalsActivity[], today: string, t: Translator, locale: Locale): PeriodTotals[] {
   const monday = mondayOf(today);
   const monthStart = `${today.slice(0, 7)}-01`;

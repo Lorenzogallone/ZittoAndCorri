@@ -1,6 +1,6 @@
-// Tratti della seduta sull'asse del tempo, per evidenziarli nel grafico (che è
-// sul tempo in movimento) e sulla mappa (punti GPS sull'orologio reale).
-// Funzioni pure.
+// Session segments on the time axis, to highlight them on the chart (which is
+// on moving time) and on the map (GPS points on the real clock).
+// Pure functions.
 
 import type { IntervalSegment } from "./intervals.ts";
 
@@ -16,9 +16,9 @@ export interface SegmentSpan {
 }
 
 /**
- * Inizio e fine di ogni tratto: la fine è l'inizio del tratto dopo (così le
- * pause dentro il tratto restano sue); l'ultimo dura il suo tempo più le pause.
- * `clock` porta un istante reale sul tempo in movimento.
+ * Start and end of each segment: the end is the start of the next segment (so
+ * pauses inside the segment stay its own); the last lasts its time plus the pauses.
+ * `clock` brings a real instant onto moving time.
  */
 export function segmentSpans(
   segments: Array<Pick<IntervalSegment, "kind" | "variant" | "label" | "start_s" | "duration_s" | "paused_s">>,

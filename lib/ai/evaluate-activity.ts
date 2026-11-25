@@ -35,7 +35,7 @@ type EvalActivity = Pick<Activity,
 
 type SameDayActivity = Pick<Activity, "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" | "moving_time_s" | "avg_pace_s_km" | "avg_hr">;
 
-/** Seduta pianificata per il prompt, con il suo posto nella giornata. */
+/** Planned session for the prompt, with its place in the day. */
 function planForPrompt(workout: PlannedWorkout, matchedId: string | null) {
   return {
     date: workout.date,
@@ -49,7 +49,7 @@ function planForPrompt(workout: PlannedWorkout, matchedId: string | null) {
     order: workout.day_order ?? 1,
     part: workout.day_part ?? null,
     chained: workout.chained === true,
-    /** Seduta abbinata a questa attività (orario, distanza, durata, ordine). */
+    /** Session matched to this activity (time, distance, duration, order). */
     matched: workout.id === matchedId,
   };
 }
@@ -58,8 +58,8 @@ const romeTime = (iso: string) =>
   new Date(iso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
 
 /**
- * Altre attività dello stesso giorno, con la distanza in minuti da questa:
- * un riscaldamento registrato a parte finisce pochi minuti prima della seduta.
+ * Other activities on the same day, with the distance in minutes from this one:
+ * a separately recorded warm-up ends a few minutes before the session.
  */
 function sameDayLines(activity: Pick<Activity, "started_at" | "duration_s">, others: SameDayActivity[]): string | null {
   if (!others.length) return null;
@@ -98,8 +98,8 @@ export async function enqueueActivityEvaluation(
   if (!ai) return null;
   const admin = createAdminClient();
   const { data: pendingJobs } = await admin.from("ai_jobs").select("id, status, created_at").eq("user_id", userId).eq("kind", "evaluation").eq("ref_id", activityId).eq("status", "pending").order("created_at", { ascending: false }).returns<Array<{ id: string; status: string; created_at: string | null }>>();
-  // Un job pendente da troppo (funzione scaduta, deploy a metà) non blocca più
-  // la nuova analisi: si chiude come errore e se ne crea uno nuovo.
+  // A job pending for too long (function timed out, half-finished deploy) no longer blocks
+  // the new analysis: it is closed as an error and a new one is created.
   const stale = (pendingJobs ?? []).filter((job) => isStaleAiJob(job));
   if (stale.length) {
     await admin.from("ai_jobs").update({ status: "error", error: STALE_AI_JOB_ERROR, updated_at: new Date().toISOString() }).in("id", stale.map((job) => job.id)).eq("status", "pending");
@@ -113,9 +113,9 @@ export async function enqueueActivityEvaluation(
 }
 
 /**
- * Analisi dopo un import: una corsa arricchita già analizzata si rianalizza
- * solo se i dati sono cambiati davvero, e senza una seconda notifica.
- * Non lancia mai: gli import non devono fallire dopo che la corsa è salvata.
+ * Analysis after an import: an already analyzed enriched run is re-analyzed
+ * only if the data really changed, and without a second notification.
+ * Never throws: imports must not fail after the run is saved.
  */
 export async function enqueueEvaluationAfterIngest(
   userId: string,
@@ -145,8 +145,8 @@ export async function enqueueEvaluationAfterIngest(
 
 
 /**
- * Tratti della corsa per la valutazione. Una struttura appena letta dalla nota
- * fa ricalcolare tutto; altrimenti si usa l'analisi salvata se è aggiornata.
+ * Run segments for the evaluation. A structure just read from the note
+ * forces a full recompute; otherwise the saved analysis is used if up to date.
  */
 async function intervalsForEvaluation(
   admin: SupabaseClient,
@@ -191,7 +191,7 @@ async function runActivityEvaluation(
 
     const activityDay = romeDay(activity.started_at);
     const [nearbyPlanResult, existingEvaluationResult, sameDayResult] = await Promise.all([
-      // "*": ordine, momento e legame delle sedute esistono solo dalla migrazione 0029.
+      // "*": order, time of day and link of the sessions exist only since migration 0029.
       admin
         .from("planned_workouts")
         .select("*")
@@ -220,7 +220,7 @@ async function runActivityEvaluation(
         .returns<SameDayActivity[]>(),
     ]);
     const others = (sameDayResult.data ?? []).filter((other) => romeDay(other.started_at) === activityDay);
-    // La seduta che somiglia di più a questa corsa nel suo giorno o, se spostata, fino a due giorni prima o dopo.
+    // The session most similar to this run on its day or, if moved, within two days before or after.
     const matched = await plannedForActivity(admin, userId, activity);
     const nearbyPlan = nearbyPlanResult.data
       ? sortByDayOrder(nearbyPlanResult.data).map((workout) => planForPrompt(workout, matched?.id ?? null))
@@ -231,8 +231,8 @@ async function runActivityEvaluation(
     if (nearbyPlanError ?? existingEvaluationError) {
       throw nearbyPlanError ?? existingEvaluationError;
     }
-    // Struttura scritta nella nota (es. "3 × (3' forte + 1' jog + 1' sprint)"):
-    // la legge Gemini, poi i tratti si misurano sul file. Mai bloccante.
+    // Structure written in the note (e.g. "3 × (3' hard + 1' jog + 1' sprint)"):
+    // Gemini reads it, then the segments are measured on the file. Never blocking.
     let declared: DeclaredIntervals | undefined;
     let structureUsage: AiUsage | null = null;
     if (activity.sport === "running" && mayDescribeStructure(activity.notes)) {
@@ -274,7 +274,7 @@ async function runActivityEvaluation(
       "evaluation",
     );
     const result: EvaluationResult = evaluationResponseSchemaZod.parse(rawResult);
-    // Lettura della nota + valutazione: il costo mostrato è quello dell'analisi intera.
+    // Note reading + evaluation: the cost shown is that of the whole analysis.
     const usage = sumUsage([structureUsage, evaluationUsage]);
 
     const evaluationPayload = {
@@ -287,13 +287,13 @@ async function runActivityEvaluation(
       ? admin.from("evaluations").update(payload).eq("id", existingEvaluation.id)
       : admin.from("evaluations").insert({ user_id: userId, activity_id: activityId, ...payload });
     let { error: evaluationError } = await saveEvaluation({ ...evaluationPayload, ai_usage: usage });
-    // Senza la migrazione 0024 il costo resta solo sul messaggio della chat.
+    // Without migration 0024 the cost stays only on the chat message.
     if (isMissingColumn(evaluationError)) ({ error: evaluationError } = await saveEvaluation(evaluationPayload));
     if (evaluationError) throw evaluationError;
 
-    // Il commento libero è solo materiale di ingresso: una volta trasformato
-    // con successo in punti strutturati non deve restare visibile né essere
-    // ripetuto nelle valutazioni successive.
+    // The free comment is only input material: once it has been turned
+    // into structured points it must not stay visible nor be
+    // repeated in later evaluations.
     if (activity.notes && result.details.length > 0) {
       const { error: clearNotesError } = await admin
         .from("activities")
@@ -328,8 +328,8 @@ async function runActivityEvaluation(
     const { data: message, error: messageError } = await messageQuery;
     if (messageError || !message) throw messageError ?? new Error("Feedback chat non salvato");
     await admin.from("ai_jobs").update({ status: "done", output_message_id: message.id, updated_at: new Date().toISOString() }).eq("id", jobId);
-    // La notifica è un extra: qualunque problema non deve far fallire il job.
-    // Una rianalisi dopo un arricchimento non manda una seconda push.
+    // The notification is an extra: any problem must not make the job fail.
+    // A re-analysis after an enrichment does not send a second push.
     if (notify) {
       try {
         await sendPushToUser(userId, {
@@ -343,7 +343,7 @@ async function runActivityEvaluation(
     }
   } catch (error) {
     console.error("runActivityEvaluation:", error);
-    // Va nel database (ai_jobs.error): senza lingua dell'utente nel cron, resta italiano.
+    // Goes into the database (ai_jobs.error): without the user's language in the cron, it stays Italian.
     await admin.from("ai_jobs").update({ status: "error", error: aiErrorMessage(error, await staticTranslator("it", "status")), updated_at: new Date().toISOString() }).eq("id", jobId);
   }
 }

@@ -1,10 +1,10 @@
-// Settimane di recupero dopo una gara: poche uscite brevi e facili, che
-// crescono gradualmente. Funzioni pure.
+// Recovery weeks after a race: few short, easy outings that
+// grow gradually. Pure functions.
 
 import type { ProposedWorkout } from "@/lib/types";
 import { addDays } from "../local-date.ts";
 
-/** [giorni dopo la gara, minuti] */
+/** [days after the race, minutes] */
 function template(distance: number): Array<[number, number]> {
   if (distance >= 42_000) return [[4, 20], [6, 25], [8, 30], [10, 35], [12, 40]];
   if (distance >= 21_000) return [[3, 20], [5, 30], [7, 35], [9, 40]];

@@ -1,5 +1,5 @@
-// Distanza prevista di una seduta: esplicita, da durata e passo, oppure stimata
-// dalle fasi guidate. Funzione pura.
+// Planned distance of a session: explicit, from duration and pace, or estimated
+// from the guided phases. Pure function.
 
 import type { WorkoutStepInput } from "@/lib/types";
 import { estimateWorkout } from "../workout-estimate.ts";

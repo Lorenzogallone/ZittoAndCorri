@@ -1,20 +1,20 @@
-// Tipo di una corsa importata (che arriva "unclassified"): dalla seduta del
-// piano abbinata, se i dati la confermano, altrimenti dai tratti riconosciuti,
-// dalla distanza e dalla durata. Funzioni pure.
+// Type of an imported run (which arrives "unclassified"): from the matched plan
+// session, if the data confirms it, otherwise from the recognized segments,
+// distance and duration. Pure functions.
 
 import { isQualityRun, type RunIntervalsInput } from "./body-trends.ts";
 import type { WorkoutType } from "../types.ts";
 
-/** Da qui in su (o oltre LONG_MIN) è un lungo, anche senza piano. */
+/** From here up (or beyond LONG_MIN) it is a long run, even without a plan. */
 const LONG_M = 10_500;
 const LONG_S = 65 * 60;
-/** Ripetute: almeno 3 tratti veloci, con durata tipica sotto i 6 minuti. */
+/** Intervals: at least 3 fast segments, with typical duration under 6 minutes. */
 const INTERVAL_MIN_REPS = 3;
 const INTERVAL_MAX_S = 6 * 60;
 
 export interface RunTypeInput {
   intervals: RunIntervalsInput | null | undefined;
-  /** Tipo della seduta del piano abbinata, se c'è. */
+  /** Type of the matched plan session, if any. */
   planned: WorkoutType | null | undefined;
   distance_m: number | null;
   moving_time_s: number | null;
@@ -27,11 +27,11 @@ function median(values: number[]): number {
 }
 
 /**
- * Seduta di qualità: il tipo del piano se è di qualità (ripetute, soglia,
- * gara), altrimenti ripetute o soglia dalla forma dei tratti. Corsa facile:
- * lungo se lo dice il piano o se è lunga, recupero se lo dice il piano,
- * altrimenti facile. Se il piano chiedeva qualità ma la corsa è stata facile,
- * vincono i dati.
+ * Quality session: the plan type if it is quality (intervals, threshold,
+ * race), otherwise intervals or threshold from the shape of the segments. Easy run:
+ * long if the plan says so or if it is long, recovery if the plan says so,
+ * otherwise easy. If the plan asked for quality but the run was easy,
+ * the data wins.
  */
 export function classifyRun(run: RunTypeInput): WorkoutType {
   const seconds = run.moving_time_s ?? run.duration_s ?? 0;

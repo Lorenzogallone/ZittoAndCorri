@@ -1,7 +1,7 @@
-// Calendario compatto per il coach: giorno per giorno sedute previste, corse
-// fatte e se il giorno si può ancora modificare. La settimana è etichettata
-// rispetto a oggi, così "la settimana prossima" vuol dire la stessa cosa per
-// l'atleta e per il modello. Funzioni pure.
+// Compact calendar for the coach: day by day planned sessions, runs
+// done and whether the day can still be changed. The week is labeled
+// relative to today, so "next week" means the same thing for
+// the athlete and for the model. Pure functions.
 
 import type { DayPart, WorkoutStepInput, WorkoutType } from "@/lib/types";
 import { addDays, mondayOf } from "../local-date.ts";
@@ -14,15 +14,15 @@ export interface CalendarDay {
   date: string;
   weekday: string;
   week: string;
-  /** Già corso o con seduta completata: le sedute esistenti non si toccano. */
+  /** Already run or with a completed session: existing sessions are not touched. */
   locked: boolean;
-  /** Già corso ma da oggi in poi: si possono aggiungere sedute (es. la seconda della giornata). */
+  /** Already run but from today onwards: sessions can be added (e.g. the second of the day). */
   add_only: boolean;
-  /** Giorno passato: una seduta rimasta qui non è stata fatta; si può solo togliere (remove_dates), non aggiungere. */
+  /** Past day: a session left here was not done; it can only be removed (remove_dates), not added. */
   past: boolean;
   /**
-   * Sedute nell'ordine della giornata. part: mattina/pomeriggio/sera; chained:
-   * si fa subito dopo la precedente, come un'unica uscita divisa in più allenamenti.
+   * Sessions in day order. part: morning/afternoon/evening; chained:
+   * done right after the previous one, as a single outing split into several workouts.
    */
   planned: Array<{ type: WorkoutType; status: string; what: string; order: number; part: DayPart | null; chained: boolean }>;
   done: Array<{ sport: string; km: number | null; minutes: number }>;
@@ -50,7 +50,7 @@ export function planCalendar(input: {
   from: string;
   to: string;
   workouts: Array<{ date: string; type: WorkoutType; status: string; target_distance_m: number | null; target_duration_s: number | null; workout_steps?: WorkoutStepInput[] | null; day_order?: number | null; day_part?: DayPart | null; chained?: boolean | null }>;
-  /** Attività con giorno già in Europe/Rome. */
+  /** Activities with the day already in Europe/Rome. */
   activities: Array<{ day: string; sport: string; distance_m: number; seconds: number }>;
 }): CalendarDay[] {
   const { today, from, to } = input;

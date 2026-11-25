@@ -1,6 +1,6 @@
-// Punto unico per l'output strutturato del coach: Gemini o OpenRouter secondo
-// il compito (lib/ai/credentials.ts → getAiConfig). Ogni chiamata restituisce
-// token e costo e finisce nel totale del mese (ai_usage_events, migrazione 0024).
+// Single entry point for the coach's structured output: Gemini or OpenRouter depending on
+// the task (lib/ai/credentials.ts → getAiConfig). Every call returns
+// tokens and cost and ends up in the month total (ai_usage_events, migration 0024).
 import "server-only";
 
 import type { Schema } from "@google/genai";
@@ -13,27 +13,27 @@ import type { Prompt } from "@/lib/ai/prompt-cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Translator } from "@/i18n/config";
 
-/** A cosa serve la chiamata, per il dettaglio dei costi. */
+/** What the call is for, for the cost breakdown. */
 export type AiPurpose = "coach" | "evaluation" | "interval_structure" | "weekly_recap";
 
 export interface AiResult<T> {
   data: T;
-  /** Somma di tutti i tentativi, compresi quelli scartati. */
+  /** Sum of all attempts, including the discarded ones. */
   usage: AiUsage;
   attempts?: number;
 }
 
-/** Come i client (lib/ai/gemini.ts, lib/ai/openrouter.ts): 3 minuti in tutto. */
+/** Like the clients (lib/ai/gemini.ts, lib/ai/openrouter.ts): 3 minutes in total. */
 const DEFAULT_DEADLINE_MS = 180_000;
 
 export interface GenerateOptions<T> {
-  /** Valida e trasforma la risposta (es. zod): se lancia, la risposta non è valida e si riprova. */
+  /** Validates and transforms the response (e.g. zod): if it throws, the response is invalid and it retries. */
   parse?: (raw: unknown) => T;
-  /** Tentativi in tutto (default 2: un nuovo tentativo). */
+  /** Attempts in total (default 2: one retry). */
   maxAttempts?: number;
 }
 
-/** Token e costo già spesi in un tentativo fallito, se il provider li ha restituiti. */
+/** Tokens and cost already spent in a failed attempt, if the provider returned them. */
 function failedUsage(error: unknown): AiUsage | null {
   const usage = (error as { usage?: unknown } | null)?.usage;
   return usage && typeof usage === "object" && "provider" in usage ? (usage as AiUsage) : null;
@@ -44,11 +44,11 @@ export async function generateAi<T>(
   schema: Schema,
   config: AiConfig,
   purpose: AiPurpose,
-  /** Istante (ms) entro cui la risposta deve arrivare; default 3 minuti da ora. */
+  /** Instant (ms) by which the response must arrive; default 3 minutes from now. */
   deadlineAt?: number,
   options: GenerateOptions<T> = {},
 ): Promise<AiResult<T>> {
-  // Una sola scadenza per tutti i tentativi: insieme restano sotto il maxDuration della funzione.
+  // A single deadline for all attempts: together they stay under the function's maxDuration.
   deadlineAt ??= Date.now() + DEFAULT_DEADLINE_MS;
   const spent: AiUsage[] = [];
   const result = await withAiRetry(async () => {
@@ -69,7 +69,7 @@ export async function generateAi<T>(
   }, {
     maxAttempts: options.maxAttempts,
     deadlineAt,
-    // OpenRouter riprova già da sé errori di rete, 5xx e 429: qui solo le risposte non valide.
+    // OpenRouter already retries network errors, 5xx and 429 by itself: here only invalid responses.
     retryable: config.provider === "openrouter" ? isInvalidResponse : shouldRetryAi,
     onFailure: async (error, attempt) => {
       const usage = failedUsage(error);
@@ -85,7 +85,7 @@ export async function generateAi<T>(
   };
 }
 
-/** Chiamata fallita senza dati d'uso dal provider (errore HTTP, rete): nessun addebito noto. */
+/** Call failed without usage data from the provider (HTTP error, network): no known charge. */
 function emptyUsage(config: AiConfig): AiUsage {
   return {
     provider: config.provider,
@@ -101,8 +101,8 @@ const MISSING_TABLE = new Set(["42P01", "PGRST205"]);
 const MISSING_COLUMN = new Set(["42703", "PGRST204"]);
 
 /**
- * Mai bloccante: senza la migrazione 0024 il costo resta solo sul messaggio;
- * senza la 0030 si salva senza `failed` e `cache_write_tokens`.
+ * Never blocking: without migration 0024 the cost stays only on the message;
+ * without 0030 it is saved without `failed` and `cache_write_tokens`.
  */
 async function recordAiUsage(config: AiConfig, purpose: AiPurpose, usage: AiUsage, failed: boolean) {
   try {
@@ -128,7 +128,7 @@ async function recordAiUsage(config: AiConfig, purpose: AiPurpose, usage: AiUsag
   }
 }
 
-/** Chiave del messaggio d'errore per l'utente (namespace "status", ai.<chiave>), con il provider giusto. */
+/** User error message key (namespace "status", ai.<key>), with the right provider. */
 export function aiErrorKey(error: unknown): string {
   if (error instanceof OpenRouterError) {
     if (error.status === 401 || error.status === 403) return "openrouterInvalidKey";
@@ -143,7 +143,7 @@ export function aiErrorKey(error: unknown): string {
   return geminiErrorKey(error);
 }
 
-/** Messaggio d'errore per l'utente. `t` è legato al namespace "status". */
+/** User error message. `t` is bound to the "status" namespace. */
 export function aiErrorMessage(error: unknown, t: Translator): string {
   return t(`ai.${aiErrorKey(error)}`);
 }

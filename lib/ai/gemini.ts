@@ -1,6 +1,6 @@
-// Client Gemini server-only + helper output strutturato. PLAN.md §8.
-// L'LLM produce solo testo qualitativo / struttura: i numeri di verità restano
-// in lib/metrics (principio §2.1). La chiave non tocca mai il client.
+// Server-only Gemini client + structured output helper. PLAN.md §8.
+// The LLM produces only qualitative text / structure: the ground-truth numbers stay
+// in lib/metrics (principle §2.1). The key never touches the client.
 import "server-only";
 import { GoogleGenAI, type GenerateContentResponseUsageMetadata, type Schema } from "@google/genai";
 import { DEFAULT_GEMINI_MODEL, geminiPrice } from "@/lib/ai/models";
@@ -12,14 +12,14 @@ export const PRIMARY_MODEL = DEFAULT_GEMINI_MODEL;
 const FALLBACK_MODEL = "gemini-2.5-flash-lite";
 const MAX_RETRIES = 3;
 
-// Budget complessivo della chiamata AI. DEVE restare sotto il `maxDuration`
-// della route che invoca la server action (vedi `export const maxDuration` in
-// app/page.tsx, app/activities/[id]/page.tsx e nelle route di import): se la funzione superasse
-// quel limite, la piattaforma la killa e la POST della server action torna una
-// risposta non valida → Next forza un reload completo, che in PWA standalone si
-// vede come un "crash" che riporta allo splash iniziale. Con questo deadline la
-// chiamata fallisce in modo pulito (stato d'errore mostrato in UI) e la PWA non
-// si ricarica mai. */
+// Overall budget of the AI call. It MUST stay under the `maxDuration`
+// of the route that invokes the server action (see `export const maxDuration` in
+// app/page.tsx, app/activities/[id]/page.tsx and in the import routes): if the function exceeded
+// that limit, the platform kills it and the server action's POST returns an
+// invalid response → Next forces a full reload, which in a standalone PWA
+// looks like a "crash" that returns to the initial splash. With this deadline the
+// call fails cleanly (error state shown in the UI) and the PWA never
+// reloads. */
 const DEADLINE_MS = 180_000;
 
 class AiTimeoutError extends Error {
@@ -30,11 +30,11 @@ class AiTimeoutError extends Error {
 }
 
 /**
- * Chiave del messaggio utente (namespace "status", ai.<chiave>) per un errore
- * della pipeline AI. Distingue il timeout interno (deadline superato) dal vero
- * rate-limit Gemini: prima mostravamo "controlla la quota Gemini" per qualsiasi
- * errore, confondendo l'utente quando la quota era in realtà a posto e il
- * problema era solo lentezza.
+ * User message key (namespace "status", ai.<key>) for an error
+ * of the AI pipeline. Distinguishes the internal timeout (deadline exceeded) from the real
+ * Gemini rate limit: before, we showed "check the Gemini quota" for any
+ * error, confusing the user when the quota was actually fine and the
+ * problem was just slowness.
  */
 export function geminiErrorKey(err: unknown): "geminiTimeout" | "geminiQuota" | "failed" {
   if (err instanceof AiTimeoutError) return "geminiTimeout";
@@ -47,12 +47,12 @@ function getClient(apiKey: string): GoogleGenAI {
   return new GoogleGenAI({ apiKey });
 }
 
-/** Verifica la credenziale senza generare contenuto. */
+/** Checks the credential without generating content. */
 export async function verifyGeminiApiKey(apiKey: string, model = PRIMARY_MODEL): Promise<void> {
   await getClient(apiKey).models.get({ model });
 }
 
-/** True se l'errore è un rate-limit del free tier (per minuto/giorno). */
+/** True if the error is a free-tier rate limit (per minute/day). */
 function isRateLimit(err: unknown): boolean {
   const status = (err as { status?: number } | null)?.status;
   if (status === 429) return true;
@@ -60,7 +60,7 @@ function isRateLimit(err: unknown): boolean {
   return /\b429\b|RESOURCE_EXHAUSTED|rate.?limit/i.test(msg);
 }
 
-/** Quota del progetto/free tier esaurita: ritentare subito spreca chiamate. */
+/** Project/free-tier quota exhausted: retrying right away wastes calls. */
 function isQuotaExhausted(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   return /RESOURCE_EXHAUSTED|quota|free.?tier|requests.?per.?day/i.test(msg);
@@ -87,19 +87,19 @@ async function callModel(
   return { text, usage: res.usageMetadata };
 }
 
-/** JSON della risposta con token e costo stimato da listino. */
+/** Response JSON with tokens and cost estimated from the price list. */
 function result<T>(model: string, reply: { text: string; usage: GenerateContentResponseUsageMetadata | undefined }) {
   const usage = geminiUsage(model, reply.usage, geminiPrice(model));
   try {
     return { data: JSON.parse(reply.text) as T, usage };
   } catch {
-    // Risposta pagata ma illeggibile: lib/ai/llm.ts la riprova e ne registra il costo.
+    // Paid but unreadable response: lib/ai/llm.ts retries it and records its cost.
     throw new InvalidAiResponseError("Risposta AI non in formato JSON", usage);
   }
 }
 
-/** Corre `p` contro un deadline assoluto: se scade, rigetta con AiTimeoutError
- *  (la fetch sottostante può continuare, ma la server action è già tornata). */
+/** Races `p` against an absolute deadline: if it expires, rejects with AiTimeoutError
+ *  (the underlying fetch may continue, but the server action has already returned). */
 function withDeadline<T>(p: Promise<T>, deadlineAt: number): Promise<T> {
   const remaining = deadlineAt - Date.now();
   if (remaining <= 0) return Promise.reject(new AiTimeoutError());
@@ -119,17 +119,17 @@ function withDeadline<T>(p: Promise<T>, deadlineAt: number): Promise<T> {
 }
 
 /**
- * Genera un oggetto strutturato `T` validato dal `responseSchema` nativo di
- * Gemini, con i token usati e il costo stimato. Retry con backoff esponenziale sui 429; come ultima spiaggia ripiega
- * sul modello lite. Gli errori non-quota vengono rilanciati subito. L'intera
- * operazione è limitata da DEADLINE_MS: oltre quel tempo torna AiTimeoutError
- * invece di rischiare il kill della funzione (vedi nota su DEADLINE_MS).
+ * Generates a structured object `T` validated by Gemini's native `responseSchema`,
+ * with the tokens used and the estimated cost. Retry with exponential backoff on 429; as a last resort falls back
+ * to the lite model. Non-quota errors are rethrown immediately. The whole
+ * operation is bounded by DEADLINE_MS: past that time it returns AiTimeoutError
+ * instead of risking the function being killed (see the note on DEADLINE_MS).
  */
 export async function generateStructured<T>(
-  /** Con le parti, il prefisso fisso va per primo: Gemini lo mette in cache da solo. */
+  /** With parts, the fixed prefix goes first: Gemini caches it on its own. */
   input: Prompt,
   schema: Schema,
-  opts: { apiKey: string; model?: string; /** Istante (ms) entro cui finire; default fra 3 minuti. */ deadlineAt?: number },
+  opts: { apiKey: string; model?: string; /** Instant (ms) by which to finish; default 3 minutes from now. */ deadlineAt?: number },
 ): Promise<{ data: T; usage: AiUsage }> {
   const prompt = promptText(input);
   const model = opts?.model ?? PRIMARY_MODEL;
@@ -144,21 +144,21 @@ export async function generateStructured<T>(
       lastErr = err;
       if (err instanceof AiTimeoutError) throw err;
       if (!isRateLimit(err)) throw err;
-      // Una quota esaurita non può recuperare con retry a distanza di pochi
-      // secondi né passando al modello lite: termina il job al primo errore.
+      // An exhausted quota cannot recover with a retry a few seconds apart
+      // nor by switching to the lite model: end the job at the first error.
       if (isQuotaExhausted(err)) throw err;
-      // Non dormire oltre il deadline.
+      // Do not sleep past the deadline.
       const backoff = 500 * 2 ** attempt; // 0.5s, 1s, 2s
       if (Date.now() + backoff >= deadlineAt) break;
       await sleep(backoff);
     }
   }
 
-  // Se l'utente ha scelto esplicitamente un modello, rispetta la scelta anche
-  // in errore: potrà passare a un endpoint con quota diversa dalle impostazioni.
+  // If the user explicitly chose a model, respect the choice even
+  // on error: they can switch to an endpoint with a different quota from settings.
   if (opts.model) throw lastErr ?? new Error("Richiesta AI non riuscita");
 
-  // Fallback storico solo per chiamate che non specificano alcun modello.
+  // Historical fallback only for calls that do not specify any model.
   try {
     return result<T>(FALLBACK_MODEL, await withDeadline(callModel(opts.apiKey, FALLBACK_MODEL, prompt, schema), deadlineAt));
   } catch (err) {

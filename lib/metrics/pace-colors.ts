@@ -1,9 +1,9 @@
-// Colori del percorso in base alla velocità (verde = lento, giallo, rosso =
-// veloce), relativi alla corsa stessa. Funzioni pure.
+// Route colours based on speed (green = slow, yellow, red =
+// fast), relative to the run itself. Pure functions.
 
 import { cumulativeDistance, type TrackPoint } from "./geo.ts";
 
-// Colori chiari e lontani tra loro: si leggono anche sulla mappa scura.
+// Light, well-separated colours: they read well on the dark map too.
 const SLOW: [number, number, number] = [74, 222, 128]; // green-400
 const MID: [number, number, number] = [250, 204, 21]; // yellow-400
 const FAST: [number, number, number] = [239, 68, 68]; // red-500
@@ -24,14 +24,14 @@ function percentile(sorted: number[], p: number): number {
   return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * p)))];
 }
 
-/** Stop [progresso 0-1, colore] per un gradiente lungo il percorso; null se la traccia non basta. */
+/** Stops [progress 0-1, colour] for a gradient along the route; null if the track isn't enough. */
 export function paceGradientStops(points: TrackPoint[], stops = 40, windowS = 20): Array<[number, string]> | null {
   if (points.length < 10) return null;
   const cum = cumulativeDistance(points);
   const total = cum[cum.length - 1];
   if (total < 200) return null;
 
-  // Velocità media su una finestra di ±windowS/2 secondi attorno a ogni punto.
+  // Average speed over a window of ±windowS/2 seconds around each point.
   const speeds = points.map((point, index) => {
     let from = index;
     let to = index;
@@ -56,7 +56,7 @@ export function paceGradientStops(points: TrackPoint[], stops = 40, windowS = 20
   return out;
 }
 
-/** Colore per ogni punto della traccia (stessa scala del gradiente), null se la traccia non basta. */
+/** Colour for each point of the track (same scale as the gradient), null if the track isn't enough. */
 export function pointSpeedColors(points: TrackPoint[], windowS = 20): string[] | null {
   if (points.length < 10) return null;
   const cum = cumulativeDistance(points);
