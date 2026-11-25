@@ -1,5 +1,5 @@
-// Tipi riga scritti a mano per le tabelle usate in Fase 1.
-// In futuro si può sostituire con `supabase gen types` (richiede CLI/login).
+// Hand-written row types for the tables used in Phase 1.
+// In the future this can be replaced with `supabase gen types` (requires CLI/login).
 
 import type { BestEfforts } from "./metrics/best-efforts.ts";
 import type { PaceCheck } from "./metrics/pace-check.ts";
@@ -16,9 +16,9 @@ export type WorkoutType =
   | "cross";
 
 /**
- * Le attività importate non ricevono automaticamente un'intenzione di
- * allenamento: il tipo neutro evita di confondere una corsa reale con una
- * seduta easy pianificata.
+ * Imported activities are not automatically given a workout intent: the
+ * neutral type avoids confusing a real run with a planned easy
+ * session.
  */
 export type ActivityType = WorkoutType | "unclassified";
 
@@ -42,10 +42,10 @@ export const WORKOUT_TYPES: WorkoutType[] = [
 
 export const ACTIVITY_TYPES: ActivityType[] = ["unclassified", ...WORKOUT_TYPES];
 
-// Sport dell'attività. "running" è il default storico; gli altri servono per
-// le attività extra (importate da .fit o manuali) che alimentano il carico.
-// Camminate ed escursioni entrano anche nei riepiloghi della distanza a piedi.
-// Colonna `activities.sport` (text + CHECK).
+// Activity sport. "running" is the historical default; the others are for
+// extra activities (imported from .fit or manual) that feed the load.
+// Walks and hikes also count in the on-foot distance summaries.
+// Column `activities.sport` (text + CHECK).
 export const SPORTS = [
   "running",
   "cycling",
@@ -65,14 +65,14 @@ export const SPORTS = [
 
 export type Sport = (typeof SPORTS)[number];
 
-/** Sport a piedi la cui distanza è confrontabile nei riepiloghi di volume. */
+/** On-foot sports whose distance is comparable in volume summaries. */
 export function isFootDistanceSport(sport: Sport): boolean {
   return sport === "running" || sport === "walking" || sport === "hiking";
 }
 
 export type ZoneKey = "z1" | "z2" | "z3" | "z4" | "z5";
 
-/** Secondi trascorsi per zona HR. */
+/** Seconds spent per HR zone. */
 export type TimeInZone = Partial<Record<ZoneKey, number>>;
 
 export interface Profile {
@@ -82,24 +82,24 @@ export interface Profile {
   resting_hr: number | null;
   birthdate: string | null;
   api_key: string | null;
-  /** Preferenze tema (Impostazioni → Aspetto). Vedi lib/theme.ts. */
+  /** Theme preferences (Settings → Appearance). See lib/theme.ts. */
   theme_mode: string | null;
   theme_accent: string | null;
   theme_style: string | null;
-  /** Adatta i passi a caldo e umidità previsti. */
+  /** Adapts the pace to the forecast heat and humidity. */
   heat_adjust: boolean;
   onboarding_completed_at: string | null;
   created_at: string;
 }
 
-/** Un split per km calcolato da gps_series. PLAN.md §7. */
+/** One per-km split computed from gps_series. PLAN.md §7. */
 export interface Split {
   km: number;
   time_s: number;
   avg_hr?: number;
 }
 
-/** Punto GPS normalizzato (dal parser GPX / stream). */
+/** Normalized GPS point (from the GPX parser / stream). */
 export interface GpsPoint {
   t: number;
   lat: number;
@@ -107,7 +107,7 @@ export interface GpsPoint {
   ele?: number;
 }
 
-/** Punto HR normalizzato. */
+/** Normalized HR point. */
 export interface HrPoint {
   t: number;
   bpm: number;
@@ -128,58 +128,58 @@ export interface Activity {
   max_hr: number | null;
   elevation_gain_m: number | null;
   rpe: number | null;
-  /** Origine dello sforzo: file FIT, utente o API esterna. */
+  /** Source of the effort: FIT file, user or external API. */
   rpe_source: "fit" | "user" | "api" | null;
-  /** Titolo originale della sessione, separato dalle note dell'atleta. */
+  /** Original session title, kept separate from the athlete's notes. */
   source_title: string | null;
   calories: number | null;
-  /** Cadenza media in passi/minuto, derivata dagli stream in ingest. */
+  /** Average cadence in steps/minute, derived from the streams at ingest. */
   avg_cadence_spm: number | null;
-  /** Deriva cardiaca % (decoupling passo/HR prima vs seconda metà). */
+  /** Cardiac drift % (pace/HR decoupling first vs second half). */
   hr_drift_pct: number | null;
   time_in_zone: TimeInZone | null;
   splits: Split[] | null;
-  /** Migliori tempi su distanze standard (vedi lib/metrics/best-efforts). */
+  /** Best times over standard distances (see lib/metrics/best-efforts). */
   best_efforts: BestEfforts | null;
-  /** Passo reale contro previsto nelle sedute con target (lib/metrics/pace-check). */
+  /** Actual pace vs planned in sessions with targets (lib/metrics/pace-check). */
   pace_check: PaceCheck | null;
-  /** Tratti della seduta (migration 0022: assente sui DB non migrati). */
+  /** Session segments (migration 0022: absent on unmigrated DBs). */
   intervals?: IntervalAnalysis | null;
   notes: string | null;
-  /** Migrazione 0026: esclusa da totali, record e carico (resta visibile). */
+  /** Migration 0026: excluded from totals, records and load (stays visible). */
   excluded_at?: string | null;
   excluded_reason?: string | null;
   raw_payload: unknown | null;
   created_at: string;
 }
 
-/** Riga activity_streams — stream pesanti, mai nel prompt LLM. PLAN.md §3. */
+/** activity_streams row — heavy streams, never in the LLM prompt. PLAN.md §3. */
 export interface ActivityStream {
   activity_id: string;
   hr_series: HrPoint[] | null;
   gps_series: GpsPoint[] | null;
   cadence: unknown | null;
-  /** Migration 0022: distanza dell'orologio e lap del file FIT. */
+  /** Migration 0022: watch distance and laps from the FIT file. */
   distance_series?: DistancePoint[] | null;
   laps?: FitLap[] | null;
 }
 
-/** Un punto per il carico giornaliero — usato da computeATLCTL. */
+/** One point for the daily load — used by computeATLCTL. */
 export interface LoadPoint {
   date: string; // YYYY-MM-DD
   load: number;
 }
 
-/** Output di computeATLCTL. PLAN.md §7. */
+/** Output of computeATLCTL. PLAN.md §7. */
 export interface ATLCTLResult {
-  /** Somma del carico interno delle ultime 7 giornate, confrontabile nel concetto (non nella scala) con Zepp. */
+  /** Sum of the internal load of the last 7 days, conceptually (not in scale) comparable with Zepp. */
   load7: number;
   atl: number;
   ctl: number;
   tsb: number;
-  /** Carico 7gg medio del periodo precedente, personalizzato sullo storico disponibile. */
+  /** Average 7d load of the previous period, personalized on the available history. */
   baseline7: number | null;
-  /** Rapporto tra carico 7gg corrente e baseline personale. */
+  /** Ratio between current 7d load and personal baseline. */
   load_ratio: number | null;
   status: "calibrating" | "fresh" | "balanced" | "strained" | "fatigued";
   confidence: "low" | "medium" | "high";
@@ -201,7 +201,7 @@ export interface ATLCTLResult {
   }>;
 }
 
-/** Predizioni Riegel per le distanze canoniche. PLAN.md §7. */
+/** Riegel predictions for the canonical distances. PLAN.md §7. */
 export interface RacePredict {
   "5k": number;
   "10k": number;
@@ -209,24 +209,24 @@ export interface RacePredict {
   target?: number;
 }
 
-// ── Fase 3 ──────────────────────────────────────────────────────────────────
+// ── Phase 3 ──────────────────────────────────────────────────────────────────
 
-// Lo stato del workout pianificato è gestibile manualmente. Le attività reali
-// restano indipendenti: il coach confronta piano e svolto dai dati e dalle date.
-// "skipped" = seduta messa in pausa ("Non mi sento al 100%"), ripristinabile.
+// The planned workout status can be managed manually. Real activities
+// stay independent: the coach compares plan and actual from data and dates.
+// "skipped" = session paused ("I don't feel 100%"), can be restored.
 export type PlannedStatus = "planned" | "completed" | "skipped";
 
-/** Momento della giornata di una seduta, quando un giorno ne ha più d'una. */
+/** Time of day of a session, when a day has more than one. */
 export type DayPart = "morning" | "afternoon" | "evening";
 export const DAY_PARTS: DayPart[] = ["morning", "afternoon", "evening"];
 
 export type WorkoutStepKind = "warmup" | "work" | "recovery" | "steady" | "cooldown";
 export type WorkoutStepCompletion = "time" | "distance" | "manual";
-/** Come si corre la fase: sprint (a tutta) o recupero corricchiando/camminando. */
+/** How the phase is run: sprint (all out) or recovery by jogging/walking. */
 export type WorkoutStepVariant = "sprint" | "jog" | "walk";
 export const WORKOUT_STEP_VARIANTS = ["sprint", "jog", "walk"] as const;
 
-/** Fase guidata di un allenamento, consumata anche dalla Workout Extension Zepp. */
+/** Guided phase of a workout, also consumed by the Zepp Workout Extension. */
 export interface WorkoutStepInput {
   kind: WorkoutStepKind;
   label: string;
@@ -236,7 +236,7 @@ export interface WorkoutStepInput {
   pace_max_s_km: number | null;
   hr_min_bpm: number | null;
   hr_max_bpm: number | null;
-  /** Solo per work (sprint) e recovery (jog, walk); assente = come da kind. */
+  /** Only for work (sprint) and recovery (jog, walk); absent = as per kind. */
   variant?: WorkoutStepVariant | null;
 }
 
@@ -265,52 +265,52 @@ export interface PlannedWorkout {
   target_distance_m: number | null;
   target_pace_s_km: number | null;
   target_duration_s: number | null;
-  /** HR media massima indicativa per la seduta (bpm). */
+  /** Indicative maximum average HR for the session (bpm). */
   target_hr_bpm: number | null;
   workout_steps: WorkoutStep[];
   description: string | null;
-  /** Indicazioni del coach: cosa pensare, cosa privilegiare/sacrificare. */
+  /** Coach guidance: what to think about, what to favor/sacrifice. */
   focus: string | null;
   status: PlannedStatus;
-  /** Valori originali di una seduta alleggerita: permettono di annullare. */
+  /** Original values of a lightened session: allow undoing. */
   adapted_from: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   origin: "user" | "ai";
-  /** Posizione nella giornata (1 = prima). Assente prima della migrazione 0029. */
+  /** Position in the day (1 = first). Absent before migration 0029. */
   day_order?: number;
-  /** Mattina, pomeriggio o sera; null se non specificato. */
+  /** Morning, afternoon or evening; null if not specified. */
   day_part?: DayPart | null;
-  /** Si fa subito dopo la seduta precedente dello stesso giorno (un'unica uscita). */
+  /** Done right after the previous session of the same day (a single outing). */
   chained?: boolean;
 }
 
-// ── Fase 4: Coach AI ──────────────────────────────────────────────────────────
+// ── Phase 4: AI Coach ──────────────────────────────────────────────────────────
 
-/** Riga evaluations — valutazione discorsiva AI di una corsa. PLAN.md §5/§8. */
+/** evaluations row — free-form AI evaluation of a run. PLAN.md §5/§8. */
 export interface Evaluation {
   id: string;
   user_id: string;
   activity_id: string;
   model: string | null;
   summary: string | null;
-  /** Punti puliti estratti dal commento libero dell'atleta. */
+  /** Clean points extracted from the athlete's free comment. */
   details: string[] | null;
-  /** Flag qualitativi, es. {"overreaching":true,"good_progress":true}. */
+  /** Qualitative flags, e.g. {"overreaching":true,"good_progress":true}. */
   flags: Record<string, boolean> | null;
-  /** Token e costo dell'analisi (migrazione 0024), vedi lib/ai/usage.ts. */
+  /** Tokens and cost of the analysis (migration 0024), see lib/ai/usage.ts. */
   ai_usage?: unknown;
   created_at: string;
 }
 
-/** Output strutturato della valutazione di una corsa (responseSchema Gemini). */
+/** Structured output of a run evaluation (Gemini responseSchema). */
 export interface EvaluationResult {
   summary: string;
   details: string[];
   flags: Record<string, boolean>;
 }
 
-/** Un workout proposto dall'LLM, prima della validazione/clamp deterministico. */
+/** A workout proposed by the LLM, before deterministic validation/clamping. */
 export interface ProposedWorkout {
   date: string;
   type: WorkoutType;
@@ -325,10 +325,10 @@ export interface ProposedWorkout {
   chained?: boolean | null;
 }
 
-/** Output strutturato della generazione piano (responseSchema Gemini). */
+/** Structured output of plan generation (Gemini responseSchema). */
 export interface PlanGenerationResult {
   review_summary: string;
-  /** Memoria di fase del coach, persistita in athlete_snapshot.narrative. */
+  /** Coach phase memory, persisted in athlete_snapshot.narrative. */
   coach_memory?: string;
   workouts: ProposedWorkout[];
 }
@@ -380,10 +380,10 @@ export interface PlanProposal {
   range_start: string;
   range_end: string;
   workouts: ProposedWorkout[];
-  /** Migrazione 0023: giorni da svuotare e prima/dopo per giorno. */
+  /** Migration 0023: days to clear and before/after per day. */
   remove_dates?: string[] | null;
   changes?: ProposalChange[] | null;
-  /** "expired" solo nell'app (lib/plan/proposal-expiry.ts): nel db resta "pending". */
+  /** "expired" only in the app (lib/plan/proposal-expiry.ts): in the db it stays "pending". */
   status: "pending" | "applied" | "rejected" | "stale" | "expired";
   expired_reason?: "too_old" | "superseded" | "past";
   created_at: string;

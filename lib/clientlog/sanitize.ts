@@ -1,6 +1,6 @@
-// Regole lato server per /api/clientlog: quanto può essere grande un evento,
-// quanti eventi accettare per utente e cosa finisce davvero nei log.
-// Modulo puro (niente Next, niente Supabase) così i test lo importano diretto.
+// Server-side rules for /api/clientlog: how big an event can be,
+// how many events to accept per user and what actually ends up in the logs.
+// Pure module (no Next, no Supabase) so tests import it directly.
 
 export const CLIENTLOG_MAX_BODY_BYTES = 8 * 1024;
 export const CLIENTLOG_MAX_LINE_CHARS = 2000;
@@ -12,14 +12,14 @@ export const CLIENTLOG_RATE_WINDOW_MS = 60_000;
 function clip(value: unknown, max: number): string | null {
   if (value == null) return null;
   const text = typeof value === "string" ? value : String(value);
-  // Niente a capo: una riga per evento, non si possono fingere altre righe di log.
+  // No newlines: one line per event, other log lines cannot be faked.
   const flat = text.replace(/[\r\n\u2028\u2029]+/g, " ");
   return flat.length > max ? `${flat.slice(0, max)}…` : flat;
 }
 
 /**
- * Trasforma il corpo ricevuto in una riga di log sicura: tiene solo i campi
- * noti, tronca ogni campo e la riga intera. Null se il corpo non è un evento.
+ * Turns the received body into a safe log line: keeps only known
+ * fields, truncates each field and the whole line. Null if the body is not an event.
  */
 export function sanitizeClientLog(body: string, userId: string): string | null {
   let parsed: unknown;
@@ -56,9 +56,9 @@ export function sanitizeClientLog(body: string, userId: string): string | null {
 interface Bucket { count: number; resetAt: number }
 
 /**
- * Limite a finestra fissa per chiave (qui l'id utente, che arriva dalla
- * sessione e non dal client). Vale per singola istanza della funzione: basta
- * a fermare un client impazzito, non è un limite globale.
+ * Fixed-window limit per key (here the user id, which comes from the
+ * session and not from the client). Applies per function instance: enough
+ * to stop a runaway client, it is not a global limit.
  */
 export function createRateLimiter(limit = CLIENTLOG_RATE_LIMIT, windowMs = CLIENTLOG_RATE_WINDOW_MS) {
   const buckets = new Map<string, Bucket>();

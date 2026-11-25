@@ -147,8 +147,8 @@ export function normalizeZeppPayload(
 }
 
 /**
- * Copia di audit deliberatamente compatta: contiene solo dati utili a diagnosi,
- * riepiloghi e ricalcolo. Esclude serie minuto-per-minuto, temperatura e PII.
+ * Deliberately compact audit copy: contains only data useful for diagnosis,
+ * summaries and recalculation. Excludes minute-by-minute series, temperature and PII.
  */
 export function compactZeppPayloadForAudit(payload: ZeppSyncPayload): Record<string, unknown> {
   const normalized = normalizeZeppPayload(payload, "audit", "audit");

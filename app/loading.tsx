@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/app-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Fallback della home: stessa forma della pagina vera (saluto, card della
-// seduta, settimana, chat), così il passaggio è morbido.
+// Home fallback: same shape as the real page (greeting, session
+// card, week, chat), so the transition is smooth.
 export default function Loading() {
   return (
     <AppShell fill wide>
@@ -15,7 +15,7 @@ export default function Loading() {
           <Skeleton className="h-9 w-9 rounded-full" />
         </div>
         <div className="mb-3 space-y-3 lg:col-start-2 lg:row-start-2 lg:self-start 3xl:w-1/2 3xl:pr-3">
-          {/* Card hero: segnaposto nel colore del testo della hero, validi in chiaro e in scuro. */}
+          {/* Hero card: placeholders in the hero text color, valid in light and dark. */}
           <div className="surface-hero space-y-3 p-5">
             <div className="h-3 w-28 rounded-md bg-hero-foreground/10" />
             <div className="h-10 w-40 rounded-md bg-hero-foreground/10" />

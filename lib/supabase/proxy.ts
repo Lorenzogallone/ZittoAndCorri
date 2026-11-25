@@ -2,11 +2,11 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Rinfresca la sessione Supabase e protegge le route.
- * Chiamata dal `proxy.ts` di root (in Next.js 16 il Middleware si chiama Proxy).
+ * Refreshes the Supabase session and protects the routes.
+ * Called from the root `proxy.ts` (in Next.js 16 Middleware is called Proxy).
  *
- * IMPORTANTE: non inserire logica tra la creazione del client e `getUser()`,
- * altrimenti il refresh del token può fallire in modo silenzioso.
+ * IMPORTANT: don't put logic between creating the client and `getUser()`,
+ * otherwise the token refresh can fail silently.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -42,8 +42,8 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Utente non autenticato → manda al login (escludendo login, callback OAuth e
-  // le route API, che gestiscono la propria auth — es. Bearer token su /api/import).
+  // Unauthenticated user → send to login (excluding login, OAuth callback and
+  // API routes, which handle their own auth — e.g. Bearer token on /api/import).
   const { pathname } = request.nextUrl;
   const isPublic =
     pathname.startsWith("/login") ||
@@ -73,7 +73,7 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  // Utente autenticato che apre /login → manda alla dashboard.
+  // Authenticated user opening /login → send to the dashboard.
   if (user && pathname.startsWith("/login")) {
     const url = request.nextUrl.clone();
     url.pathname = "/";

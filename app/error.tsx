@@ -1,7 +1,7 @@
 "use client";
 
-// Error boundary di root (App Router). Cattura gli errori di rendering delle
-// pagine e mostra un fallback con retry invece di crashare l'intera app.
+// Root error boundary (App Router). Catches rendering errors of the
+// pages and shows a fallback with retry instead of crashing the whole app.
 import { useEffect } from "react";
 import { AlertTriangle } from "lucide-react";
 import { useTranslations } from "next-intl";

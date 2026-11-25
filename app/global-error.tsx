@@ -3,18 +3,18 @@
 import { useSyncExternalStore } from "react";
 import { LOCALE_COOKIE, resolveLocale, type Locale } from "@/i18n/config";
 
-// Fallback estremo: cattura gli errori del root layout. Deve renderizzare
-// <html>/<body> da solo e non può usare componenti dell'app né next-intl
-// (il provider sta nel layout che è appena fallito): il dizionario è qui.
+// Last-resort fallback: catches root layout errors. It must render
+// <html>/<body> by itself and can't use app components or next-intl
+// (the provider lives in the layout that just failed): the dictionary is here.
 const TEXT: Record<Locale, { title: string; body: string; retry: string }> = {
   it: { title: "Qualcosa è andato storto", body: "Errore imprevisto dell'applicazione.", retry: "Riprova" },
   en: { title: "Something went wrong", body: "Unexpected application error.", retry: "Try again" },
 };
 
-// La lingua non cambia mentre la pagina è aperta: niente da osservare.
+// The language doesn't change while the page is open: nothing to observe.
 const subscribeNothing = () => () => {};
 
-/** Lingua dal cookie dell'app, altrimenti da quella del browser. */
+/** Language from the app cookie, otherwise from the browser's. */
 function detectLocale(): Locale {
   const cookie = document.cookie
     .split("; ")
@@ -29,7 +29,7 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  // Sul server (e in idratazione) l'italiano; poi la lingua del browser.
+  // On the server (and during hydration) Italian; then the browser's language.
   const locale = useSyncExternalStore(subscribeNothing, detectLocale, () => "it" as Locale);
   const text = TEXT[locale];
 

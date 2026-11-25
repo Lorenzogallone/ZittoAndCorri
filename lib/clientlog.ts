@@ -1,10 +1,10 @@
 "use client";
 
-// Logger diagnostico leggero per capire i blocchi in PWA standalone su iOS.
-// Tiene un ring buffer in memoria (per l'overlay a schermo) e spedisce gli
-// eventi a /api/clientlog (visibili nei log delle Functions su Vercel).
-// Spedisce solo in PWA standalone o quando il flag debug è attivo, per non
-// rumoreggiare i log in uso normale da browser desktop.
+// Lightweight diagnostic logger to understand hangs in standalone PWA on iOS.
+// Keeps an in-memory ring buffer (for the on-screen overlay) and sends
+// events to /api/clientlog (visible in the Functions logs on Vercel).
+// Sends only in standalone PWA or when the debug flag is on, to avoid
+// cluttering logs in normal desktop browser use.
 
 export interface LogEntry {
   t: number;
@@ -12,9 +12,9 @@ export interface LogEntry {
   data?: unknown;
 }
 
-// Snapshot immutabile: riassegnato (nuovo riferimento) a ogni log così
-// useSyncExternalStore rileva il cambiamento; tra un log e l'altro il
-// riferimento resta stabile (niente re-render infiniti).
+// Immutable snapshot: reassigned (new reference) on every log so
+// useSyncExternalStore detects the change; between one log and the next the
+// reference stays stable (no infinite re-renders).
 const EMPTY: LogEntry[] = [];
 let snapshot: LogEntry[] = EMPTY;
 const listeners = new Set<() => void>();
@@ -28,7 +28,7 @@ export function isStandalone(): boolean {
   );
 }
 
-/** Il debug overlay/beacon è attivo se ?debug=1 è stato visitato (persistito). */
+/** The debug overlay/beacon is on if ?debug=1 was visited (persisted). */
 export function isDebugEnabled(): boolean {
   if (typeof window === "undefined") return false;
   try {
@@ -58,8 +58,8 @@ export function clientLog(ev: string, data?: unknown): void {
       standalone: isStandalone(),
       ts: new Date().toISOString(),
     });
-    // sendBeacon è fire-and-forget e sopravvive a unload/navigazioni; se non
-    // disponibile, fetch keepalive. Mai bloccante per l'app.
+    // sendBeacon is fire-and-forget and survives unload/navigation; if not
+    // available, fetch keepalive. Never blocking for the app.
     const blob = new Blob([payload], { type: "application/json" });
     if (navigator.sendBeacon?.("/api/clientlog", blob)) return;
     fetch("/api/clientlog", {
@@ -69,7 +69,7 @@ export function clientLog(ev: string, data?: unknown): void {
       headers: { "Content-Type": "application/json" },
     }).catch(() => {});
   } catch {
-    // logging non deve mai rompere l'app
+    // logging must never break the app
   }
 }
 

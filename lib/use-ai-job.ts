@@ -8,10 +8,10 @@ import { clientLog } from "@/lib/clientlog";
 import { APP_REFRESH_EVENT } from "@/lib/use-app-refresh";
 
 const POLL_INTERVAL_MS = 2_000;
-// Oltre questo tempo smettiamo di interrogare il job. La chat del coach può
-// durare fino a 270 s con i modelli lenti (le altre analisi 180 s); lasciamo
-// un altro minuto per salvataggio e ritardi di rete mobile prima di
-// considerare il job realmente bloccato.
+// Beyond this time we stop polling the job. The coach chat can
+// last up to 270 s with slow models (other analyses 180 s); we leave
+// another minute for saving and mobile network delays before
+// considering the job truly stuck.
 const MAX_POLL_MS = 330_000;
 
 interface StartResult {
@@ -19,18 +19,18 @@ interface StartResult {
   error?: string;
 }
 
-/** Voce persistita di un job in volo: id + scadenza assoluta del polling. */
+/** Entry for an in-flight job: id + absolute polling deadline. */
 interface PersistedJob {
   jobId: string;
   deadline: number;
 }
 
-/** Chiave localStorage per un dato contesto (es. "plan", "eval:<id>"). */
+/** localStorage key for a given context (e.g. "plan", "eval:<id>"). */
 function storageKeyFor(key: string): string {
   return `ai-job:${key}`;
 }
 
-/** Legge un job persistito ancora valido; pulisce le voci scadute/corrotte. */
+/** Reads a persisted job that is still valid; cleans up expired/corrupt entries. */
 function readPersisted(key: string): PersistedJob | null {
   if (typeof window === "undefined") return null;
   let raw: string | null;
@@ -50,7 +50,7 @@ function readPersisted(key: string): PersistedJob | null {
       return { jobId: parsed.jobId, deadline: parsed.deadline };
     }
   } catch {
-    // voce corrotta: cade nel clear sotto
+    // corrupt entry: falls through to the clear below
   }
   clearPersisted(key);
   return null;
@@ -60,8 +60,8 @@ function writePersisted(key: string, job: PersistedJob): void {
   try {
     window.localStorage.setItem(storageKeyFor(key), JSON.stringify(job));
   } catch {
-    // localStorage non disponibile: la ripresa post-reload non funzionerà,
-    // ma il flusso normale (senza reload) resta intatto.
+    // localStorage unavailable: resuming after a reload won't work,
+    // but the normal flow (without reload) stays intact.
   }
 }
 
@@ -70,26 +70,26 @@ function clearPersisted(key: string): void {
   try {
     window.localStorage.removeItem(storageKeyFor(key));
   } catch {
-    // ignora
+    // ignore
   }
 }
 
 /**
- * Gestisce il ciclo di una richiesta AI asincrona: lancia la server action di
- * avvio (che ritorna subito un `jobId`) e poi fa polling di `ai_jobs` finché il
- * job non è 'done' o 'error'. `pending` resta true per tutta l'attesa, così
- * l'overlay di "pensiero" del coach copre i ~50s medi. Su 'done' fa
- * `router.refresh()` per mostrare il risultato server-rendered, oppure consegna
- * il risultato al callback `onDone` senza alcun refresh della pagina.
+ * Manages the lifecycle of an async AI request: launches the start server action (which
+ * returns a `jobId` right away) and then polls `ai_jobs` until the
+ * job is 'done' or 'error'. `pending` stays true for the whole wait, so
+ * the coach's "thinking" overlay covers the ~50s average. On 'done' it calls
+ * `router.refresh()` to show the server-rendered result, or hands
+ * the result to the `onDone` callback with no page refresh.
  *
- * `persistKey` (opzionale) abilita la ripresa del polling dopo un reload: il
- * job in volo viene salvato in localStorage e, al rimontaggio del componente,
- * il polling riparte da solo. Serve su iOS PWA standalone, dove il sistema può
- * rilanciare l'app (tornando allo splash) durante l'attesa: senza ripresa il
- * job finirebbe lato server ma l'UI resterebbe bloccata.
+ * `persistKey` (optional) enables resuming the polling after a reload: the
+ * in-flight job is saved in localStorage and, when the component remounts,
+ * polling restarts on its own. Needed on iOS standalone PWA, where the system may
+ * relaunch the app (back to the splash) during the wait: without resuming, the
+ * job would finish server-side but the UI would stay stuck.
  *
- * Non viene mai eseguito un reload completo: in PWA farebbe riapparire la splash
- * e interromperebbe la continuità dell'interfaccia.
+ * A full reload is never performed: in a PWA it would bring back the splash
+ * and break the continuity of the interface.
  */
 export function useAiJob(
   persistKey?: string,
@@ -102,16 +102,16 @@ export function useAiJob(
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Invalida i poll in volo quando parte una nuova richiesta o si smonta.
+  // Invalidates in-flight polls when a new request starts or on unmount.
   const runIdRef = useRef(0);
   useEffect(() => () => {
     runIdRef.current += 1;
   }, []);
 
-  // Job che il polling sta seguendo adesso (null a polling finito).
+  // Job the polling is following right now (null once polling is done).
   const pollingJobRef = useRef<string | null>(null);
 
-  // Ciclo di polling riusato sia all'avvio sia alla ripresa post-reload.
+  // Polling loop reused both at start and when resuming after a reload.
   const runPoll = useCallback(
     (jobId: string, deadline: number, runId: number) => {
       pollingJobRef.current = jobId;
@@ -157,7 +157,7 @@ export function useAiJob(
             return;
           }
         } catch {
-          // Errore di rete transitorio: ritenta al prossimo giro.
+          // Transient network error: retry on the next round.
         }
         setTimeout(poll, POLL_INTERVAL_MS);
       };
@@ -167,8 +167,8 @@ export function useAiJob(
     [onDone, persistKey, router, t],
   );
 
-  // Dopo il trascina-giù: se c'è un job salvato che questo hook non sta già
-  // seguendo (polling scaduto o fermato), riprende a interrogarlo.
+  // After pull-to-refresh: if there is a saved job that this hook isn't already
+  // following (polling expired or stopped), resume polling it.
   useEffect(() => {
     if (!persistKey) return;
     const resume = () => {
@@ -184,8 +184,8 @@ export function useAiJob(
     return () => window.removeEventListener(APP_REFRESH_EVENT, resume);
   }, [persistKey, runPoll]);
 
-  // Ripresa al montaggio: se c'è un job persistito ancora valido (es. dopo un
-  // reload della PWA su iOS), riattacca il polling e mostra di nuovo l'overlay.
+  // Resume on mount: if there is a persisted job still valid (e.g. after a
+  // PWA reload on iOS), reattach the polling and show the overlay again.
   useEffect(() => {
     if (!persistKey) return;
     const saved = readPersisted(persistKey);
@@ -198,7 +198,7 @@ export function useAiJob(
       runPoll(saved.jobId, saved.deadline, runId);
     }, 0);
     return () => window.clearTimeout(timer);
-    // Eseguito una sola volta al montaggio: persistKey/runPoll sono stabili.
+    // Runs only once on mount: persistKey/runPoll are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

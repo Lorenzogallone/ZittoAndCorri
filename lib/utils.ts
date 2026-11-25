@@ -1,9 +1,9 @@
 import { clsx, type ClassValue } from "clsx"
 import { extendTailwindMerge } from "tailwind-merge"
 
-// Le dimensioni della scala tipografica (globals.css) vanno dichiarate qui:
-// senza, tailwind-merge scambia `text-micro` & co. per colori e li scarta
-// quando nella stessa lista c'è un `text-<colore>`.
+// The type scale sizes (globals.css) must be declared here:
+// without them, tailwind-merge mistakes `text-micro` & co. for colors and drops them
+// when the same list has a `text-<color>`.
 const twMerge = extendTailwindMerge({
   extend: {
     theme: {

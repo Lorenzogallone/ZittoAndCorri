@@ -1,7 +1,7 @@
-// Autenticazione condivisa degli endpoint /api/import*. PLAN.md §6.
-// Due modalità: sessione cookie (browser/PWA) oppure Authorization: Bearer
-// <api_key del profilo> (Comandi Rapidi iOS, script). Prima era duplicata in
-// ogni route handler; qui vive una volta sola.
+// Shared authentication for the /api/import* endpoints. PLAN.md §6.
+// Two modes: cookie session (browser/PWA) or Authorization: Bearer
+// <profile api_key> (iOS Shortcuts, scripts). It used to be duplicated in
+// every route handler; now it lives in one place.
 
 import "server-only";
 import type { NextRequest } from "next/server";
@@ -15,9 +15,9 @@ import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 type IngestContext = Parameters<typeof ingestActivity>[1];
 
 /**
- * Risolve l'utente della richiesta e costruisce il contesto di ingest
- * (client Supabase + profilo per il calcolo zone).
- * Ritorna null se non autenticato: la route risponde 401.
+ * Resolves the request's user and builds the ingest context
+ * (Supabase client + profile for zone calculation).
+ * Returns null if not authenticated: the route responds 401.
  */
 export async function resolveImportAuth(
   req: NextRequest,
@@ -29,8 +29,8 @@ export async function resolveImportAuth(
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
   if (token) {
-    // Autenticazione Bearer: cerca il profilo con questa api_key
-    // (service role per bypassare RLS).
+    // Bearer authentication: look up the profile with this api_key
+    // (service role to bypass RLS).
     supabase = createAdminClient();
 
     const { data: profile, error: dbError } = await supabase
@@ -42,7 +42,7 @@ export async function resolveImportAuth(
     if (dbError || !profile) return null;
     userId = profile.id;
   } else {
-    // Autenticazione sessione cookie (browser).
+    // Cookie session authentication (browser).
     supabase = await createClient();
     const {
       data: { user },
@@ -51,7 +51,7 @@ export async function resolveImportAuth(
     userId = user.id;
   }
 
-  // Profilo atleta per il calcolo zone.
+  // Athlete profile for zone calculation.
   const { data: profile } = await supabase
     .from("profiles")
     .select("max_hr, resting_hr")

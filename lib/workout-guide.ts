@@ -1,30 +1,30 @@
-// Traduce i workout_steps di una seduta in istruzioni leggibili: raggruppa le
-// ripetizioni ("6 × 400 m + 90\" recupero") e spiega ogni fase a parole.
+// Turns a session's workout_steps into readable instructions: groups
+// repetitions ("6 × 400 m + 90\" recovery") and explains each phase in words.
 import { DEFAULT_LOCALE, type Locale, type Translator } from "../i18n/config.ts";
 import type { WorkoutStepInput, WorkoutStepVariant, WorkoutType } from "@/lib/types";
 
-// Le etichette sono nel namespace "labels": `t` è il traduttore già legato a
-// quel namespace. Le funzioni che formattano numeri prendono la lingua
-// (italiano se omessa, per testi che finiscono in prompt, database o Intervals.icu).
+// Labels are in the "labels" namespace: `t` is the translator already bound to
+// that namespace. Functions that format numbers take the language
+// (Italian if omitted, for texts that end up in prompts, database or Intervals.icu).
 
 export type StepBlock<S extends WorkoutStepInput = WorkoutStepInput> =
   | { kind: "single"; step: S }
   | { kind: "repeat"; times: number; steps: S[] };
 
-/** Variante valida per il tipo di fase: sprint sui tratti veloci, jog/walk sui recuperi. */
+/** Valid variant for the phase type: sprint on fast segments, jog/walk on recoveries. */
 export function stepVariant(step: Pick<WorkoutStepInput, "kind" | "variant">): WorkoutStepVariant | null {
   if (step.kind === "work" && step.variant === "sprint") return "sprint";
   if (step.kind === "recovery" && (step.variant === "jog" || step.variant === "walk")) return step.variant;
   return null;
 }
 
-/** Nome della fase per la UI: "Sprint", "Recupero camminando"… */
+/** Phase name for the UI: "Sprint", "Recovery walking"… */
 export function stepKindLabel(t: Translator, step: Pick<WorkoutStepInput, "kind" | "variant">): string {
   const variant = stepVariant(step);
   return variant ? t(`stepVariant.${variant}`) : t(`stepKind.${step.kind}`);
 }
 
-/** Spiegazione breve, per chi non conosce il gergo, di ogni tipo di seduta. */
+/** Short explanation, for those unfamiliar with the jargon, of each session type. */
 export const workoutTypeGuide = (t: Translator, type: WorkoutType): string => t(`typeGuide.${type}`);
 
 function sameStep(a: WorkoutStepInput, b: WorkoutStepInput): boolean {
@@ -47,8 +47,8 @@ function matchesAt<S extends WorkoutStepInput>(steps: S[], at: number, pattern: 
 }
 
 /**
- * Raggruppa sequenze ripetute consecutive (es. lavoro+recupero × 6). L'ultima
- * ripetizione può omettere il recupero finale, come succede quasi sempre.
+ * Groups consecutive repeated sequences (e.g. work+recovery × 6). The last
+ * repetition may omit the final recovery, as almost always happens.
  */
 export function groupWorkoutSteps<S extends WorkoutStepInput>(steps: S[]): StepBlock<S>[] {
   const blocks: StepBlock<S>[] = [];
@@ -85,7 +85,7 @@ function clock(totalSeconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-/** Durata o distanza di una fase in forma leggibile: 400 m, 2 km, 10', 90". */
+/** Duration or distance of a phase in readable form: 400 m, 2 km, 10', 90". */
 export function formatStepAmount(step: WorkoutStepInput, locale: Locale = DEFAULT_LOCALE): string | null {
   const value = step.completion_value;
   if (step.completion_type === "manual" || value == null) return null;
@@ -117,7 +117,7 @@ export function formatStepHr(step: WorkoutStepInput): string | null {
   return null;
 }
 
-/** Frase completa per una singola fase, es. "400 m a 4:20–4:30/km". */
+/** Full sentence for a single phase, e.g. "400 m at 4:20–4:30/km". */
 export function describeStep(t: Translator, step: WorkoutStepInput, locale: Locale = DEFAULT_LOCALE): string {
   const amount = formatStepAmount(step, locale);
   const pace = formatStepPace(t, step);
@@ -132,7 +132,7 @@ export function describeStep(t: Translator, step: WorkoutStepInput, locale: Loca
   return parts.join(" ");
 }
 
-/** Titolo sintetico della seduta, es. "6 × 400 m" o "3 × 8'". */
+/** Concise session title, e.g. "6 × 400 m" or "3 × 8'". */
 export function workoutHeadline(steps: WorkoutStepInput[], locale: Locale = DEFAULT_LOCALE): string | null {
   const repeat = groupWorkoutSteps(steps).find((block) => block.kind === "repeat");
   if (!repeat || repeat.kind !== "repeat") return null;

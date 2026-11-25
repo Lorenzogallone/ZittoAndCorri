@@ -1,5 +1,5 @@
-// Testi per i tratti di una seduta, in italiano per il coach AI (contesto e
-// prompt). La UI usa le stesse etichette tradotte: messages/*/status.json, intervals.*.
+// Texts for the segments of a session, in Italian for the AI coach (context and
+// prompt). The UI uses the same translated labels: messages/*/status.json, intervals.*.
 
 import type { IntervalAnalysis, IntervalSegment, IntervalSource } from "./metrics/intervals.ts";
 import { formatDuration, formatPace } from "./format.ts";
@@ -11,20 +11,20 @@ export const INTERVAL_SOURCE_LABELS: Record<IntervalSource, string> = {
   auto: "riconosciute in automatico",
 };
 
-/** Il tipo di corsa continua che il piano chiedeva, per la UI e per il coach. */
+/** The kind of continuous run the plan asked for, for the UI and for the coach. */
 export const PLANNED_CONTINUOUS_LABELS = { long: "un lungo", easy: "una corsa facile", recovery: "un recupero" } as const;
 
 /**
- * Il coach legge piano, split, FC e note: se dice che era una corsa continua,
- * le ripetute trovate dal solo rilevamento automatico non si mostrano. Lap,
- * nota e piano restano (lì la struttura l'ha dichiarata qualcuno), e così gli
- * allunghi di una corsa facile.
+ * The coach reads plan, splits, HR and notes: if it says it was a continuous run,
+ * repeats found only by automatic detection are not shown. Laps,
+ * note and plan stay (there someone declared the structure), and so do
+ * the strides of an easy run.
  */
 export function withCoachVerdict(
   analysis: IntervalAnalysis | null,
   flags: Record<string, boolean> | null | undefined,
 ): IntervalAnalysis | null {
-  // Solo allunghi: non sono ripetute, ma in una corsa continua vanno mostrati.
+  // Only strides: not repeats, but in a continuous run they must be shown.
   if (analysis?.source !== "auto" || analysis.summary?.main === "sprint") return analysis;
   return flags?.structured_session === false ? null : analysis;
 }
@@ -51,7 +51,7 @@ function segmentLine(segment: IntervalSegment, index: number): string {
   return `${index}. ${name}: ${parts.join(", ")}`;
 }
 
-/** Come sono stati fatti i recuperi: "recuperi: 4 jogging, 3 camminata". */
+/** How the recoveries were done: "recuperi: 4 jogging, 3 camminata". */
 function recoveryMix(analysis: IntervalAnalysis): string | null {
   const counts = new Map<string, number>();
   for (const segment of analysis.segments) {
@@ -62,7 +62,7 @@ function recoveryMix(analysis: IntervalAnalysis): string | null {
   return counts.size ? `recuperi: ${[...counts].map(([name, count]) => `${count} ${name}`).join(", ")}` : null;
 }
 
-/** Cadenza nei tratti veloci, prima contro ultima: cala quando la tecnica cede alla fatica. */
+/** Cadence in the fast segments, first vs last: drops when technique gives way to fatigue. */
 function cadenceTrend(analysis: IntervalAnalysis): string | null {
   const work = analysis.segments.filter((segment) => segment.kind === "work" && segment.variant !== "sprint" && segment.cadence_spm);
   if (!work.length) return null;
@@ -73,13 +73,13 @@ function cadenceTrend(analysis: IntervalAnalysis): string | null {
     : `cadenza nei tratti veloci ${first} spm`;
 }
 
-/** Pause dentro i tratti (orologio fermo o soste), escluse da tempi e passi. */
+/** Pauses within the segments (watch stopped or stops), excluded from times and paces. */
 function pauseTotal(analysis: IntervalAnalysis): string | null {
   const seconds = analysis.segments.reduce((sum, segment) => sum + (segment.paused_s ?? 0), 0);
   return seconds >= 10 ? `${formatDuration(seconds)} di pause escluse da tempi e passi` : null;
 }
 
-/** Riepilogo in una riga, per il contesto del coach (storico recente). */
+/** One-line summary, for the coach context (recent history). */
 export function intervalsOneLine(analysis: IntervalAnalysis | null | undefined): string | null {
   if (!hasIntervals(analysis)) return null;
   const s = analysis.summary;
@@ -102,7 +102,7 @@ export function intervalsOneLine(analysis: IntervalAnalysis | null | undefined):
   return `${head} (${INTERVAL_SOURCE_LABELS[analysis.source as IntervalSource]}${against})${bits.length ? `: ${bits.join(", ")}` : ""}`;
 }
 
-/** Tabella dei tratti per la valutazione della singola corsa. */
+/** Table of segments for the evaluation of a single run. */
 export function intervalsForPrompt(analysis: IntervalAnalysis | null | undefined): string | null {
   if (!hasIntervals(analysis)) return null;
   const main = analysis.segments.filter((segment) => segment.kind !== "warmup" && segment.kind !== "cooldown");

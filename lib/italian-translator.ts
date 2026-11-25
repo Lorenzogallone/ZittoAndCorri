@@ -1,6 +1,6 @@
-// Traduttori italiani sincroni, senza richiesta né cookie: per i testi che
-// finiscono nei prompt del coach (restano in italiano) e per i test. Nell'interfaccia
-// si usa il traduttore della lingua scelta (useTranslations / getTranslations).
+// Synchronous Italian translators, without request or cookies: for texts that
+// end up in the coach prompts (they stay in Italian) and for tests. In the interface
+// the translator for the chosen language is used (useTranslations / getTranslations).
 
 import { createTranslator } from "next-intl";
 import type { Translator } from "../i18n/config.ts";

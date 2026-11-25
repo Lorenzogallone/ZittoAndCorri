@@ -23,8 +23,8 @@ interface AttemptState { count: number; resetAt: number }
 const pairingAttempts = new Map<string, AttemptState>();
 
 /**
- * Freno best-effort per processo. Il limite vero sta nel database
- * (lib/zepp/pairing.ts): ogni codice accetta al massimo 5 tentativi in tutto.
+ * Best-effort brake per process. The real limit lives in the database
+ * (lib/zepp/pairing.ts): each code accepts at most 5 attempts in total.
  */
 export function consumePairingAttempt(key: string, now = Date.now()): boolean {
   const current = pairingAttempts.get(key);

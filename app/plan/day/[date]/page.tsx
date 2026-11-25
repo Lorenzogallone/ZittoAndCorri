@@ -41,8 +41,8 @@ export default async function DayViewPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Sedute e corse attorno al giorno: una seduta vale fatta anche con una
-  // corsa fino a due giorni prima o dopo (matchPlan).
+  // Sessions and runs around the day: a session counts as done even with a
+  // run up to two days before or after (matchPlan).
   const range = matchWindow(date);
   const [{ data: planned }, { data: activities }] = await Promise.all([
     supabase

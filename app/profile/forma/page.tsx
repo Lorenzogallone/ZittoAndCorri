@@ -15,7 +15,7 @@ type FormaActivity = Pick<
   "started_at" | "duration_s" | "moving_time_s" | "rpe" | "avg_hr" | "time_in_zone" | "sport" | "type" | "distance_m" | "intervals"
 >;
 
-/** Storico delle attività: 42 giorni di CTL prima dei 120 mostrati. */
+/** Activity history: 42 days of CTL before the 120 shown. */
 const ACTIVITY_DAYS = 180;
 
 export default async function FormaPage() {
@@ -28,7 +28,7 @@ export default async function FormaPage() {
     supabase.from("profiles").select("max_hr, resting_hr").eq("id", user.id).maybeSingle<Pick<Profile, "max_hr" | "resting_hr">>(),
     supabase
       .from("activities")
-      // intervals: per escludere ripetute, soglie e test dai metri per battito.
+      // intervals: to exclude intervals, thresholds and tests from metres per beat.
       .select("started_at, duration_s, moving_time_s, rpe, avg_hr, time_in_zone, sport, type, distance_m, intervals")
       .eq("user_id", user.id)
       .is("excluded_at", null)
@@ -45,7 +45,7 @@ export default async function FormaPage() {
   );
   const trends = await loadBodyTrends(supabase, user.id, today, load.series, await getTranslations("metrics"), (await getLocale()) as Locale, list);
 
-  // Un punto a settimana, come nel profilo: linee leggibili.
+  // One point per week, as in the profile: readable lines.
   const recentLoad = load.series.slice(-85);
   const formPoints = recentLoad
     .filter((_, index) => (recentLoad.length - 1 - index) % 7 === 0)

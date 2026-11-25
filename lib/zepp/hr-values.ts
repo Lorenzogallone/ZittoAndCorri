@@ -19,12 +19,12 @@ export interface ZeppHrMetric {
   captured_at?: string | null;
 }
 
-/** Oltre questi giorni senza sincronizzare, i dati giornalieri Zepp non si usano più. */
+/** Beyond this many days without syncing, Zepp daily data is no longer used. */
 export const ZEPP_DAILY_STALE_DAYS = 3;
-/** Zone e FC dall'orologio cambiano di rado: si tengono buone più a lungo. */
+/** Zones and HR from the watch change rarely: they're kept valid longer. */
 export const ZEPP_HR_STALE_DAYS = 30;
 
-/** True se la rilevazione è più recente di `days` giorni. */
+/** True if the reading is more recent than `days` days. */
 export function isZeppFresh(capturedAt: string | null | undefined, days: number, now = new Date()): boolean {
   if (!capturedAt) return false;
   const time = new Date(capturedAt).getTime();
@@ -89,8 +89,8 @@ export function resolveEffectiveHrConfig(
     hr_zone_ranges: ranges,
     max_hr_source: zeppMax != null ? "zepp" : manualMax == null ? null : "user",
     resting_hr_source: resting != null ? "zepp" : manualRest == null ? null : "user",
-    // "zepp" quando l'app usa le zone impostate sull'orologio, "derived" quando
-    // le calcola dalla riserva cardiaca (vedi hrZones).
+    // "zepp" when the app uses the zones set on the watch, "derived" when
+    // it computes them from heart rate reserve (see hrZones).
     zones_source: zonesSource,
   };
 }

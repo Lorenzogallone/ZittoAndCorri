@@ -18,7 +18,7 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-// Display condensato per titoli e numeri grandi (non variabile: pesi espliciti).
+// Condensed display for titles and big numbers (not variable: explicit weights).
 const barlowCondensed = Barlow_Condensed({
   variable: "--font-barlow-condensed",
   weight: ["600", "700"],
@@ -30,9 +30,9 @@ export const metadata: Metadata = {
   description: "Il tuo coach di corsa personale.",
   appleWebApp: {
     capable: true,
-    // Piena e non traslucida: da iOS 26 con "black-translucent" il sistema
-    // sfuma i primi ~40pt dell'app sopra i contenuti. Il colore arriva dal
-    // meta theme-color, allineato al tema in applyThemeToDocument.
+    // Solid and not translucent: since iOS 26 with "black-translucent" the system
+    // fades the first ~40pt of the app over the content. The colour comes from the
+    // theme-color meta, aligned to the theme in applyThemeToDocument.
     statusBarStyle: "default",
     title: "Zitto e Corri",
   },
@@ -57,9 +57,9 @@ export const viewport: Viewport = {
   ],
 };
 
-/** Legge le preferenze tema dal profilo (sorgente di verità, sync cross-device).
- *  Tollerante: senza utente, con errori o se la migration 0005 non è ancora
- *  applicata torna null → l'init script ripiega su localStorage/default. */
+/** Reads theme preferences from the profile (source of truth, cross-device sync).
+ *  Tolerant: without a user, with errors or if migration 0005 is not yet
+ *  applied returns null → the init script falls back to localStorage/default. */
 async function getThemeSeed(): Promise<ThemePrefs | null> {
   try {
     const supabase = await createClient();
@@ -102,8 +102,8 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <NextIntlClientProvider>
-          {/* Theme init: imposta classe (dark/light) e variabili colore inline
-              dal seed DB, PRIMA del primo paint (anti-FOUC + sync cross-device). */}
+          {/* Theme init: sets class (dark/light) and inline colour variables
+              from the DB seed, BEFORE first paint (anti-FOUC + cross-device sync). */}
           <script dangerouslySetInnerHTML={{ __html: themeInitScript(themeSeed) }} />
           <PwaSplash />
           <PwaRegister />

@@ -1,17 +1,17 @@
-// Verifica del codice di abbinamento Zepp (6 cifre, quindi indovinabile se i
-// tentativi non sono contati bene). Regole:
-// - ogni tentativo, giusto o sbagliato e da chiunque arrivi, consuma prima un
-//   tentativo su TUTTI i codici attivi (conteggio nel database, non per IP o
-//   per client); un codice si confronta solo se questo tentativo è riuscito a
-//   prenotarlo, quindi ogni codice vede al massimo PAIRING_MAX_ATTEMPTS
-//   ipotesi in tutta la sua vita, anche con richieste in parallelo;
-// - il confronto avviene in memoria a tempo costante, su tutti i candidati;
-// - il codice scade dopo PAIRING_CODE_TTL_MS.
-// Modulo puro: lo store è iniettato, così i test non toccano Supabase.
+// Verification of the Zepp pairing code (6 digits, so guessable if attempts
+// aren't counted properly). Rules:
+// - every attempt, right or wrong and from whoever it comes, first consumes an
+//   attempt on ALL active codes (counted in the database, not per IP or
+//   per client); a code is compared only if this attempt managed to
+//   reserve it, so each code sees at most PAIRING_MAX_ATTEMPTS
+//   guesses in its whole life, even with parallel requests;
+// - the comparison happens in memory in constant time, on all candidates;
+// - the code expires after PAIRING_CODE_TTL_MS.
+// Pure module: the store is injected, so tests don't touch Supabase.
 
 import crypto from "node:crypto";
 
-/** Allineato al vincolo `check (attempts between 0 and 5)` della migrazione 0014. */
+/** Aligned with the `check (attempts between 0 and 5)` constraint of migration 0014. */
 export const PAIRING_MAX_ATTEMPTS = 5;
 export const PAIRING_CODE_TTL_MS = 5 * 60_000;
 
@@ -25,15 +25,15 @@ export interface PairingCandidate {
 }
 
 export interface PairingStore {
-  /** Codici non scaduti, non esauriti e con attempts < PAIRING_MAX_ATTEMPTS. */
+  /** Codes not expired, not exhausted and with attempts < PAIRING_MAX_ATTEMPTS. */
   listActive(nowIso: string): Promise<PairingCandidate[]>;
-  /** Compare-and-set: attempts da `from` a `from + 1`; false se nel frattempo è cambiato. */
+  /** Compare-and-set: attempts from `from` to `from + 1`; false if it changed meanwhile. */
   bumpAttempts(id: string, from: number): Promise<boolean>;
 }
 
 /**
- * Prenota un tentativo su ogni codice attivo. Restituisce solo i codici su cui
- * la prenotazione è riuscita: sono gli unici con cui il tentativo può combaciare.
+ * Reserves an attempt on every active code. Returns only the codes on which
+ * the reservation succeeded: they are the only ones the attempt can match.
  */
 export async function reservePairingAttempt(
   store: PairingStore,
@@ -58,7 +58,7 @@ export async function reservePairingAttempt(
 function hashesEqual(a: string, b: string): boolean {
   const left = Buffer.from(a, "utf8");
   const right = Buffer.from(b, "utf8");
-  // Lunghezze diverse: confronta comunque per non uscire prima.
+  // Different lengths: compare anyway so as not to exit early.
   if (left.length !== right.length) {
     crypto.timingSafeEqual(left, left);
     return false;
@@ -66,7 +66,7 @@ function hashesEqual(a: string, b: string): boolean {
   return crypto.timingSafeEqual(left, right);
 }
 
-/** Cerca il codice fra quelli prenotati, senza uscire al primo confronto. */
+/** Looks for the code among the reserved ones, without exiting at the first comparison. */
 export function findPairingMatch(
   reserved: PairingCandidate[],
   codeHash: string,

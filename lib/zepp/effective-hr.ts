@@ -33,7 +33,7 @@ export async function getEffectiveHrConfig(
     .limit(42)
     .returns<ZeppHrMetric[]>();
 
-  // Orologio non sincronizzato da tempo: si torna ai valori manuali.
+  // Watch not synced for a while: fall back to manual values.
   const fresh = (metrics ?? []).filter((metric) => isZeppFresh(metric.captured_at, ZEPP_HR_STALE_DAYS));
   return resolveEffectiveHrConfig(manual, fresh, true);
 }

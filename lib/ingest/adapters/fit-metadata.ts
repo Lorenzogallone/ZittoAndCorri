@@ -5,7 +5,7 @@ export interface FitSessionMetadataInput {
   workoutName?: string;
 }
 
-/** Normalizza i metadati soggettivi FIT senza dipendere dal decoder. */
+/** Normalizes the subjective FIT metadata without depending on the decoder. */
 export function extractFitSessionMetadata(session: FitSessionMetadataInput): {
   rpe?: number;
   rpe_source?: "fit";

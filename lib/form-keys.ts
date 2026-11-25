@@ -4,10 +4,10 @@ const FIELDS =
   'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([disabled]):not([readonly]), textarea:not([disabled]):not([readonly])';
 
 /**
- * Da mettere su `<form onKeyDown>`: fa rispettare `enterKeyHint` al tasto Invio
- * della tastiera. "next" porta al campo visibile successivo (senza, Invio
- * invierebbe il form a metà compilazione); "done" chiude la tastiera. Gli altri
- * campi (e le textarea, dove Invio va a capo) restano come sono.
+ * To put on `<form onKeyDown>`: makes the keyboard's Enter key honor
+ * `enterKeyHint`. "next" moves to the next visible field (without it, Enter
+ * would submit the form midway); "done" closes the keyboard. Other
+ * fields (and textareas, where Enter adds a newline) stay as they are.
  */
 export function handleEnterKeyHint(event: KeyboardEvent<HTMLFormElement>) {
   if (event.key !== "Enter" || event.nativeEvent.isComposing) return;

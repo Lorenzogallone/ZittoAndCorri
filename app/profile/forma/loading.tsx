@@ -2,7 +2,7 @@ import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/app-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Stessa forma della pagina: frase in cima, carico, poi le card con i grafici.
+// Same shape as the page: sentence at the top, load, then the cards with the charts.
 export default function Loading() {
   const t = useTranslations("profile.forma");
   return (

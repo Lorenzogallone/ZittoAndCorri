@@ -1,8 +1,8 @@
 import "server-only";
 
-// Meteo previsto per le sedute (Open-Meteo: gratuito, senza chiave). La
-// posizione è il punto di partenza delle corse recenti e l'ora quella in cui
-// l'atleta corre di solito: nessun permesso di localizzazione richiesto.
+// Forecast weather for sessions (Open-Meteo: free, no key). The
+// location is the starting point of recent runs and the time is when
+// the athlete usually runs: no location permission required.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { heatSlowdownPct } from "@/lib/metrics/heat";
@@ -13,7 +13,7 @@ export interface HeatInfo {
   hour: number;
   temp_c: number;
   dew_point_c: number;
-  /** Rallentamento consigliato in %, 0 se non serve. */
+  /** Recommended slowdown in %, 0 if not needed. */
   pct: number;
 }
 
@@ -25,7 +25,7 @@ interface RunSpot {
 
 const FORECAST_DAYS = 15;
 
-/** Punto di partenza e ora tipica delle corse recenti. */
+/** Starting point and typical time of recent runs. */
 async function usualRunSpot(supabase: SupabaseClient, userId: string): Promise<RunSpot | null> {
   const { data: runs } = await supabase
     .from("activities")
@@ -54,7 +54,7 @@ async function usualRunSpot(supabase: SupabaseClient, userId: string): Promise<R
     .filter((hour): hour is number => hour != null)
     .sort((a, b) => a - b);
   const hour = hours.length ? hours[Math.floor(hours.length / 2)] : 18;
-  // Due decimali (~1 km): basta per il meteo e non espone il percorso esatto.
+  // Two decimals (~1 km): enough for the weather and doesn't expose the exact route.
   return { lat: Math.round(point.lat * 100) / 100, lon: Math.round(point.lon * 100) / 100, hour };
 }
 
@@ -63,8 +63,8 @@ interface ForecastResponse {
 }
 
 /**
- * Caldo previsto per le date richieste (solo entro l'orizzonte di previsione).
- * Mai bloccante: in caso di errore torna una mappa vuota.
+ * Forecast heat for the requested dates (only within the forecast horizon).
+ * Never blocking: on error it returns an empty map.
  */
 export async function heatForDates(
   supabase: SupabaseClient,

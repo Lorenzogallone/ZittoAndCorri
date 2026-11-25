@@ -114,7 +114,7 @@ export async function pullZeppWorkoutPlan(
   const [workoutResult, hrZonesResult] = await Promise.all([
     admin
       .from("planned_workouts")
-      // "*": l'ordine nella giornata (day_order) esiste solo dalla migrazione 0029.
+      // "*": the order within the day (day_order) exists only since migration 0029.
       .select("*")
       .eq("user_id", connection.user_id)
       .eq("status", "planned")
@@ -127,7 +127,7 @@ export async function pullZeppWorkoutPlan(
   ]);
   if (workoutResult.error) throw workoutResult.error;
 
-  // Caldo previsto oggi: l'orologio riceve i passi già rallentati, come l'app.
+  // Expected heat today: the watch receives the steps already slowed, like the app.
   const heat = (await heatForDates(admin, connection.user_id, [input.localDate])).get(input.localDate);
   const workouts = sortByDayOrder(workoutResult.data ?? []).map(wireWorkout).map((workout) =>
     heat && heat.pct > 0 && workout.date === input.localDate
@@ -141,7 +141,7 @@ export async function pullZeppWorkoutPlan(
   const revision = revisionFor(workouts, selection.source === "override" ? selection.selected?.id ?? null : null);
 
   const now = new Date().toISOString();
-  // Per il client salute "ultima sincronizzazione" resta quella dei dati, non del piano.
+  // For the health client "last sync" stays that of the data, not of the plan.
   if (connection.client_kind === "workout") {
     await admin.from("zepp_connections").update({
       last_sync_at: now,

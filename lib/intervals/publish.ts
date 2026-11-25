@@ -1,10 +1,10 @@
 import "server-only";
 
-// Pubblicazione del piano su Intervals.icu: tutte le sedute future (fino a un
-// anno) come eventi WORKOUT con external_id "zc:<id>". Sul calendario Intervals
-// si vede l'intero piano; Zepp ne carica sull'orologio i prossimi 7 giorni.
-// Le sedute cambiate vengono aggiornate, quelle sparite dal piano rimosse;
-// gli eventi creati a mano dall'atleta su Intervals non vengono toccati.
+// Publishing the plan to Intervals.icu: all future sessions (up to one
+// year) as WORKOUT events with external_id "zc:<id>". The Intervals calendar
+// shows the whole plan; Zepp loads the next 7 days onto the watch.
+// Changed sessions are updated, those gone from the plan removed;
+// events created by hand by the athlete on Intervals are not touched.
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hrZones } from "@/lib/metrics/zones";
@@ -39,7 +39,7 @@ export interface IntervalsPublishSummary {
   errors: string[];
 }
 
-/** Orizzonte pubblicato: tutto il piano futuro, entro un anno da oggi. */
+/** Published horizon: the whole future plan, within one year from today. */
 export const PUBLISH_DAYS = 366;
 
 const TYPE_TITLES: Record<string, string> = {
@@ -79,7 +79,7 @@ export async function publishPlanToIntervals(
   const [{ data: rows, error }, { data: profile }] = await Promise.all([
     admin
       .from("planned_workouts")
-      // "*": ordine e momento della giornata esistono solo dalla migrazione 0029.
+      // "*": order and time of day exist only since migration 0029.
       .select("*")
       .eq("user_id", userId)
       .eq("status", "planned")

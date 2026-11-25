@@ -1,17 +1,17 @@
-// Fasi guidate → testo "workout builder" di Intervals.icu. Funzioni pure.
+// Guided phases → Intervals.icu "workout builder" text. Pure functions.
 //
-// Sintassi (forum.intervals.icu, "Workout builder syntax quick guide"):
-// - ogni fase è una riga "- <cue> <durata> <target>";
-// - durata "10m", "90s", "1m30", "1km", "400mtr";
-// - passo assoluto "5:00-4:40/km Pace", FC in percentuale "70-80% HR";
-// - un solo target per fase, e per Zepp un solo tipo (passo o FC) per seduta;
-// - ripetute con una riga "6x" (niente annidamenti);
-// - tipo di fase in coda: "intensity=warmup|active|recovery|cooldown";
-// - sezioni "Warmup", "Main Set", "Cooldown"; "Main Set 6x" ripete tutto il blocco;
-// - ogni blocco "Nx" è un paragrafo a sé: va separato da una riga vuota da ciò
-//   che segue, altrimenti Intervals fonde i blocchi (la riga "3x" finiva in coda
-//   alla fase precedente e tutto diventava un unico "2x").
-// I bpm assoluti non sono documentati: la FC viaggia in % della FC massima.
+// Syntax (forum.intervals.icu, "Workout builder syntax quick guide"):
+// - each phase is a line "- <cue> <duration> <target>";
+// - duration "10m", "90s", "1m30", "1km", "400mtr";
+// - absolute pace "5:00-4:40/km Pace", HR as a percentage "70-80% HR";
+// - one target per phase, and for Zepp a single type (pace or HR) per session;
+// - repeats with a "6x" line (no nesting);
+// - phase type at the end: "intensity=warmup|active|recovery|cooldown";
+// - sections "Warmup", "Main Set", "Cooldown"; "Main Set 6x" repeats the whole block;
+// - each "Nx" block is its own paragraph: it must be separated by a blank line from what
+//   follows, otherwise Intervals merges the blocks (the "3x" line ended up at the end
+//   of the previous phase and everything became a single "2x").
+// Absolute bpm are not documented: HR travels as a % of max HR.
 
 import type { WorkoutStepInput, WorkoutStepKind } from "@/lib/types";
 import { formatStepAmount, groupWorkoutSteps } from "../workout-guide.ts";
@@ -19,7 +19,7 @@ import { formatStepAmount, groupWorkoutSteps } from "../workout-guide.ts";
 export type IntervalsTargetPreference = "auto" | "pace" | "hr";
 
 export interface IntervalsTargetContext {
-  /** FC massima effettiva dell'atleta (Zepp o profilo); senza, niente target FC. */
+  /** Athlete's effective max HR (Zepp or profile); without it, no HR target. */
   max_hr: number | null;
   preference: IntervalsTargetPreference;
 }
@@ -27,7 +27,7 @@ export interface IntervalsTargetContext {
 export interface IntervalsWorkoutSource {
   id: string;
   date: string;
-  /** HH:MM:SS: mette in fila le sedute della stessa giornata. Default mezzanotte. */
+  /** HH:MM:SS: orders sessions of the same day. Defaults to midnight. */
   start_time?: string;
   title: string;
   target_distance_m: number | null;
@@ -45,7 +45,7 @@ export interface IntervalsWorkoutDraft {
 }
 
 const EXTERNAL_PREFIX = "zc:";
-/** Fase manuale senza valore: Intervals vuole comunque una durata. */
+/** Manual phase without a value: Intervals still wants a duration. */
 const MANUAL_FALLBACK_SECONDS = 20 * 60;
 
 export function intervalsExternalId(workoutId: string): string {
@@ -87,10 +87,10 @@ function paceClock(seconds: number): string {
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
 }
 
-// Un limite solo ("non più veloce di", "FC ≤ 150") è aperto dall'altra parte:
-// Intervals vuole un range, quindi il lato mancante va lontano, non a ridosso
-// del limite, altrimenti l'orologio avvisa "troppo lento" o "FC bassa" quando
-// l'atleta sta facendo esattamente ciò che il piano chiede.
+// A single limit ("no faster than", "HR ≤ 150") is open on the other side:
+// Intervals wants a range, so the missing side goes far away, not close to
+// the limit, otherwise the watch warns "too slow" or "low HR" when
+// the athlete is doing exactly what the plan asks.
 const OPEN_PACE_SPREAD_S = 90;
 const OPEN_HR_FLOOR_PCT = 50;
 const OPEN_HR_CEILING_PCT = 100;
@@ -101,7 +101,7 @@ function paceTarget(step: WorkoutStepInput): string | null {
   if (min == null && max == null) return null;
   const fast = min ?? Math.max(120, (max as number) - OPEN_PACE_SPREAD_S);
   const slow = max ?? Math.min(1_200, (min as number) + OPEN_PACE_SPREAD_S);
-  // Nel builder l'esempio scrive prima il passo lento: "5:00-4:40/km".
+  // In the builder the example writes the slow pace first: "5:00-4:40/km".
   return `${paceClock(Math.max(fast, slow))}-${paceClock(Math.min(fast, slow))}/km Pace`;
 }
 
@@ -119,10 +119,10 @@ function hrTarget(step: WorkoutStepInput, maxHr: number | null): string | null {
 export type IntervalsTargetKind = "pace" | "hr";
 
 /**
- * Un solo tipo di target per tutta la seduta. Zepp, se FC e passo sono
- * mescolati, tiene la FC e scarta il passo (verificato con un Balance 2,
- * novembre 2026). In automatico: passo se un tratto di lavoro ha un passo
- * (soglia, ripetute), altrimenti FC (facili, lunghi, recuperi).
+ * A single target type for the whole session. Zepp, if HR and pace are
+ * mixed, keeps HR and drops pace (verified with a Balance 2,
+ * November 2026). Automatic: pace if a work segment has a pace
+ * (threshold, intervals), otherwise HR (easy, long, recoveries).
  */
 export function workoutTargetKind(steps: WorkoutStepInput[], ctx: IntervalsTargetContext): IntervalsTargetKind | null {
   const anyPace = steps.some((step) => paceTarget(step) != null);
@@ -134,7 +134,7 @@ export function workoutTargetKind(steps: WorkoutStepInput[], ctx: IntervalsTarge
   return anyHr ? "hr" : "pace";
 }
 
-/** Target della fase nel tipo scelto per la seduta; null se la fase non ne ha uno di quel tipo. */
+/** Phase target in the type chosen for the session; null if the phase has none of that type. */
 export function stepTarget(
   step: WorkoutStepInput,
   ctx: IntervalsTargetContext,
@@ -145,10 +145,10 @@ export function stepTarget(
   return null;
 }
 
-// Tipo di fase esplicito: Zepp ignora il nome della fase e mostra solo il tipo.
-// Senza tag ogni fase arriva come "Allenamento"; con il tag l'orologio scrive
-// Riscaldamento, Allenamento, Ripristina (recupero) e Rilassato (defaticamento).
-// Verificato nell'app Zepp con un Balance 2, novembre 2026.
+// Explicit phase type: Zepp ignores the phase name and shows only the type.
+// Without the tag every phase arrives as "Allenamento"; with the tag the watch writes
+// Riscaldamento, Allenamento, Ripristina (recovery) and Rilassato (cooldown).
+// Verified in the Zepp app with a Balance 2, November 2026.
 const INTENSITY: Record<WorkoutStepKind, string> = {
   warmup: "warmup",
   work: "active",
@@ -174,7 +174,7 @@ export interface RepeatBlock {
   steps: WorkoutStepInput[];
 }
 
-/** Raggruppa coppie (o singole fasi) identiche consecutive in blocchi "Nx". */
+/** Groups identical consecutive pairs (or single phases) into "Nx" blocks. */
 export function groupRepeats(steps: WorkoutStepInput[]): RepeatBlock[] {
   const blocks: RepeatBlock[] = [];
   let index = 0;
@@ -216,14 +216,14 @@ function trailingKind(steps: WorkoutStepInput[], kind: WorkoutStepKind, from: nu
   return count;
 }
 
-/** Defaticamento minimo che resta dopo avergli preso il recupero finale. */
+/** Minimum cooldown left after taking the final recovery from it. */
 const MIN_COOLDOWN_LEFT = { time: 60, distance: 200 } as const;
 
 /**
- * "2x (lavoro + recupero) + lavoro" prima del defaticamento diventa "3x": il
- * recupero mancante si prende dall'inizio del defaticamento, che è comunque
- * corsa lenta, e la durata totale non cambia. Così sull'orologio il contatore
- * dei giri torna con il titolo ("3×8'") e non spunta una ripetuta in più.
+ * "2x (work + recovery) + work" before the cooldown becomes "3x": the
+ * missing recovery is taken from the start of the cooldown, which is slow
+ * running anyway, and the total duration does not change. This way the lap counter
+ * on the watch matches the title ("3×8'") and no extra repeat shows up.
  */
 export function closeTrailingRepeat(
   main: WorkoutStepInput[],
@@ -258,8 +258,8 @@ export function workoutDescription(steps: WorkoutStepInput[], ctx: IntervalsTarg
   if (warmup.length) sections.push(["Warmup", ...warmup.map((step) => stepLine(step, ctx, kind))].join("\n"));
 
   if (main.length) {
-    // Un paragrafo per blocco ripetuto; le fasi singole consecutive stanno
-    // insieme in un paragrafo senza intestazione.
+    // One paragraph per repeated block; consecutive single phases stay
+    // together in a paragraph without a heading.
     const paragraphs: string[][] = [];
     let singles: string[] | null = null;
     for (const block of groupRepeats(main)) {
@@ -290,8 +290,8 @@ function distanceLabel(meters: number): string {
 }
 
 export function workoutEventName(workout: IntervalsWorkoutSource): string {
-  // Stesso raggruppamento della PWA (conta anche l'ultima ripetuta senza
-  // recupero). Nel titolo vanno le ripetute principali, non gli allunghi.
+  // Same grouping as the PWA (also counts the last repeat without
+  // recovery). The title lists the main repeats, not the strides.
   const repeats = groupWorkoutSteps(workout.steps).flatMap((block) => {
     if (block.kind !== "repeat") return [];
     const work = block.steps.find((step) => step.kind === "work");

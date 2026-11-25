@@ -26,8 +26,8 @@ interface GoalValues {
 }
 
 /**
- * Valida il form obiettivo. Con goal_kind "general" non serve una gara: la
- * data viene ignorata e il nome, se vuoto, si genera dalla distanza.
+ * Validates the goal form. With goal_kind "general" no race is needed: the
+ * date is ignored and the name, if empty, is generated from the distance.
  */
 function parseGoalForm(formData: FormData, t: (key: string) => string): GoalValues | { error: string } {
   const general = formData.get("goal_kind") === "general";

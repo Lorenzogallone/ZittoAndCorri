@@ -28,16 +28,16 @@ export interface ProfileViewProps {
   load: ATLCTLResult;
   zepp: { latest: ZeppDailyMetric | null; readiness: ZeppReadinessResult | null; stale: boolean; wellness: WellnessDay | null; lastSync: string | null };
   hasData: boolean;
-  /** VO₂max, carico e sonno in evidenza, con il verso del trend. */
+  /** VO₂max, load and sleep featured, with the trend direction. */
   highlights: FormHighlight[];
   formPoints: FormPoint[];
   formTrend: string | null;
   weeks: WeekBar[];
   currentWeek: string;
   reference: PredictionReference | null;
-  /** Volume e lungo recenti: allargano la forbice delle previsioni. */
+  /** Recent volume and long run: widen the forecast range. */
   endurance: EnduranceBase;
-  /** Oggi a Roma (YYYY-MM-DD). */
+  /** Today in Rome (YYYY-MM-DD). */
   today: string;
   records: PersonalRecord[];
   paceSessions: PaceSession[];
@@ -45,8 +45,8 @@ export interface ProfileViewProps {
 
 type Tab = { key: string; label: string; content: React.ReactElement };
 
-/** Una card con i tab sul telefono e fino a 2xl; sugli schermi larghi le
- *  viste stanno affiancate, ognuna nella sua card con il proprio titolo. */
+/** One card with tabs on the phone up to 2xl; on wide screens the
+    *  views sit side by side, each in its own card with its own title. */
 function TabbedCard({ tabs }: { tabs: Tab[] }) {
   return (
     <>
@@ -121,10 +121,10 @@ export function ProfileView(props: ProfileViewProps) {
         </Button>
       }
     >
-      {/* Desktop: persona, stato di forma, obiettivo e passo nelle sedute
-          veloci in una colonna fissa a sinistra, grafici a destra. Sul telefono
-          il contenitore della colonna non genera box (contents) e la sequenza
-          animata resta la stessa; il passo resta in fondo alla pagina. */}
+      {/* Desktop: person, fitness status, goal and pace in fast sessions
+          in a fixed left column, charts on the right. On phones the
+          column container generates no box (contents) and the animated
+          sequence stays the same; pace stays at the bottom of the page. */}
       <div className="stagger lg:grid lg:grid-cols-[24rem_minmax(0,1fr)] lg:gap-x-8 3xl:grid-cols-[28rem_minmax(0,1fr)] 3xl:gap-x-10">
         <div className="stagger contents lg:sticky lg:top-0 lg:col-start-1 lg:row-span-[999] lg:row-start-1 lg:block lg:self-start">
         <div className="mb-6 flex items-center gap-3">

@@ -18,12 +18,12 @@ import { persistDerived } from "@/lib/derived";
 
 export interface ActivityFormState {
   error?: string;
-  /** Id della corsa creata: il client naviga al dettaglio (vedi navigateAfterMutation). */
+  /** Id of the created run: the client navigates to the detail (see navigateAfterMutation). */
   id?: string;
   evaluationJobId?: string;
 }
 
-/** Legge un campo numero opzionale dal form; "" → undefined. */
+/** Reads an optional number field from the form; "" → undefined. */
 function optInt(formData: FormData, key: string): number | undefined {
   const raw = formData.get(key);
   if (typeof raw !== "string" || raw.trim() === "") return undefined;
@@ -42,7 +42,7 @@ export async function createActivity(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // --- parsing input del form ---
+  // --- form input parsing ---
   const startedAtLocal = String(formData.get("started_at") ?? "").trim();
   if (!startedAtLocal) return { error: t("dateRequired") };
   const startedAt = new Date(startedAtLocal);
@@ -51,8 +51,8 @@ export async function createActivity(
   const sport = String(formData.get("sport") ?? "running");
   const isRunning = sport === "running";
 
-  // Distanza: obbligatoria per la corsa; opzionale per gli altri sport
-  // (palestra, calcio, yoga… spesso non ne hanno una sensata).
+  // Distance: required for running; optional for other sports
+  // (gym, football, yoga… often have no sensible one).
   const distanceRaw = String(formData.get("distance_km") ?? "").trim();
   const distanceKm = distanceRaw === "" ? 0 : parseDecimal(distanceRaw);
   if (!Number.isFinite(distanceKm) || distanceKm < 0 || (isRunning && distanceKm <= 0)) {
@@ -66,7 +66,7 @@ export async function createActivity(
   const type = String(formData.get("type") ?? "easy");
   const notes = String(formData.get("notes") ?? "").trim();
 
-  // --- profilo (per zone-da-media) ---
+  // --- profile (for zones-from-average) ---
   const { data: profile } = await supabase
     .from("profiles")
     .select("max_hr, resting_hr")
@@ -74,7 +74,7 @@ export async function createActivity(
     .single<Pick<Profile, "max_hr" | "resting_hr">>();
   const effectiveHr = await getEffectiveHrConfig(supabase, user.id, profile ?? null);
 
-  // --- ingest unificato ---
+  // --- unified ingest ---
   let outcome: IngestOutcome;
   try {
     outcome = await ingestActivity(
@@ -106,8 +106,8 @@ export async function createActivity(
   revalidatePath("/activities");
   const activityId = outcome.id;
   const evaluationJobId = await enqueueEvaluationAfterIngest(user.id, outcome);
-  // Niente redirect lato server: torniamo l'id e il client naviga (soft da
-  // browser, full load in PWA standalone, dove la soft-navigation si impalla).
+  // No server-side redirect: we return the id and the client navigates (soft from
+  // browser, full load in standalone PWA, where soft navigation hangs).
   return { id: activityId, evaluationJobId: evaluationJobId ?? undefined };
 }
 
@@ -173,10 +173,10 @@ export async function deleteActivity(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
-  // Traccia della corsa importata cancellata, prima di cancellarla: senza,
-  // l'import successivo da Intervals.icu la ricreerebbe. "*": external_id
-  // esiste solo dalla migrazione 0025. Senza la tabella (migrazione 0032) si
-  // cancella come prima.
+  // Trace of the deleted imported run, before deleting it: without it,
+  // the next import from Intervals.icu would recreate it. "*": external_id
+  // exists only since migration 0025. Without the table (migration 0032) we
+  // delete as before.
   const { data: stored } = await supabase
     .from("activities")
     .select("*")
@@ -186,21 +186,21 @@ export async function deleteActivity(formData: FormData): Promise<void> {
   const tombstone = stored ? deletedImportFor(stored) : null;
   if (tombstone) {
     const { error } = await supabase.from("deleted_imports").insert({ user_id: user.id, ...tombstone });
-    // 23505: l'id esterno è già segnato come cancellato.
+    // 23505: the external id is already marked as deleted.
     if (error && !isMissingTable(error) && error.code !== "23505") {
       console.error("deleteActivity tombstone:", error.message);
     }
   }
 
-  // RLS + filtro esplicito su user_id: l'utente cancella solo le proprie corse.
+  // RLS + explicit user_id filter: the user deletes only their own runs.
   await supabase.from("activities").delete().eq("id", id).eq("user_id", user.id);
 
   revalidatePath("/activities");
-  // La navigazione la fa il client (navigateAfterMutation): niente redirect lato
-  // server, che in PWA standalone lascia la pagina appesa in loading.
+  // Navigation is done by the client (navigateAfterMutation): no server-side redirect,
+  // which in standalone PWA leaves the page hanging in loading.
 }
 
-/** Esclude (o ripristina) una corsa da totali, record e carico. Reversibile. */
+/** Excludes (or restores) a run from totals, records and load. Reversible. */
 export async function setActivityExcluded(
   id: string,
   excluded: boolean,
@@ -231,7 +231,7 @@ export async function setActivityExcluded(
 
 export interface EditActivityFormState {
   error?: string;
-  /** Id della corsa aggiornata: il client naviga al dettaglio. */
+  /** Id of the updated run: the client navigates to the detail. */
   id?: string;
 }
 
@@ -266,7 +266,7 @@ export async function updateActivity(
   const startedAt = new Date(startedAtLocal);
   if (Number.isNaN(startedAt.getTime())) return { error: t("dateInvalid") };
 
-  // Sport: se non arriva dal form (form vecchi) resta quello esistente.
+  // Sport: if it does not come from the form (old forms) the existing one stays.
   const sportRaw = String(formData.get("sport") ?? "").trim();
   const sport = sportRaw || activity.sport || "running";
   const isRunning = sport === "running";
@@ -281,7 +281,7 @@ export async function updateActivity(
     return { error: t("durationInvalid") };
   }
 
-  // Vincolo DB: le attività non running hanno sempre type 'cross'.
+  // DB constraint: non-running activities always have type 'cross'.
   const type = isRunning ? String(formData.get("type") ?? activity.type) : "cross";
   const notes = String(formData.get("notes") ?? "").trim();
   const rpe = optInt(formData, "rpe");
@@ -290,9 +290,9 @@ export async function updateActivity(
   const elevation_gain_m = optInt(formData, "elevation_gain_m");
 
   const distance_m = Math.round(distanceKm * 1000);
-  // Passo sul tempo in movimento se la corsa ne ha uno (import FIT/GPX con
-  // pause): coerente con il calcolo in ingest e con Strava. La durata totale
-  // resta modificabile; moving_time_s non si edita qui, lo preserviamo.
+  // Pace on moving time if the run has one (FIT/GPX import with
+  // pauses): consistent with the ingest calculation and with Strava. Total duration
+  // stays editable; moving_time_s is not edited here, we preserve it.
   const paceTime = activity.moving_time_s ?? duration_s;
   const avg_pace_s_km = distance_m > 0 ? avgPace(distance_m, paceTime) : null;
 

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { generalGoalName, type GoalKind } from "@/lib/goals";
 import { DECIMAL_PATTERN, DURATION_PATTERN, parseDecimal } from "@/lib/format";
 
-// Senza `key` l'etichetta è solo "<km> km"; con `key` arriva dai messaggi.
+// Without `key` the label is just "<km> km"; with `key` it comes from the messages.
 const DISTANCE_PRESETS: { km: number; key?: "half" | "marathon" }[] = [
   { km: 5 },
   { km: 10 },
@@ -26,7 +26,7 @@ interface Props {
   defaultTargetTime?: string;
 }
 
-/** Campi condivisi dei form obiettivo: gara con data o obiettivo generico. */
+/** Shared fields of the goal forms: race with date or generic goal. */
 export function GoalFields({
   defaultKind = "race",
   defaultName = "",
@@ -101,7 +101,7 @@ export function GoalFields({
 
       <div className="grid gap-2.5">
         <Label id="race_name-label" htmlFor="race_name">{general ? t("nameGeneral") : t("nameRace")}</Label>
-        {/* Non un input: Safari proponeva il nome della scheda contatto. */}
+        {/* Not an input: Safari suggested the contact card name. */}
         <TextField
           id="race_name"
           aria-labelledby="race_name-label"

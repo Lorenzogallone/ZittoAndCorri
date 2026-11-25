@@ -8,9 +8,9 @@ export async function POST(request: Request): Promise<Response> {
     const parsed = ZeppPairRequestSchema.safeParse(body);
     if (!parsed.success) return Response.json({ error: "Richiesta di collegamento non valida." }, { status: 400 });
 
-    // Freno per istanza e per IP, in aggiunta al conteggio nel database (che è
-    // quello che conta: vedi lib/zepp/pairing.ts). Il clientId non entra nella
-    // chiave perché lo sceglie il chiamante.
+    // Throttle per instance and per IP, in addition to the count in the database (which is
+    // the one that matters: see lib/zepp/pairing.ts). The clientId is not part of the
+    // key because the caller chooses it.
     const attemptKey = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     if (!consumePairingAttempt(attemptKey)) {
       return Response.json({ error: "Troppi tentativi. Riprova fra qualche minuto." }, { status: 429 });

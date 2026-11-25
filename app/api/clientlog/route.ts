@@ -1,7 +1,7 @@
-// Endpoint diagnostico: riceve gli eventi del client logger e li stampa nei log
-// del server (visibili nelle Functions di Vercel). Nessuna persistenza: serve
-// solo a leggere cosa succede in PWA standalone su iOS, dove non c'è devtools.
-// Solo per utenti con sessione valida; corpo e frequenza limitati, campi troncati.
+// Diagnostic endpoint: receives the client logger's events and prints them in the
+// server logs (visible in Vercel Functions). No persistence: it only serves
+// to see what happens in standalone PWA on iOS, where there are no devtools.
+// Only for users with a valid session; body and rate limited, fields truncated.
 
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -36,7 +36,7 @@ export async function POST(req: Request): Promise<Response> {
     }
     const line = sanitizeClientLog(body, userId);
     if (!line) return new Response(null, { status: 400 });
-    // Prefisso filtrabile nei log di Vercel: cerca "[clientlog]".
+    // Filterable prefix in Vercel logs: search "[clientlog]".
     console.log("[clientlog]", line);
   } catch {
     return new Response(null, { status: 400 });

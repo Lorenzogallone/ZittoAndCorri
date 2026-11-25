@@ -1,10 +1,10 @@
-// Stime di durata, distanza e intensità delle fasi di una seduta, per il
-// grafico a blocchi e i riepiloghi. Funzioni pure.
+// Estimates of duration, distance and intensity of the phases of a session, for the
+// block chart and the summaries. Pure functions.
 
 import type { WorkoutStepInput, WorkoutType } from "@/lib/types";
 import { stepVariant } from "./workout-guide.ts";
 
-/** Passo di ripiego (s/km) quando la fase non ha un target. */
+/** Fallback pace (s/km) when the phase has no target. */
 const DEFAULT_PACE: Record<WorkoutStepInput["kind"], number> = {
   warmup: 390,
   work: 300,
@@ -13,7 +13,7 @@ const DEFAULT_PACE: Record<WorkoutStepInput["kind"], number> = {
   cooldown: 390,
 };
 
-/** Passo di ripiego per le varianti: sprint, recupero corricchiando o camminando. */
+/** Fallback pace for variants: sprint, jogging or walking recovery. */
 const VARIANT_PACE = { sprint: 210, jog: 450, walk: 660 } as const;
 
 function stepPace(step: WorkoutStepInput): number {
@@ -43,7 +43,7 @@ export function estimateWorkout(steps: WorkoutStepInput[]): { seconds: number; m
   );
 }
 
-/** Intensità 1-4 di una fase, per l'altezza dei blocchi nel grafico. */
+/** Intensity 1-4 of a phase, for the block height in the chart. */
 export function stepIntensity(step: WorkoutStepInput, type?: WorkoutType | null): number {
   const variant = stepVariant(step);
   if (variant === "sprint") return 4;

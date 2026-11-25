@@ -1,6 +1,6 @@
-// Adapter GPX → ActivityInput. PLAN.md §12 + Fase 2.
-// Porta in TS il parser già collaudato in scripts/import-gpx.mjs (export Strava).
-// Riusabile dalla UI di import e da futuri upload file.
+// GPX → ActivityInput adapter. PLAN.md §12 + Phase 2.
+// Ports to TS the proven parser from scripts/import-gpx.mjs (Strava export).
+// Reusable from the import UI and future file uploads.
 
 import { haversine } from "@/lib/metrics/splits";
 import type { ActivityInput } from "@/lib/ingest/schema";
@@ -35,8 +35,8 @@ function parsePoints(xml: string): RawPoint[] {
 }
 
 /**
- * Parsa un file GPX (formato Strava) e produce un ActivityInput pronto per ingestActivity.
- * Lancia se il file ha meno di 2 trackpoint.
+ * Parses a GPX file (Strava format) and produces an ActivityInput ready for ingestActivity.
+ * Throws if the file has fewer than 2 trackpoints.
  */
 export function parseGpx(xml: string): ActivityInput {
   const trackName =
@@ -54,13 +54,13 @@ export function parseGpx(xml: string): ActivityInput {
   let hrSum = 0;
   let hrCount = 0;
   let hrMax = 0;
-  // Tempo "in movimento" stimato: lo Strava-GPX non marca le pause, ma durante
-  // l'auto-pause smette di registrare punti → si vedono come buchi temporali.
-  // Sommiamo i delta tra punti escludendo i salti lunghi (pausa di
-  // registrazione) e i tratti praticamente da fermo (velocità sotto soglia).
+  // Estimated "moving" time: Strava GPX doesn't mark pauses, but during
+  // auto-pause it stops recording points → they show up as time gaps.
+  // We sum the deltas between points, excluding long jumps (recording
+  // pauses) and near-standstill stretches (speed below threshold).
   let moving_s = 0;
-  const PAUSE_GAP_S = 10; // gap oltre i ~10s = pausa/auto-pause
-  const MIN_SPEED_MS = 0.5; // sotto ~0.5 m/s sei di fatto fermo
+  const PAUSE_GAP_S = 10; // gap over ~10s = pause/auto-pause
+  const MIN_SPEED_MS = 0.5; // below ~0.5 m/s you are effectively stopped
 
   const gpsSeries: ActivityInput["gps_series"] = [];
   const hrSeries: ActivityInput["hr_series"] = [];
@@ -79,8 +79,8 @@ export function parseGpx(xml: string): ActivityInput {
       const dt = (new Date(p.time).getTime() - new Date(prev.time).getTime()) / 1000;
       if (dt > 0) {
         const speed = segDist / dt;
-        // Conta il tratto come "in movimento" solo se non è un buco di
-        // registrazione (pausa) né un tratto da fermo.
+        // Count the stretch as "moving" only if it's not a recording gap
+        // (pause) nor a standstill stretch.
         if (dt <= PAUSE_GAP_S && speed >= MIN_SPEED_MS) moving_s += dt;
       }
     }
@@ -102,8 +102,8 @@ export function parseGpx(xml: string): ActivityInput {
     started_at: points[0].time,
     distance_m: Math.round(distance_m),
     duration_s,
-    // Solo se c'è stata davvero una pausa (moving < elapsed); altrimenti lascia
-    // undefined e si usa il tempo totale come prima.
+    // Only if there was a real pause (moving < elapsed); otherwise leave
+    // undefined and use the total time as before.
     moving_time_s:
       moving_s > 0 && Math.round(moving_s) < duration_s
         ? Math.round(moving_s)

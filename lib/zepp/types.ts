@@ -77,14 +77,14 @@ export interface ZeppReadinessResult {
   score: number | null;
   status: ZeppReadinessStatus | null;
   confidence: "low" | "medium" | "high";
-  /** zepp_assisted: c'è almeno un segnale Zepp; wellness: solo sonno/FC/HRV (es. Intervals.icu). */
+  /** zepp_assisted: at least one Zepp signal; wellness: only sleep/HR/HRV (e.g. Intervals.icu). */
   source: "zepp_assisted" | "wellness" | "internal";
   freshness_hours: number | null;
   components: ZeppReadinessComponent[];
   internal: ATLCTLResult;
 }
 
-/** Giorno di wellness_daily (migrazione 0025), per ora da Intervals.icu. */
+/** wellness_daily day (migration 0025), for now from Intervals.icu. */
 export interface WellnessDay {
   date: string;
   captured_at: string;

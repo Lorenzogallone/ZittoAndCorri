@@ -1,20 +1,20 @@
-// Merge di due ActivityInput della stessa attività (es. GPX + FIT da Zepp).
-// Il FIT è di norma il file "ricco" (cadenza, calorie, moving time); il GPX
-// riempie i buchi e porta il nome della traccia. Funzione pura: nessun DB.
+// Merge of two ActivityInputs of the same activity (e.g. GPX + FIT from Zepp).
+// The FIT is normally the "rich" file (cadence, calories, moving time); the GPX
+// fills the gaps and carries the track name. Pure function: no DB.
 
 import type { ActivityInput } from "@/lib/ingest/schema";
 
-/** Distanza massima tra gli start per considerare i file la stessa attività. */
+/** Maximum distance between starts for the files to count as the same activity. */
 export const SAME_ACTIVITY_WINDOW_MIN = 30;
 
-/** Serie con più campioni (a parità, la prima). */
+/** Series with more samples (on a tie, the first). */
 function pickLonger<T>(a: T[] | undefined, b: T[] | undefined): T[] | undefined {
   if (!a || a.length === 0) return b && b.length > 0 ? b : undefined;
   if (!b || b.length === 0) return a;
   return b.length > a.length ? b : a;
 }
 
-/** Minuti (assoluti) tra gli start di due input. */
+/** Minutes (absolute) between the starts of two inputs. */
 export function startDiffMinutes(a: ActivityInput, b: ActivityInput): number {
   return (
     Math.abs(
@@ -24,11 +24,11 @@ export function startDiffMinutes(a: ActivityInput, b: ActivityInput): number {
 }
 
 /**
- * Fonde `other` dentro `rich` (il file più completo, di norma il FIT).
- * I campi di `rich` vincono; `other` riempie i mancanti. Eccezioni:
- * - notes: il nome traccia del GPX è più descrittivo dell'etichetta sport FIT;
- * - serie HR/GPS: vince la più fitta (alcuni GPX campionano più spesso).
- * Lancia se gli start distano più di SAME_ACTIVITY_WINDOW_MIN minuti.
+ * Merges `other` into `rich` (the more complete file, normally the FIT).
+ * Fields of `rich` win; `other` fills the missing ones. Exceptions:
+ * - notes: the GPX track name is more descriptive than the FIT sport label;
+ * - HR/GPS series: the denser one wins (some GPX sample more often).
+ * Throws if the starts are more than SAME_ACTIVITY_WINDOW_MIN minutes apart.
  */
 export function mergeActivityInputs(
   rich: ActivityInput,

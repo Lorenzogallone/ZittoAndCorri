@@ -29,7 +29,7 @@ type ProfileActivity = Pick<
 const WEEKS_BACK = 11;
 const BASE_COLUMNS = "id, started_at, duration_s, moving_time_s, rpe, avg_hr, time_in_zone, sport, distance_m";
 
-/** Senza la migrazione 0018 (record e verifica del passo) il profilo resta leggibile. */
+/** Without migration 0018 (records and pace check) the profile stays readable. */
 async function profileActivities(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const query = (columns: string) => supabase
     .from("activities")
@@ -55,7 +55,7 @@ function formTrend(series: Array<{ date: string; ctl: number }>, t: Awaited<Retu
   return t("formTrend.stable");
 }
 
-/** Ultimo dato arrivato dall'orologio: sync Zepp o giorno di wellness (Intervals.icu). */
+/** Latest data from the watch: Zepp sync or wellness day (Intervals.icu). */
 function lastWatchSync(zepp: Awaited<ReturnType<typeof getZeppDashboard>>): string | null {
   const times = [
     zepp.connection?.enabled ? zepp.connection.last_sync_at : null,
@@ -93,8 +93,8 @@ export default async function ProfilePage() {
       .gte("date", firstMonday)
       .lte("date", lastSunday)
       .returns<Array<Pick<PlannedWorkout, "date" | "type" | "status" | "target_distance_m" | "target_duration_s" | "target_pace_s_km" | "workout_steps">>>(),
-    // Per la previsione: tratti delle sedute di soglia e deriva cardiaca dei
-    // lunghi, solo delle ultime 8 settimane (i tratti sono JSON pesante).
+    // For the forecast: segments of threshold sessions and cardiac drift of
+    // long runs, only of the last 8 weeks (segments are heavy JSON).
     supabase
       .from("activities")
       .select("sport, started_at, distance_m, moving_time_s, duration_s, hr_drift_pct, intervals")
@@ -123,8 +123,8 @@ export default async function ProfilePage() {
     getZeppDashboard(supabase, user.id, load),
     loadBodyTrends(supabase, user.id, today, load.series, tMetrics, locale),
   ]);
-  // In evidenza: VO₂max, carico 7 giorni e sonno (media delle ultime 2
-  // settimane, la stessa del confronto); il resto è nella vista Stato di forma.
+  // Featured: VO₂max, 7-day load and sleep (average of the last 2
+  // weeks, same as the comparison); the rest is in the Fitness status view.
   const ratio = load.load_ratio;
   const vo2 = trends.vo2max.latest ? trends.vo2max : null;
   const sleep = trends.sleep.latest ? trends.sleep : null;
@@ -141,13 +141,13 @@ export default async function ProfilePage() {
   ];
   const highlights = candidates.filter((item): item is FormHighlight => Boolean(item));
 
-  // Le corse importate prima dei record vengono completate in background.
+  // Runs imported before records existed are completed in the background.
   if (list.some((activity) => activity.sport === "running" && activity.best_efforts == null)) {
     const userId = user.id;
     after(() => backfillDerived(createAdminClient(), userId));
   }
 
-  // Un punto a settimana (fino a oggi): linee leggibili invece del dente di sega giornaliero.
+  // One point per week (up to today): readable lines instead of the daily sawtooth.
   const recentLoad = load.series.slice(-85);
   const formPoints = recentLoad
     .filter((_, index) => (recentLoad.length - 1 - index) % 7 === 0)

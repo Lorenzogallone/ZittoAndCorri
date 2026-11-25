@@ -7,7 +7,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const token = bearerToken(request);
     if (!token) return Response.json({ error: "Token mancante." }, { status: 401 });
-    // Il piano serve sia alla Workout Extension sia al widget "Oggi" della Mini App salute.
+    // The plan serves both the Workout Extension and the "Oggi" widget of the health Mini App.
     const connection = await authorizeZeppToken(token);
     if (!connection) return Response.json({ error: "Token non valido o revocato." }, { status: 401 });
 

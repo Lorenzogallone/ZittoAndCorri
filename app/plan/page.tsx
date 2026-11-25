@@ -46,8 +46,8 @@ export default async function PlanPage({ searchParams }: Props) {
     ? [`${month}-01`, daysBetween(`${month}-01`, addDays(`${month}-01`, 31).slice(0, 7) + "-01")]
     : [firstMonday, 14];
   const rangeEnd = addDays(rangeStart, dayCount - 1);
-  // Sedute e corse anche attorno all'intervallo: una seduta vale fatta con una
-  // corsa fino a due giorni prima o dopo, anche a cavallo dei bordi.
+  // Sessions and runs also around the range: a session counts as done with a
+  // run up to two days before or after, even across the edges.
   const matchRange = matchWindow(rangeStart, rangeEnd);
 
   const supabase = await createClient();
@@ -102,8 +102,8 @@ export default async function PlanPage({ searchParams }: Props) {
     today,
   }) : null;
   const daysToRace = goal?.race_date ? daysBetween(today, goal.race_date) : null;
-  // Niente in programma da oggi in poi (vista che include oggi): invito a
-  // chiedere un piano; senza nulla nemmeno nell'intervallo, solo l'invito.
+  // Nothing scheduled from today on (view that includes today): invitation to
+  // ask for a plan; with nothing even in the range, only the invitation.
   const nothingPlanned = upcoming === 0 && rangeStart <= today && today <= rangeEnd;
   const rangeEmpty = days.every((day) => !day.workouts.length && !day.activities.length);
 
@@ -181,8 +181,8 @@ export default async function PlanPage({ searchParams }: Props) {
           </div>
 
           {view === "weeks" ? (
-            // Da lg le due settimane affiancate; da 2xl una sopra l'altra, ognuna
-            // con i sette giorni in riga (vedi PlanWeek).
+            // From lg the two weeks side by side; from 2xl one above the other, each
+            // with the seven days in a row (see PlanWeek).
             <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-6 2xl:grid-cols-1 2xl:gap-0">
               {[days.slice(0, 7), days.slice(7, 14)].map((week, index) => {
                 const isCurrent = week[0].date === thisMonday;

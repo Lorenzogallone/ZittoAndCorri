@@ -1,7 +1,7 @@
-// "Nuova chat": un messaggio di stato segna l'inizio di una conversazione
-// pulita. Il coach vede solo i messaggi dopo l'ultimo segno (piano, corse e
-// memorie restano); la chat mostra la conversazione corrente e, a richiesta,
-// quelle precedenti. Modulo puro, usato da server e client.
+// "New chat": a status message marks the start of a clean
+// conversation. The coach sees only the messages after the last mark (plan, runs and
+// memories stay); the chat shows the current conversation and, on request,
+// the previous ones. Pure module, used by server and client.
 
 export const NEW_SESSION = "new_session";
 
@@ -14,9 +14,9 @@ export const isSessionMarker = (message: SessionMessage) =>
   message.kind === "status" && message.metadata?.type === NEW_SESSION;
 
 /**
- * Messaggi della conversazione corrente da una lista dal più recente al più
- * vecchio (come la legge il coach): si ferma al primo segno di nuova chat e
- * scarta gli altri messaggi di stato. Restituisce anche quando è iniziata.
+    * Messages of the current conversation from a list ordered newest to
+    * oldest (as the coach reads it): stops at the first new-chat mark and
+    * discards other status messages. Also returns when it started.
  */
 export function currentSession<T extends SessionMessage & { created_at: string }>(newestFirst: T[]): { messages: T[]; startedAt: string | null } {
   const messages: T[] = [];
@@ -28,8 +28,8 @@ export function currentSession<T extends SessionMessage & { created_at: string }
 }
 
 /**
- * Per la chat (dal più vecchio al più recente): la conversazione corrente e
- * quanti messaggi veri ci sono prima, nascosti finché non si chiede di vederli.
+    * For the chat (oldest to newest): the current conversation and
+    * how many real messages come before it, hidden until asked to show them.
  */
 export function splitSessions<T extends SessionMessage>(oldestFirst: T[]): { current: T[]; earlier: number } {
   let start = -1;

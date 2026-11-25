@@ -1,15 +1,15 @@
-// Sistema di temizzazione lato client.
+// Client-side theming system.
 //
-// Tre preferenze indipendenti, salvate in localStorage (per-dispositivo, nessun
-// flash, funziona offline e prima dell'auth):
-//   - mode   → auto | light | dark   (auto = segue il sistema, come prima)
-//   - accent → colore principale (brand) tra preset curati
-//   - style  → preset di tema completo (sfumatura di sfondo + vibe)
+// Three independent preferences, saved in localStorage (per-device, no
+// flash, works offline and before auth):
+//   - mode   → auto | light | dark   (auto = follows the system, as before)
+//   - accent → main (brand) colour among curated presets
+//   - style  → full theme preset (background shade + vibe)
 //
-// La verità della palette è applicata come variabili CSS inline sull'<html>
-// (specificità massima, batte ogni media query). Lo stesso codice viene usato
-// sia dal THEME_INIT_SCRIPT inline (pre-idratazione, anti-FOUC) sia dal
-// componente client delle impostazioni, così non c'è duplicazione di logica.
+// The palette's truth is applied as inline CSS variables on <html>
+// (maximum specificity, beats any media query). The same code is used
+// by both the inline THEME_INIT_SCRIPT (pre-hydration, anti-FOUC) and the
+// settings client component, so there's no logic duplication.
 
 export type ThemeMode = "auto" | "light" | "dark";
 export type AccentKey = "coral" | "amber" | "green" | "blue" | "violet" | "pink";
@@ -33,15 +33,15 @@ export const DEFAULT_PREFS: ThemePrefs = {
   style: "warm",
 };
 
-// ── Colori principali (accento / brand) ────────────────────────────────────
-// Nomi e descrizioni di colori e stili: namespace "labels" (theme.accent.*, theme.style.*).
+// ── Main colours (accent / brand) ──────────────────────────────────────────
+// Names and descriptions of colours and styles: namespace "labels" (theme.accent.*, theme.style.*).
 export interface AccentDef {
-  /** Valore oklch del brand: usato per --primary, --ring, --brand, glow… */
+  /** Brand oklch value: used for --primary, --ring, --brand, glow… */
   brand: string;
 }
 
 export const ACCENTS: Record<AccentKey, AccentDef> = {
-  // La chiave "coral" resta per le preferenze salvate: ora è l'arancio del brand.
+  // The "coral" key stays for saved preferences: it's now the brand orange.
   coral: { brand: "oklch(0.662 0.221 36.9)" },
   amber: { brand: "oklch(0.72 0.15 70)" },
   green: { brand: "oklch(0.66 0.15 155)" },
@@ -59,13 +59,13 @@ export const ACCENT_ORDER: AccentKey[] = [
   "pink",
 ];
 
-// ── Stili (preset di tema completi: sfumatura di sfondo) ────────────────────
-// Le chiavi neutre vengono impostate inline; "warm" è il default storico ed è
-// definito interamente nel CSS, quindi qui vale `null` (nessun override → si
-// usano le variabili di globals.css, palette identica a prima).
+// ── Styles (full theme presets: background shade) ───────────────────────────
+// Neutral keys are set inline; "warm" is the historical default and is
+// defined entirely in CSS, so here it's `null` (no override → the
+// globals.css variables are used, palette identical to before).
 
-/** Nomi di tutte le variabili neutre gestite dagli stili (per poterle pulire
- *  quando si torna allo stile "warm"). */
+/** Names of all neutral variables managed by the styles (so they can be cleared
+ *  when going back to the "warm" style). */
 export const NEUTRAL_KEYS = [
   "--background",
   "--foreground",
@@ -92,8 +92,8 @@ export const NEUTRAL_KEYS = [
   "--surface-2",
 ] as const;
 
-/** Costruisce la mappa di variabili neutre per un dato hue/chroma, usando la
- *  stessa "scala di luminosità" del design warm (così cambia solo la tinta). */
+/** Builds the neutral variables map for a given hue/chroma, using the
+ *  same "lightness scale" as the warm design (so only the tint changes). */
 function neutrals(
   hue: number,
   c: number,
@@ -154,14 +154,14 @@ function neutrals(
 }
 
 export interface StyleDef {
-  /** Variabili neutre per chiaro/scuro, oppure null = usa il CSS (warm). */
+  /** Neutral variables for light/dark, or null = use the CSS (warm). */
   vars: { light: Record<string, string>; dark: Record<string, string> } | null;
-  /** Colori di anteprima per la UI delle impostazioni (bg, card). */
+  /** Preview colours for the settings UI (bg, card). */
   preview: { light: string; dark: string };
 }
 
 export const STYLES: Record<StyleKey, StyleDef> = {
-  // La chiave "warm" resta per compatibilità con le preferenze salvate.
+  // The "warm" key stays for compatibility with saved preferences.
   warm: {
     vars: null,
     preview: { light: "oklch(0.977 0.004 286)", dark: "oklch(0.175 0 0)" },
@@ -182,13 +182,13 @@ export const STYLES: Record<StyleKey, StyleDef> = {
 
 export const STYLE_ORDER: StyleKey[] = ["warm", "night", "ocean", "forest"];
 
-// ── Applicazione ────────────────────────────────────────────────────────────
+// ── Application ─────────────────────────────────────────────────────────────
 
 /**
- * Applica le preferenze al documento: toggle delle classi .dark/.light (per le
- * utility Tailwind `dark:` e il rilevamento del tema della mappa) e variabili
- * CSS inline per accento e stile. Funzione pura e autocontenuta (riceve le
- * tabelle come argomenti) così può essere serializzata nel THEME_INIT_SCRIPT.
+ * Applies the preferences to the document: toggles the .dark/.light classes (for
+ * the Tailwind `dark:` utilities and the map's theme detection) and inline
+ * CSS variables for accent and style. Pure, self-contained function (takes the
+ * tables as arguments) so it can be serialized into THEME_INIT_SCRIPT.
  */
 export function applyThemeToDocument(
   doc: Document,
@@ -208,7 +208,7 @@ export function applyThemeToDocument(
   el.classList.toggle("dark", dark);
   el.classList.toggle("light", prefs.mode === "light");
 
-  // Accento / brand
+  // Accent / brand
   const accent = accents[prefs.accent] || accents.coral;
   const brand = accent.brand;
   el.style.setProperty("--brand", brand);
@@ -218,7 +218,7 @@ export function applyThemeToDocument(
   el.style.setProperty("--sidebar-ring", brand);
   el.style.setProperty("--chart-1", brand);
 
-  // Stile: pulisci sempre le neutre inline, poi riapplica se non è "warm".
+  // Style: always clear the inline neutrals, then reapply if not "warm".
   for (let i = 0; i < neutralKeys.length; i++) {
     el.style.removeProperty(neutralKeys[i]);
   }
@@ -228,9 +228,9 @@ export function applyThemeToDocument(
     for (const k in set) el.style.setProperty(k, set[k]);
   }
 
-  // Status bar della PWA iOS (stile "default", piena): prende il colore dal
-  // meta theme-color. Lo allineiamo allo sfondo del tema scelto nell'app, non
-  // solo al chiaro/scuro di sistema. Il canvas converte oklch in esadecimale.
+  // iOS PWA status bar ("default" style, full): takes its colour from the
+  // theme-color meta. We align it to the background of the theme chosen in the app, not
+  // just the system light/dark. The canvas converts oklch to hex.
   try {
     const bg = win.getComputedStyle(el).getPropertyValue("--background").trim();
     const ctx = bg ? doc.createElement("canvas").getContext("2d") : null;
@@ -249,12 +249,12 @@ export function applyThemeToDocument(
       }
     }
   } catch {
-    // Senza canvas resta il theme-color di sistema del layout.
+    // Without canvas, the layout's system theme-color stays.
   }
 }
 
-/** Wrapper comodo lato browser: applica al DOM, aggiorna la cache localStorage
- *  (per l'offline) e il global usato dal watcher. */
+/** Convenient browser-side wrapper: applies to the DOM, updates the localStorage cache
+ *  (for offline) and the global used by the watcher. */
 export function applyThemePrefs(prefs: ThemePrefs) {
   if (typeof document === "undefined") return;
   applyThemeToDocument(document, prefs, ACCENTS, STYLES, NEUTRAL_KEYS);
@@ -264,15 +264,15 @@ export function applyThemePrefs(prefs: ThemePrefs) {
   (window as unknown as { __zcThemePrefs?: ThemePrefs }).__zcThemePrefs = prefs;
 }
 
-/** Preferenze correnti note al client: il global è impostato dall'init script
- *  (seed dal DB) e da applyThemePrefs; fallback a localStorage. */
+/** Current preferences known to the client: the global is set by the init script
+ *  (seeded from the DB) and by applyThemePrefs; falls back to localStorage. */
 export function getCurrentPrefs(): ThemePrefs {
   if (typeof window === "undefined") return { ...DEFAULT_PREFS };
   const g = (window as unknown as { __zcThemePrefs?: ThemePrefs }).__zcThemePrefs;
   return g ?? readThemePrefs();
 }
 
-/** Normalizza un oggetto sconosciuto in ThemePrefs valide (usata dal server). */
+/** Normalizes an unknown object into valid ThemePrefs (used by the server). */
 export function sanitizePrefs(input: {
   mode?: string | null;
   accent?: string | null;
@@ -288,7 +288,7 @@ export function sanitizePrefs(input: {
   };
 }
 
-// Sottoscrizione alla preferenza di sistema chiaro/scuro (per le anteprime).
+// Subscription to the system light/dark preference (for previews).
 export function subscribeSystemDark(cb: () => void): () => void {
   const mql = window.matchMedia("(prefers-color-scheme: dark)");
   mql.addEventListener("change", cb);
@@ -303,12 +303,12 @@ export function getSystemDarkServerSnapshot(): boolean {
   return false;
 }
 
-// ── Script inline anti-FOUC ──────────────────────────────────────────────────
-// Costruito server-side col seed dal DB (`serverPrefs`): è la sorgente di
-// verità, sincronizzata tra dispositivi. Se assente (utente non loggato, query
-// fallita/offline, colonne non ancora migrate) si ripiega sulla cache
-// localStorage e infine sui default. In ogni caso aggiorna la cache localStorage
-// e applica la palette PRIMA del primo paint.
+// ── Inline anti-FOUC script ─────────────────────────────────────────────────
+// Built server-side with the DB seed (`serverPrefs`): it's the source of
+// truth, synced across devices. If absent (logged-out user, failed query/
+// offline, columns not yet migrated) it falls back to the localStorage cache
+// and finally to the defaults. In any case it updates the localStorage cache
+// and applies the palette BEFORE the first paint.
 export function themeInitScript(serverPrefs: ThemePrefs | null): string {
   return `(function(){try{
 var ACCENTS=${JSON.stringify(ACCENTS)};
@@ -328,7 +328,7 @@ apply(document,prefs,ACCENTS,STYLES,NK);
 }catch(e){}})();`;
 }
 
-/** Legge le preferenze salvate (con fallback ai default). SSR-safe. */
+/** Reads the saved preferences (with fallback to defaults). SSR-safe. */
 export function readThemePrefs(): ThemePrefs {
   if (typeof window === "undefined") return { ...DEFAULT_PREFS };
   try {
@@ -347,7 +347,7 @@ export function readThemePrefs(): ThemePrefs {
   }
 }
 
-/** Salva una singola preferenza. */
+/** Saves a single preference. */
 export function saveThemePref<K extends keyof ThemePrefs>(
   key: K,
   value: ThemePrefs[K],
@@ -355,7 +355,7 @@ export function saveThemePref<K extends keyof ThemePrefs>(
   try {
     window.localStorage.setItem(STORAGE_KEYS[key], value);
   } catch {
-    // localStorage non disponibile: la scelta vale solo per questa sessione.
+    // localStorage unavailable: the choice only holds for this session.
   }
 }
 

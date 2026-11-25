@@ -41,8 +41,8 @@ export function EditActivityForm({ activity }: Props) {
   const router = useRouter();
   const isImported = activity.source !== "manual";
 
-  // Modifica salvata → torna al dettaglio (client-side; full load in PWA
-  // standalone, dove la soft-navigation RSC resta appesa in loading).
+  // Edit saved → back to the detail (client-side; full load in standalone
+  // PWA, where the RSC soft navigation stays stuck in loading).
   useEffect(() => {
     if (state.id) navigateAfterMutation(router, `/activities/${state.id}`);
   }, [state.id, router]);

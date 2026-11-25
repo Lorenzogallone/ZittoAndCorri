@@ -1,10 +1,10 @@
-// Route Handler: POST /api/import/file — import diretto di un file .fit o
-// .gpx come body binario. Pensato per l'automazione da iPhone (Comando Rapido
-// nel foglio di condivisione: Zepp/Amazfit → esporta allenamento → condividi
-// → POST qui con Bearer api_key). Il formato viene riconosciuto dal contenuto,
-// quindi il Comando Rapido non deve distinguere i due casi.
+// Route Handler: POST /api/import/file — direct import of a .fit or
+// .gpx file as a binary body. Meant for automation from iPhone (Shortcut
+// in the share sheet: Zepp/Amazfit → export workout → share
+// → POST here with Bearer api_key). The format is recognized from the content,
+// so the Shortcut doesn't have to tell the two cases apart.
 //
-// Auth: sessione cookie oppure Authorization: Bearer <api_key> (vedi api-auth).
+// Auth: session cookie or Authorization: Bearer <api_key> (see api-auth).
 
 import type { NextRequest } from "next/server";
 import { resolveImportAuth } from "@/lib/ingest/api-auth";
@@ -16,7 +16,7 @@ import { enqueueEvaluationAfterIngest } from "@/lib/ai/evaluate-activity";
 
 export const maxDuration = 240;
 
-/** True se i byte hanno l'header FIT (".FIT" agli offset 8–11). */
+/** True if the bytes have the FIT header (".FIT" at offsets 8–11). */
 function looksLikeFit(bytes: Uint8Array): boolean {
   return (
     bytes.length > 12 &&
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       input = parseGpx(text);
     }
 
-    // Note opzionali via query (?notes=...) per il Comando Rapido.
+    // Optional notes via query (?notes=...) for the Shortcut.
     const notes = req.nextUrl.searchParams.get("notes");
     if (notes && notes.trim()) input.notes = notes.trim();
 
