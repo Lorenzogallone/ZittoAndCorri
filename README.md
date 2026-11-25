@@ -57,6 +57,17 @@ The app is available in English and Italian (see [Languages](#languages)).
 
 ## Getting started
 
+### Deploy to Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FLorenzogallone%2FZittoAndCorri&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,SUPABASE_SECRET_KEY,CRON_SECRET&envDescription=Supabase+project+URL+and+keys+%28Project+Settings+%E2%86%92+API%29,+plus+any+random+string+for+CRON_SECRET&envLink=https%3A%2F%2Fgithub.com%2FLorenzogallone%2FZittoAndCorri%23getting-started&project-name=zitto-e-corri&repository-name=zitto-e-corri)
+
+The button copies the repository to your GitHub account and asks for the
+Supabase URL and keys. You still need to create the Supabase project, apply
+the migrations and set up sign-in, as described below. The cron jobs in
+`vercel.json` start on their own.
+
+### Run locally
+
 Install the dependencies and create the local environment file:
 
 ```bash
