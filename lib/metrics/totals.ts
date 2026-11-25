@@ -1,6 +1,7 @@
 // Totali per periodo (settimana, mese, anno, sempre) con il confronto rispetto
 // allo stesso tratto del periodo precedente. Funzioni pure.
 
+import { intlLocale, type Locale, type Translator } from "../../i18n/config.ts";
 import { addDays, mondayOf, romeDay } from "../local-date.ts";
 
 export type TotalsPeriodKey = "week" | "month" | "year" | "all";
@@ -66,10 +67,11 @@ function monthsBack(iso: string, months: number): string {
   return target.toISOString().slice(0, 10);
 }
 
-const monthName = (iso: string) =>
-  new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { month: "long", timeZone: "UTC" });
+const monthName = (iso: string, locale: Locale) =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { month: "long", timeZone: "UTC" });
 
-export function periodTotals(activities: TotalsActivity[], today: string): PeriodTotals[] {
+/** `t` è legato al namespace "metrics"; `locale` serve ai nomi dei mesi. */
+export function periodTotals(activities: TotalsActivity[], today: string, t: Translator, locale: Locale): PeriodTotals[] {
   const monday = mondayOf(today);
   const monthStart = `${today.slice(0, 7)}-01`;
   const yearStart = `${today.slice(0, 4)}-01-01`;
@@ -88,33 +90,33 @@ export function periodTotals(activities: TotalsActivity[], today: string): Perio
   return [
     {
       key: "week",
-      label: "Settimana",
-      caption: "da lunedì",
+      label: t("totals.week.label"),
+      caption: t("totals.week.caption"),
       ...week,
       previous_m: sum(activities, { from: addDays(monday, -7), to: addDays(today, -7) }).running_m,
-      previous_label: "alla settimana scorsa",
+      previous_label: t("totals.week.previous"),
     },
     {
       key: "month",
-      label: "Mese",
-      caption: `${monthName(today)} ${today.slice(0, 4)}`,
+      label: t("totals.month.label"),
+      caption: t("totals.month.caption", { month: monthName(today, locale), year: today.slice(0, 4) }),
       ...month,
       previous_m: sum(activities, { from: previousMonthStart, to: monthsBack(today, 1) }).running_m,
-      previous_label: `allo stesso punto di ${monthName(previousMonthStart)}`,
+      previous_label: t("totals.month.previous", { month: monthName(previousMonthStart, locale) }),
     },
     {
       key: "year",
-      label: "Anno",
+      label: t("totals.year.label"),
       caption: today.slice(0, 4),
       ...year,
       previous_m: sum(activities, { from: `${lastYearToday.slice(0, 4)}-01-01`, to: lastYearToday }).running_m,
-      previous_label: `allo stesso punto del ${lastYearToday.slice(0, 4)}`,
+      previous_label: t("totals.year.previous", { year: lastYearToday.slice(0, 4) }),
     },
     {
       key: "all",
-      label: "Sempre",
+      label: t("totals.all.label"),
       caption: first
-        ? `dal ${new Date(`${first}T12:00:00Z`).toLocaleDateString("it-IT", { month: "long", year: "numeric", timeZone: "UTC" })}`
+        ? t("totals.all.since", { date: new Date(`${first}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { month: "long", year: "numeric", timeZone: "UTC" }) })
         : "",
       ...all,
       previous_m: null,

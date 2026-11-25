@@ -4,7 +4,8 @@
 import { ImageResponse } from "next/og";
 import { activeDuration, formatDuration, formatPace } from "@/lib/format";
 import { routeSvgPath } from "@/lib/route-path";
-import { SPORT_LABELS, TYPE_LABELS } from "@/lib/activity-meta";
+import { intlLocale, type Locale, type Translator } from "@/i18n/config";
+import { sportLabel, typeLabel } from "@/lib/activity-meta";
 import type { Activity, GpsPoint } from "@/lib/types";
 
 const WIDTH = 1080;
@@ -19,19 +20,20 @@ function downsample<T>(items: T[], max: number): T[] {
   return items.filter((_, index) => index % step === 0 || index === items.length - 1);
 }
 
-export function shareImage(activity: ShareActivity, gps: GpsPoint[] | null): ImageResponse {
+/** `t` è il traduttore del namespace "labels"; testi e formati seguono la lingua dell'app. */
+export function shareImage(activity: ShareActivity, gps: GpsPoint[] | null, t: Translator, locale: Locale): ImageResponse {
   const route = gps?.length ? routeSvgPath(downsample(gps, 400), 920, 640, 40) : null;
   const isRun = activity.sport === "running";
   const headline = activity.distance_m > 0
-    ? `${(activity.distance_m / 1000).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} km`
+    ? `${(activity.distance_m / 1000).toLocaleString(intlLocale(locale), { minimumFractionDigits: 2, maximumFractionDigits: 2 })} km`
     : formatDuration(activeDuration(activity));
   const stats = [
-    { label: "Tempo", value: formatDuration(activeDuration(activity)) },
-    isRun && activity.avg_pace_s_km ? { label: "Passo", value: formatPace(activity.avg_pace_s_km) } : null,
-    activity.elevation_gain_m ? { label: "Dislivello", value: `${activity.elevation_gain_m} m` } : null,
+    { label: t("share.time"), value: formatDuration(activeDuration(activity)) },
+    isRun && activity.avg_pace_s_km ? { label: t("share.pace"), value: formatPace(activity.avg_pace_s_km) } : null,
+    activity.elevation_gain_m ? { label: t("share.elevation"), value: `${activity.elevation_gain_m} m` } : null,
   ].filter((stat): stat is { label: string; value: string } => stat != null);
-  const title = activity.source_title || (isRun ? TYPE_LABELS[activity.type] : SPORT_LABELS[activity.sport]);
-  const date = new Date(activity.started_at).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
+  const title = activity.source_title || (isRun ? typeLabel(t, activity.type) : sportLabel(t, activity.sport));
+  const date = new Date(activity.started_at).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
 
   return new ImageResponse(
     (

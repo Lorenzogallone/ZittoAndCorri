@@ -1,11 +1,13 @@
+import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/app-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Stessa forma della pagina: obiettivo con le fasi, selettore della vista e
 // la settimana corrente in una card, un giorno per riga.
 export default function Loading() {
+  const t = useTranslations("plan");
   return (
-    <AppShell title="Piano" wide>
+    <AppShell title={t("title")} wide>
       <div className="mb-8">
         <Skeleton className="h-7 w-48" />
         <Skeleton className="mb-4 mt-2 h-3 w-40" />

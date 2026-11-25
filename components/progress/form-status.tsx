@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { Activity, ChevronRight, HeartPulse, Moon, Wind, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Stat } from "@/components/stat";
@@ -7,28 +9,31 @@ import type { MetricTrend } from "@/lib/metrics/body-trends";
 import type { ATLCTLResult } from "@/lib/types";
 import type { WellnessDay, ZeppDailyMetric, ZeppReadinessResult } from "@/lib/zepp/types";
 
-export const LOAD_STATES = {
-  calibrating: { label: "In calibrazione", text: "Ancora qualche corsa e la lettura diventa stabile.", tone: "text-foreground" },
-  fresh: { label: "Ben recuperato", text: "Hai margine: buon momento per una seduta impegnativa.", tone: "text-emerald-600 dark:text-emerald-400" },
-  balanced: { label: "In equilibrio", text: "Forma e fatica sono bilanciate.", tone: "text-emerald-600 dark:text-emerald-400" },
-  strained: { label: "Un po' carico", text: "Il lavoro recente pesa: cura il recupero.", tone: "text-amber-600 dark:text-amber-400" },
-  fatigued: { label: "Affaticato", text: "Meglio una giornata leggera o di riposo.", tone: "text-orange-600 dark:text-orange-400" },
-} satisfies Record<ATLCTLResult["status"], { label: string; text: string; tone: string }>;
+/** Il colore di ogni stato di carico; etichetta e testo sono in `profile.loadStates.<stato>`. */
+export const LOAD_TONES = {
+  calibrating: "text-foreground",
+  fresh: "text-emerald-600 dark:text-emerald-400",
+  balanced: "text-emerald-600 dark:text-emerald-400",
+  strained: "text-amber-600 dark:text-amber-400",
+  fatigued: "text-orange-600 dark:text-orange-400",
+} satisfies Record<ATLCTLResult["status"], string>;
 
-const ZEPP = {
-  intense: { label: "Pronto per spingere", text: "Recupero e sonno dicono che puoi fare una seduta intensa.", tone: "text-emerald-600 dark:text-emerald-400" },
-  ready: { label: "Pronto", text: "Buone condizioni per allenarti come da piano.", tone: "text-emerald-600 dark:text-emerald-400" },
-  moderate: { label: "Carico moderato", text: "Allenati, ma senza forzare.", tone: "text-amber-600 dark:text-amber-400" },
-  recovery: { label: "Recupero consigliato", text: "Meglio qualcosa di facile oggi.", tone: "text-orange-600 dark:text-orange-400" },
-  rest: { label: "Riposo", text: "Riposo o attività molto leggera.", tone: "text-orange-600 dark:text-orange-400" },
+/** Colore di ogni stato di prontezza; testi in `profile.formStatus.readinessStates.<stato>`. */
+const ZEPP_TONES = {
+  intense: "text-emerald-600 dark:text-emerald-400",
+  ready: "text-emerald-600 dark:text-emerald-400",
+  moderate: "text-amber-600 dark:text-amber-400",
+  recovery: "text-orange-600 dark:text-orange-400",
+  rest: "text-orange-600 dark:text-orange-400",
 } as const;
 
 /** Anello di prontezza: l'arco prende il colore dello stato (verde, ambra,
  *  arancio) come l'etichetta accanto, non l'accento. */
 function ScoreRing({ value, tone }: { value: number; tone: string }) {
+  const t = useTranslations("profile.formStatus");
   const clamped = Math.max(0, Math.min(100, Math.round(value)));
   return (
-    <div className="relative h-28 w-28 shrink-0" role="img" aria-label={`Prontezza ${clamped} su 100`}>
+    <div className="relative h-28 w-28 shrink-0" role="img" aria-label={t("readinessAria", { value: clamped })}>
       <svg viewBox="0 0 112 112" className={cn("h-28 w-28 -rotate-90", tone)}>
         <circle cx="56" cy="56" r="51" fill="none" strokeWidth="10" className="stroke-muted" />
         <circle
@@ -51,15 +56,15 @@ function ScoreRing({ value, tone }: { value: number; tone: string }) {
 }
 
 /** "oggi alle 07:42", "ieri alle 22:10", "3 nov alle 08:00" (ora di Roma). */
-function syncLabel(iso: string, now = new Date()): string {
+function syncLabel(iso: string, t: ReturnType<typeof useTranslations>, locale: Locale, now = new Date()): string {
   const day = (date: Date) => date.toLocaleDateString("en-CA", { timeZone: "Europe/Rome" });
   const date = new Date(iso);
-  const time = date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
+  const time = date.toLocaleTimeString(intlLocale(locale), { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
   const yesterday = new Date(now.getTime() - 86_400_000);
-  if (day(date) === day(now)) return `oggi alle ${time}`;
-  if (day(date) === day(yesterday)) return `ieri alle ${time}`;
-  const dayLabel = date.toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "Europe/Rome" });
-  return `${dayLabel} alle ${time}`;
+  if (day(date) === day(now)) return t("syncToday", { time });
+  if (day(date) === day(yesterday)) return t("syncYesterday", { time });
+  const dayLabel = date.toLocaleDateString(intlLocale(locale), { day: "numeric", month: "short", timeZone: "Europe/Rome" });
+  return t("syncOther", { date: dayLabel, time });
 }
 
 function sleepLabel(minutes: number): string {
@@ -102,30 +107,39 @@ export function FormStatus({
   highlights?: FormHighlight[];
   href?: string;
 }) {
-  const assisted = readiness?.available && readiness.status ? ZEPP[readiness.status] : null;
-  const state = assisted ?? LOAD_STATES[load.status];
+  const t = useTranslations("profile.formStatus");
+  const locale = useLocale() as Locale;
+  const tLoad = useTranslations("profile.loadStates");
+  const assistedStatus = readiness?.available && readiness.status ? readiness.status : null;
+  const state = assistedStatus
+    ? {
+        label: t(`readinessStates.${assistedStatus}.label`),
+        text: t(`readinessStates.${assistedStatus}.text`),
+        tone: ZEPP_TONES[assistedStatus],
+      }
+    : { label: tLoad(`${load.status}.label`), text: tLoad(`${load.status}.text`), tone: LOAD_TONES[load.status] };
   // Zepp quando c'è, altrimenti i dati notturni da Intervals.icu.
   const sleepMin = latest?.sleep_total_min ?? (wellness?.sleep_secs != null ? Math.round(wellness.sleep_secs / 60) : null);
   const restingHr = latest?.resting_hr ?? wellness?.resting_hr ?? null;
   const metrics = [
-    sleepMin != null ? { label: "Sonno", value: sleepLabel(sleepMin), icon: Moon } : null,
-    restingHr != null ? { label: "FC riposo", value: `${restingHr}`, unit: "bpm", icon: HeartPulse } : null,
+    sleepMin != null ? { label: t("metrics.sleep"), value: sleepLabel(sleepMin), icon: Moon } : null,
+    restingHr != null ? { label: t("metrics.restingHr"), value: `${restingHr}`, unit: "bpm", icon: HeartPulse } : null,
     // Intervals.icu salva 0 quando la notte non ha HRV: non è una misura.
-    wellness?.hrv != null && wellness.hrv > 0 ? { label: "HRV", value: `${Math.round(wellness.hrv)}`, unit: "ms", icon: Activity } : null,
-    latest?.vo2_max != null ? { label: "VO₂max", value: `${latest.vo2_max}`, icon: Wind } : null,
+    wellness?.hrv != null && wellness.hrv > 0 ? { label: t("metrics.hrv"), value: `${Math.round(wellness.hrv)}`, unit: "ms", icon: Activity } : null,
+    latest?.vo2_max != null ? { label: t("metrics.vo2max"), value: `${latest.vo2_max}`, icon: Wind } : null,
   ].filter((metric) => metric != null).slice(0, 3);
   const shown: FormHighlight[] = highlights?.length ? highlights.slice(0, 3) : metrics;
 
   if (!hasData) {
     return (
       <section className="surface p-5">
-        <p className="eyebrow">Stato di forma</p>
-        <p className="mt-2 text-body text-muted-foreground">Registra le prime corse per vedere come stai.</p>
+        <p className="eyebrow">{t("title")}</p>
+        <p className="mt-2 text-body text-muted-foreground">{t("empty.text")}</p>
         <Link
           href="/activities/new"
           className="mt-4 inline-flex items-center gap-1 rounded-full bg-primary py-2 pl-4 pr-3 text-caption font-semibold text-primary-foreground transition-transform active:scale-95"
         >
-          Importa una corsa <ChevronRight size={16} />
+          {t("empty.import")} <ChevronRight size={16} />
         </Link>
       </section>
     );
@@ -136,10 +150,10 @@ export function FormStatus({
   return (
     <Wrapper href={href!} className={cn("surface block p-5", href && "pressable outline-none focus-visible:ring-3 focus-visible:ring-ring/30")}>
       <div className="flex items-center justify-between gap-3">
-        <p className="eyebrow">Stato di forma</p>
+        <p className="eyebrow">{t("title")}</p>
         {href && (
           <span className="-my-1 inline-flex items-center gap-0.5 text-caption font-medium text-primary">
-            Andamento <ChevronRight size={16} className="-mr-1" aria-hidden="true" />
+            {t("trendLink")} <ChevronRight size={16} className="-mr-1" aria-hidden="true" />
           </span>
         )}
       </div>
@@ -174,12 +188,12 @@ export function FormStatus({
       )}
       {stale && (
         <p className="mt-4 text-caption text-muted-foreground">
-          L&apos;orologio non si sincronizza da qualche giorno: per ora conto solo le tue attività.
+          {t("stale")}
         </p>
       )}
       {lastSync && (
         <p className={cn("text-micro text-muted-foreground", stale ? "mt-1" : "mt-3")}>
-          Ultima sincronizzazione con l&apos;orologio: {syncLabel(lastSync)}
+          {t("lastSync", { when: syncLabel(lastSync, t, locale) })}
         </p>
       )}
     </Wrapper>

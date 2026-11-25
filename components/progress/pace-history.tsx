@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 import type { PaceCheck } from "@/lib/metrics/pace-check";
 
@@ -8,19 +10,14 @@ export interface PaceSession {
   check: PaceCheck;
 }
 
-const STATUS = {
-  on_target: { label: "In linea", tone: "bg-emerald-500" },
-  fast: { label: "Più veloce", tone: "bg-sky-500" },
-  slow: { label: "Più lento", tone: "bg-amber-500" },
+const STATUS_TONE = {
+  on_target: "bg-emerald-500",
+  fast: "bg-sky-500",
+  slow: "bg-amber-500",
 } as const;
 
-const PROMPT = {
-  fast: "Nelle ultime sedute veloci sono sempre più veloce dei passi previsti: puoi aggiornare i passi del piano?",
-  slow: "Nelle ultime sedute veloci faccio fatica a tenere i passi previsti: puoi rivederli?",
-} as const;
-
-function deviationText(seconds: number): string {
-  if (seconds === 0) return "ok";
+function deviationText(seconds: number, ok: string): string {
+  if (seconds === 0) return ok;
   return `${seconds > 0 ? "+" : "−"}${Math.abs(seconds)}″`;
 }
 
@@ -29,6 +26,8 @@ function deviationText(seconds: number): string {
  * direzione, suggerisce di chiedere al coach di aggiornare i passi.
  */
 export function PaceHistory({ sessions }: { sessions: PaceSession[] }) {
+  const t = useTranslations("profile.pace");
+  const locale = useLocale() as Locale;
   const ordered = [...sessions].reverse();
   const latest = sessions.slice(0, 3).map((session) => session.check.status);
   const trend = latest.length === 3 && latest.every((status) => status === latest[0]) && latest[0] !== "on_target"
@@ -37,31 +36,26 @@ export function PaceHistory({ sessions }: { sessions: PaceSession[] }) {
   return (
     <div>
       <div className="grid grid-cols-5 gap-2">
-        {ordered.map((session) => {
-          const status = STATUS[session.check.status];
-          return (
-            <Link key={session.id} href={`/activities/${session.id}`} className="pressable flex flex-col items-center gap-1.5 rounded-xl py-2 hover:bg-muted/40">
-              <span className={cn("h-2.5 w-2.5 rounded-full", status.tone)} title={status.label} />
-              <span className="text-sm font-semibold tabular-nums">{deviationText(session.check.avg_deviation_s)}</span>
-              <span className="text-micro text-muted-foreground">
-                {new Date(session.started_at).toLocaleDateString("it-IT", { day: "numeric", month: "short" })}
-              </span>
-            </Link>
-          );
-        })}
+        {ordered.map((session) => (
+          <Link key={session.id} href={`/activities/${session.id}`} className="pressable flex flex-col items-center gap-1.5 rounded-xl py-2 hover:bg-muted/40">
+            <span className={cn("h-2.5 w-2.5 rounded-full", STATUS_TONE[session.check.status])} title={t(`status.${session.check.status}`)} />
+            <span className="text-sm font-semibold tabular-nums">{deviationText(session.check.avg_deviation_s, t("deviationOk"))}</span>
+            <span className="text-micro text-muted-foreground">
+              {new Date(session.started_at).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "short" })}
+            </span>
+          </Link>
+        ))}
       </div>
       <p className="mt-2 text-micro text-muted-foreground">
-        Secondi al km rispetto al passo previsto: − più veloce, + più lento.
+        {t("legend")}
       </p>
       {trend && (
         <div className="mt-4 rounded-2xl bg-muted/50 px-4 py-3">
           <p className="text-sm">
-            {trend === "fast"
-              ? "Nelle ultime sedute sei sempre più veloce del previsto: forse è ora di aggiornare i passi."
-              : "Nelle ultime sedute fatichi a tenere i passi previsti: meglio rivederli."}
+            {t(`trendText.${trend}`)}
           </p>
-          <Link href={`/?prompt=${encodeURIComponent(PROMPT[trend])}`} className="mt-2 inline-block text-sm font-medium text-primary">
-            Chiedi al coach →
+          <Link href={`/?prompt=${encodeURIComponent(t(`prompt.${trend}`))}`} className="mt-2 inline-block text-sm font-medium text-primary">
+            {t("askCoach")}
           </Link>
         </div>
       )}

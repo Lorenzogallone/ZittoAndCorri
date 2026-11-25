@@ -1,9 +1,11 @@
+import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/app-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Loading() {
+  const t = useTranslations("activities");
   return (
-    <AppShell backHref="/activities" backLabel="Corse" hideTabBar wide>
+    <AppShell backHref="/activities" backLabel={t("backLabel")} hideTabBar wide>
       <Skeleton className="mb-2 h-3.5 w-40" />
       <Skeleton className="mb-6 h-12 w-48" />
       <div className="mb-6 grid grid-cols-3 gap-4">

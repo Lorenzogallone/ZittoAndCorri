@@ -2,23 +2,26 @@
 // deterministico e reversibile (i valori originali restano in adapted_from).
 // Funzioni pure.
 
+import type { Translator } from "../../i18n/config.ts";
 import type { WorkoutStep, WorkoutStepInput, WorkoutType } from "@/lib/types";
 import { groupWorkoutSteps } from "../workout-guide.ts";
 import { estimateWorkout } from "../workout-estimate.ts";
 
 export type AdaptReason = "tired" | "sick" | "busy";
 
-export const ADAPT_REASONS: Record<AdaptReason, { label: string; hint: string }> = {
-  tired: { label: "Sono stanco", hint: "Sedute più facili e più corte" },
-  busy: { label: "Ho poco tempo", hint: "Sedute più brevi, stessa struttura" },
-  sick: { label: "Sono malato o ho un fastidio", hint: "Metto in pausa le sedute" },
-};
+export const ADAPT_REASON_KEYS: readonly AdaptReason[] = ["tired", "busy", "sick"];
 
-export const ADAPT_DURATIONS = [
-  { days: 3, label: "3 giorni" },
-  { days: 7, label: "1 settimana" },
-  { days: 14, label: "2 settimane" },
-] as const;
+export const ADAPT_DURATIONS = [{ days: 3 }, { days: 7 }, { days: 14 }] as const;
+
+/** Etichetta e spiegazione di un motivo (`t` legato al namespace "labels"). */
+export function adaptReasonText(t: Translator, reason: AdaptReason): { label: string; hint: string } {
+  return { label: t(`adapt.reason.${reason}.label`), hint: t(`adapt.reason.${reason}.hint`) };
+}
+
+/** "3 giorni", "1 settimana", "2 settimane". */
+export function adaptDurationLabel(t: Translator, days: (typeof ADAPT_DURATIONS)[number]["days"]): string {
+  return t(`adapt.duration.d${days}`);
+}
 
 export interface AdaptableWorkout {
   type: WorkoutType;

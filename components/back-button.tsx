@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronLeft } from "lucide-react";
 
 interface BackButtonProps {
@@ -17,8 +18,10 @@ interface BackButtonProps {
  * e deve sempre portare lì. `router.back()` resta solo per i pulsanti generici
  * senza destinazione, così la cronologia PWA non può contraddire la UI.
  */
-export function BackButton({ fallbackHref, label = "Indietro" }: BackButtonProps) {
+export function BackButton({ fallbackHref, label }: BackButtonProps) {
+  const t = useTranslations("shell");
   const router = useRouter();
+  const text = label ?? t("backButton.label");
 
   const handleBack = useCallback(() => {
     router.back();
@@ -29,7 +32,7 @@ export function BackButton({ fallbackHref, label = "Indietro" }: BackButtonProps
   if (fallbackHref) {
     return (
       <Link href={fallbackHref} className={className} data-press="dim">
-        <ChevronLeft size={22} strokeWidth={2.2} /> {label}
+        <ChevronLeft size={22} strokeWidth={2.2} /> {text}
       </Link>
     );
   }
@@ -41,7 +44,7 @@ export function BackButton({ fallbackHref, label = "Indietro" }: BackButtonProps
       className={className}
       data-press="dim"
     >
-      <ChevronLeft size={22} strokeWidth={2.2} /> {label}
+      <ChevronLeft size={22} strokeWidth={2.2} /> {text}
     </button>
   );
 }

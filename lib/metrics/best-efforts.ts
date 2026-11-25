@@ -2,19 +2,23 @@
 // Funzioni pure: il tempo migliore su ogni distanza è la finestra più veloce
 // della traccia GPS che copre almeno quella distanza.
 
+import type { Translator } from "../../i18n/config.ts";
 import type { GpsPoint } from "@/lib/types";
 import { cumulativeDistance } from "./geo.ts";
 import { withoutPauses } from "./pauses.ts";
 
 export type EffortKey = "1k" | "5k" | "10k" | "half" | "marathon";
 
-export const EFFORTS: ReadonlyArray<{ key: EffortKey; meters: number; label: string }> = [
-  { key: "1k", meters: 1_000, label: "1 km" },
-  { key: "5k", meters: 5_000, label: "5 km" },
-  { key: "10k", meters: 10_000, label: "10 km" },
-  { key: "half", meters: 21_097, label: "Mezza" },
-  { key: "marathon", meters: 42_195, label: "Maratona" },
+export const EFFORTS: ReadonlyArray<{ key: EffortKey; meters: number }> = [
+  { key: "1k", meters: 1_000 },
+  { key: "5k", meters: 5_000 },
+  { key: "10k", meters: 10_000 },
+  { key: "half", meters: 21_097 },
+  { key: "marathon", meters: 42_195 },
 ];
+
+/** Nome della distanza ("5 km", "Mezza"); `t` è legato al namespace "metrics". */
+export const effortLabel = (key: EffortKey, t: Translator): string => t(`efforts.${key}`);
 
 /** Secondi per distanza standard. Oggetto vuoto = calcolato, nessun dato utile. */
 export type BestEfforts = Partial<Record<EffortKey, number>>;
@@ -87,7 +91,6 @@ export function bestEffortsForActivity(activity: {
 
 export interface PersonalRecord {
   key: EffortKey;
-  label: string;
   meters: number;
   time_s: number;
   activity_id: string;
@@ -107,7 +110,6 @@ export function personalRecords(
       if (!best || time < best.time_s || (time === best.time_s && activity.started_at < best.date)) {
         best = {
           key: effort.key,
-          label: effort.label,
           meters: effort.meters,
           time_s: time,
           activity_id: activity.id,

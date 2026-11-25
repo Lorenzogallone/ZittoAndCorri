@@ -1,0 +1,76 @@
+{
+  "sync": {
+    "issue": {
+      "intervalsErrorSince": "Intervals.icu non si sincronizza · ultimi dati del {date}",
+      "intervalsError": "Intervals.icu non si sincronizza",
+      "watchStaleSince": "L'orologio non si sincronizza dal {date}",
+      "watchNeverSynced": "L'orologio non si è mai sincronizzato",
+      "healthStaleSince": "Dati salute fermi al {date}",
+      "healthNone": "Nessun dato salute ricevuto"
+    },
+    "push": {
+      "intervalsError": {
+        "title": "Intervals.icu non si sincronizza",
+        "bodyFallback": "Apri le impostazioni per ricollegarlo."
+      },
+      "watchStale": {
+        "title": "Orologio fermo",
+        "bodySince": "Nessuna sincronizzazione dal {date}. Apri l'app Zepp sul telefono.",
+        "bodyNever": "Nessuna sincronizzazione ancora. Apri l'app Zepp sul telefono."
+      },
+      "healthStale": {
+        "title": "Dati salute fermi",
+        "bodySince": "Ultimi dati del {date}: il coach lavora senza sonno e recupero.",
+        "bodyNone": "Non è ancora arrivato nessun dato salute."
+      }
+    }
+  },
+  "refresh": {
+    "offline": "Connessione assente. Riprova.",
+    "stillSyncing": "L'orologio sta ancora sincronizzando",
+    "newActivities": "{count, plural, one {# attività nuova} other {# attività nuove}}",
+    "updated": "Aggiornato"
+  },
+  "aiJob": {
+    "stale": "Analisi interrotta. Riprova.",
+    "tooSlow": "L'AI ci sta mettendo troppo. Riprova tra poco.",
+    "notShown": "Risposta ricevuta, ma non è stato possibile mostrarla. Riprova.",
+    "failed": "Richiesta AI non riuscita. Riprova.",
+    "missing": "Richiesta AI non trovata. Riprova.",
+    "notStarted": "Richiesta non avviata. Riprova."
+  },
+  "ai": {
+    "openrouterInvalidKey": "Chiave OpenRouter non valida: controllala nelle impostazioni.",
+    "openrouterNoCredit": "Credito OpenRouter esaurito: ricarica il credito o passa a Gemini.",
+    "openrouterModelUnavailable": "Modello OpenRouter non disponibile: scegline un altro nelle impostazioni.",
+    "openrouterRateLimit": "Troppe richieste a OpenRouter: riprova tra poco o cambia modello.",
+    "openrouterBadFormat": "Il modello OpenRouter non ha risposto nel formato atteso, nemmeno al secondo tentativo. Riprova o prova un altro modello.",
+    "openrouterTimeout": "Il modello ci ha messo troppo a rispondere. Riprova, oppure scegli un modello più veloce per la chat.",
+    "openrouterFailed": "Richiesta a OpenRouter non riuscita. Riprova tra poco.",
+    "invalidResponse": "Il coach ha dato una risposta non leggibile, anche al secondo tentativo. Riprova.",
+    "geminiTimeout": "L'AI ci sta mettendo troppo e la richiesta è scaduta. Riprova tra poco.",
+    "geminiQuota": "Quota del modello Gemini esaurita. Scegli un altro modello nelle impostazioni oppure attendi il ripristino.",
+    "failed": "Richiesta AI non riuscita. Riprova tra poco."
+  },
+  "intervals": {
+    "source": {
+      "laps": "dai lap dell'orologio",
+      "notes": "dalla tua nota",
+      "plan": "dal piano",
+      "auto": "riconosciute in automatico"
+    },
+    "plannedContinuous": {
+      "long": "un lungo",
+      "easy": "una corsa facile",
+      "recovery": "un recupero"
+    }
+  },
+  "manifest": {
+    "description": "Il tuo coach di corsa personale. Traccia, migliora, corri.",
+    "shortcuts": {
+      "newRun": { "name": "Nuova corsa", "description": "Registra o importa una corsa" },
+      "plan": { "name": "Piano", "description": "Il piano di allenamento" },
+      "coach": { "name": "Coach", "description": "Chiedi al coach" }
+    }
+  }
+}

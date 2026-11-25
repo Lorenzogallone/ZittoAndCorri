@@ -1,14 +1,17 @@
 // Immagine da condividere di un'attività. Solo per il proprietario.
 
+import { getLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
+import type { Locale } from "@/i18n/config";
 import { shareImage, type ShareActivity } from "@/lib/share-image";
 import type { GpsPoint } from "@/lib/types";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const t = await getTranslations("activities.share");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new Response("Non autenticato", { status: 401 });
+  if (!user) return new Response(t("unauthenticated"), { status: 401 });
 
   const [{ data: activity }, { data: stream }] = await Promise.all([
     supabase
@@ -19,6 +22,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       .maybeSingle<ShareActivity>(),
     supabase.from("activity_streams").select("gps_series").eq("activity_id", id).maybeSingle<{ gps_series: GpsPoint[] | null }>(),
   ]);
-  if (!activity) return new Response("Non trovata", { status: 404 });
-  return shareImage(activity, stream?.gps_series ?? null);
+  if (!activity) return new Response(t("notFound"), { status: 404 });
+  return shareImage(activity, stream?.gps_series ?? null, await getTranslations("labels"), (await getLocale()) as Locale);
 }

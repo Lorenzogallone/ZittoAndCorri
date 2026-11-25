@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { ingestActivity, type IngestOutcome } from "@/lib/ingest/ingest";
 import { parseGpx } from "@/lib/ingest/adapters/gpx";
@@ -34,6 +35,7 @@ export async function createActivity(
   _prevState: ActivityFormState,
   formData: FormData,
 ): Promise<ActivityFormState> {
+  const t = await getTranslations("activities.errors");
   const supabase = await createClient();
   const {
     data: { user },
@@ -42,9 +44,9 @@ export async function createActivity(
 
   // --- parsing input del form ---
   const startedAtLocal = String(formData.get("started_at") ?? "").trim();
-  if (!startedAtLocal) return { error: "Inserisci data e ora." };
+  if (!startedAtLocal) return { error: t("dateRequired") };
   const startedAt = new Date(startedAtLocal);
-  if (Number.isNaN(startedAt.getTime())) return { error: "Data/ora non valida." };
+  if (Number.isNaN(startedAt.getTime())) return { error: t("dateInvalid") };
 
   const sport = String(formData.get("sport") ?? "running");
   const isRunning = sport === "running";
@@ -54,11 +56,11 @@ export async function createActivity(
   const distanceRaw = String(formData.get("distance_km") ?? "").trim();
   const distanceKm = distanceRaw === "" ? 0 : parseDecimal(distanceRaw);
   if (!Number.isFinite(distanceKm) || distanceKm < 0 || (isRunning && distanceKm <= 0)) {
-    return { error: "Distanza non valida." };
+    return { error: t("distanceInvalid") };
   }
   const duration_s = parseDuration(String(formData.get("duration") ?? ""));
   if (duration_s == null || duration_s <= 0) {
-    return { error: "Durata non valida (usa h:mm:ss o mm:ss)." };
+    return { error: t("durationInvalid") };
   }
 
   const type = String(formData.get("type") ?? "easy");
@@ -97,7 +99,7 @@ export async function createActivity(
       },
     );
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Errore durante il salvataggio.";
+    const msg = e instanceof Error ? e.message : t("saveFailed");
     return { error: msg };
   }
 
@@ -117,6 +119,7 @@ export async function importGpxActivity(
   _prevState: GpxImportFormState,
   formData: FormData,
 ): Promise<GpxImportFormState> {
+  const t = await getTranslations("activities.errors");
   const supabase = await createClient();
   const {
     data: { user },
@@ -125,12 +128,12 @@ export async function importGpxActivity(
 
   const file = formData.get("gpx_file");
   if (!(file instanceof File) || file.size === 0) {
-    return { error: "Nessun file selezionato." };
+    return { error: t("noFile") };
   }
 
   const ext = file.name.split(".").pop()?.toLowerCase();
   if (ext !== "gpx") {
-    return { error: "Solo file .gpx esportati da Strava sono supportati." };
+    return { error: t("gpxOnly") };
   }
 
   const { data: profile } = await supabase
@@ -152,7 +155,7 @@ export async function importGpxActivity(
     const input = parseGpx(text);
     outcome = await ingestActivity(input, ctx);
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Errore durante l'import." };
+    return { error: e instanceof Error ? e.message : t("importFailed") };
   }
 
   revalidatePath("/activities");
@@ -203,19 +206,21 @@ export async function setActivityExcluded(
   excluded: boolean,
   reason: string | null,
 ): Promise<{ ok?: boolean; error?: string }> {
+  const t = await getTranslations("activities.errors");
+  const tBanner = await getTranslations("activities.excludedBanner");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  if (!/^[0-9a-f-]{36}$/i.test(id)) return { error: "Corsa non valida." };
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { error: t("activityInvalid") };
   const { error } = await supabase
     .from("activities")
     .update(excluded
-      ? { excluded_at: new Date().toISOString(), excluded_reason: reason?.trim().slice(0, 200) || "Esclusa dall'atleta" }
+      ? { excluded_at: new Date().toISOString(), excluded_reason: reason?.trim().slice(0, 200) || tBanner("byAthlete") }
       : { excluded_at: null, excluded_reason: null })
     .eq("id", id)
     .eq("user_id", user.id);
   if (error) {
-    return { error: error.code === "42703" ? "Serve aggiornare il database (migrazione 0026)." : "Impossibile aggiornare la corsa." };
+    return { error: error.code === "42703" ? t("needsMigration") : t("updateFailed") };
   }
   revalidatePath("/activities");
   revalidatePath(`/activities/${id}`);
@@ -234,6 +239,7 @@ export async function updateActivity(
   _prevState: EditActivityFormState,
   formData: FormData,
 ): Promise<EditActivityFormState> {
+  const t = await getTranslations("activities.errors");
   const supabase = await createClient();
   const {
     data: { user },
@@ -241,7 +247,7 @@ export async function updateActivity(
   if (!user) redirect("/login");
 
   const id = String(formData.get("id") ?? "");
-  if (!id) return { error: "ID corsa mancante." };
+  if (!id) return { error: t("idMissing") };
 
   // Fetch existing activity to verify owner
   const { data: activity } = await supabase
@@ -252,13 +258,13 @@ export async function updateActivity(
     .maybeSingle<Activity>();
 
   if (!activity) {
-    return { error: "Corsa non trovata o non autorizzato." };
+    return { error: t("notFound") };
   }
 
   const startedAtLocal = String(formData.get("started_at") ?? "").trim();
-  if (!startedAtLocal) return { error: "Inserisci data e ora." };
+  if (!startedAtLocal) return { error: t("dateRequired") };
   const startedAt = new Date(startedAtLocal);
-  if (Number.isNaN(startedAt.getTime())) return { error: "Data/ora non valida." };
+  if (Number.isNaN(startedAt.getTime())) return { error: t("dateInvalid") };
 
   // Sport: se non arriva dal form (form vecchi) resta quello esistente.
   const sportRaw = String(formData.get("sport") ?? "").trim();
@@ -268,11 +274,11 @@ export async function updateActivity(
   const distanceRaw = String(formData.get("distance_km") ?? "").trim();
   const distanceKm = distanceRaw === "" ? 0 : parseDecimal(distanceRaw);
   if (!Number.isFinite(distanceKm) || distanceKm < 0 || (isRunning && distanceKm <= 0)) {
-    return { error: "Distanza non valida." };
+    return { error: t("distanceInvalid") };
   }
   const duration_s = parseDuration(String(formData.get("duration") ?? ""));
   if (duration_s == null || duration_s <= 0) {
-    return { error: "Durata non valida (usa h:mm:ss o mm:ss)." };
+    return { error: t("durationInvalid") };
   }
 
   // Vincolo DB: le attività non running hanno sempre type 'cross'.
@@ -361,6 +367,7 @@ export async function updateActivity(
 export async function saveParsedActivity(
   input: unknown,
 ): Promise<{ error?: string; id?: string; evaluationJobId?: string }> {
+  const t = await getTranslations("activities.errors");
   const supabase = await createClient();
   const {
     data: { user },
@@ -385,6 +392,6 @@ export async function saveParsedActivity(
     const evaluationJobId = await enqueueEvaluationAfterIngest(user.id, outcome);
     return { id: outcome.id, evaluationJobId: evaluationJobId ?? undefined };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Errore durante il salvataggio." };
+    return { error: e instanceof Error ? e.message : t("saveFailed") };
   }
 }

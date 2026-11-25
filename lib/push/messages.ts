@@ -27,7 +27,7 @@ export function reminderBody(workout: {
   target_pace_s_km?: number | null;
 }): string {
   const headline = workoutHeadline(workout.workout_steps ?? []);
-  const distance = formatPlannedDistance(workout)?.replace(".", ",") ?? null;
+  const distance = formatPlannedDistance(workout) ?? null;
   const duration = !distance && workout.target_duration_s
     ? `${Math.round(workout.target_duration_s / 60)} min`
     : null;

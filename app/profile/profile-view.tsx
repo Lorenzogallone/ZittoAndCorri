@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import type { Locale } from "@/i18n/config";
 import { ChevronRight, Flag, Settings } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -66,35 +68,38 @@ function TabbedCard({ tabs }: { tabs: Tab[] }) {
 }
 
 export function ProfileView(props: ProfileViewProps) {
+  const t = useTranslations("profile.view");
+  const tProfile = useTranslations("profile");
+  const locale = useLocale() as Locale;
   const { goal, daysToRace } = props;
   const trends = [
     props.formPoints.length >= 3 && {
       key: "form",
-      label: "Forma e fatica",
+      label: t("trends.form"),
       content: (
         <>
           <FormChart points={props.formPoints} />
           <p className="mt-3 text-caption text-muted-foreground">
-            {props.formTrend ?? "Forma: allenamento delle ultime 6 settimane. Fatica: quello degli ultimi 7 giorni."}
+            {props.formTrend ?? t("trends.formHint")}
           </p>
         </>
       ),
     },
     props.weeks.some((week) => week.done_m > 0 || week.planned_m > 0) && {
       key: "km",
-      label: "Km a settimana",
+      label: t("trends.km"),
       content: <WeekBars weeks={props.weeks} current={props.currentWeek} />,
     },
   ].filter((tab): tab is Tab => Boolean(tab));
   const performance = [
     props.reference && {
       key: "predictions",
-      label: "Previsioni",
+      label: t("performance.predictions"),
       content: <Predictions reference={props.reference} base={props.endurance} today={props.today} goal={goal} />,
     },
     props.records.length > 0 && {
       key: "records",
-      label: "Record",
+      label: t("performance.records"),
       content: <Records records={props.records} />,
     },
   ].filter((tab): tab is Tab => Boolean(tab));
@@ -107,10 +112,10 @@ export function ProfileView(props: ProfileViewProps) {
   return (
     <AppShell
       wide
-      title="Profilo"
+      title={tProfile("title")}
       headerAction={
         <Button asChild variant="ghost" size="icon-sm" className="-mr-2">
-          <Link href="/settings" aria-label="Apri impostazioni" title="Impostazioni">
+          <Link href="/settings" aria-label={t("settingsAria")} title={t("settings")}>
             <Settings size={20} />
           </Link>
         </Button>
@@ -144,29 +149,29 @@ export function ProfileView(props: ProfileViewProps) {
         <Link href="/goals" className="pressable surface mb-8 flex items-center gap-3 px-4 py-4">
           <Flag size={20} strokeWidth={2.2} className="shrink-0 text-primary" />
           <div className="min-w-0 flex-1">
-            <p className="eyebrow">Obiettivo</p>
+            <p className="eyebrow">{t("goal.eyebrow")}</p>
             {goal ? (
               <p className="truncate text-body font-semibold">
                 {goal.race_name}
                 <span className="font-normal text-muted-foreground">
-                  {" · "}{formatDistance(goal.distance_m)}
-                  {goal.target_time_s ? ` in ${formatDuration(goal.target_time_s)}` : ""}
+                  {" · "}{formatDistance(goal.distance_m, locale)}
+                  {goal.target_time_s ? ` ${t("goal.inTime", { time: formatDuration(goal.target_time_s) })}` : ""}
                 </span>
               </p>
             ) : (
-              <p className="text-body font-semibold">Da impostare</p>
+              <p className="text-body font-semibold">{t("goal.unset")}</p>
             )}
           </div>
           {daysToRace != null && daysToRace >= 0 && (
             <span className="shrink-0 font-display text-heading font-bold tabular-nums tracking-tight text-primary">
-              {daysToRace === 0 ? "Oggi" : daysToRace === 1 ? "Domani" : `${daysToRace} gg`}
+              {daysToRace === 0 ? t("goal.today") : daysToRace === 1 ? t("goal.tomorrow") : t("goal.days", { days: String(daysToRace) })}
             </span>
           )}
           <ChevronRight size={16} className="shrink-0 text-muted-foreground/60" />
         </Link>
 
         {pace && (
-          <Section title="Passo nelle sedute veloci" className="hidden lg:block">
+          <Section title={t("pace")} className="hidden lg:block">
             {pace}
           </Section>
         )}
@@ -174,24 +179,24 @@ export function ProfileView(props: ProfileViewProps) {
 
         {trends.length === 0 && performance.length === 0 && (
           <p className="px-1 text-caption text-muted-foreground">
-            Con le prime corse qui compaiono l&apos;andamento della forma, i km a settimana, le previsioni di gara e i record.
+            {t("emptyHint")}
           </p>
         )}
 
         {trends.length > 0 && (
-          <Section title="Andamento">
+          <Section title={t("trends.title")}>
             <TabbedCard tabs={trends} />
           </Section>
         )}
 
         {performance.length > 0 && (
-          <Section title="Prestazioni">
+          <Section title={t("performance.title")}>
             <TabbedCard tabs={performance} />
           </Section>
         )}
 
         {pace && (
-          <Section title="Passo nelle sedute veloci" className="lg:hidden">
+          <Section title={t("pace")} className="lg:hidden">
             {pace}
           </Section>
         )}

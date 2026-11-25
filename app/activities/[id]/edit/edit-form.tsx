@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { updateActivity, deleteActivity, type EditActivityFormState } from "../../actions";
 import { navigateAfterMutation } from "@/lib/nav";
 import { ACTIVITY_TYPES, SPORTS } from "@/lib/types";
@@ -19,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TYPE_LABELS, SPORT_LABELS } from "@/lib/activity-meta";
+import { typeLabel, sportLabel } from "@/lib/activity-meta";
 
 function formatDateTimeLocal(isoString: string): string {
   const d = new Date(isoString);
@@ -32,6 +33,9 @@ interface Props {
 }
 
 export function EditActivityForm({ activity }: Props) {
+  const t = useTranslations("activities.edit");
+  const tf = useTranslations("activities.fields");
+  const tl = useTranslations("labels");
   const initialState: EditActivityFormState = {};
   const [state, formAction, pending] = useActionState(updateActivity, initialState);
   const router = useRouter();
@@ -57,7 +61,7 @@ export function EditActivityForm({ activity }: Props) {
 
         <div className="grid gap-2.5">
           <Label htmlFor="started_at">
-            Data e ora {isImported && <span className="text-xs text-muted-foreground">(da GPX)</span>}
+            {tf("dateTime")} {isImported && <span className="text-xs text-muted-foreground">{tf("fromGpx")}</span>}
           </Label>
           <Input
             id="started_at"
@@ -71,7 +75,7 @@ export function EditActivityForm({ activity }: Props) {
         </div>
 
         <div className="grid gap-2.5">
-          <Label htmlFor="sport">Sport</Label>
+          <Label htmlFor="sport">{tf("sport")}</Label>
           <Select name="sport" value={sport} onValueChange={(v) => setSport(v as Sport)}>
             <SelectTrigger id="sport">
               <SelectValue />
@@ -79,7 +83,7 @@ export function EditActivityForm({ activity }: Props) {
             <SelectContent>
               {SPORTS.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {SPORT_LABELS[s]}
+                  {sportLabel(tl, s)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -88,15 +92,15 @@ export function EditActivityForm({ activity }: Props) {
 
         {isRunning && (
           <div className="grid gap-2.5">
-            <Label htmlFor="type">Tipo (Tag)</Label>
+            <Label htmlFor="type">{tf("typeTag")}</Label>
             <Select name="type" defaultValue={activity.type}>
               <SelectTrigger id="type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {ACTIVITY_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {TYPE_LABELS[t] ?? t}
+                {ACTIVITY_TYPES.map((activityType) => (
+                  <SelectItem key={activityType} value={activityType}>
+                    {typeLabel(tl, activityType)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -107,7 +111,7 @@ export function EditActivityForm({ activity }: Props) {
         <div className="grid grid-cols-2 gap-3">
           <div className="grid gap-2.5">
             <Label htmlFor="distance_km">
-              Distanza (km) {isImported && <span className="text-xs text-muted-foreground">(da GPX)</span>}
+              {tf("distanceKm")} {isImported && <span className="text-xs text-muted-foreground">{tf("fromGpx")}</span>}
             </Label>
             <Input
               id="distance_km"
@@ -125,7 +129,7 @@ export function EditActivityForm({ activity }: Props) {
           </div>
           <div className="grid gap-2.5">
             <Label htmlFor="duration">
-              Durata {isImported && <span className="text-xs text-muted-foreground">(da GPX)</span>}
+              {t("duration")} {isImported && <span className="text-xs text-muted-foreground">{tf("fromGpx")}</span>}
             </Label>
             <Input
               id="duration"
@@ -145,12 +149,12 @@ export function EditActivityForm({ activity }: Props) {
 
         <div className="separator my-1" />
         <p className="text-xs text-muted-foreground uppercase tracking-wider">
-          Metodi & Cardio {isImported && <span className="text-micro lowercase text-muted-foreground">(non modificabili per GPX)</span>}
+          {t("cardioSection")} {isImported && <span className="text-micro lowercase text-muted-foreground">{t("notEditableGpx")}</span>}
         </p>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="grid gap-2.5">
-            <Label htmlFor="avg_hr">HR media</Label>
+            <Label htmlFor="avg_hr">{tf("avgHr")}</Label>
             <Input
               id="avg_hr"
               name="avg_hr"
@@ -166,7 +170,7 @@ export function EditActivityForm({ activity }: Props) {
             />
           </div>
           <div className="grid gap-2.5">
-            <Label htmlFor="max_hr">HR max</Label>
+            <Label htmlFor="max_hr">{tf("maxHr")}</Label>
             <Input
               id="max_hr"
               name="max_hr"
@@ -185,7 +189,7 @@ export function EditActivityForm({ activity }: Props) {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="grid gap-2.5">
-            <Label htmlFor="elevation_gain_m">Dislivello + (m)</Label>
+            <Label htmlFor="elevation_gain_m">{tf("elevation")}</Label>
             <Input
               id="elevation_gain_m"
               name="elevation_gain_m"
@@ -201,7 +205,7 @@ export function EditActivityForm({ activity }: Props) {
             />
           </div>
           <div className="grid gap-2.5">
-            <Label htmlFor="rpe">RPE 1–10 (Fatica)</Label>
+            <Label htmlFor="rpe">{t("rpe")}</Label>
             <Input
               id="rpe"
               name="rpe"
@@ -218,14 +222,14 @@ export function EditActivityForm({ activity }: Props) {
         </div>
 
         <div className="grid gap-2.5">
-          <Label id="notes-label" htmlFor="notes">Note / Nome attività</Label>
+          <Label id="notes-label" htmlFor="notes">{t("notes")}</Label>
           <TextField
             id="notes"
             aria-labelledby="notes-label"
             name="notes"
             rows={3}
             defaultValue={activity.notes ?? ""}
-            placeholder="Come è andata?"
+            placeholder={t("notesPlaceholder")}
           />
         </div>
 
@@ -236,7 +240,7 @@ export function EditActivityForm({ activity }: Props) {
         )}
 
         <Button type="submit" disabled={pending} size="lg" className="w-full mt-2">
-          {pending ? "Salvataggio in corso..." : "Salva modifiche"}
+          {pending ? t("saving") : t("save")}
         </Button>
       </form>
 
@@ -249,12 +253,12 @@ export function EditActivityForm({ activity }: Props) {
           className="w-full"
           onClick={() => setConfirmDelete(true)}
         >
-          Elimina corsa
+          {t("delete")}
         </Button>
       ) : (
         <div className="flex flex-col gap-2">
           <p className="text-sm text-center text-muted-foreground">
-            Sei sicuro di voler eliminare questa corsa? L&apos;operazione non è reversibile.
+            {t("confirmDelete")}
           </p>
           {deleteError && (
             <p className="text-destructive text-sm text-center">{deleteError}</p>
@@ -267,7 +271,7 @@ export function EditActivityForm({ activity }: Props) {
               disabled={isDeleting}
               onClick={() => setConfirmDelete(false)}
             >
-              Annulla
+              {t("cancel")}
             </Button>
             <form
               ref={deleteFormRef}
@@ -277,7 +281,7 @@ export function EditActivityForm({ activity }: Props) {
                     await deleteActivity(fd);
                     navigateAfterMutation(router, "/activities");
                   } catch {
-                    setDeleteError("Errore durante l'eliminazione. Riprova.");
+                    setDeleteError(t("deleteFailed"));
                     setConfirmDelete(false);
                   }
                 });
@@ -292,7 +296,7 @@ export function EditActivityForm({ activity }: Props) {
                 className="w-full"
                 disabled={isDeleting}
               >
-                {isDeleting ? "Eliminazione..." : "Sì, elimina"}
+                {isDeleting ? t("deleting") : t("confirmDeleteYes")}
               </Button>
             </form>
           </div>

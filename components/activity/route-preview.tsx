@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { mapView, type MapTile } from "@/lib/route-path";
 import { PACE_SCALE, pointSpeedColors } from "@/lib/metrics/pace-colors";
 import { useSegmentSelection } from "@/components/activity/segment-selection";
 import type { RoutePart } from "@/components/activity-map-client";
-import { segmentToneKey, TONE_LABELS, TONES, type ToneKey } from "@/lib/step-tones";
+import { segmentToneKey, toneLabel, TONES, type ToneKey } from "@/lib/step-tones";
 import type { GpsPoint } from "@/lib/types";
 
 // Mappa interattiva (WebGL) di base, ma solo quando la card entra nello schermo
@@ -63,6 +64,8 @@ function useNearViewport<T extends Element>() {
 
 /** Percorso colorato per tratto (ripetute) o per velocità su mappa interattiva, con anteprima statica sotto. */
 export function RoutePreview({ gps }: { gps: GpsPoint[] }) {
+  const t = useTranslations("activities.map");
+  const tl = useTranslations("labels");
   const dark = useDarkTheme();
   const [ref, near] = useNearViewport<HTMLDivElement>();
   const [failed, setFailed] = useState(false);
@@ -110,7 +113,7 @@ export function RoutePreview({ gps }: { gps: GpsPoint[] }) {
   const [endX, endY] = points[points.length - 1];
 
   return (
-    <div ref={ref} className="surface relative w-full overflow-hidden" role="region" aria-label="Mappa del percorso">
+    <div ref={ref} className="surface relative w-full overflow-hidden" role="region" aria-label={t("preview")}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice" className="block h-auto w-full bg-muted/40 lg:h-96" aria-hidden>
         {dark != null && (
           <g aria-hidden>
@@ -156,15 +159,15 @@ export function RoutePreview({ gps }: { gps: GpsPoint[] }) {
           {legend.map((key) => (
             <span key={key} className="inline-flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full" style={{ background: TONES[key].hex }} />
-              {TONE_LABELS[key]}
+              {toneLabel(tl, key)}
             </span>
           ))}
         </span>
       ) : colors && (
         <span className="pointer-events-none absolute bottom-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-full bg-background/90 px-2.5 py-1.5 text-micro font-medium text-muted-foreground">
-          lento
+          {t("slow")}
           <span className="h-1.5 w-10 rounded-full" style={{ background: `linear-gradient(90deg, ${PACE_SCALE.slow}, ${PACE_SCALE.mid}, ${PACE_SCALE.fast})` }} />
-          veloce
+          {t("fast")}
         </span>
       )}
       <span className="pointer-events-none absolute bottom-1 right-2 text-micro text-muted-foreground/80">© OpenStreetMap © CARTO</span>

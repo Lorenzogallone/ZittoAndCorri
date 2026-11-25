@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
 import { Flame, Footprints, Gauge, Heart, HeartPulse, Mountain, Timer, TrendingUp, Trophy, type LucideIcon } from "lucide-react";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { AppShell } from "@/components/app-shell";
 import { ActivityEvaluation } from "@/components/activity-evaluation";
 import { PaceCheckCard } from "@/components/pace-check-card";
@@ -17,9 +19,9 @@ import { Stat } from "@/components/stat";
 import { hasIntervals } from "@/lib/intervals-text";
 import type { IntervalAnalysis } from "@/lib/metrics/intervals";
 import { activeDuration, formatDuration, formatPace } from "@/lib/format";
-import { EFFORTS, type PersonalRecord } from "@/lib/metrics/best-efforts";
+import { effortLabel, type PersonalRecord } from "@/lib/metrics/best-efforts";
 import type { PaceCheck } from "@/lib/metrics/pace-check";
-import { SPORT_LABELS, TYPE_LABELS } from "@/lib/activity-meta";
+import { sportLabel, typeLabel } from "@/lib/activity-meta";
 import type { Activity, Evaluation, GpsPoint, HrPoint, TimeInZone } from "@/lib/types";
 
 export interface ActivityViewProps {
@@ -45,11 +47,15 @@ export interface ActivityViewProps {
 }
 
 export function ActivityView(props: ActivityViewProps) {
+  const t = useTranslations("activities");
+  const locale = useLocale() as Locale;
+  const tl = useTranslations("labels");
+  const tMetrics = useTranslations("metrics");
   const { activity } = props;
   const isRun = activity.sport === "running";
   const duration = activeDuration(activity);
-  const title = activity.source_title || (isRun ? TYPE_LABELS[activity.type] : SPORT_LABELS[activity.sport]);
-  const date = new Date(activity.started_at).toLocaleString("it-IT", {
+  const title = activity.source_title || (isRun ? typeLabel(tl, activity.type) : sportLabel(tl, activity.sport));
+  const date = new Date(activity.started_at).toLocaleString(intlLocale(locale), {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -58,14 +64,14 @@ export function ActivityView(props: ActivityViewProps) {
     timeZone: "Europe/Rome",
   });
   const stats = [
-    { label: "Tempo", value: formatDuration(duration), icon: Timer },
-    isRun && activity.avg_pace_s_km != null ? { label: "Passo", value: formatPace(activity.avg_pace_s_km).replace("/km", ""), unit: "/km", icon: Gauge } : null,
-    activity.avg_hr != null ? { label: "FC media", value: `${activity.avg_hr}`, unit: "bpm", icon: Heart } : null,
-    activity.elevation_gain_m != null ? { label: "Dislivello", value: `${activity.elevation_gain_m}`, unit: "m", icon: Mountain } : null,
-    activity.avg_cadence_spm != null ? { label: "Cadenza", value: `${activity.avg_cadence_spm}`, unit: "spm", icon: Footprints } : null,
-    activity.max_hr != null ? { label: "FC max", value: `${activity.max_hr}`, unit: "bpm", icon: HeartPulse } : null,
-    activity.hr_drift_pct != null ? { label: "Deriva FC", value: `${activity.hr_drift_pct > 0 ? "+" : ""}${activity.hr_drift_pct}%`, icon: TrendingUp } : null,
-    activity.rpe != null ? { label: "Fatica", value: `${activity.rpe}/10`, icon: Flame } : null,
+    { label: t("detail.stats.time"), value: formatDuration(duration), icon: Timer },
+    isRun && activity.avg_pace_s_km != null ? { label: t("detail.stats.pace"), value: formatPace(activity.avg_pace_s_km).replace("/km", ""), unit: "/km", icon: Gauge } : null,
+    activity.avg_hr != null ? { label: t("detail.stats.avgHr"), value: `${activity.avg_hr}`, unit: "bpm", icon: Heart } : null,
+    activity.elevation_gain_m != null ? { label: t("detail.stats.elevation"), value: `${activity.elevation_gain_m}`, unit: "m", icon: Mountain } : null,
+    activity.avg_cadence_spm != null ? { label: t("detail.stats.cadence"), value: `${activity.avg_cadence_spm}`, unit: "spm", icon: Footprints } : null,
+    activity.max_hr != null ? { label: t("detail.stats.maxHr"), value: `${activity.max_hr}`, unit: "bpm", icon: HeartPulse } : null,
+    activity.hr_drift_pct != null ? { label: t("detail.stats.drift"), value: `${activity.hr_drift_pct > 0 ? "+" : ""}${activity.hr_drift_pct}%`, icon: TrendingUp } : null,
+    activity.rpe != null ? { label: t("detail.stats.effort"), value: `${activity.rpe}/10`, icon: Flame } : null,
   ].filter((stat): stat is { label: string; value: string; unit?: string; icon: LucideIcon } => stat != null);
 
   // Andamento: cuore, passo, quota e cadenza sovrapposti sullo stesso tempo.
@@ -84,14 +90,14 @@ export function ActivityView(props: ActivityViewProps) {
     <AppShell
       wide
       backHref="/activities"
-      backLabel="Corse"
+      backLabel={t("backLabel")}
       hideTabBar
       headerAction={
         <div className="-mr-2 flex items-center gap-1">
           <ShareActivityButton activityId={activity.id} title={title} />
           {/* replace: dopo il salvataggio "indietro" torna alla lista, non al form. */}
           <Link href={`/activities/${activity.id}/edit`} replace className="pressable px-2 text-body font-medium text-primary" data-press="dim">
-            Modifica
+            {t("detail.edit")}
           </Link>
         </div>
       }
@@ -107,7 +113,7 @@ export function ActivityView(props: ActivityViewProps) {
           <h1 className="mt-1 font-display text-display-xl font-bold tabular-nums tracking-tight">
             {activity.distance_m > 0 ? (
               <>
-                {(activity.distance_m / 1000).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {(activity.distance_m / 1000).toLocaleString(intlLocale(locale), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 <span className="ml-1.5 text-heading font-semibold tracking-normal text-muted-foreground">km</span>
               </>
             ) : (
@@ -118,7 +124,7 @@ export function ActivityView(props: ActivityViewProps) {
             <div className="animate-enter-late mt-3 flex flex-wrap gap-1.5">
               {props.records.map((record) => (
                 <span key={record.key} className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-caption font-semibold text-amber-700 tabular-nums dark:text-amber-300">
-                  <Trophy size={14} /> Record {EFFORTS.find((effort) => effort.key === record.key)?.label} · {formatDuration(record.time_s)}
+                  <Trophy size={14} /> {t("detail.record", { label: effortLabel(record.key, tMetrics), time: formatDuration(record.time_s) })}
                 </span>
               ))}
             </div>
@@ -151,7 +157,7 @@ export function ActivityView(props: ActivityViewProps) {
         {/* I km stanno nella tabella «Km per km» (o nelle ripetute): qui solo l'andamento. */}
         {hasOverlay && (
           <section className="surface p-4">
-            <h2 className="mb-4 text-body font-semibold">Andamento</h2>
+            <h2 className="mb-4 text-body font-semibold">{t("detail.progress")}</h2>
             <OverlayChart series={overlay} />
           </section>
         )}
@@ -160,7 +166,7 @@ export function ActivityView(props: ActivityViewProps) {
         <div className="stagger contents lg:col-start-2 lg:row-start-3 lg:flex lg:flex-col lg:gap-6 lg:self-start">
         {hasZones && (
           <section className="surface p-4">
-            <h2 className="mb-3 text-body font-semibold">Zone cardiache</h2>
+            <h2 className="mb-3 text-body font-semibold">{t("detail.zones")}</h2>
             <ZonesBar zones={props.zones!} />
           </section>
         )}

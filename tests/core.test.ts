@@ -8,6 +8,7 @@ import { computeATLCTL, sessionLoad } from "../lib/metrics/load.ts";
 import { generalGoalName, goalKind } from "../lib/goals.ts";
 import { COACH_METHODOLOGY } from "../lib/ai/methodology.ts";
 import { describeStep, groupWorkoutSteps, workoutHeadline } from "../lib/workout-guide.ts";
+import { itLabels } from "../lib/italian-translator.ts";
 import { parseDecimal, parseDuration as parseFormDuration } from "../lib/format.ts";
 
 test("il carico interno privilegia HR, poi RPE e infine la stima per sport", () => {
@@ -216,15 +217,22 @@ test("il piano usa la chat e ogni proposta spiega obiettivo e focus", () => {
   const chat = readFileSync(new URL("../components/coach-chat.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(plan, /plan_reviews|Review del coach|Chiedi al coach di adattare il piano/);
   assert.match(prompt, /Per ogni workout proposto compila sempre description e focus/);
-  assert.match(chat, /Cosa fare e perché/);
+  // I testi italiani stanno nei messaggi, la chat li legge da lì.
+  const messages = readFileSync(new URL("../messages/it/coach.json", import.meta.url), "utf8");
+  assert.match(messages, /Cosa fare e perché/);
+  assert.match(messages, /Su cosa concentrarti/);
+  assert.match(chat, /whatAndWhy/);
+  assert.match(chat, /focusOn/);
   assert.match(chat, /<WorkoutSteps/);
-  assert.match(chat, /Su cosa concentrarti/);
 });
 
 test("il dettaglio attività è essenziale: un grafico Andamento, i km in tabella e mappa leggera di base", () => {
   const view = readFileSync(new URL("../app/activities/[id]/activity-view.tsx", import.meta.url), "utf8");
   const route = readFileSync(new URL("../components/activity/route-preview.tsx", import.meta.url), "utf8");
-  assert.match(view, />Andamento<\/h2>/);
+  // Il titolo «Andamento» sta nei messaggi (activities.detail.progress).
+  const messages = readFileSync(new URL("../messages/it/activities.json", import.meta.url), "utf8");
+  assert.match(messages, /"progress": "Andamento"/);
+  assert.match(view, /<h2[^>]*>\{t\("detail\.progress"\)\}<\/h2>/);
   // I km non hanno più un grafico a parte: stanno nella tabella «Km per km».
   assert.doesNotMatch(view, /SplitsChart/);
   assert.match(view, /<KmSplitsCard analysis=\{props\.km\} \/>/);
@@ -272,9 +280,11 @@ test("la valutazione AI aggiorna la sezione senza ricaricare la pagina", () => {
 test("l'errore quota interrompe il caricamento e resta leggibile", () => {
   const evaluation = readFileSync(new URL("../components/activity-evaluation.tsx", import.meta.url), "utf8");
   const gemini = readFileSync(new URL("../lib/ai/gemini.ts", import.meta.url), "utf8");
+  const status = readFileSync(new URL("../messages/it/status.json", import.meta.url), "utf8");
   assert.match(evaluation, /initialAnalyzing && !done && !displayedError/);
   assert.match(evaluation, /initialError/);
-  assert.match(gemini, /Quota del modello Gemini esaurita\. Scegli un altro modello nelle impostazioni oppure attendi il ripristino\./);
+  assert.match(gemini, /geminiQuota/);
+  assert.match(status, /Quota del modello Gemini esaurita\. Scegli un altro modello nelle impostazioni oppure attendi il ripristino\./);
   assert.match(gemini, /if \(isQuotaExhausted\(err\)\) throw err/);
   assert.doesNotMatch(gemini, /Quota Gemini[^\n]*più/);
 });
@@ -310,7 +320,9 @@ test("il tasto Profilo apre sempre la pagina profilo", () => {
   const tabs = readFileSync(new URL("../components/tab-bar.tsx", import.meta.url), "utf8");
   const settings = readFileSync(new URL("../app/settings/settings-view.tsx", import.meta.url), "utf8");
   const backButton = readFileSync(new URL("../components/back-button.tsx", import.meta.url), "utf8");
-  assert.match(tabs, /href: "\/profile", label: "Profilo"/);
+  const shell = readFileSync(new URL("../messages/it/shell.json", import.meta.url), "utf8");
+  assert.match(tabs, /href: "\/profile", labelKey: "profile"/);
+  assert.match(shell, /"profile": "Profilo"/);
   assert.match(settings, /backHref="\/profile"/);
   assert.match(backButton, /<Link href=\{fallbackHref\}/);
   assert.doesNotMatch(backButton, /window\.history\.length/);
@@ -377,8 +389,8 @@ test("le ripetute vengono raggruppate e descritte a parole", () => {
   assert.equal(blocks.length, 3);
   assert.deepEqual(blocks[1], { kind: "repeat", times: 6, steps: [work, recovery] });
   assert.equal(workoutHeadline(steps), "6 × 400 m");
-  assert.equal(describeStep(work), "400 m a 4:20–4:30/km");
-  assert.equal(describeStep(recovery), '90"');
+  assert.equal(describeStep(itLabels, work), "400 m a 4:20–4:30/km");
+  assert.equal(describeStep(itLabels, recovery), '90"');
 });
 
 test("lo splash PWA non viene reinserito dalle server action", () => {
@@ -389,8 +401,10 @@ test("lo splash PWA non viene reinserito dalle server action", () => {
   assert.doesNotMatch(layout, /pwa-splash-root/);
   const splash = readFileSync(new URL("../components/pwa-splash.tsx", import.meta.url), "utf8");
   assert.match(splash, /^"use client";/);
-  assert.match(splash, /^const SPLASH_MARKUP = \{ __html: PWA_SPLASH_HTML \};$/m);
-  assert.match(splash, /dangerouslySetInnerHTML=\{SPLASH_MARKUP\}/);
+  // L'HTML dipende dalla lingua: l'oggetto resta stabile con useMemo, così
+  // React non riscrive innerHTML a ogni render.
+  assert.match(splash, /const markup = useMemo\(/);
+  assert.match(splash, /dangerouslySetInnerHTML=\{markup\}/);
 });
 
 test("form numbers accept the comma from the Italian iOS decimal keypad", () => {

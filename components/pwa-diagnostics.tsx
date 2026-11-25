@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { useTranslations } from "next-intl";
 import {
   clientLog,
   getLogs,
@@ -67,6 +68,7 @@ export function PwaDiagnostics() {
 }
 
 function DebugOverlay() {
+  const t = useTranslations("shell");
   const logs = useSyncExternalStore(subscribeLogs, getLogs, getLogs);
   const [enabled, setEnabled] = useState(false);
   const [open, setOpen] = useState(true);
@@ -126,7 +128,7 @@ function DebugOverlay() {
         }}
       >
         <strong style={{ flex: 1 }}>PWA debug ({logs.length})</strong>
-        <button onClick={copyAll} style={btn}>copia</button>
+        <button onClick={copyAll} style={btn}>{t("diagnostics.copy")}</button>
         <button onClick={() => setOpen((o) => !o)} style={btn}>{open ? "—" : "+"}</button>
         <button onClick={disable} style={btn}>off</button>
       </div>

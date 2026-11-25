@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { RunnerMark } from "@/components/runner-mark";
 
 /** Schermata di caricamento a tutta altezza, in linea con lo splash PWA:
@@ -5,10 +8,11 @@ import { RunnerMark } from "@/components/runner-mark";
  *  indeterminata. Usata dai file `loading.tsx` (fallback Suspense dell'App
  *  Router) e ovunque serva un loader a piena pagina. */
 export function LoadingScreen({
-  label = "Caricamento…",
+  label,
 }: {
   label?: string;
 }) {
+  const t = useTranslations("shell");
   return (
     <div className="flex h-[100dvh] w-full flex-col items-center justify-center gap-7 bg-background px-6">
       <div className="relative flex items-center justify-center">
@@ -20,7 +24,7 @@ export function LoadingScreen({
 
       <div className="flex flex-col items-center gap-1.5">
         <p className="font-display text-title font-bold tracking-tight">Zitto e Corri</p>
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+        <p className="text-xs font-medium text-muted-foreground">{label ?? t("loadingScreen.label")}</p>
       </div>
 
       <div className="relative h-1 w-36 overflow-hidden rounded-full bg-muted">

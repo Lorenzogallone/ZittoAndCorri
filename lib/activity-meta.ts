@@ -1,6 +1,7 @@
-// Metadati condivisi per tipi workout e sport: label italiane, colori badge e
-// icone. Unica fonte di verità — importabile sia da RSC che da client
-// component (niente "server-only").
+// Metadati condivisi per tipi workout e sport: colori badge e icone, più le
+// etichette (namespace "labels", si traducono con typeLabel / sportLabel).
+// Unica fonte di verità — importabile sia da RSC che da client component
+// (niente "server-only").
 import {
   Activity as ActivityIcon,
   Bike,
@@ -16,11 +17,13 @@ import {
   Waves,
   type LucideIcon,
 } from "lucide-react";
+import type { Translator } from "@/i18n/config";
 import type { ActivityType, Sport } from "@/lib/types";
 
 // ── Tipi workout (corsa) ─────────────────────────────────────────────────────
 
-export const TYPE_LABELS: Record<ActivityType, string> = {
+/** Etichette italiane fisse: solo per prompt, database e contesto del coach (la UI usa typeLabel). */
+export const TYPE_LABELS_IT: Record<ActivityType, string> = {
   unclassified: "Corsa",
   easy: "Easy",
   tempo: "Tempo",
@@ -30,6 +33,11 @@ export const TYPE_LABELS: Record<ActivityType, string> = {
   recovery: "Recupero",
   cross: "Cross",
 };
+
+/** Etichetta tradotta del tipo (`t` legato al namespace "labels"); un tipo sconosciuto resta com'è. */
+export function typeLabel(t: Translator, type: string): string {
+  return Object.hasOwn(TYPE_COLORS, type) ? t(`type.${type}`) : type;
+}
 
 export const TYPE_COLORS: Record<ActivityType, string> = {
   unclassified: "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary",
@@ -56,7 +64,8 @@ export const TYPE_DOTS: Record<ActivityType, string> = {
 
 // ── Sport ────────────────────────────────────────────────────────────────────
 
-export const SPORT_LABELS: Record<Sport, string> = {
+/** Etichette italiane fisse: solo per prompt, database e contesto del coach (la UI usa sportLabel). */
+export const SPORT_LABELS_IT: Record<Sport, string> = {
   running: "Corsa",
   cycling: "Bici",
   swimming: "Nuoto",
@@ -72,6 +81,11 @@ export const SPORT_LABELS: Record<Sport, string> = {
   ski: "Sci",
   other: "Altro",
 };
+
+/** Etichetta tradotta dello sport (`t` legato al namespace "labels"). */
+export function sportLabel(t: Translator, sport: string): string {
+  return Object.hasOwn(SPORT_COLORS, sport) ? t(`sport.${sport}`) : sport;
+}
 
 export const SPORT_ICONS: Record<Sport, LucideIcon> = {
   running: Footprints,

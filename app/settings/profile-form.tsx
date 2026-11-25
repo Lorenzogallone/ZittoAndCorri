@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { Check, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { updateProfile, type ProfileFormState } from "./actions";
 import type { Profile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -28,6 +30,8 @@ export function ProfileForm({
   profile: Partial<Profile> | null;
   effectiveHr: EffectiveHrView;
 }) {
+  const t = useTranslations("settings.profile");
+  const locale = useLocale() as Locale;
   const [state, setState] = useState<ProfileFormState>(initialState);
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
@@ -45,15 +49,15 @@ export function ProfileForm({
   });
 
   const birthdate = profile?.birthdate
-    ? new Date(`${profile.birthdate}T12:00:00`).toLocaleDateString("it-IT", {
+    ? new Date(`${profile.birthdate}T12:00:00`).toLocaleDateString(intlLocale(locale), {
         day: "2-digit",
         month: "short",
         year: "numeric",
       })
-    : "Non impostata";
+    : t("birthdateNotSet");
 
   const sourceLabel = (source: EffectiveHrView["max_hr_source"]) =>
-    source === "zepp" ? "Zepp" : source === "user" ? "Manuale" : "Non impostata";
+    source === "zepp" ? "Zepp" : source === "user" ? t("sourceManual") : t("sourceNotSet");
 
   return (
     <section className="py-4">
@@ -61,7 +65,7 @@ export function ProfileForm({
         <div>
           <dl className="grid grid-cols-3 gap-3">
             <div>
-              <dt className="text-xs text-muted-foreground">FC massima</dt>
+              <dt className="text-xs text-muted-foreground">{t("maxHr")}</dt>
               <dd className="mt-1 text-sm font-medium tabular-nums">
                 {effectiveHr.max_hr == null ? "—" : `${effectiveHr.max_hr} bpm`}
               </dd>
@@ -70,7 +74,7 @@ export function ProfileForm({
               </p>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">FC a riposo</dt>
+              <dt className="text-xs text-muted-foreground">{t("restingHr")}</dt>
               <dd className="mt-1 text-sm font-medium tabular-nums">
                 {effectiveHr.resting_hr == null ? "—" : `${effectiveHr.resting_hr} bpm`}
               </dd>
@@ -79,21 +83,23 @@ export function ProfileForm({
               </p>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Nascita</dt>
+              <dt className="text-xs text-muted-foreground">{t("birth")}</dt>
               <dd className="mt-1 text-sm font-medium">{birthdate}</dd>
             </div>
           </dl>
           {zones && (
             <p className="mt-3 text-xs text-muted-foreground">
-              {zones.method === "hrr" ? "Zone (riserva cardiaca)" : "Zone dall’orologio"}: {(["z1", "z2", "z3", "z4", "z5"] as const).map((key, index) => `Z${index + 1} ${zones.lower[key]}`).join(" · ")}
+              {t(zones.method === "hrr" ? "zonesHrr" : "zonesWatch", {
+                values: (["z1", "z2", "z3", "z4", "z5"] as const).map((key, index) => `Z${index + 1} ${zones.lower[key]}`).join(" · "),
+              })}
             </p>
           )}
           <Button type="button" variant="ghost" size="sm" className="-ml-3 mt-2 text-primary" onClick={() => { setState(initialState); setEditing(true); }}>
-            <Pencil size={14} /> Modifica
+            <Pencil size={14} /> {t("edit")}
           </Button>
           {state.ok && (
             <p className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400" aria-live="polite">
-              <Check size={14} /> Dati salvati
+              <Check size={14} /> {t("saved")}
             </p>
           )}
         </div>
@@ -101,12 +107,12 @@ export function ProfileForm({
         <form action={save} className="space-y-4">
           {zeppActive && (
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Con l&apos;orologio collegato contano i suoi valori: questi servono quando non sincronizza.
+              {t("watchNote")}
             </p>
           )}
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-2">
-              <Label htmlFor="max_hr">FC massima manuale</Label>
+              <Label htmlFor="max_hr">{t("maxHrManual")}</Label>
               <Input
                 id="max_hr"
                 name="max_hr"
@@ -119,7 +125,7 @@ export function ProfileForm({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="resting_hr">FC a riposo manuale</Label>
+              <Label htmlFor="resting_hr">{t("restingHrManual")}</Label>
               <Input
                 id="resting_hr"
                 name="resting_hr"
@@ -134,7 +140,7 @@ export function ProfileForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="birthdate">Data di nascita</Label>
+            <Label htmlFor="birthdate">{t("birthdate")}</Label>
             <Input
               id="birthdate"
               name="birthdate"
@@ -154,10 +160,10 @@ export function ProfileForm({
             <span />
             <div className="flex gap-2">
               <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => { setState(initialState); setEditing(false); }}>
-                Annulla
+                {t("cancel")}
               </Button>
               <Button type="submit" size="sm" disabled={pending}>
-                {pending ? "Salvataggio…" : "Salva"}
+                {pending ? t("saving") : t("save")}
               </Button>
             </div>
           </div>

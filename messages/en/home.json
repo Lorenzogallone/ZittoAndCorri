@@ -1,0 +1,91 @@
+{
+  "page": {
+    "greeting": {
+      "morning": "Good morning, {name}",
+      "afternoon": "Good afternoon, {name}",
+      "evening": "Good evening, {name}"
+    },
+    "fallbackName": "Runner",
+    "logActivity": "Log an activity"
+  },
+  "error": {
+    "title": "Something went wrong",
+    "text": "Something unexpected happened. Try again, and if it keeps happening, reload the app.",
+    "retry": "Try again"
+  },
+  "login": {
+    "tagline": "Your personal running coach.",
+    "redirecting": "Redirecting…",
+    "signIn": "Sign in with Google",
+    "footnote": "No password. No ads. Zitto e corri."
+  },
+  "refresh": {
+    "syncFailed": "Couldn't sync with your watch."
+  },
+  "syncBanner": {
+    "check": "Check",
+    "dismiss": "Dismiss alert"
+  },
+  "gettingStarted": {
+    "title": "Start here",
+    "progress": "{done} of {total} done",
+    "hide": "Hide",
+    "stateDone": "Done",
+    "stateTodo": "To do",
+    "planPrompt": "Can you put together my plan for the next two weeks?",
+    "steps": {
+      "activity": {
+        "title": "Import your first run",
+        "hint": "A file from your watch, or a run entered by hand"
+      },
+      "watch": {
+        "title": "Connect your watch",
+        "hint": "Intervals.icu or Zepp: your runs sync automatically"
+      },
+      "plan": {
+        "title": "Ask the coach for a plan",
+        "hintReady": "The next two weeks, at your level",
+        "hintNoKey": "Needs an AI key"
+      }
+    }
+  },
+  "today": {
+    "weekdays": {
+      "mon": "M",
+      "tue": "T",
+      "wed": "W",
+      "thu": "T",
+      "fri": "F",
+      "sat": "S",
+      "sun": "S"
+    },
+    "nextWorkout": "Next session",
+    "noWorkout": "No session scheduled",
+    "planPrompt": "Can you put together my plan for the next two weeks?",
+    "askPlan": "Ask the coach for a plan",
+    "heatAdjusted": "Paces adjusted for the heat",
+    "raceToday": "Race day",
+    "goodLuck": "Good luck!",
+    "raceAfter": "How did it go?",
+    "recoveryText": "I'll set up a few recovery days for you.",
+    "planRecovery": "Plan recovery",
+    "sessionDone": "Done",
+    "thisWeek": "This week"
+  },
+  "upcoming": {
+    "title": "Coming up",
+    "plan": "Plan",
+    "today": "Today",
+    "tomorrow": "Tomorrow"
+  },
+  "goalCard": {
+    "noGoalPrompt": "I'd like to set a goal",
+    "noGoal": "No goal · talk to your coach",
+    "title": "Goal",
+    "noDate": "no date",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "inDays": "{days} d",
+    "targetTime": "target {time}"
+  }
+}

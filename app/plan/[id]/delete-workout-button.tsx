@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { deletePlannedWorkout } from "../actions";
 import { Button } from "@/components/ui/button";
 
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
  * action fa redirect a /plan (è quello il feedback positivo).
  */
 export function DeleteWorkoutButton({ workoutId }: { workoutId: string }) {
+  const t = useTranslations("plan.detail.delete");
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, startDelete] = useTransition();
@@ -28,7 +30,7 @@ export function DeleteWorkoutButton({ workoutId }: { workoutId: string }) {
           setConfirm(true);
         }}
       >
-        Elimina seduta
+        {t("button")}
       </Button>
     );
   }
@@ -36,7 +38,7 @@ export function DeleteWorkoutButton({ workoutId }: { workoutId: string }) {
   return (
     <div className="flex flex-col gap-2">
       <p className="text-sm text-center text-muted-foreground">
-        Eliminare questa seduta? Non si può annullare.
+        {t("confirm")}
       </p>
       {error && (
         <p className="text-destructive text-sm text-center" role="alert">
@@ -52,7 +54,7 @@ export function DeleteWorkoutButton({ workoutId }: { workoutId: string }) {
           disabled={isDeleting}
           onClick={() => setConfirm(false)}
         >
-          Annulla
+          {t("cancel")}
         </Button>
         <form
           className="flex-1"
@@ -63,7 +65,7 @@ export function DeleteWorkoutButton({ workoutId }: { workoutId: string }) {
               } catch {
                 // Il redirect di successo non finisce qui (lo gestisce Next):
                 // un'eccezione che arriva fin qui è un fallimento reale.
-                setError("Errore durante l'eliminazione. Riprova.");
+                setError(t("error"));
               }
             });
           }}
@@ -76,7 +78,7 @@ export function DeleteWorkoutButton({ workoutId }: { workoutId: string }) {
             className="w-full"
             disabled={isDeleting}
           >
-            {isDeleting ? "Eliminazione..." : "Sì, elimina"}
+            {isDeleting ? t("deleting") : t("yes")}
           </Button>
         </form>
       </div>

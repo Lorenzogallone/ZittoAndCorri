@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import {
   deleteZeppForUser,
@@ -21,16 +22,18 @@ export async function generateZeppPairingCode(): Promise<{
   expiresAt?: string;
   error?: string;
 }> {
+  const t = await getTranslations("settingsLinks.zepp.errors");
   const userId = await authenticatedUserId();
   try {
     return await generatePairingCodeForUser(userId);
   } catch (error) {
     console.error("generateZeppPairingCode:", error instanceof Error ? error.message : error);
-    return { error: "Impossibile generare il codice. Riprova." };
+    return { error: t("generate") };
   }
 }
 
 export async function disableZeppConnection(): Promise<{ ok?: boolean; error?: string }> {
+  const t = await getTranslations("settingsLinks.zepp.errors");
   const userId = await authenticatedUserId();
   try {
     await disableZeppForUser(userId);
@@ -39,11 +42,12 @@ export async function disableZeppConnection(): Promise<{ ok?: boolean; error?: s
     return { ok: true };
   } catch (error) {
     console.error("disableZeppConnection:", error instanceof Error ? error.message : error);
-    return { error: "Impossibile disattivare Zepp." };
+    return { error: t("disable") };
   }
 }
 
 export async function deleteZeppConnectionData(): Promise<{ ok?: boolean; error?: string }> {
+  const t = await getTranslations("settingsLinks.zepp.errors");
   const userId = await authenticatedUserId();
   try {
     await deleteZeppForUser(userId);
@@ -52,6 +56,6 @@ export async function deleteZeppConnectionData(): Promise<{ ok?: boolean; error?
     return { ok: true };
   } catch (error) {
     console.error("deleteZeppConnectionData:", error instanceof Error ? error.message : error);
-    return { error: "Impossibile eliminare i dati Zepp." };
+    return { error: t("delete") };
   }
 }

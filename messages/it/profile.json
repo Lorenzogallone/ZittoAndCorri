@@ -1,0 +1,164 @@
+{
+  "title": "Profilo",
+  "view": {
+    "settingsAria": "Apri impostazioni",
+    "settings": "Impostazioni",
+    "emptyHint": "Con le prime corse qui compaiono l'andamento della forma, i km a settimana, le previsioni di gara e i record.",
+    "trends": {
+      "title": "Andamento",
+      "form": "Forma e fatica",
+      "formHint": "Forma: allenamento delle ultime 6 settimane. Fatica: quello degli ultimi 7 giorni.",
+      "km": "Km a settimana"
+    },
+    "performance": {
+      "title": "Prestazioni",
+      "predictions": "Previsioni",
+      "records": "Record"
+    },
+    "pace": "Passo nelle sedute veloci",
+    "goal": {
+      "eyebrow": "Obiettivo",
+      "unset": "Da impostare",
+      "inTime": "in {time}",
+      "today": "Oggi",
+      "tomorrow": "Domani",
+      "days": "{days} gg"
+    }
+  },
+  "page": {
+    "fallbackName": "Runner",
+    "formTrend": {
+      "up": "La forma è in crescita rispetto a un mese fa.",
+      "down": "La forma è in calo rispetto a un mese fa.",
+      "stable": "La forma è stabile rispetto a un mese fa."
+    },
+    "highlights": {
+      "vo2max": "VO₂max",
+      "restingHr": "FC riposo",
+      "load": "Carico",
+      "sleep": "Sonno",
+      "loadCalibrating": "7 gg · in calibrazione",
+      "loadAbove": "7 gg · sopra media",
+      "loadBelow": "7 gg · sotto media",
+      "loadAverage": "7 gg · nella media",
+      "sleepRecent": "media 2 settimane",
+      "sleepLatest": "ultima notte"
+    }
+  },
+  "loadStates": {
+    "calibrating": { "label": "In calibrazione", "text": "Ancora qualche corsa e la lettura diventa stabile." },
+    "fresh": { "label": "Ben recuperato", "text": "Hai margine: buon momento per una seduta impegnativa." },
+    "balanced": { "label": "In equilibrio", "text": "Forma e fatica sono bilanciate." },
+    "strained": { "label": "Un po' carico", "text": "Il lavoro recente pesa: cura il recupero." },
+    "fatigued": { "label": "Affaticato", "text": "Meglio una giornata leggera o di riposo." }
+  },
+  "formStatus": {
+    "title": "Stato di forma",
+    "readinessStates": {
+      "intense": { "label": "Pronto per spingere", "text": "Recupero e sonno dicono che puoi fare una seduta intensa." },
+      "ready": { "label": "Pronto", "text": "Buone condizioni per allenarti come da piano." },
+      "moderate": { "label": "Carico moderato", "text": "Allenati, ma senza forzare." },
+      "recovery": { "label": "Recupero consigliato", "text": "Meglio qualcosa di facile oggi." },
+      "rest": { "label": "Riposo", "text": "Riposo o attività molto leggera." }
+    },
+    "readinessAria": "Prontezza {value} su 100",
+    "syncToday": "oggi alle {time}",
+    "syncYesterday": "ieri alle {time}",
+    "syncOther": "{date} alle {time}",
+    "metrics": {
+      "sleep": "Sonno",
+      "restingHr": "FC riposo",
+      "hrv": "HRV",
+      "vo2max": "VO₂max"
+    },
+    "empty": {
+      "text": "Registra le prime corse per vedere come stai.",
+      "import": "Importa una corsa"
+    },
+    "trendLink": "Andamento",
+    "stale": "L'orologio non si sincronizza da qualche giorno: per ora conto solo le tue attività.",
+    "lastSync": "Ultima sincronizzazione con l'orologio: {when}"
+  },
+  "trend": {
+    "better": "Migliora",
+    "worse": "Peggiora",
+    "stable": "Stabile",
+    "up": "In aumento",
+    "down": "In calo"
+  },
+  "pace": {
+    "status": {
+      "on_target": "In linea",
+      "fast": "Più veloce",
+      "slow": "Più lento"
+    },
+    "deviationOk": "ok",
+    "prompt": {
+      "fast": "Nelle ultime sedute veloci sono sempre più veloce dei passi previsti: puoi aggiornare i passi del piano?",
+      "slow": "Nelle ultime sedute veloci faccio fatica a tenere i passi previsti: puoi rivederli?"
+    },
+    "legend": "Secondi al km rispetto al passo previsto: − più veloce, + più lento.",
+    "trendText": {
+      "fast": "Nelle ultime sedute sei sempre più veloce del previsto: forse è ora di aggiornare i passi.",
+      "slow": "Nelle ultime sedute fatichi a tenere i passi previsti: meglio rivederli."
+    },
+    "askCoach": "Chiedi al coach →"
+  },
+  "predictions": {
+    "goalRange": "<race>{name}</race>: tra <num>{optimistic}</num> e <num>{prudent}</num>, più probabile <num>{central}</num>.",
+    "how": "Come lo prevedo"
+  },
+  "forma": {
+    "title": "Stato di forma",
+    "back": "Profilo",
+    "summary": {
+      "eyebrow": "Come sta cambiando il corpo",
+      "better": "<good>Migliora</good> {list}.",
+      "worse": "<bad>Peggiora</bad> {list}.",
+      "none": "Nessun cambiamento netto nelle ultime 4 settimane, oppure servono ancora dati per vederlo.",
+      "comparison": "Confronto tra le ultime 2 settimane e le 2 settimane di un mese fa (le fasce grigie nei grafici).",
+      "labels": {
+        "vo2max": "VO₂max",
+        "efficiency": "passo a parità di cuore",
+        "fitness": "forma",
+        "restingHr": "FC a riposo",
+        "hrv": "HRV",
+        "sleep": "ore di sonno",
+        "sleepDeep": "sonno profondo",
+        "stress": "stress"
+      }
+    },
+    "groups": {
+      "aerobic": "Motore aerobico",
+      "recovery": "Recupero",
+      "sleep": "Sonno",
+      "dailyLoad": "Carico dall'orologio e giornata"
+    },
+    "metric": {
+      "latestWithDate": "{label}, {date}",
+      "latestData": "Ultimo dato del {date}",
+      "about": "Cos'è"
+    },
+    "load": {
+      "title": "Carico",
+      "form": "Forma (CTL)",
+      "fatigue": "Fatica (ATL)",
+      "freshness": "Freschezza (TSB)",
+      "load7": "Carico 7 giorni",
+      "calibrating": "Carico 7 giorni: servono ancora 3 settimane di storico per confrontarlo con la tua media.",
+      "above": "Carico 7 giorni sopra la tua media ({percent}%).",
+      "below": "Carico 7 giorni sotto la tua media ({percent}%).",
+      "average": "Carico 7 giorni nella tua media.",
+      "formSentence": "Forma: {sentence}",
+      "chartHint": "Forma: allenamento delle ultime 6 settimane. Fatica: quello degli ultimi 7 giorni. Freschezza = forma − fatica."
+    },
+    "noWatch": "Collega l'orologio (app Zepp o Intervals.icu) nelle impostazioni per vedere VO₂max, sonno, FC a riposo, HRV e stress.",
+    "notes": {
+      "title": "Da sapere",
+      "zepp": "I dati dell'app Zepp arrivano quando sincronizzi dall'orologio: i giorni senza sincronizzazione restano vuoti, non vengono stimati.",
+      "hrv": "L'HRV arriva solo da Intervals.icu: l'app sull'orologio non la può leggere.",
+      "missing": "Tempo di recupero Zepp, fasi REM e leggero del sonno e temperatura della pelle non sono qui: il primo ha un'unità non ancora verificata, gli altri l'app sull'orologio non li invia.",
+      "metersPerBeat": "Metri per battito: solo corse facili e lunghi da almeno 20 minuti, senza ripetute, soglie e test; caldo e salite lo abbassano."
+    }
+  }
+}

@@ -1,19 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { removePushSubscription, savePushSubscription, sendTestPush } from "./push-actions";
 
 type Status = "loading" | "unsupported" | "ios-install" | "denied" | "off" | "on";
 
-const LABEL = "Notifiche su questo dispositivo";
-
-const HINTS: Partial<Record<Status, string>> = {
-  unsupported: "Questo browser non supporta le notifiche.",
-  "ios-install": "Su iPhone aggiungi prima l'app alla schermata Home.",
-  denied: "Notifiche bloccate nelle impostazioni del browser.",
-};
+const HINT_KEYS = {
+  unsupported: "hints.unsupported",
+  "ios-install": "hints.iosInstall",
+  denied: "hints.denied",
+} as const;
 
 function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   const padded = (base64 + "=".repeat((4 - (base64.length % 4)) % 4))
@@ -62,6 +61,7 @@ async function detectStatus(vapidPublicKey: string): Promise<Status> {
 }
 
 export function NotificationsSection({ vapidPublicKey }: { vapidPublicKey: string }) {
+  const t = useTranslations("settings.notifications");
   const [status, setStatus] = useState<Status>("loading");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -126,7 +126,7 @@ export function NotificationsSection({ vapidPublicKey }: { vapidPublicKey: strin
       await (next ? enable() : disable());
     } catch (error) {
       console.error("notifications toggle:", error);
-      setMessage(next ? "Impossibile attivare le notifiche." : "Impossibile disattivare le notifiche.");
+      setMessage(next ? t("enableFailed") : t("disableFailed"));
     } finally {
       setPending(false);
     }
@@ -135,28 +135,29 @@ export function NotificationsSection({ vapidPublicKey }: { vapidPublicKey: strin
   async function test() {
     setPending(true);
     setMessage(null);
-    const result = await sendTestPush().catch(() => ({ error: "Invio non riuscito." }));
-    setMessage(result.error ?? "Notifica inviata.");
+    const result = await sendTestPush().catch(() => ({ error: t("testFailed") }));
+    setMessage(result.error ?? t("testSent"));
     setPending(false);
   }
 
   const available = status === "on" || status === "off";
-  const hint = message ?? HINTS[status] ?? null;
+  const hintKey = status === "unsupported" || status === "ios-install" || status === "denied" ? HINT_KEYS[status] : null;
+  const hint = message ?? (hintKey ? t(hintKey) : null);
 
   return (
     <div className="py-4">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-sm font-medium">{LABEL}</p>
+          <p className="text-sm font-medium">{t("label")}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Promemoria della seduta, analisi delle corse e riepilogo del lunedì.
+            {t("description")}
           </p>
         </div>
         <Switch
           checked={status === "on"}
           onCheckedChange={toggle}
           disabled={!available || pending}
-          aria-label={LABEL}
+          aria-label={t("label")}
         />
       </div>
       {hint && <p className="mt-2 text-xs text-muted-foreground">{hint}</p>}
@@ -169,7 +170,7 @@ export function NotificationsSection({ vapidPublicKey }: { vapidPublicKey: strin
           disabled={pending}
           onClick={test}
         >
-          Invia una prova
+          {t("test")}
         </Button>
       )}
     </div>

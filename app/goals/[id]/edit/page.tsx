@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { EditGoalForm } from "./goal-form";
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default async function EditGoalPage({ params }: Props) {
+  const t = await getTranslations("goals");
   const { id } = await params;
   const supabase = await createClient();
   const {
@@ -26,7 +28,7 @@ export default async function EditGoalPage({ params }: Props) {
   if (!goal) notFound();
 
   return (
-    <AppShell title="Modifica obiettivo" backHref="/goals" backLabel="Obiettivi" hideTabBar>
+    <AppShell title={t("edit.title")} backHref="/goals" backLabel={t("title")} hideTabBar>
       <EditGoalForm goal={goal} />
     </AppShell>
   );

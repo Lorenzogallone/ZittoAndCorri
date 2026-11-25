@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { Check, Link2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -17,15 +19,22 @@ interface Props {
   initialConnection: ZeppConnectionView | null;
 }
 
-function formatDate(value: string | null): string {
-  if (!value) return "Mai";
-  return new Date(value).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" });
+function formatDate(value: string | null, never: string, locale: Locale): string {
+  if (!value) return never;
+  return new Date(value).toLocaleString(intlLocale(locale), { dateStyle: "short", timeStyle: "short" });
 }
+
+const richTags = {
+  strong: (chunks: ReactNode) => <strong>{chunks}</strong>,
+  em: (chunks: ReactNode) => <em>{chunks}</em>,
+};
 
 /** Oltre questo limite i dati giornalieri dell'orologio vengono ignorati (vedi lib/zepp/data). */
 const STALE_MS = 3 * 86_400_000;
 
 export function ZeppIntegrationSection({ initialConnection }: Props) {
+  const t = useTranslations("settingsLinks.zepp");
+  const locale = useLocale() as Locale;
   const [connection, setConnection] = useState(initialConnection);
   const [enabled, setEnabled] = useState(Boolean(initialConnection?.enabled));
   const [code, setCode] = useState<string | null>(null);
@@ -40,7 +49,7 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
   const generate = () => startTransition(async () => {
     setError(null);
     const result = await generateZeppPairingCode();
-    if (result.error || !result.code) return setError(result.error ?? "Codice non disponibile.");
+    if (result.error || !result.code) return setError(result.error ?? t("codeUnavailable"));
     setCode(result.code);
     setExpiresAt(result.expiresAt ?? null);
   });
@@ -56,9 +65,9 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
     if (
       connection?.enabled &&
       !(await confirm({
-        title: "Disattivare i dati dell'orologio?",
-        description: "Il collegamento con Zepp viene revocato: per riattivarlo servirà un nuovo codice.",
-        action: "Disattiva",
+        title: t("confirm.disable.title"),
+        description: t("confirm.disable.description"),
+        action: t("confirm.disable.action"),
       }))
     )
       return;
@@ -84,9 +93,9 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
 
   const remove = async () => {
     const confirmed = await confirm({
-      title: "Scollegare l'orologio e cancellare i dati?",
-      description: "Collegamento e storico Zepp vengono eliminati. Non si può annullare.",
-      action: "Elimina",
+      title: t("confirm.delete.title"),
+      description: t("confirm.delete.description"),
+      action: t("confirm.delete.action"),
     });
     if (!confirmed) return;
     startTransition(async () => {
@@ -103,67 +112,63 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
   return (
     <IntegrationCard
       id="zepp-os-integration"
-      description="Facoltativo: porta sonno, recupero e zone cardiache dall'orologio."
+      description={t("description")}
     >
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-4">
-          <p className="text-sm font-medium">Usa i dati dell&apos;orologio</p>
-          <Switch checked={enabled} onCheckedChange={toggle} disabled={pending} aria-label="Usa i dati dell'orologio" />
+          <p className="text-sm font-medium">{t("useWatchData")}</p>
+          <Switch checked={enabled} onCheckedChange={toggle} disabled={pending} aria-label={t("useWatchDataAria")} />
         </div>
 
         {!enabled ? null : connection?.enabled ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm">
               <Check size={16} className="text-emerald-500" />
-              <span className="font-medium">{connection.device_name ?? "Orologio Zepp"} collegato</span>
+              <span className="font-medium">{t("connected", { device: connection.device_name ?? t("defaultDevice") })}</span>
             </div>
             <p className={`text-xs ${stale ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
-              Ultima sincronizzazione: {formatDate(connection.last_sync_at)}
-              {stale && " · i dati vecchi non vengono usati finché non risincronizzi"}
+              {t("lastSync", { date: formatDate(connection.last_sync_at, t("never"), locale) })}
+              {stale && ` · ${t("staleNote")}`}
             </p>
-            {connection.last_error && <p className="text-xs text-destructive">Ultimo errore: {connection.last_error}</p>}
+            {connection.last_error && <p className="text-xs text-destructive">{t("lastError", { error: connection.last_error })}</p>}
             <Button type="button" variant="ghost" size="sm" className="-ml-3 text-destructive hover:text-destructive" disabled={pending} onClick={remove}>
-              <Trash2 size={14} /> Scollega e cancella i dati
+              <Trash2 size={14} /> {t("disconnectAndDelete")}
             </Button>
           </div>
         ) : (
           <div className="space-y-4">
             {code ? (
               <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 text-center">
-                <p className="text-xs text-muted-foreground">Codice ZittoAndCorri</p>
+                <p className="text-xs text-muted-foreground">{t("codeTitle")}</p>
                 <button type="button" onClick={copy} className="mt-2 font-mono text-3xl font-bold tracking-[0.3em] text-primary">
                   {code}
                 </button>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {copied ? "Copiato" : `Valido fino alle ${expiresAt ? new Date(expiresAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }) : "prossime 10 min"}`}
+                  {copied ? t("copied") : expiresAt ? t("validUntil", { time: new Date(expiresAt).toLocaleTimeString(intlLocale(locale), { hour: "2-digit", minute: "2-digit" }) }) : t("validFallback")}
                 </p>
                 <p className="mt-1 text-xs font-medium text-primary/80">
-                  Usalo per collegare sia l&apos;app Salute che il Coach.
+                  {t("codeHint")}
                 </p>
               </div>
             ) : (
               <Button type="button" className="w-full" disabled={pending} onClick={generate}>
-                <Link2 size={16} /> {pending ? "Generazione…" : "Genera codice di collegamento"}
+                <Link2 size={16} /> {pending ? t("generating") : t("generate")}
               </Button>
             )}
-            {code && <Button type="button" variant="outline" size="sm" className="w-full" disabled={pending} onClick={generate}>Genera un nuovo codice</Button>}
+            {code && <Button type="button" variant="outline" size="sm" className="w-full" disabled={pending} onClick={generate}>{t("generateNew")}</Button>}
           </div>
         )}
 
         {error && <p role="alert" className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
 
-        <IntegrationHelp title="Come collegare l'orologio">
+        <IntegrationHelp title={t("help.title")}>
           <ol className="list-decimal space-y-1.5 pl-4">
-            <li>Genera il codice qui sopra (valido 5 minuti, si blocca dopo 5 tentativi).</li>
-            <li>
-              <strong>App Salute (sync dati):</strong> apri Zepp sul telefono → il tuo orologio → App → Zitto e Corri → Impostazioni → incolla il codice → <em>Collega</em>.
-            </li>
-            <li>
-              <strong>App Coach (allenamenti):</strong> sempre in Zepp → App → Zitto e Corri Coach → Impostazioni → incolla lo <strong>stesso codice</strong> → <em>Collega</em>.
-            </li>
-            <li>Apri il Mini Program sull&apos;orologio per la prima sincronizzazione.</li>
+            <li>{t("help.step1")}</li>
+            <li>{t.rich("help.step2", richTags)}</li>
+            <li>{t.rich("help.step3", richTags)}</li>
+            <li>{t("help.step4")}</li>
           </ol>
-          <p className="mt-3 text-muted-foreground">Il codice può essere usato una volta per ciascuna app nello stesso intervallo di validità. Se scade prima di collegare la seconda app, genera un nuovo codice.</p>
+          <p className="mt-3 text-muted-foreground">{t("help.note")}</p>
         </IntegrationHelp>
         {confirmSheet}
       </div>

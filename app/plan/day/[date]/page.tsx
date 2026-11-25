@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { getLocale, getTranslations } from "next-intl/server";
+import type { Locale } from "@/i18n/config";
 import { ChevronRight, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
@@ -12,7 +14,7 @@ import { plannedMeters } from "@/lib/plan/planned-distance";
 import { addDays, relativeDayLabel, romeDay, weekdayName } from "@/lib/local-date";
 import { buildDays } from "@/lib/plan/day-status";
 import { matchWindow } from "@/lib/plan/match-activities";
-import { SPORT_LABELS, TYPE_DOTS, TYPE_LABELS } from "@/lib/activity-meta";
+import { sportLabel, TYPE_DOTS, typeLabel } from "@/lib/activity-meta";
 import { cn } from "@/lib/utils";
 import { sessionPlacement, sortByDayOrder } from "@/lib/plan/day-sessions";
 import type { Activity, PlannedWorkout } from "@/lib/types";
@@ -29,6 +31,9 @@ interface Props {
 type DayActivity = Pick<Activity, "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" | "moving_time_s" | "avg_pace_s_km" | "avg_hr">;
 
 export default async function DayViewPage({ params }: Props) {
+  const t = await getTranslations("plan");
+  const tl = await getTranslations("labels");
+  const locale = (await getLocale()) as Locale;
   const { date } = await params;
   if (!isValidDate(date)) notFound();
 
@@ -65,28 +70,28 @@ export default async function DayViewPage({ params }: Props) {
   const dayActivities = day.activities;
 
   return (
-    <AppShell backHref="/plan" backLabel="Piano" hideTabBar>
-      <h1 className="mb-6 text-2xl font-bold tracking-tight capitalize">{relativeDayLabel(date, today)}</h1>
+    <AppShell backHref="/plan" backLabel={t("title")} hideTabBar>
+      <h1 className="mb-6 text-2xl font-bold tracking-tight capitalize">{relativeDayLabel(date, today, locale)}</h1>
 
       <Section
-        title="In programma"
-        action={<Link href="/plan/new" className="inline-flex items-center gap-1 text-sm font-medium text-primary"><Plus size={15} /> Aggiungi</Link>}
+        title={t("day.planned")}
+        action={<Link href="/plan/new" className="inline-flex items-center gap-1 text-sm font-medium text-primary"><Plus size={15} /> {t("day.add")}</Link>}
       >
         {workouts.length ? (
           <ul className="surface divide-y divide-border/60 px-4">
             {workouts.map((workout) => {
               const steps = workoutStepsOrLegacy(workout.workout_steps, workout);
               const meters = plannedMeters({ ...workout, workout_steps: steps });
-              const placement = sessionPlacement(workout, workouts.length);
+              const placement = sessionPlacement(tl, workout, workouts.length);
               const moved = day.doneOn[workout.id];
-              const details = [moved ? `Fatta ${weekdayName(moved.date)}` : null, placement, meters > 0 ? `≈ ${formatDistance(meters)}` : null].filter(Boolean).join(" · ");
+              const details = [moved ? t("day.doneOn", { weekday: weekdayName(moved.date, locale) }) : null, placement, meters > 0 ? `≈ ${formatDistance(meters, locale)}` : null].filter(Boolean).join(" · ");
               return (
                 <li key={workout.id}>
                   <Link href={`/plan/${workout.id}`} className="flex items-center gap-3 py-3">
                     <div className="min-w-0 flex-1">
                       <p className={cn("flex items-center gap-2 text-sm font-medium", workout.status === "skipped" && "text-muted-foreground line-through")}>
                         <span className={cn("h-2 w-2 shrink-0 rounded-full", TYPE_DOTS[workout.type])} />
-                        {[TYPE_LABELS[workout.type], workoutHeadline(steps)].filter(Boolean).join(" · ")}
+                        {[typeLabel(tl, workout.type), workoutHeadline(steps, locale)].filter(Boolean).join(" · ")}
                       </p>
                       {details && <p className="mt-0.5 text-xs text-muted-foreground">{details}</p>}
                       <WorkoutGraph steps={steps} type={workout.type} size="sm" className="mt-2" />
@@ -98,13 +103,13 @@ export default async function DayViewPage({ params }: Props) {
             })}
           </ul>
         ) : (
-          <p className="surface px-4 py-3 text-sm text-muted-foreground">Giorno di riposo.</p>
+          <p className="surface px-4 py-3 text-sm text-muted-foreground">{t("day.rest")}</p>
         )}
       </Section>
 
       <Section
-        title="Fatto"
-        action={<Link href="/activities/new" className="inline-flex items-center gap-1 text-sm font-medium text-primary"><Plus size={15} /> Registra</Link>}
+        title={t("day.done")}
+        action={<Link href="/activities/new" className="inline-flex items-center gap-1 text-sm font-medium text-primary"><Plus size={15} /> {t("day.record")}</Link>}
       >
         {dayActivities.length ? (
           <ul className="surface divide-y divide-border/60 px-4">
@@ -113,13 +118,13 @@ export default async function DayViewPage({ params }: Props) {
                 <Link href={`/activities/${activity.id}`} className="flex items-center gap-3 py-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium tabular-nums">
-                      {activity.sport === "running" ? TYPE_LABELS[activity.type] : SPORT_LABELS[activity.sport]}
+                      {activity.sport === "running" ? typeLabel(tl, activity.type) : sportLabel(tl, activity.sport)}
                       {" · "}
-                      {activity.distance_m > 0 ? formatDistance(activity.distance_m) : formatDuration(activeDuration(activity))}
+                      {activity.distance_m > 0 ? formatDistance(activity.distance_m, locale) : formatDuration(activeDuration(activity))}
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                       {[
-                        day.countsFor[activity.id] ? `Seduta di ${weekdayName(day.countsFor[activity.id])}` : null,
+                        day.countsFor[activity.id] ? t("day.sessionOf", { weekday: weekdayName(day.countsFor[activity.id], locale) }) : null,
                         formatDuration(activeDuration(activity)),
                         activity.sport === "running" && activity.avg_pace_s_km != null ? formatPace(activity.avg_pace_s_km) : null,
                         activity.avg_hr != null ? `${activity.avg_hr} bpm` : null,
@@ -132,7 +137,7 @@ export default async function DayViewPage({ params }: Props) {
             ))}
           </ul>
         ) : (
-          <p className="surface px-4 py-3 text-sm text-muted-foreground">Nessuna attività registrata.</p>
+          <p className="surface px-4 py-3 text-sm text-muted-foreground">{t("day.noActivities")}</p>
         )}
       </Section>
     </AppShell>

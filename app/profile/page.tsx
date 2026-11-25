@@ -1,5 +1,7 @@
 import { after } from "next/server";
 import { redirect } from "next/navigation";
+import { getLocale, getTranslations } from "next-intl/server";
+import type { Locale } from "@/i18n/config";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeATLCTL } from "@/lib/metrics/load";
@@ -42,15 +44,15 @@ async function profileActivities(supabase: Awaited<ReturnType<typeof createClien
   return { ...fallback, data: fallback.data?.map((activity) => ({ ...activity, best_efforts: null, pace_check: null })) ?? null };
 }
 
-function formTrend(series: Array<{ date: string; ctl: number }>): string | null {
+function formTrend(series: Array<{ date: string; ctl: number }>, t: Awaited<ReturnType<typeof getTranslations>>): string | null {
   if (series.length < 42) return null;
   const now = series[series.length - 1].ctl;
   const before = series[series.length - 29].ctl;
   if (before <= 0) return null;
   const change = (now - before) / before;
-  if (change > 0.05) return "La forma è in crescita rispetto a un mese fa.";
-  if (change < -0.05) return "La forma è in calo rispetto a un mese fa.";
-  return "La forma è stabile rispetto a un mese fa.";
+  if (change > 0.05) return t("formTrend.up");
+  if (change < -0.05) return t("formTrend.down");
+  return t("formTrend.stable");
 }
 
 /** Ultimo dato arrivato dall'orologio: sync Zepp o giorno di wellness (Intervals.icu). */
@@ -64,6 +66,9 @@ function lastWatchSync(zepp: Awaited<ReturnType<typeof getZeppDashboard>>): stri
 }
 
 export default async function ProfilePage() {
+  const t = await getTranslations("profile.page");
+  const tMetrics = await getTranslations("metrics");
+  const locale = (await getLocale()) as Locale;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -116,7 +121,7 @@ export default async function ProfilePage() {
   );
   const [zepp, trends] = await Promise.all([
     getZeppDashboard(supabase, user.id, load),
-    loadBodyTrends(supabase, user.id, today, load.series),
+    loadBodyTrends(supabase, user.id, today, load.series, tMetrics, locale),
   ]);
   // In evidenza: VO₂max, carico 7 giorni e sonno (media delle ultime 2
   // settimane, la stessa del confronto); il resto è nella vista Stato di forma.
@@ -124,15 +129,15 @@ export default async function ProfilePage() {
   const vo2 = trends.vo2max.latest ? trends.vo2max : null;
   const sleep = trends.sleep.latest ? trends.sleep : null;
   const candidates: Array<FormHighlight | null | false | undefined> = [
-    vo2 && { label: "VO₂max", value: formatMetric("vo2max", vo2.latest!.value), icon: Wind, trend: vo2 },
-    !vo2 && trends.restingHr.latest && { label: "FC riposo", value: formatMetric("restingHr", trends.restingHr.latest.value), unit: "bpm", icon: HeartPulse, trend: trends.restingHr },
+    vo2 && { label: t("highlights.vo2max"), value: formatMetric("vo2max", vo2.latest!.value), icon: Wind, trend: vo2 },
+    !vo2 && trends.restingHr.latest && { label: t("highlights.restingHr"), value: formatMetric("restingHr", trends.restingHr.latest.value), unit: "bpm", icon: HeartPulse, trend: trends.restingHr },
     list.length > 0 && {
-      label: "Carico",
+      label: t("highlights.load"),
       value: `${load.load7}`,
       icon: Gauge,
-      note: ratio == null ? "7 gg · in calibrazione" : ratio > 1.15 ? "7 gg · sopra media" : ratio < 0.85 ? "7 gg · sotto media" : "7 gg · nella media",
+      note: ratio == null ? t("highlights.loadCalibrating") : ratio > 1.15 ? t("highlights.loadAbove") : ratio < 0.85 ? t("highlights.loadBelow") : t("highlights.loadAverage"),
     },
-    sleep && { label: "Sonno", value: formatMetric("sleep", sleep.recent ?? sleep.latest!.value), icon: Moon, trend: sleep, note: sleep.recent != null ? "media 2 settimane" : "ultima notte" },
+    sleep && { label: t("highlights.sleep"), value: formatMetric("sleep", sleep.recent ?? sleep.latest!.value), icon: Moon, trend: sleep, note: sleep.recent != null ? t("highlights.sleepRecent") : t("highlights.sleepLatest") },
   ];
   const highlights = candidates.filter((item): item is FormHighlight => Boolean(item));
 
@@ -169,7 +174,7 @@ export default async function ProfilePage() {
     : typeof user.user_metadata?.name === "string"
       ? user.user_metadata.name
       : null;
-  const displayName = authName || user.email?.split("@")[0] || "Runner";
+  const displayName = authName || user.email?.split("@")[0] || t("fallbackName");
   const initials = displayName.split(" ").map((word: string) => word[0]).join("").toUpperCase().slice(0, 2);
   const daysToRace = activeGoal?.race_date ? daysBetween(today, activeGoal.race_date) : null;
 
@@ -184,7 +189,7 @@ export default async function ProfilePage() {
       highlights={highlights}
       hasData={list.length > 0 || zepp.latest != null || zepp.wellness.length > 0}
       formPoints={formPoints}
-      formTrend={formTrend(load.series)}
+      formTrend={formTrend(load.series, t)}
       weeks={weeks}
       currentWeek={mondayOf(today)}
       reference={reference}

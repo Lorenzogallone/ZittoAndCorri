@@ -1,7 +1,10 @@
 // Stato delle integrazioni: dice se c'è qualcosa di fermo da segnalare
 // all'atleta (banner in home, notifica push). Modulo puro: niente import
-// runtime, testabile. Solo le integrazioni collegate contano: chi non ha
-// orologio né Intervals.icu non vede mai nulla.
+// runtime (a parte la lingua), testabile. Solo le integrazioni collegate
+// contano: chi non ha orologio né Intervals.icu non vede mai nulla. I testi
+// non stanno qui: si ricavano con syncIssueText / syncIssuePush.
+
+import { intlLocale, type Locale, type Translator } from "../i18n/config.ts";
 
 /** Oltre questo tempo dati salute e sincronizzazione dell'orologio sono "fermi". */
 export const STALE_HOURS = 48;
@@ -11,8 +14,6 @@ export type SyncIssueKind = "intervals-error" | "watch-stale" | "health-stale";
 
 export interface SyncIssue {
   kind: SyncIssueKind;
-  /** Una riga: cosa è fermo e da quando. */
-  text: string;
   /** Ultimo dato o ultima sincronizzazione riuscita (ISO), se noti. */
   since: string | null;
   /** Dettaglio per la notifica (es. il messaggio d'errore). */
@@ -62,10 +63,10 @@ function olderThan(value: number | null, now: number, hours = STALE_HOURS): bool
   return value === null || now - value > hours * HOUR_MS;
 }
 
-/** "18 novembre" (giorno a Roma). */
-export function formatSince(value: string): string {
+/** "18 novembre" / "18 November" (giorno a Roma). */
+export function formatSince(value: string, locale: Locale): string {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T12:00:00Z`) : new Date(value);
-  return date.toLocaleDateString("it-IT", { day: "numeric", month: "long", timeZone: "Europe/Rome" });
+  return date.toLocaleDateString(intlLocale(locale), { day: "numeric", month: "long", timeZone: "Europe/Rome" });
 }
 
 function latest(values: Array<string | null | undefined>): string | null {
@@ -96,9 +97,6 @@ export function syncHealthIssues(input: SyncHealthInput, nowValue: Date | string
     const since = input.latestHealthDate.intervals;
     issues.push({
       kind: "intervals-error",
-      text: since
-        ? `Intervals.icu non si sincronizza · ultimi dati del ${formatSince(since)}`
-        : "Intervals.icu non si sincronizza",
       since,
       detail: intervals.lastError,
       href: SYNC_SETTINGS_HREF.intervals,
@@ -118,9 +116,6 @@ export function syncHealthIssues(input: SyncHealthInput, nowValue: Date | string
       watchStale = true;
       issues.push({
         kind: "watch-stale",
-        text: zepp.lastSyncAt
-          ? `L'orologio non si sincronizza dal ${formatSince(zepp.lastSyncAt)}`
-          : "L'orologio non si è mai sincronizzato",
         since: zepp.lastSyncAt,
         detail: null,
         href: SYNC_SETTINGS_HREF.zepp,
@@ -142,7 +137,6 @@ export function syncHealthIssues(input: SyncHealthInput, nowValue: Date | string
       // Il link porta alla sorgente principale: l'orologio se c'è, se no Intervals.icu.
       issues.push({
         kind: "health-stale",
-        text: freshest ? `Dati salute fermi al ${formatSince(freshest)}` : "Nessun dato salute ricevuto",
         since: freshest,
         detail: null,
         href: settled[0].href,
@@ -153,27 +147,38 @@ export function syncHealthIssues(input: SyncHealthInput, nowValue: Date | string
   return issues;
 }
 
-/** Testo della notifica push per un problema. */
-export function syncIssuePush(issue: SyncIssue): { title: string; body: string } {
+/** Una riga: cosa è fermo e da quando. `t` è legato al namespace "status". */
+export function syncIssueText(issue: SyncIssue, t: Translator, locale: Locale): string {
+  const date = issue.since ? formatSince(issue.since, locale) : "";
+  switch (issue.kind) {
+    case "intervals-error":
+      return issue.since ? t("sync.issue.intervalsErrorSince", { date }) : t("sync.issue.intervalsError");
+    case "watch-stale":
+      return issue.since ? t("sync.issue.watchStaleSince", { date }) : t("sync.issue.watchNeverSynced");
+    case "health-stale":
+      return issue.since ? t("sync.issue.healthStaleSince", { date }) : t("sync.issue.healthNone");
+  }
+}
+
+/** Testo della notifica push per un problema. `t` è legato al namespace "status". */
+export function syncIssuePush(issue: SyncIssue, t: Translator, locale: Locale): { title: string; body: string } {
+  const date = issue.since ? formatSince(issue.since, locale) : "";
   switch (issue.kind) {
     case "intervals-error":
       return {
-        title: "Intervals.icu non si sincronizza",
-        body: issue.detail ? `${issue.detail.split(" · ")[0].slice(0, 140)}` : "Apri le impostazioni per ricollegarlo.",
+        title: t("sync.push.intervalsError.title"),
+        // Il dettaglio è l'ultimo errore salvato nel database: resta com'è.
+        body: issue.detail ? `${issue.detail.split(" · ")[0].slice(0, 140)}` : t("sync.push.intervalsError.bodyFallback"),
       };
     case "watch-stale":
       return {
-        title: "Orologio fermo",
-        body: issue.since
-          ? `Nessuna sincronizzazione dal ${formatSince(issue.since)}. Apri l'app Zepp sul telefono.`
-          : "Nessuna sincronizzazione ancora. Apri l'app Zepp sul telefono.",
+        title: t("sync.push.watchStale.title"),
+        body: issue.since ? t("sync.push.watchStale.bodySince", { date }) : t("sync.push.watchStale.bodyNever"),
       };
     case "health-stale":
       return {
-        title: "Dati salute fermi",
-        body: issue.since
-          ? `Ultimi dati del ${formatSince(issue.since)}: il coach lavora senza sonno e recupero.`
-          : "Non è ancora arrivato nessun dato salute.",
+        title: t("sync.push.healthStale.title"),
+        body: issue.since ? t("sync.push.healthStale.bodySince", { date }) : t("sync.push.healthStale.bodyNone"),
       };
   }
 }

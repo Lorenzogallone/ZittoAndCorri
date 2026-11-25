@@ -1,10 +1,12 @@
+import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/app-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Stessa forma della pagina: frase in cima, carico, poi le card con i grafici.
 export default function Loading() {
+  const t = useTranslations("profile.forma");
   return (
-    <AppShell title="Stato di forma" backHref="/profile" backLabel="Profilo" wide>
+    <AppShell title={t("title")} backHref="/profile" backLabel={t("back")} wide>
       <div className="surface mb-8 p-5">
         <Skeleton className="h-3 w-40" />
         <Skeleton className="mt-3 h-4 w-full" />

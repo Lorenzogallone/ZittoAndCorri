@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { pollAiJob, type AiJobStatus } from "@/app/actions/ai-jobs";
 import { clientLog } from "@/lib/clientlog";
 import { APP_REFRESH_EVENT } from "@/lib/use-app-refresh";
@@ -95,6 +96,7 @@ export function useAiJob(
   options?: { onDone?: (status: AiJobStatus) => void | Promise<void> },
 ) {
   const router = useRouter();
+  const t = useTranslations("status");
   const onDone = options?.onDone;
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
@@ -121,7 +123,7 @@ export function useAiJob(
         if (runId !== runIdRef.current) return;
         if (Date.now() > deadline) {
           finish();
-          setError("L'AI ci sta mettendo troppo. Riprova tra poco.");
+          setError(t("aiJob.tooSlow"));
           setPending(false);
           return;
         }
@@ -137,20 +139,20 @@ export function useAiJob(
               setDone(true);
               setPending(false);
             } catch {
-              setError("Risposta ricevuta, ma non è stato possibile mostrarla. Riprova.");
+              setError(t("aiJob.notShown"));
               setPending(false);
             }
             return;
           }
           if (status.status === "error") {
             finish();
-            setError(status.error ?? "Richiesta AI non riuscita. Riprova.");
+            setError(status.error ?? t("aiJob.failed"));
             setPending(false);
             return;
           }
           if (status.status === "missing") {
             finish();
-            setError("Richiesta AI non trovata. Riprova.");
+            setError(t("aiJob.missing"));
             setPending(false);
             return;
           }
@@ -162,7 +164,7 @@ export function useAiJob(
 
       setTimeout(poll, POLL_INTERVAL_MS);
     },
-    [onDone, persistKey, router],
+    [onDone, persistKey, router, t],
   );
 
   // Dopo il trascina-giù: se c'è un job salvato che questo hook non sta già
@@ -212,13 +214,13 @@ export function useAiJob(
         res = await starter();
       } catch {
         if (runId !== runIdRef.current) return;
-        setError("Richiesta non avviata. Riprova.");
+        setError(t("aiJob.notStarted"));
         setPending(false);
         return;
       }
       if (runId !== runIdRef.current) return;
       if (res.error || !res.jobId) {
-        setError(res.error ?? "Richiesta non avviata. Riprova.");
+        setError(res.error ?? t("aiJob.notStarted"));
         setPending(false);
         return;
       }
@@ -230,7 +232,7 @@ export function useAiJob(
 
       runPoll(jobId, deadline, runId);
     },
-    [persistKey, runPoll],
+    [persistKey, runPoll, t],
   );
 
   return { pending, done, error, start };

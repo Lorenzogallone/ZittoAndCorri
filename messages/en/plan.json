@@ -1,0 +1,183 @@
+{
+  "title": "Plan",
+  "page": {
+    "today": "Today",
+    "inDays": "in {days, plural, one {# day} other {# days}}",
+    "inWeeks": "in {weeks, plural, one {# week} other {# weeks}}",
+    "goalMeta": "{distance} · {date}",
+    "goalMetaNoDate": "{distance} · goal with no date",
+    "noGoal": "No goal · talk to your coach",
+    "promptSetGoal": "I'd like to set a goal",
+    "promptMakePlan": "Can you put together my plan for the next two weeks?",
+    "empty": {
+      "title": "No sessions scheduled",
+      "text": "Your sessions for the week will show up here, day by day. Your coach can put together the next two weeks for you.",
+      "action": "Ask your coach for a plan",
+      "secondary": "Add a session"
+    },
+    "view": {
+      "label": "View",
+      "weeks": "Weeks",
+      "month": "Month"
+    },
+    "previousWeeks": "Previous weeks",
+    "nextWeeks": "Next weeks",
+    "backToToday": "Back to today",
+    "thisWeek": "This week",
+    "nextWeek": "Next week",
+    "addWorkout": "Add a session"
+  },
+  "new": {
+    "title": "New workout",
+    "form": {
+      "date": "Date",
+      "type": "Type",
+      "goal": "Goal (optional)",
+      "goalPlaceholder": "No linked goal",
+      "noGoal": "No goal",
+      "targets": "Targets (optional)",
+      "distance": "Distance (km)",
+      "pace": "Pace (mm:ss)",
+      "duration": "Duration (h:mm:ss)",
+      "maxHr": "Max HR (bpm)",
+      "notes": "Notes",
+      "notesPlaceholder": "10 km at an easy pace, HR < 145.",
+      "focus": "Focus (optional)",
+      "focusPlaceholder": "E.g. stay under your HR even if pace drops; think about cadence.",
+      "saving": "Saving…",
+      "submit": "Add to plan"
+    }
+  },
+  "detail": {
+    "lightened": "eased off",
+    "paused": "Paused: restore it from the plan when you feel better.",
+    "doneOn": "Done on {weekday}",
+    "done": "Done",
+    "sections": {
+      "what": "What to do and why",
+      "how": "How the session goes",
+      "focus": "What to focus on"
+    },
+    "typeGuide": "What is a “{type}” session? <read>Read more</read>",
+    "markDone": "Mark as done",
+    "markedDone": "Marked as done · undo",
+    "delete": {
+      "button": "Delete session",
+      "confirm": "Delete this session? This can't be undone.",
+      "cancel": "Cancel",
+      "error": "Couldn't delete the session. Try again.",
+      "deleting": "Deleting...",
+      "yes": "Yes, delete"
+    }
+  },
+  "day": {
+    "planned": "Scheduled",
+    "add": "Add",
+    "doneOn": "Done on {weekday}",
+    "rest": "Rest day.",
+    "done": "Done",
+    "record": "Log",
+    "sessionOf": "{weekday} session",
+    "noActivities": "No activities logged."
+  },
+  "adapt": {
+    "headerButton": "Not feeling 100%",
+    "inlineButton": "Not up for it",
+    "title": "How do you feel?",
+    "close": "Close",
+    "result": "{count, plural, one {# session adapted} other {# sessions adapted}} until {date}. You can undo from the plan.",
+    "resultNone": "No sessions to adapt on these days.",
+    "done": "Done",
+    "duration": "For how long",
+    "pending": "Adapting your plan…",
+    "confirm": "Adapt my plan"
+  },
+  "banner": {
+    "paused": "Sessions paused until {date}",
+    "lightened": "Plan eased off until {date}",
+    "restore": "Restore"
+  },
+  "phaseBar": {
+    "currentThen": "<b>{phase}</b> phase · then {next}",
+    "currentLast": "<b>{phase}</b> phase · last days before the race"
+  },
+  "move": {
+    "today": "today",
+    "tomorrow": "tomorrow",
+    "button": "Move",
+    "title": "Move to…",
+    "current": "{day} (current)",
+    "moveTo": "Move to {day}",
+    "cancel": "Cancel"
+  },
+  "week": {
+    "paused": "Paused",
+    "lightened": "eased off",
+    "doneOn": "Done on {weekday} · {summary}",
+    "done": "Done · {summary}",
+    "sessionOf": "{weekday} session",
+    "extraRun": "Extra run",
+    "rest": "Rest",
+    "sessionsDone": "{done} of {due, plural, one {# session} other {# sessions}} done"
+  },
+  "race": {
+    "title": "Race strategy",
+    "goal": "To hit your target time of <b>{time}</b>, hold <b>{pace}</b>. Start a few seconds slower over the first km, then settle in.",
+    "prediction": "To run the <b>{time}</b> you can manage today, hold <b>{pace}</b>. Start a few seconds slower over the first km, then settle in.",
+    "heat": "With the heat forecast, aim for {pace} instead.",
+    "advice": "From today's prediction: {advice}"
+  },
+  "calendar": {
+    "weekdays": {
+      "mon": "M",
+      "tue": "T",
+      "wed": "W",
+      "thu": "T",
+      "fri": "F",
+      "sat": "S",
+      "sun": "S"
+    },
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "legend": {
+      "done": "Done",
+      "planned": "Scheduled",
+      "missed": "Missed"
+    }
+  },
+  "steps": {
+    "pace": "Pace {pace}",
+    "repeat": "Repeat {times} times"
+  },
+  "graph": {
+    "label": "Session profile: taller blocks are harder efforts"
+  },
+  "dayState": {
+    "done": "Done",
+    "missed": "Missed",
+    "today": "Today",
+    "planned": "Scheduled",
+    "rest": "Rest",
+    "extra": "Extra activity",
+    "skipped": "Paused"
+  },
+  "heat": {
+    "forecast": "{temp}°{humid, select, true { and humid} other {}} expected at {hour}.",
+    "slowed": "Paces already slowed by about {delta}″/km: run by feel and keep drinking.",
+    "generic": "Ease off a bit and drink more than usual."
+  },
+  "recovery": {
+    "message": "Well done on the {race}! Before you start again, give yourself a few days of recovery: short, easy runs to let your legs freshen up. If that works for you, confirm below.",
+    "summary": "Recovery after the race"
+  },
+  "errors": {
+    "dateRequired": "Enter the date.",
+    "typeRequired": "Select the type.",
+    "paceInvalid": "Invalid target pace (use mm:ss).",
+    "dateInvalid": "Invalid date.",
+    "moveFailed": "Couldn't move the session.",
+    "choiceInvalid": "Invalid choice.",
+    "planReadFailed": "Couldn't load the plan.",
+    "restoreFailed": "Couldn't restore the plan."
+  }
+}

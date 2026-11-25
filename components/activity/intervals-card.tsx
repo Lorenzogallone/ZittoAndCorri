@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Pause } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/format";
-import { INTERVAL_SOURCE_LABELS, PLANNED_CONTINUOUS_LABELS } from "@/lib/intervals-text";
 import { segmentToneKey, TONES } from "@/lib/step-tones";
 import { useSegmentSelection } from "@/components/activity/segment-selection";
 import type { IntervalAnalysis, IntervalSegment, IntervalSource } from "@/lib/metrics/intervals";
@@ -48,13 +48,14 @@ const shownPace = (segment: IntervalSegment) =>
 
 /** Come è stata corsa la seduta: larghezza = durata, altezza = velocità. */
 function ExecutedProfile({ segments }: { segments: IntervalSegment[] }) {
+  const t = useTranslations("activities.intervals");
   const speeds = segments.map((s) => (s.pace_s_km ? 1000 / s.pace_s_km : 0));
   const moving = speeds.filter((v) => v > 0);
   const lo = Math.min(...moving) * 0.85;
   const hi = Math.max(...moving);
   const total = segments.reduce((sum, s) => sum + s.duration_s, 0);
   return (
-    <div className="mt-4 flex h-12 items-end gap-[2px]" role="img" aria-label="Profilo della corsa: blocchi più alti sono tratti più veloci">
+    <div className="mt-4 flex h-12 items-end gap-[2px]" role="img" aria-label={t("profileAria")}>
       {segments.map((segment, index) => {
         const ratio = speeds[index] > 0 && hi > lo ? (speeds[index] - lo) / (hi - lo) : 0;
         return (
@@ -75,6 +76,7 @@ function ExecutedProfile({ segments }: { segments: IntervalSegment[] }) {
 }
 
 function Row({ segment, muted, selected, onSelect }: { segment: IntervalSegment; muted: boolean; selected: boolean; onSelect: () => void }) {
+  const t = useTranslations("activities.intervals");
   const deviation = deviationText(segment);
   // Riga intera toccabile (sottogriglia): evidenzia il tratto nel grafico e sulla mappa.
   return (
@@ -92,14 +94,14 @@ function Row({ segment, muted, selected, onSelect }: { segment: IntervalSegment;
         <span className="line-clamp-2 break-words leading-snug first-letter:uppercase">{displayLabel(segment)}</span>
         {segment.rep != null && <span className="shrink-0 text-xs font-normal text-muted-foreground tabular-nums">{segment.rep}/{segment.reps}</span>}
         {(segment.paused_s ?? 0) >= 5 && (
-          <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-normal text-muted-foreground tabular-nums" title="Pausa: non conta nel tempo né nel passo">
+          <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-normal text-muted-foreground tabular-nums" title={t("pausedTitle")}>
             <Pause size={10} aria-hidden />
-            <span className="sr-only">pausa</span>
+            <span className="sr-only">{t("paused")}</span>
             {clock(segment.paused_s!)}
           </span>
         )}
         {segment.variant === "sprint" && segment.max_speed_kmh != null && (
-          <span className="shrink-0 text-xs font-normal text-muted-foreground tabular-nums" title="Velocità di punta">
+          <span className="shrink-0 text-xs font-normal text-muted-foreground tabular-nums" title={t("topSpeedTitle")}>
             {String(segment.max_speed_kmh).replace(".", ",")} km/h
           </span>
         )}
@@ -111,7 +113,7 @@ function Row({ segment, muted, selected, onSelect }: { segment: IntervalSegment;
       </div>
       <div className="border-t border-border/50 py-2 text-right tabular-nums text-muted-foreground">
         {segment.kind === "recovery" && segment.hr_drop != null && segment.hr_drop > 0
-          ? <span title="Battiti recuperati">↓{segment.hr_drop}</span>
+          ? <span title={t("hrRecovered")}>↓{segment.hr_drop}</span>
           : segment.avg_hr ?? "—"}
       </div>
       <div className="border-t border-border/50 py-2 text-right tabular-nums text-muted-foreground">{segment.cadence_spm ?? "—"}</div>
@@ -129,33 +131,35 @@ export function IntervalsCard({
   workoutId?: string | null;
   canEditNote: boolean;
 }) {
+  const t = useTranslations("activities.intervals");
+  const tStatus = useTranslations("status");
   const s = analysis.summary;
   const source = analysis.source as IntervalSource;
   const { selected, toggle, segments: spans } = useSegmentSelection();
   const summary = [
-    s?.avg_pace_s_km ? `Media ${clock(s.avg_pace_s_km)}/km` : null,
+    s?.avg_pace_s_km ? t("average", { pace: clock(s.avg_pace_s_km) }) : null,
     s?.fastest_pace_s_km && s.slowest_pace_s_km && s.fastest_pace_s_km !== s.slowest_pace_s_km
-      ? `da ${clock(s.fastest_pace_s_km)} a ${clock(s.slowest_pace_s_km)}`
+      ? t("range", { fastest: clock(s.fastest_pace_s_km), slowest: clock(s.slowest_pace_s_km) })
       : null,
     s?.fade_pct != null && Math.abs(s.fade_pct) >= 0.5
-      ? `ultima ${s.fade_pct > 0 ? "più lenta" : "più veloce"} del ${String(Math.abs(s.fade_pct)).replace(".", ",")}%`
-      : s?.fade_pct != null ? "ripetute regolari" : null,
+      ? t(s.fade_pct > 0 ? "fadeSlower" : "fadeFaster", { pct: String(Math.abs(s.fade_pct)).replace(".", ",") })
+      : s?.fade_pct != null ? t("regular") : null,
   ].filter(Boolean).join(" · ");
   const kmh = (value: number) => `${String(value).replace(".", ",")} km/h`;
   const sprintTop = analysis.segments.filter((x) => x.variant === "sprint").map((x) => x.max_speed_kmh ?? 0);
   // Sprint insieme ai tratti veloci: riga a parte. Solo sprint: basta la punta.
   const sprint = s?.sprint
-    ? [`Sprint ${s.sprint.avg_pace_s_km ? `${clock(s.sprint.avg_pace_s_km)}/km` : ""}`.trim(), s.sprint.max_speed_kmh ? `punta ${kmh(s.sprint.max_speed_kmh)}` : null].filter(Boolean).join(" · ")
-    : s?.main === "sprint" && Math.max(0, ...sprintTop) > 0 ? `Punta ${kmh(Math.max(...sprintTop))}` : null;
+    ? [s.sprint.avg_pace_s_km ? t("sprintPace", { pace: clock(s.sprint.avg_pace_s_km) }) : t("sprint"), s.sprint.max_speed_kmh ? t("sprintTop", { speed: kmh(s.sprint.max_speed_kmh) }) : null].filter(Boolean).join(" · ")
+    : s?.main === "sprint" && Math.max(0, ...sprintTop) > 0 ? t("topOnly", { speed: kmh(Math.max(...sprintTop)) }) : null;
 
   return (
     <section className="surface p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-body font-semibold">Ripetute</h2>
+        <h2 className="text-body font-semibold">{t("title")}</h2>
         {source === "plan" && workoutId ? (
-          <Link href={`/plan/${workoutId}`} className="text-xs text-primary">{INTERVAL_SOURCE_LABELS[source]}</Link>
+          <Link href={`/plan/${workoutId}`} className="text-xs text-primary">{tStatus(`intervals.source.${source}`)}</Link>
         ) : (
-          <span className="text-xs text-muted-foreground">{INTERVAL_SOURCE_LABELS[source]}</span>
+          <span className="text-xs text-muted-foreground">{tStatus(`intervals.source.${source}`)}</span>
         )}
       </div>
       {analysis.description && <p className="mt-1 text-xl font-bold tracking-tight">{analysis.description}</p>}
@@ -163,8 +167,8 @@ export function IntervalsCard({
       {sprint && <p className="text-xs text-muted-foreground tabular-nums">{sprint}</p>}
       {analysis.contradicts_plan && (
         <p className="mt-2 text-xs text-muted-foreground">
-          Il piano diceva {PLANNED_CONTINUOUS_LABELS[analysis.contradicts_plan]}, ma dai dati sembrano ripetute.
-          {workoutId && <> <Link href={`/plan/${workoutId}`} className="text-primary">Vedi la seduta</Link></>}
+          {t("contradictsPlan", { planned: tStatus(`intervals.plannedContinuous.${analysis.contradicts_plan}`) })}
+          {workoutId && <> <Link href={`/plan/${workoutId}`} className="text-primary">{t("viewSession")}</Link></>}
         </p>
       )}
 
@@ -172,10 +176,10 @@ export function IntervalsCard({
 
       <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_auto_auto_auto] gap-x-3 text-sm sm:gap-x-4">
         <div />
-        <div className="pb-1 text-right text-micro text-muted-foreground">Tempo</div>
-        <div className="pb-1 text-right text-micro text-muted-foreground">Passo</div>
-        <div className="pb-1 text-right text-micro text-muted-foreground">FC</div>
-        <div className="pb-1 text-right text-micro text-muted-foreground" title="Passi al minuto">spm</div>
+        <div className="pb-1 text-right text-micro text-muted-foreground">{t("columns.time")}</div>
+        <div className="pb-1 text-right text-micro text-muted-foreground">{t("columns.pace")}</div>
+        <div className="pb-1 text-right text-micro text-muted-foreground">{t("columns.hr")}</div>
+        <div className="pb-1 text-right text-micro text-muted-foreground" title={t("columns.cadenceTitle")}>{t("columns.cadence")}</div>
         {analysis.segments.map((segment, index) => (
           <Row
             key={index}
@@ -188,13 +192,13 @@ export function IntervalsCard({
       </div>
       {spans.length > 0 && (
         <p className="mt-2 text-micro text-muted-foreground" aria-live="polite">
-          {selected == null ? "Sulla mappa il percorso ha gli stessi colori dei tratti. Tocca un tratto per metterlo in primo piano." : "Tratto in primo piano nel grafico e sulla mappa. Toccalo di nuovo per tornare a tutte."}
+          {selected == null ? t("hintIdle") : t("hintSelected")}
         </p>
       )}
 
       {canEditNote && (
         <a href="#nota" className="mt-3 block text-xs text-primary">
-          {source === "notes" ? "Correggi la struttura nella nota" : "Non torna? Scrivi com'era la seduta nella nota"}
+          {source === "notes" ? t("fixNote") : t("wrongNote")}
         </a>
       )}
     </section>

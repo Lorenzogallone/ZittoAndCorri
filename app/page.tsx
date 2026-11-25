@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { AppShell } from "@/components/app-shell";
 import { CoachChat } from "@/components/coach-chat";
 import { TodayCard } from "@/components/home/today-card";
@@ -28,17 +30,17 @@ import { workoutStepsOrLegacy } from "@/lib/workout-steps";
 // (COACH_BUDGET_MS in app/coach/actions.ts) più il salvataggio.
 export const maxDuration = 300;
 
-/** Saluto in base all'ora di adesso a Roma. */
-function greeting(): string {
+/** Chiave del saluto in base all'ora di adesso a Roma. */
+function greetingKey(): "morning" | "afternoon" | "evening" {
   const hour = romeHour(new Date().toISOString()) ?? 12;
-  if (hour >= 5 && hour < 13) return "Buongiorno";
-  if (hour >= 13 && hour < 18) return "Buon pomeriggio";
-  return "Buonasera";
+  if (hour >= 5 && hour < 13) return "morning";
+  if (hour >= 13 && hour < 18) return "afternoon";
+  return "evening";
 }
 
 /** "mercoledì 22 ottobre". */
-function longDate(iso: string): string {
-  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+function longDate(iso: string, locale: Locale): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 }
 
 /** Passi di "Inizia da qui": solo conteggi (head), nessuna riga letta.
@@ -57,6 +59,8 @@ async function firstRunSteps(supabase: Awaited<ReturnType<typeof createClient>>,
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ prompt?: string }> }) {
   const { prompt } = await searchParams;
+  const t = await getTranslations("home.page");
+  const locale = (await getLocale()) as Locale;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -87,7 +91,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
     : typeof user.user_metadata?.name === "string"
       ? user.user_metadata.name
       : null;
-  const name = authName?.split(" ")[0] ?? user.email?.split("@")[0] ?? "Runner";
+  const name = authName?.split(" ")[0] ?? user.email?.split("@")[0] ?? t("fallbackName");
   // Tutte le sedute del prossimo giorno in programma (anche due o più), nel loro
   // ordine. Oggi quelle già corse si segnano fatte e in evidenza va la prima da fare.
   const nextSessions = sortByDayOrder(nextRes.data ?? []);
@@ -130,14 +134,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
           {/* Niente titolo grande: l'H1 della home è la prossima seduta. */}
           <div className="mb-4 flex shrink-0 items-center justify-between gap-3 pt-1 3xl:col-span-2">
             <div className="min-w-0">
-              <p className="eyebrow truncate">{greeting()}, {name}</p>
-              <p className="mt-1 text-caption text-muted-foreground first-letter:uppercase">{longDate(today)}</p>
+              <p className="eyebrow truncate">{t(`greeting.${greetingKey()}`, { name })}</p>
+              <p className="mt-1 text-caption text-muted-foreground first-letter:uppercase">{longDate(today, locale)}</p>
             </div>
             <Link
               href="/activities/new"
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-90"
-              aria-label="Registra un'attività"
-              title="Registra un'attività"
+              aria-label={t("logActivity")}
+              title={t("logActivity")}
             >
               <Plus size={18} />
             </Link>

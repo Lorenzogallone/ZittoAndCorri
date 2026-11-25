@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -16,6 +17,7 @@ interface UpdateToastProps {
  * aria-live resta sempre montata, così l'arrivo del messaggio viene annunciato.
  */
 export function UpdateToast({ visible, updating, onUpdate, onDismiss }: UpdateToastProps) {
+  const t = useTranslations("shell");
   return (
     <div
       role="status"
@@ -26,12 +28,12 @@ export function UpdateToast({ visible, updating, onUpdate, onDismiss }: UpdateTo
     >
       {visible && (
         <div className="pointer-events-auto mx-auto flex max-w-md items-center gap-2 rounded-2xl bg-card/95 py-2 pl-4 pr-2 text-card-foreground shadow-lg ring-1 ring-border/60 backdrop-blur-xl transition-[transform,opacity] duration-300 ease-out starting:translate-y-2 starting:opacity-0 motion-reduce:transition-none">
-          <p className="min-w-0 flex-1 truncate text-sm font-medium">Nuova versione pronta</p>
+          <p className="min-w-0 flex-1 truncate text-sm font-medium">{t("updateToast.message")}</p>
           <Button type="button" size="sm" disabled={updating} onClick={onUpdate}>
             <RefreshCw className={updating ? "animate-spin motion-reduce:animate-none" : undefined} aria-hidden="true" />
-            {updating ? "Aggiorno…" : "Aggiorna"}
+            {updating ? t("updateToast.updating") : t("updateToast.update")}
           </Button>
-          <Button type="button" variant="ghost" size="icon-sm" onClick={onDismiss} aria-label="Più tardi">
+          <Button type="button" variant="ghost" size="icon-sm" onClick={onDismiss} aria-label={t("updateToast.later")}>
             <X aria-hidden="true" />
           </Button>
         </div>

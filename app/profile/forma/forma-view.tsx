@@ -1,59 +1,56 @@
 import { ChevronDown } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { AppShell } from "@/components/app-shell";
 import { Section } from "@/components/section";
 import { Stat } from "@/components/stat";
 import { FormChart, type FormPoint } from "@/components/charts/form-chart";
 import { TrendChart } from "@/components/charts/trend-chart";
 import { TrendBadge } from "@/components/progress/trend-badge";
-import { LOAD_STATES } from "@/components/progress/form-status";
+import { LOAD_TONES } from "@/components/progress/form-status";
 import { daysBetween } from "@/lib/local-date";
 import { cn } from "@/lib/utils";
 import { BODY_METRICS, formatMetric, type BodyMetricKey, type MetricTrend } from "@/lib/metrics/body-trends";
 import type { ATLCTLResult } from "@/lib/types";
 
-const GROUPS: Array<{ title: string; keys: BodyMetricKey[] }> = [
-  { title: "Motore aerobico", keys: ["vo2max", "efficiency"] },
-  { title: "Recupero", keys: ["restingHr", "hrv", "stress", "spo2"] },
-  { title: "Sonno", keys: ["sleep", "sleepDeep", "sleepScore"] },
-  { title: "Carico dall'orologio e giornata", keys: ["watchLoad", "pai", "steps", "weight"] },
+/** `id` è la chiave del titolo in `profile.forma.groups`. */
+const GROUPS: Array<{ id: string; keys: BodyMetricKey[] }> = [
+  { id: "aerobic", keys: ["vo2max", "efficiency"] },
+  { id: "recovery", keys: ["restingHr", "hrv", "stress", "spo2"] },
+  { id: "sleep", keys: ["sleep", "sleepDeep", "sleepScore"] },
+  { id: "dailyLoad", keys: ["watchLoad", "pai", "steps", "weight"] },
 ];
 
-/** Le metriche che contano per la frase in cima, in ordine di peso. */
-const SUMMARY: Partial<Record<BodyMetricKey, string>> = {
-  vo2max: "VO₂max",
-  efficiency: "passo a parità di cuore",
-  fitness: "forma",
-  restingHr: "FC a riposo",
-  hrv: "HRV",
-  sleep: "ore di sonno",
-  sleepDeep: "sonno profondo",
-  stress: "stress",
-};
+/** Le metriche che contano per la frase in cima, in ordine di peso; i nomi
+ *  sono in `profile.forma.summary.labels`. */
+const SUMMARY_KEYS = ["vo2max", "efficiency", "fitness", "restingHr", "hrv", "sleep", "sleepDeep", "stress"] as const satisfies readonly BodyMetricKey[];
 
-function shortDate(iso: string): string {
-  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "UTC" });
+function shortDate(iso: string, locale: Locale): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "short", timeZone: "UTC" });
 }
 
-function list(labels: string[]): string {
-  if (labels.length <= 1) return labels.join("");
-  return `${labels.slice(0, -1).join(", ")} e ${labels.at(-1)}`;
+function list(labels: string[], locale: string): string {
+  return new Intl.ListFormat(locale, { style: "long", type: "conjunction" }).format(labels);
 }
 
 function MetricCard({ trend, today }: { trend: MetricTrend; today: string }) {
+  const t = useTranslations("profile.forma.metric");
+  const tMetrics = useTranslations("metrics");
+  const locale = useLocale() as Locale;
   const latest = trend.latest!;
   const age = daysBetween(latest.date, today);
   const spec = BODY_METRICS[trend.key];
   // Il numero grande è un dato singolo (l'ultimo), la frase confronta medie: va detto.
-  const latestText = spec.latestLabel
-    ? `${spec.latestLabel}, ${shortDate(latest.date)}`
-    : age > 1 ? `Ultimo dato del ${shortDate(latest.date)}` : null;
+  const latestText = spec.latest
+    ? t("latestWithDate", { label: tMetrics(`body.${trend.key}.latest`), date: shortDate(latest.date, locale) })
+    : age > 1 ? t("latestData", { date: shortDate(latest.date, locale) }) : null;
   return (
     <div className="surface p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="eyebrow truncate">{trend.label}</p>
           <p className="mt-1 flex items-baseline gap-1 font-display text-2xl font-semibold leading-none tabular-nums tracking-tight">
-            {formatMetric(trend.key, latest.value)}
+            {formatMetric(trend.key, latest.value, locale)}
             {trend.unit && <span className="font-sans text-caption font-medium tracking-normal text-muted-foreground">{trend.unit}</span>}
           </p>
           {latestText && <p className="mt-1 text-micro text-muted-foreground">{latestText}</p>}
@@ -66,10 +63,10 @@ function MetricCard({ trend, today }: { trend: MetricTrend; today: string }) {
       <p className="mt-2 text-caption text-muted-foreground">{trend.sentence}</p>
       <details className="group mt-2 text-caption">
         <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 font-medium text-primary [&::-webkit-details-marker]:hidden">
-          Cos&apos;è
+          {t("about")}
           <ChevronDown size={14} aria-hidden className="transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none" />
         </summary>
-        <p className="text-muted-foreground">{spec.about}</p>
+        <p className="text-muted-foreground">{tMetrics(`body.${trend.key}.about`)}</p>
       </details>
     </div>
   );
@@ -86,10 +83,12 @@ export function FormaView({
   formPoints: FormPoint[];
   trends: Record<BodyMetricKey, MetricTrend>;
 }) {
-  const state = LOAD_STATES[load.status];
-  const summary = Object.entries(SUMMARY) as Array<[BodyMetricKey, string]>;
-  const better = summary.filter(([key]) => trends[key].direction === "better").map(([, label]) => label);
-  const worse = summary.filter(([key]) => trends[key].direction === "worse").map(([, label]) => label);
+  const t = useTranslations("profile.forma");
+  const tLoad = useTranslations("profile.loadStates");
+  const locale = useLocale();
+  const state = { label: tLoad(`${load.status}.label`), text: tLoad(`${load.status}.text`), tone: LOAD_TONES[load.status] };
+  const better = SUMMARY_KEYS.filter((key) => trends[key].direction === "better").map((key) => t(`summary.labels.${key}`));
+  const worse = SUMMARY_KEYS.filter((key) => trends[key].direction === "worse").map((key) => t(`summary.labels.${key}`));
   const groups = GROUPS
     .map((group) => ({ ...group, trends: group.keys.map((key) => trends[key]).filter((trend) => trend.latest != null) }))
     .filter((group) => group.trends.length > 0);
@@ -98,59 +97,69 @@ export function FormaView({
   const ratio = load.load_ratio;
 
   return (
-    <AppShell wide title="Stato di forma" backHref="/profile" backLabel="Profilo">
+    <AppShell wide title={t("title")} backHref="/profile" backLabel={t("back")}>
       <div className="stagger">
         <section className="surface mb-8 p-5">
-          <p className="eyebrow">Come sta cambiando il corpo</p>
+          <p className="eyebrow">{t("summary.eyebrow")}</p>
           {better.length || worse.length ? (
             <div className="mt-2 space-y-1.5 text-body">
               {better.length > 0 && (
-                <p><span className="font-semibold text-emerald-600 dark:text-emerald-400">Migliora</span> {list(better)}.</p>
+                <p>
+                  {t.rich("summary.better", {
+                    list: list(better, locale),
+                    good: (chunks) => <span className="font-semibold text-emerald-600 dark:text-emerald-400">{chunks}</span>,
+                  })}
+                </p>
               )}
               {worse.length > 0 && (
-                <p><span className="font-semibold text-orange-600 dark:text-orange-400">Peggiora</span> {list(worse)}.</p>
+                <p>
+                  {t.rich("summary.worse", {
+                    list: list(worse, locale),
+                    bad: (chunks) => <span className="font-semibold text-orange-600 dark:text-orange-400">{chunks}</span>,
+                  })}
+                </p>
               )}
             </div>
           ) : (
-            <p className="mt-2 text-body text-muted-foreground">Nessun cambiamento netto nelle ultime 4 settimane, oppure servono ancora dati per vederlo.</p>
+            <p className="mt-2 text-body text-muted-foreground">{t("summary.none")}</p>
           )}
-          <p className="mt-3 text-caption text-muted-foreground">Confronto tra le ultime 2 settimane e le 2 settimane di un mese fa (le fasce grigie nei grafici).</p>
+          <p className="mt-3 text-caption text-muted-foreground">{t("summary.comparison")}</p>
         </section>
 
         <div className="lg:grid lg:grid-cols-2 lg:gap-x-6 3xl:grid-cols-3">
-          <Section title="Carico" className="lg:col-span-2 3xl:col-span-3">
+          <Section title={t("load.title")} className="lg:col-span-2 3xl:col-span-3">
             <div className="surface p-4 lg:grid lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:gap-6">
               <div>
                 <p className={cn("font-display text-title font-bold tracking-tight", state.tone)}>{state.label}</p>
                 <p className="mt-1 text-caption text-muted-foreground">{state.text}</p>
                 <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-4 border-t border-border/60 pt-4">
-                  <Stat size="sm" label="Forma (CTL)" value={`${Math.round(load.ctl)}`} />
-                  <Stat size="sm" label="Fatica (ATL)" value={`${Math.round(load.atl)}`} />
-                  <Stat size="sm" label="Freschezza (TSB)" value={`${load.tsb > 0 ? "+" : ""}${Math.round(load.tsb)}`} />
-                  <Stat size="sm" label="Carico 7 giorni" value={`${load.load7}`} />
+                  <Stat size="sm" label={t("load.form")} value={`${Math.round(load.ctl)}`} />
+                  <Stat size="sm" label={t("load.fatigue")} value={`${Math.round(load.atl)}`} />
+                  <Stat size="sm" label={t("load.freshness")} value={`${load.tsb > 0 ? "+" : ""}${Math.round(load.tsb)}`} />
+                  <Stat size="sm" label={t("load.load7")} value={`${load.load7}`} />
                 </div>
                 <p className="mt-3 text-caption text-muted-foreground">
                   {ratio == null
-                    ? "Carico 7 giorni: servono ancora 3 settimane di storico per confrontarlo con la tua media."
+                    ? t("load.calibrating")
                     : ratio > 1.15
-                      ? `Carico 7 giorni sopra la tua media (${Math.round(ratio * 100)}%).`
+                      ? t("load.above", { percent: String(Math.round(ratio * 100)) })
                       : ratio < 0.85
-                        ? `Carico 7 giorni sotto la tua media (${Math.round(ratio * 100)}%).`
-                        : "Carico 7 giorni nella tua media."}
-                  {fitness.direction && fitness.direction !== "stable" ? ` Forma: ${fitness.sentence.charAt(0).toLowerCase()}${fitness.sentence.slice(1)}` : ""}
+                        ? t("load.below", { percent: String(Math.round(ratio * 100)) })
+                        : t("load.average")}
+                  {fitness.direction && fitness.direction !== "stable" ? ` ${t("load.formSentence", { sentence: `${fitness.sentence.charAt(0).toLowerCase()}${fitness.sentence.slice(1)}` })}` : ""}
                 </p>
               </div>
               {formPoints.length >= 3 && (
                 <div className="mt-5 lg:mt-0">
                   <FormChart points={formPoints} />
-                  <p className="mt-2 text-caption text-muted-foreground">Forma: allenamento delle ultime 6 settimane. Fatica: quello degli ultimi 7 giorni. Freschezza = forma − fatica.</p>
+                  <p className="mt-2 text-caption text-muted-foreground">{t("load.chartHint")}</p>
                 </div>
               )}
             </div>
           </Section>
 
           {groups.map((group) => (
-            <Section key={group.title} title={group.title} className={cn(group.trends.length > 1 && "lg:col-span-2 3xl:col-span-3")}>
+            <Section key={group.id} title={t(`groups.${group.id}`)} className={cn(group.trends.length > 1 && "lg:col-span-2 3xl:col-span-3")}>
               <div className="grid gap-3 lg:grid-cols-2 3xl:grid-cols-3">
                 {group.trends.map((trend) => <MetricCard key={trend.key} trend={trend} today={today} />)}
               </div>
@@ -160,16 +169,16 @@ export function FormaView({
 
         {!hasWatch && (
           <p className="mb-6 px-1 text-caption text-muted-foreground">
-            Collega l&apos;orologio (app Zepp o Intervals.icu) nelle impostazioni per vedere VO₂max, sonno, FC a riposo, HRV e stress.
+            {t("noWatch")}
           </p>
         )}
 
-        <Section title="Da sapere">
+        <Section title={t("notes.title")}>
           <ul className="surface list-disc space-y-1.5 py-4 pl-9 pr-4 text-caption text-muted-foreground">
-            <li>I dati dell&apos;app Zepp arrivano quando sincronizzi dall&apos;orologio: i giorni senza sincronizzazione restano vuoti, non vengono stimati.</li>
-            <li>L&apos;HRV arriva solo da Intervals.icu: l&apos;app sull&apos;orologio non la può leggere.</li>
-            <li>Tempo di recupero Zepp, fasi REM e leggero del sonno e temperatura della pelle non sono qui: il primo ha un&apos;unità non ancora verificata, gli altri l&apos;app sull&apos;orologio non li invia.</li>
-            <li>Metri per battito: solo corse facili e lunghi da almeno 20 minuti, senza ripetute, soglie e test; caldo e salite lo abbassano.</li>
+            <li>{t("notes.zepp")}</li>
+            <li>{t("notes.hrv")}</li>
+            <li>{t("notes.missing")}</li>
+            <li>{t("notes.metersPerBeat")}</li>
           </ul>
         </Section>
       </div>

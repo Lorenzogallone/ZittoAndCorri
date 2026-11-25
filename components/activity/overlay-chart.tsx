@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useMeasuredWidth } from "@/components/charts/chart-utils";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/format";
@@ -10,7 +11,6 @@ type Point = { t: number; v: number };
 type Key = "hr" | "pace" | "elevation" | "cadence";
 
 interface SeriesSpec {
-  label: string;
   color: string;
   format: (value: number) => string;
   /** Asse rovesciato: per il passo, più in alto = più veloce. */
@@ -24,10 +24,10 @@ interface SeriesSpec {
 const pace = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, "0")}`;
 
 const SPECS: Record<Key, SeriesSpec> = {
-  hr: { label: "Cuore", color: "var(--viz-2)", format: (v) => `${Math.round(v)} bpm` },
-  pace: { label: "Passo", color: "var(--viz-1)", format: (v) => `${pace(v)}/km`, invert: true, trim: true },
-  elevation: { label: "Quota", color: "var(--muted-foreground)", format: (v) => `${Math.round(v)} m`, area: true },
-  cadence: { label: "Cadenza", color: "var(--chart-3)", format: (v) => `${Math.round(v)} spm`, trim: true },
+  hr: { color: "var(--viz-2)", format: (v) => `${Math.round(v)} bpm` },
+  pace: { color: "var(--viz-1)", format: (v) => `${pace(v)}/km`, invert: true, trim: true },
+  elevation: { color: "var(--muted-foreground)", format: (v) => `${Math.round(v)} m`, area: true },
+  cadence: { color: "var(--chart-3)", format: (v) => `${Math.round(v)} spm`, trim: true },
 };
 
 /** Ordine di disegno: la quota sotto, le linee sopra. */
@@ -66,6 +66,7 @@ export function OverlayChart({
   series: Partial<Record<Key, Point[] | null>>;
   initial?: Key[];
 }) {
+  const t = useTranslations("activities.overlay");
   const { ref, width } = useMeasuredWidth<HTMLDivElement>();
   const available = ORDER.filter((key) => (series[key]?.length ?? 0) >= 2);
   const [shown, setShown] = useState<Key[]>(() => {
@@ -125,7 +126,7 @@ export function OverlayChart({
   return (
     <div>
       {available.length > 1 && (
-        <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="Serie nel grafico">
+        <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label={t("groupAria")}>
           {[...available].reverse().map((key) => {
             const on = shown.includes(key);
             return (
@@ -140,7 +141,7 @@ export function OverlayChart({
                 )}
               >
                 <span className={cn("h-2 w-2 rounded-full", !on && "opacity-40")} style={{ background: SPECS[key].color }} aria-hidden />
-                {SPECS[key].label}
+                {t(`series.${key}`)}
               </button>
             );
           })}
@@ -156,7 +157,7 @@ export function OverlayChart({
             onPointerDown={(event) => pick(event.clientX, event.currentTarget.getBoundingClientRect())}
             onPointerLeave={() => setCursor(null)}
             role="img"
-            aria-label={`Andamento nel tempo: ${visible.map((key) => SPECS[key].label.toLowerCase()).join(", ")}`}
+            aria-label={t("chartAria", { series: visible.map((key) => t(`series.${key}`).toLowerCase()).join(", ") })}
           >
             <line x1={PAD.left} x2={PAD.left + innerW} y1={PAD.top + innerH} y2={PAD.top + innerH} stroke="var(--border)" strokeWidth={1} />
             {/* Ripetute come fasce tenui; il tratto scelto nella card più marcato. */}

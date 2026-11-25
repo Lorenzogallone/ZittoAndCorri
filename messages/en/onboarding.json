@@ -1,0 +1,93 @@
+{
+  "stepCounter": "Step {current} of {total}",
+  "welcome": {
+    "title": "Welcome to Zitto e Corri",
+    "intro": "Your running coach, always in your pocket. It takes a couple of minutes to set it up for you; you can change everything later in settings.",
+    "features": {
+      "coach": { "title": "AI coach", "text": "A chat with a coach that knows your training and suggests changes to your plan, always for you to approve." },
+      "plan": { "title": "A plan that fits you", "text": "Fourteen days of workouts that adapt to how you feel and to the weather." },
+      "runs": { "title": "Runs and progress", "text": "Import your runs from files or your watch: analysis, fitness, predictions and records." },
+      "watch": { "title": "Your watch", "text": "Sleep and recovery data come from your watch, and the plan goes back to it as guided workouts." }
+    }
+  },
+  "profile": {
+    "title": "Let's get to know you",
+    "intro": "This data makes zones and suggestions reliable. Leave blank anything you don't know.",
+    "maxHr": "Max HR",
+    "restingHr": "Resting HR",
+    "birthdate": "Date of birth"
+  },
+  "goal": {
+    "title": "What do you want to achieve?",
+    "intro": "You don't need a race: wanting to run better is enough. You can change it anytime.",
+    "groupLabel": "Goal type",
+    "kinds": {
+      "race": { "title": "Train for a race", "text": "You have a date: the plan builds up to that day." },
+      "improve": { "title": "Improve over a distance", "text": "No race in sight: you're working on running better over 5 km, 10 km…" },
+      "none": { "title": "Just train", "text": "No goal for now. You can add one whenever you like." }
+    },
+    "raceName": "Race name (optional)",
+    "raceNamePlaceholder": "E.g. Rome Half Marathon",
+    "distance": "Distance",
+    "distances": { "5": "5 km", "10": "10 km", "half": "Half", "full": "Marathon", "other": "Other" },
+    "distanceOtherLabel": "Distance in km",
+    "distanceOtherPlaceholder": "Distance in km, e.g. 15",
+    "raceDate": "Race date",
+    "targetTime": "Target time"
+  },
+  "ai": {
+    "title": "Turn on the AI coach",
+    "intro": "Choose which service powers it. You need your own key; you can skip and add it later, but the coach stays off until then.",
+    "serviceLabel": "AI service",
+    "geminiHint": "The simplest choice: a key from Google AI Studio.",
+    "geminiKey": "Gemini key",
+    "geminiLink": "Create a key in Google AI Studio ↗",
+    "openrouterHint": "One key for hundreds of models (Claude, GPT, DeepSeek…), pay as you go; some are free.",
+    "openrouterKey": "OpenRouter key",
+    "model": "Model",
+    "suggestedModels": "Suggested models",
+    "free": "free",
+    "perMillion": "per M tokens",
+    "modelPlaceholder": "Or type the id, e.g. openai/gpt-5-mini",
+    "openrouterLink": "Create a key on OpenRouter ↗",
+    "later": "Later you can switch service and pick different models for chat and analysis in Settings → Coach."
+  },
+  "watch": {
+    "title": "Your watch",
+    "intro": "With a watch connected, the coach sees your sleep, recovery and resting heart rate, and the plan reaches your wrist. It's optional.",
+    "amazfit": {
+      "name": "Amazfit",
+      "badge": "Available",
+      "text": "Balance 2 and Active 3 Premium. Runs and health data come from Intervals.icu, and the plan goes back to the watch as guided workouts. The dedicated Zepp app also adds fitness data and, on the Balance 2, the “Today” widget (requires Zepp developer mode)."
+    },
+    "others": {
+      "name": "Garmin and other watches",
+      "badge": "In the works",
+      "text": "Meanwhile you can import your runs from FIT or GPX files, from any watch."
+    },
+    "whenLabel": "When to connect it",
+    "later": "I'll connect it later",
+    "now": "Connect now",
+    "where": "You connect it from Settings → Connections."
+  },
+  "submit": {
+    "pending": "Setting up…",
+    "enter": "Enter the app",
+    "goToLinks": "Go to connections"
+  },
+  "errors": {
+    "maxHr": "Invalid max HR.",
+    "restingHr": "Invalid resting HR.",
+    "hrOrder": "Max HR must be higher than resting HR.",
+    "distance": "Choose a valid distance for your goal.",
+    "targetTime": "Invalid target time.",
+    "raceDate": "A race needs a date.",
+    "openrouterKeyShort": "The OpenRouter key doesn't look valid.",
+    "openrouterModel": "Choose an OpenRouter model, e.g. anthropic/claude-sonnet.",
+    "geminiInvalid": "The Gemini key isn't valid. You can fix it or leave it empty.",
+    "openrouterInvalid": "The OpenRouter key isn't valid. You can fix it or leave it empty.",
+    "openrouterVerify": "Couldn't verify the key with OpenRouter. Try again or leave it empty.",
+    "openrouterMigration": "OpenRouter needs a database update (migration 0023). You can use Gemini or skip.",
+    "openrouterSave": "Couldn't save the OpenRouter key. Try again or use Gemini."
+  }
+}

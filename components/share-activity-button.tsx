@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { LoaderCircle, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /** Condivide l'immagine della corsa con il menu nativo (o la apre per salvarla). */
 export function ShareActivityButton({ activityId, title }: { activityId: string; title: string }) {
+  const t = useTranslations("activities.share");
   const [pending, setPending] = useState(false);
 
   async function share() {
@@ -29,7 +31,7 @@ export function ShareActivityButton({ activityId, title }: { activityId: string;
   }
 
   return (
-    <Button type="button" variant="ghost" size="icon-sm" onClick={share} disabled={pending} aria-label="Condividi" title="Condividi">
+    <Button type="button" variant="ghost" size="icon-sm" onClick={share} disabled={pending} aria-label={t("label")} title={t("label")}>
       {pending ? <LoaderCircle size={17} className="animate-spin" /> : <Share2 size={17} />}
     </Button>
   );

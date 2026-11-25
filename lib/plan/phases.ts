@@ -1,12 +1,12 @@
 // Fasi indicative di preparazione verso una gara con data. Funzioni pure.
 
+import type { Translator } from "../../i18n/config.ts";
 import { addDays, daysBetween } from "../local-date.ts";
 
 export type PhaseKey = "base" | "build" | "peak" | "taper";
 
 export interface Phase {
   key: PhaseKey;
-  label: string;
   start: string;
   end: string;
   weeks: number;
@@ -20,12 +20,8 @@ export interface PhasePlan {
   weeks_left: number;
 }
 
-const LABELS: Record<PhaseKey, string> = {
-  base: "Base",
-  build: "Costruzione",
-  peak: "Picco",
-  taper: "Scarico",
-};
+/** Nome della fase (`t` legato al namespace "labels"). */
+export const phaseLabel = (t: Translator, key: PhaseKey): string => t(`phase.${key}`);
 
 function taperWeeks(distance: number): number {
   if (distance >= 42_000) return 3;
@@ -64,7 +60,7 @@ export function trainingPhases(input: {
   for (let index = counts.length - 1; index >= 0; index--) {
     const [key, weeks] = counts[index];
     const phaseStart = index === 0 ? start : addDays(end, -weeks * 7 + 1);
-    phases.unshift({ key, label: LABELS[key], start: phaseStart, end, weeks });
+    phases.unshift({ key, start: phaseStart, end, weeks });
     end = addDays(phaseStart, -1);
   }
 

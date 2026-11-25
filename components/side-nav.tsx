@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Activity, Calendar, MessageCircle, Plus, RefreshCw, Settings, User } from "lucide-react";
 import { RunnerMark } from "@/components/runner-mark";
 import { cn } from "@/lib/utils";
@@ -10,16 +11,18 @@ import { refreshMessage, useAppRefresh } from "@/lib/use-app-refresh";
 // Navigazione laterale della versione desktop (da lg in su). Sul telefono
 // resta la tab bar in basso: questa barra non viene mai mostrata.
 const items = [
-  { href: "/", label: "Coach", icon: MessageCircle },
-  { href: "/activities", label: "Corse", icon: Activity },
-  { href: "/plan", label: "Piano", icon: Calendar },
-  { href: "/profile", label: "Profilo", icon: User },
+  { href: "/", labelKey: "coach", icon: MessageCircle },
+  { href: "/activities", labelKey: "activities", icon: Activity },
+  { href: "/plan", labelKey: "plan", icon: Calendar },
+  { href: "/profile", labelKey: "profile", icon: User },
 ] as const;
 
 /** Ripiego del trascina-giù su desktop: stessa ricarica (orologio + dati). */
 function RefreshButton() {
+  const t = useTranslations("shell");
+  const tStatus = useTranslations("status");
   const { refreshing, result, refresh } = useAppRefresh();
-  const message = refreshing ? "Aggiorno…" : refreshMessage(result);
+  const message = refreshing ? t("refreshButton.busy") : refreshMessage(result, tStatus);
   return (
     <button
       type="button"
@@ -29,7 +32,7 @@ function RefreshButton() {
     >
       <RefreshCw size={19} strokeWidth={1.9} className={cn(refreshing && "animate-spin text-primary")} />
       <span className="min-w-0">
-        Aggiorna
+        {t("refreshButton.label")}
         {message && <span aria-live="polite" className={cn("block truncate text-micro", result?.error && !refreshing ? "text-destructive" : "text-muted-foreground")}>{message}</span>}
       </span>
     </button>
@@ -53,6 +56,7 @@ function NavLink({ href, label, icon: Icon, active }: { href: string; label: str
 }
 
 export function SideNav() {
+  const t = useTranslations("shell");
   const pathname = usePathname();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
@@ -62,9 +66,9 @@ export function SideNav() {
         <RunnerMark size={30} cutout="var(--card)" className="text-primary" />
         <span className="font-display text-heading font-bold tracking-tight">Zitto e Corri</span>
       </Link>
-      <nav aria-label="Navigazione principale" className="grid gap-1">
-        {items.map((item) => (
-          <NavLink key={item.href} {...item} active={isActive(item.href)} />
+      <nav aria-label={t("nav.main")} className="grid gap-1">
+        {items.map(({ href, labelKey, icon }) => (
+          <NavLink key={href} href={href} label={t(`nav.${labelKey}`)} icon={icon} active={isActive(href)} />
         ))}
       </nav>
       <div className="mt-auto grid gap-1">
@@ -72,10 +76,10 @@ export function SideNav() {
           href="/activities/new"
           className="mb-2 flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-caption font-semibold text-primary-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-3 focus-visible:ring-ring/30"
         >
-          <Plus size={17} /> Registra un&apos;attività
+          <Plus size={17} /> {t("nav.registerActivity")}
         </Link>
         <RefreshButton />
-        <NavLink href="/settings" label="Impostazioni" icon={Settings} active={isActive("/settings")} />
+        <NavLink href="/settings" label={t("nav.settings")} icon={Settings} active={isActive("/settings")} />
       </div>
     </aside>
   );

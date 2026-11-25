@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check, ExternalLink, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,7 @@ export function OpenRouterSection({
   /** null = chiave assente; undefined = database da aggiornare. */
   initial: { lastFour: string } | null | undefined;
 }) {
+  const t = useTranslations("settings.openrouter");
   const [configured, setConfigured] = useState(initial ?? null);
   const [editing, setEditing] = useState(false);
   const [key, setKey] = useState("");
@@ -25,8 +27,8 @@ export function OpenRouterSection({
 
   if (initial === undefined) {
     return (
-      <IntegrationCard description="Alternativa a Gemini: centinaia di modelli (Claude, GPT, DeepSeek…) con una sola chiave.">
-        <p className="text-sm text-muted-foreground">Per attivarla serve aggiornare il database con la migrazione 0023.</p>
+      <IntegrationCard description={t("descriptionShort")}>
+        <p className="text-sm text-muted-foreground">{t("migrationNeeded")}</p>
       </IntegrationCard>
     );
   }
@@ -47,9 +49,9 @@ export function OpenRouterSection({
 
   async function remove() {
     const confirmed = await confirm({
-      title: "Rimuovere la chiave OpenRouter?",
-      description: "Chat e analisi useranno Gemini.",
-      action: "Rimuovi",
+      title: t("confirmRemove.title"),
+      description: t("confirmRemove.description"),
+      action: t("confirmRemove.action"),
     });
     if (!confirmed) return;
     setPending(true);
@@ -60,45 +62,45 @@ export function OpenRouterSection({
   }
 
   return (
-    <IntegrationCard id="openrouter-integration" description="Alternativa a Gemini: centinaia di modelli (Claude, GPT, DeepSeek…) con una sola chiave, a consumo. Il modello si sceglie sopra, per la chat e per le analisi.">
+    <IntegrationCard id="openrouter-integration" description={t("descriptionFull")}>
       <div className="space-y-4">
         {configured && !editing ? (
           <div className="flex items-center justify-between gap-3 rounded-xl bg-muted px-3 py-3">
             <div className="flex items-center gap-2 text-sm">
               <Check size={16} className="text-emerald-500" />
-              <span>Configurata · ••••{configured.lastFour}</span>
+              <span>{t("configured", { lastFour: configured.lastFour })}</span>
             </div>
             <div className="flex items-center gap-1">
-              <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => setEditing(true)}>Sostituisci</Button>
-              <Button type="button" variant="ghost" size="icon" disabled={pending} onClick={remove} title="Rimuovi chiave"><Trash2 size={15} /></Button>
+              <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => setEditing(true)}>{t("replace")}</Button>
+              <Button type="button" variant="ghost" size="icon" disabled={pending} onClick={remove} title={t("removeTitle")}><Trash2 size={15} /></Button>
             </div>
           </div>
         ) : (
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label htmlFor="openrouter-key">Chiave OpenRouter</Label>
+              <Label htmlFor="openrouter-key">{t("keyLabel")}</Label>
               <Input id="openrouter-key" type="password" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="done" value={key} onChange={(event) => setKey(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !pending && key.trim().length >= 16) void saveKey(); }} placeholder="sk-or-…" />
             </div>
             <div className="flex gap-2">
               <Button type="button" className="flex-1" disabled={pending || key.trim().length < 16} onClick={saveKey}>
-                {pending ? "Verifico…" : "Verifica e salva"}
+                {pending ? t("verifying") : t("verifySave")}
               </Button>
-              {configured && <Button type="button" variant="ghost" disabled={pending} onClick={() => { setEditing(false); setKey(""); }}>Annulla</Button>}
+              {configured && <Button type="button" variant="ghost" disabled={pending} onClick={() => { setEditing(false); setKey(""); }}>{t("cancel")}</Button>}
             </div>
           </div>
         )}
 
-        {justSaved && <p className="text-sm text-emerald-600">Chiave salvata. Ora scegli OpenRouter e un modello per la chat o per le analisi, qui sopra.</p>}
+        {justSaved && <p className="text-sm text-emerald-600">{t("justSaved")}</p>}
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
 
-        <IntegrationHelp title="Come ottenere la chiave">
+        <IntegrationHelp title={t("help.title")}>
           <ol className="mt-2 list-decimal space-y-1 pl-4">
-            <li>Crea un account su OpenRouter e aggiungi un po&apos; di credito (i modelli “free” non lo consumano).</li>
-            <li>Da “Keys” crea una chiave e incollala qui. Trattala come una password.</li>
-            <li>Sopra, in “Modelli”, scegli OpenRouter e tocca il modello per vedere l&apos;elenco con i prezzi.</li>
+            <li>{t("help.step1")}</li>
+            <li>{t("help.step2")}</li>
+            <li>{t("help.step3")}</li>
           </ol>
           <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 font-medium text-primary">
-            Apri OpenRouter <ExternalLink size={12} />
+            {t("help.open")} <ExternalLink size={12} />
           </a>
         </IntegrationHelp>
         {confirmSheet}

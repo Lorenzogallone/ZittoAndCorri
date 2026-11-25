@@ -5,6 +5,8 @@ import { NavigationProgress } from "@/components/navigation-progress";
 import { PwaRegister } from "@/components/pwa-register";
 import { PwaSplash } from "@/components/pwa-splash";
 import { PwaDiagnostics } from "@/components/pwa-diagnostics";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale } from "next-intl/server";
 import { ThemeWatcher } from "@/components/theme-watcher";
 import { createClient } from "@/lib/supabase/server";
 import { themeInitScript, sanitizePrefs, type ThemePrefs } from "@/lib/theme";
@@ -90,26 +92,28 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const themeSeed = await getThemeSeed();
+  const [themeSeed, locale] = await Promise.all([getThemeSeed(), getLocale()]);
 
   return (
     <html
-      lang="it"
+      lang={locale}
       className={`${inter.variable} ${barlowCondensed.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        {/* Theme init: imposta classe (dark/light) e variabili colore inline
-            dal seed DB, PRIMA del primo paint (anti-FOUC + sync cross-device). */}
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript(themeSeed) }} />
-        <PwaSplash />
-        <PwaRegister />
-        <PwaDiagnostics />
-        <ThemeWatcher />
-        <Suspense fallback={null}>
-          <NavigationProgress />
-        </Suspense>
-        {children}
+        <NextIntlClientProvider>
+          {/* Theme init: imposta classe (dark/light) e variabili colore inline
+              dal seed DB, PRIMA del primo paint (anti-FOUC + sync cross-device). */}
+          <script dangerouslySetInnerHTML={{ __html: themeInitScript(themeSeed) }} />
+          <PwaSplash />
+          <PwaRegister />
+          <PwaDiagnostics />
+          <ThemeWatcher />
+          <Suspense fallback={null}>
+            <NavigationProgress />
+          </Suspense>
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
   );

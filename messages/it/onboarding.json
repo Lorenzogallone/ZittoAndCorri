@@ -1,0 +1,93 @@
+{
+  "stepCounter": "Passo {current} di {total}",
+  "welcome": {
+    "title": "Benvenuto in Zitto e Corri",
+    "intro": "Il tuo coach di corsa sempre in tasca. Ti servono un paio di minuti per configurarlo su di te; tutto si può cambiare dopo dalle impostazioni.",
+    "features": {
+      "coach": { "title": "Coach AI", "text": "Una chat con un coach che conosce i tuoi allenamenti e propone modifiche al piano, sempre da approvare." },
+      "plan": { "title": "Piano su misura", "text": "Quattordici giorni di allenamenti che si adattano a come stai e al meteo." },
+      "runs": { "title": "Corse e progressi", "text": "Importa le corse da file o dall'orologio: analisi, forma, previsioni e record." },
+      "watch": { "title": "Il tuo orologio", "text": "I dati di sonno e recupero arrivano dall'orologio e il piano ci torna come allenamenti guidati." }
+    }
+  },
+  "profile": {
+    "title": "Conosciamoci meglio",
+    "intro": "Questi dati rendono affidabili zone e suggerimenti. Puoi lasciare vuoto ciò che non conosci.",
+    "maxHr": "HR massima",
+    "restingHr": "HR a riposo",
+    "birthdate": "Data di nascita"
+  },
+  "goal": {
+    "title": "Cosa vuoi ottenere?",
+    "intro": "Non serve una gara: puoi anche solo voler correre meglio. Si cambia quando vuoi.",
+    "groupLabel": "Tipo di obiettivo",
+    "kinds": {
+      "race": { "title": "Preparare una gara", "text": "Hai una data: il piano punta a quel giorno." },
+      "improve": { "title": "Migliorare su una distanza", "text": "Nessuna gara in vista: lavori per correre meglio sui 5 km, sui 10 km…" },
+      "none": { "title": "Solo allenarmi", "text": "Nessun obiettivo per ora. Potrai aggiungerlo quando vuoi." }
+    },
+    "raceName": "Nome gara (opzionale)",
+    "raceNamePlaceholder": "Es. Mezza di Roma",
+    "distance": "Distanza",
+    "distances": { "5": "5 km", "10": "10 km", "half": "Mezza", "full": "Maratona", "other": "Altro" },
+    "distanceOtherLabel": "Distanza in km",
+    "distanceOtherPlaceholder": "Distanza in km, es. 15",
+    "raceDate": "Data gara",
+    "targetTime": "Tempo target"
+  },
+  "ai": {
+    "title": "Attiva il Coach AI",
+    "intro": "Scegli con quale servizio farlo funzionare. Serve una tua chiave; puoi saltare e aggiungerla più tardi, ma senza il coach resta spento.",
+    "serviceLabel": "Servizio AI",
+    "geminiHint": "La scelta più semplice: una chiave di Google AI Studio.",
+    "geminiKey": "Chiave Gemini",
+    "geminiLink": "Crea una chiave in Google AI Studio ↗",
+    "openrouterHint": "Una sola chiave per centinaia di modelli (Claude, GPT, DeepSeek…), a consumo; alcuni sono gratuiti.",
+    "openrouterKey": "Chiave OpenRouter",
+    "model": "Modello",
+    "suggestedModels": "Modelli suggeriti",
+    "free": "gratis",
+    "perMillion": "per M token",
+    "modelPlaceholder": "Oppure scrivi l'id, es. openai/gpt-5-mini",
+    "openrouterLink": "Crea una chiave su OpenRouter ↗",
+    "later": "In seguito puoi cambiare servizio e scegliere modelli diversi per chat e analisi da Impostazioni → Coach."
+  },
+  "watch": {
+    "title": "Il tuo orologio",
+    "intro": "Con un orologio collegato il coach vede sonno, recupero e frequenza a riposo, e il piano arriva sul polso. Non è obbligatorio.",
+    "amazfit": {
+      "name": "Amazfit",
+      "badge": "Disponibile",
+      "text": "Balance 2 e Active 3 Premium. Corse e dati salute arrivano da Intervals.icu, e il piano torna sull'orologio come allenamenti guidati. L'app Zepp dedicata aggiunge anche i dati di forma e, sul Balance 2, il widget «Oggi» (richiede la modalità sviluppatore di Zepp)."
+    },
+    "others": {
+      "name": "Garmin e altri orologi",
+      "badge": "In lavorazione",
+      "text": "Nel frattempo puoi importare le corse da file FIT o GPX, da qualsiasi orologio."
+    },
+    "whenLabel": "Quando collegarlo",
+    "later": "Lo collego più tardi",
+    "now": "Collega ora",
+    "where": "Il collegamento si fa da Impostazioni → Collegamenti."
+  },
+  "submit": {
+    "pending": "Configuro…",
+    "enter": "Entra nell'app",
+    "goToLinks": "Vai ai collegamenti"
+  },
+  "errors": {
+    "maxHr": "HR max non valida.",
+    "restingHr": "HR a riposo non valida.",
+    "hrOrder": "HR max deve superare la frequenza a riposo.",
+    "distance": "Per l'obiettivo scegli una distanza valida.",
+    "targetTime": "Tempo obiettivo non valido.",
+    "raceDate": "Per una gara serve la data.",
+    "openrouterKeyShort": "La chiave OpenRouter non sembra valida.",
+    "openrouterModel": "Scegli un modello OpenRouter, es. anthropic/claude-sonnet.",
+    "geminiInvalid": "La chiave Gemini non è valida. Puoi correggerla o lasciarla vuota.",
+    "openrouterInvalid": "La chiave OpenRouter non è valida. Puoi correggerla o lasciarla vuota.",
+    "openrouterVerify": "Non riesco a verificare la chiave con OpenRouter. Riprova o lasciala vuota.",
+    "openrouterMigration": "Per usare OpenRouter serve aggiornare il database (migrazione 0023). Puoi usare Gemini o saltare.",
+    "openrouterSave": "Impossibile salvare la chiave OpenRouter. Riprova o usa Gemini."
+  }
+}

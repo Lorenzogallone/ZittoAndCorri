@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale, type Translator } from "@/i18n/config";
 import { useSearchParams } from "next/navigation";
 import { CircleAlert, Check, LoaderCircle, Maximize2, Minimize2, RotateCw, Send, Sparkles, SquarePen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,37 +17,41 @@ import { useRefreshWhile } from "@/lib/use-app-refresh";
 import type { AiJobStatus } from "@/app/actions/ai-jobs";
 import { applyPlanProposal, rejectPlanProposal, retryCoachMessage, sendCoachMessage, startNewCoachChat, type CoachActionResult } from "@/app/coach/actions";
 import { isSessionMarker, splitSessions } from "@/lib/coach-session";
-import { TYPE_LABELS } from "@/lib/activity-meta";
+import { typeLabel } from "@/lib/activity-meta";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
 import type { CoachMessage, PlanProposal, ProposedWorkout } from "@/lib/types";
 import type { WorkoutBrief } from "@/lib/plan/proposal-diff";
-import { DAY_PART_LABELS } from "@/lib/plan/day-sessions";
+import { dayPartLabel } from "@/lib/plan/day-sessions";
 import { WorkoutSteps } from "@/components/workout-steps";
 import { AiModelLine, type AiSwitchState } from "@/components/ai-provider-switch";
 import { workoutHeadline } from "@/lib/workout-guide";
 import { AiCost } from "@/components/ai-cost";
 import { readUsage } from "@/lib/ai/usage";
 import { markSendError, sendErrorOf } from "@/lib/coach-failures";
-import { PROPOSAL_EXPIRY_TEXT, withProposalExpiry } from "@/lib/plan/proposal-expiry";
+import { proposalExpiryText, withProposalExpiry } from "@/lib/plan/proposal-expiry";
 import { romeDay } from "@/lib/local-date";
 
-const dayLabel = (iso: string) =>
-  new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", timeZone: "UTC" });
+const dayLabel = (iso: string, locale: Locale) =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { weekday: "short", day: "numeric", timeZone: "UTC" });
 
-function briefText(brief: WorkoutBrief): string {
-  const amount = brief.headline ?? (brief.meters ? formatDistance(brief.meters).replace(",00", "") : brief.minutes ? `${brief.minutes} min` : null);
-  const part = brief.day_part && !brief.chained ? DAY_PART_LABELS[brief.day_part].toLowerCase() : null;
-  return [TYPE_LABELS[brief.type], amount, part].filter(Boolean).join(" · ");
+/** "10 km" se tondi, altrimenti "8,50 km" (it) / "8.50 km" (en). */
+const briefDistance = (meters: number, locale: Locale) =>
+  Math.round(meters / 10) % 100 === 0 ? `${Math.round(meters / 1000)} km` : formatDistance(meters, locale);
+
+function briefText(brief: WorkoutBrief, tl: Translator, locale: Locale): string {
+  const amount = brief.headline ?? (brief.meters ? briefDistance(brief.meters, locale) : brief.minutes ? `${brief.minutes} min` : null);
+  const part = brief.day_part && !brief.chained ? dayPartLabel(tl, brief.day_part).toLowerCase() : null;
+  return [typeLabel(tl, brief.type), amount, part].filter(Boolean).join(" · ");
 }
 
 /** Sedute di un giorno: quelle concatenate (un'unica uscita) unite da "+". */
-function briefsText(briefs: WorkoutBrief[]): string {
+function briefsText(briefs: WorkoutBrief[], tl: Translator, locale: Locale): string {
   return briefs.reduce((text, brief, index) =>
-    index === 0 ? briefText(brief) : `${text}${brief.chained ? " + " : ", "}${briefText(brief)}`, "");
+    index === 0 ? briefText(brief, tl, locale) : `${text}${brief.chained ? " + " : ", "}${briefText(brief, tl, locale)}`, "");
 }
 
-const messageTime = (iso: string) =>
-  new Date(iso).toLocaleString("it-IT", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const messageTime = (iso: string, locale: Locale) =>
+  new Date(iso).toLocaleString(intlLocale(locale), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 /**
  * Data e costo sotto il messaggio: sotto la domanda il costo del prompt (tutto
@@ -53,7 +59,8 @@ const messageTime = (iso: string) =>
  * dettaglio. Analisi e riepiloghi, senza domanda, mostrano il totale.
  */
 function MessageFooter({ item, replyUsage }: { item: CoachMessage; replyUsage: ReturnType<typeof readUsage> }) {
-  const time = messageTime(item.created_at);
+  const locale = useLocale() as Locale;
+  const time = messageTime(item.created_at, locale);
   const own = item.role === "assistant" ? readUsage(item.metadata?.ai_usage) : null;
   const usage = item.role === "user" ? replyUsage : own;
   if (!usage) {
@@ -63,31 +70,29 @@ function MessageFooter({ item, replyUsage }: { item: CoachMessage; replyUsage: R
   return <AiCost usage={usage} part={part} prefix={time} className={cn("mt-1", item.role === "user" && "text-right")} />;
 }
 
-const STATUS_TEXT: Record<Exclude<PlanProposal["status"], "pending" | "expired">, string> = {
-  applied: "Modifiche applicate al piano.",
-  rejected: "Proposta annullata.",
-  stale: "Proposta superata: il piano di quei giorni è cambiato o sono già passati.",
-};
-
-const statusText = (proposal: PlanProposal) => proposal.status === "expired"
-  ? PROPOSAL_EXPIRY_TEXT[proposal.expired_reason ?? "too_old"]
-  : STATUS_TEXT[proposal.status as Exclude<PlanProposal["status"], "pending" | "expired">];
+const statusText = (proposal: PlanProposal, t: ReturnType<typeof useTranslations<"coach.chat">>, tl: Translator) => proposal.status === "expired"
+  ? proposalExpiryText(tl, proposal.expired_reason ?? "too_old")
+  // Il testo di ogni stato è in messages/it/coach.json (chat.proposalStatus.*).
+  : t(`proposalStatus.${proposal.status as "applied" | "rejected" | "stale"}`);
 
 /** Prima/dopo giorno per giorno: si vede subito cosa cambia e cosa no. */
 function ChangeList({ proposal }: { proposal: PlanProposal }) {
+  const t = useTranslations("coach.chat");
+  const tl = useTranslations("labels");
+  const locale = useLocale() as Locale;
   const changes = proposal.changes ?? [];
   if (!changes.length) return null;
   return (
     <ul className="divide-y divide-border/50">
       {changes.map((change) => (
         <li key={change.date} className="flex items-baseline gap-3 px-4 py-2.5 text-xs">
-          <span className="w-12 shrink-0 font-semibold capitalize">{dayLabel(change.date)}</span>
+          <span className="w-12 shrink-0 font-semibold capitalize">{dayLabel(change.date, locale)}</span>
           <span className="min-w-0 flex-1">
             {change.before.length > 0 && (
-              <span className="text-muted-foreground line-through decoration-muted-foreground/60">{briefsText(change.before)}</span>
+              <span className="text-muted-foreground line-through decoration-muted-foreground/60">{briefsText(change.before, tl, locale)}</span>
             )}
             {change.before.length > 0 && <span className="px-1.5 text-muted-foreground">→</span>}
-            <span className="font-medium">{change.after.length ? briefsText(change.after) : "riposo"}</span>
+            <span className="font-medium">{change.after.length ? briefsText(change.after, tl, locale) : t("rest")}</span>
           </span>
         </li>
       ))}
@@ -96,22 +101,25 @@ function ChangeList({ proposal }: { proposal: PlanProposal }) {
 }
 
 function WorkoutDetails({ workout }: { workout: ProposedWorkout }) {
+  const t = useTranslations("coach.chat");
+  const tl = useTranslations("labels");
+  const locale = useLocale() as Locale;
   return (
     <div className="px-4 py-3 text-xs">
       <div className="flex items-center justify-between gap-3">
-        <span className="font-semibold capitalize">{dayLabel(workout.date)}</span>
-        <span className="text-primary">{TYPE_LABELS[workout.type]}</span>
+        <span className="font-semibold capitalize">{dayLabel(workout.date, locale)}</span>
+        <span className="text-primary">{typeLabel(tl, workout.type)}</span>
       </div>
       <p className="mt-1 text-muted-foreground">{[
-        workoutHeadline(workout.workout_steps ?? []),
-        workout.target_distance_m ? formatDistance(workout.target_distance_m) : null,
+        workoutHeadline(workout.workout_steps ?? [], locale),
+        workout.target_distance_m ? formatDistance(workout.target_distance_m, locale) : null,
         workout.target_duration_s ? formatDuration(workout.target_duration_s) : null,
         workout.target_pace_s_km ? formatPace(workout.target_pace_s_km) : null,
-        workout.target_hr_bpm ? `HR ≤ ${workout.target_hr_bpm}` : null,
+        workout.target_hr_bpm ? t("hrCap", { bpm: workout.target_hr_bpm }) : null,
       ].filter(Boolean).join(" · ")}</p>
       {workout.description && (
         <div className="mt-2">
-          <p className="text-micro font-semibold uppercase tracking-wide text-primary">Cosa fare e perché</p>
+          <p className="text-micro font-semibold uppercase tracking-wide text-primary">{t("whatAndWhy")}</p>
           <p className="mt-0.5 leading-relaxed">{workout.description}</p>
         </div>
       )}
@@ -120,7 +128,7 @@ function WorkoutDetails({ workout }: { workout: ProposedWorkout }) {
       )}
       {workout.focus && (
         <div className="mt-2">
-          <p className="text-micro font-semibold uppercase tracking-wide text-primary">Su cosa concentrarti</p>
+          <p className="text-micro font-semibold uppercase tracking-wide text-primary">{t("focusOn")}</p>
           <p className="mt-0.5 leading-relaxed">{workout.focus}</p>
         </div>
       )}
@@ -129,10 +137,12 @@ function WorkoutDetails({ workout }: { workout: ProposedWorkout }) {
 }
 
 function ProposalCard({ proposal, onStatusChange }: { proposal: PlanProposal; onStatusChange: (status: PlanProposal["status"]) => void }) {
+  const t = useTranslations("coach.chat");
+  const tl = useTranslations("labels");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (proposal.status !== "pending") {
-    return <p className="mt-3 text-xs text-muted-foreground">{statusText(proposal)}</p>;
+    return <p className="mt-3 text-xs text-muted-foreground">{statusText(proposal, t, tl)}</p>;
   }
 
   async function decide(apply: boolean) {
@@ -146,7 +156,7 @@ function ProposalCard({ proposal, onStatusChange }: { proposal: PlanProposal; on
         onStatusChange(apply ? "applied" : "rejected");
       }
     } catch {
-      setError("Connessione interrotta. Verifica il piano prima di riprovare.");
+      setError(t("connectionLostCheckPlan"));
     } finally {
       setPending(false);
     }
@@ -156,14 +166,14 @@ function ProposalCard({ proposal, onStatusChange }: { proposal: PlanProposal; on
   return (
     <div className="mt-4 overflow-hidden rounded-2xl border border-primary/20 bg-background/60">
       <div className="border-b border-border/60 px-4 py-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-primary">Modifiche al piano</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-primary">{t("planChanges")}</p>
         <p className="mt-1 text-sm">{proposal.summary}</p>
       </div>
       <ChangeList proposal={proposal} />
       {proposal.workouts.length > 0 && (
         hasChanges ? (
           <details className="border-t border-border/60">
-            <summary className="cursor-pointer px-4 py-2.5 text-xs font-medium text-primary">Dettagli delle sedute nuove</summary>
+            <summary className="cursor-pointer px-4 py-2.5 text-xs font-medium text-primary">{t("newWorkoutsDetails")}</summary>
             <div className="max-h-72 divide-y divide-border/50 overflow-y-auto">
               {proposal.workouts.map((workout, index) => <WorkoutDetails key={`${workout.date}-${index}`} workout={workout} />)}
             </div>
@@ -176,8 +186,8 @@ function ProposalCard({ proposal, onStatusChange }: { proposal: PlanProposal; on
       )}
       {error && <p className="px-4 pt-3 text-xs text-destructive">{error}</p>}
       <div className="grid grid-cols-2 gap-2 p-3">
-        <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => decide(false)}><X size={14} /> Annulla</Button>
-        <Button type="button" size="sm" disabled={pending} onClick={() => decide(true)}><Check size={14} /> Conferma</Button>
+        <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => decide(false)}><X size={14} /> {t("cancel")}</Button>
+        <Button type="button" size="sm" disabled={pending} onClick={() => decide(true)}><Check size={14} /> {t("confirm")}</Button>
       </div>
     </div>
   );
@@ -210,10 +220,12 @@ function useVisibleViewport() {
 }
 
 function SessionDivider({ item }: { item: CoachMessage }) {
+  const t = useTranslations("coach.chat");
+  const locale = useLocale() as Locale;
   return (
     <div className="flex items-center gap-3 py-1 text-micro font-medium text-muted-foreground" role="separator">
       <span className="h-px flex-1 bg-border" />
-      Nuova chat · {messageTime(item.created_at)}
+      {t("newChatDivider", { time: messageTime(item.created_at, locale) })}
       <span className="h-px flex-1 bg-border" />
     </div>
   );
@@ -224,16 +236,17 @@ function SessionDivider({ item }: { item: CoachMessage }) {
  * rimanda lo stesso messaggio senza riscriverlo.
  */
 function FailedNotice({ reason, retrying, disabled, onRetry }: { reason: string; retrying: boolean; disabled: boolean; onRetry: () => void }) {
+  const t = useTranslations("coach.chat");
   return (
     // Testo lungo e tasto da 44 pt: su schermi stretti il tasto va a capo sotto il testo.
     <div className="mt-1.5 flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5" role="status">
       <p className="flex min-w-0 flex-1 basis-48 items-start justify-end gap-1.5 text-right text-xs text-destructive">
         <CircleAlert size={14} className="mt-px shrink-0" aria-hidden="true" />
-        <span className="min-w-0"><span className="font-semibold">Non inviato.</span> {reason}</span>
+        <span className="min-w-0"><span className="font-semibold">{t("notSent")}</span> {reason}</span>
       </p>
-      <Button type="button" variant="outline" disabled={disabled || retrying} onClick={onRetry} aria-label="Riprova a inviare il messaggio">
+      <Button type="button" variant="outline" disabled={disabled || retrying} onClick={onRetry} aria-label={t("retryLabel")}>
         {retrying ? <LoaderCircle className="animate-spin" /> : <RotateCw />}
-        {retrying ? "Invio…" : "Riprova"}
+        {retrying ? t("sending") : t("retry")}
       </Button>
     </div>
   );
@@ -252,6 +265,7 @@ function mergeServer<T extends { id: string; created_at: string }>(server: T[], 
 }
 
 export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: { messages: CoachMessage[]; proposals: PlanProposal[]; ai: AiSwitchState; analyzingActivities?: number }) {
+  const t = useTranslations("coach.chat");
   const keyConfigured = ai.active !== null;
   const searchParams = useSearchParams();
   const [message, setMessage] = useState(searchParams.get("prompt") ?? "");
@@ -278,7 +292,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
   // Messaggio per cui "Riprova" sta aspettando il server.
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const showCoachResult = useCallback((status: AiJobStatus) => {
-    if (!status.coachResult) throw new Error("Risultato chat mancante");
+    if (!status.coachResult) throw new Error(t("resultMissing"));
     const { message: coachMessage, proposal } = status.coachResult;
     setDisplayMessages((current) => current.some((item) => item.id === coachMessage.id)
       ? current
@@ -290,7 +304,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
         : withProposalExpiry([proposal, ...current], romeDay()));
     }
     setActiveId(null);
-  }, []);
+  }, [t]);
   const { pending, error, start } = useAiJob("coach", { onDone: showCoachResult });
   const proposalsById = new Map(displayProposals.map((proposal) => [proposal.id, proposal]));
   // Costo di ogni risposta indicizzato per la domanda a cui risponde.
@@ -341,9 +355,9 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
       if (result.marker) {
         setDisplayMessages((current) => [...current, result.marker!]);
         setShowEarlier(false);
-      } else setResetError(result.error ?? "Impossibile iniziare una nuova chat.");
+      } else setResetError(result.error ?? t("newChatFailed"));
     } catch {
-      setResetError("Connessione interrotta. Riprova.");
+      setResetError(t("connectionLostRetry"));
     } finally {
       setResetting(false);
     }
@@ -375,7 +389,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
         }
         return result;
       } catch (requestError) {
-        replaceMessage(localId, { ...fallback, metadata: markSendError(fallback.metadata, { message: "Connessione interrotta.", at: "" }) });
+        replaceMessage(localId, { ...fallback, metadata: markSendError(fallback.metadata, { message: t("connectionLost"), at: "" }) });
         throw requestError;
       } finally {
         setRetryingId(null);
@@ -439,7 +453,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
       style={isExpanded && viewport ? { top: viewport.top, height: viewport.height } : undefined}
       role={isExpanded ? "dialog" : undefined}
       aria-modal={isExpanded || undefined}
-      aria-label={isExpanded ? "Chat con il coach" : undefined}
+      aria-label={isExpanded ? t("chatLabel") : undefined}
     >
       <header
         className="flex items-center gap-2 border-b border-border/60 py-2 pl-4 pr-2"
@@ -447,7 +461,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary"><Sparkles size={16} /></span>
         <div className="ml-1 min-w-0 flex-1">
-          <h2 className="text-body font-semibold leading-tight">Coach</h2>
+          <h2 className="text-body font-semibold leading-tight">{t("title")}</h2>
           <AiModelLine state={ai} />
         </div>
         <Button
@@ -456,8 +470,8 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
           size="icon-sm"
           onClick={newChat}
           disabled={pending || resetting || freshSession || displayMessages.length === 0}
-          aria-label="Nuova chat"
-          title="Nuova chat: il coach riparte senza la conversazione precedente"
+          aria-label={t("newChatLabel")}
+          title={t("newChatTitle")}
         >
           {resetting ? <LoaderCircle className="animate-spin" /> : <SquarePen />}
         </Button>
@@ -468,9 +482,9 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
           // Su desktop la chat è già grande: niente tutto schermo.
           className="lg:hidden"
           onClick={() => setIsExpanded((expanded) => !expanded)}
-          aria-label={isExpanded ? "Riduci la chat" : "Espandi la chat a tutto schermo"}
+          aria-label={isExpanded ? t("collapseLabel") : t("expandLabel")}
           aria-pressed={isExpanded}
-          title={isExpanded ? "Riduci" : "Espandi a tutto schermo"}
+          title={isExpanded ? t("collapse") : t("expand")}
         >
           {isExpanded ? <Minimize2 /> : <Maximize2 />}
         </Button>
@@ -479,22 +493,22 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
       {analyzingActivities > 0 && (
         <div className="flex items-center gap-2 border-b border-border/50 bg-primary/5 px-4 py-2 text-xs text-muted-foreground">
           <LoaderCircle size={13} className="animate-spin text-primary" />
-          {analyzingActivities === 1 ? "Sto analizzando una nuova attività…" : `Sto analizzando ${analyzingActivities} attività…`}
+          {t("analyzingActivities", { count: analyzingActivities })}
         </div>
       )}
       <div ref={listRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-5">
         {!showEarlier && session.earlier > 0 && (
           <button type="button" onClick={() => setShowEarlier(true)} className="mx-auto block rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground">
-            Mostra la chat precedente
+            {t("showEarlier")}
           </button>
         )}
         {shown.length === 0 && (freshSession ? (
           <div className="mx-auto max-w-sm py-8 text-center">
-            <p className="text-heading font-semibold">Nuova chat</p>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Il coach riparte da zero con la conversazione, ma conosce sempre piano, corse e quello che ha memorizzato di te.</p>
+            <p className="text-heading font-semibold">{t("freshTitle")}</p>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t("freshIntro")}</p>
           </div>
         ) : (
-          <div className="mx-auto max-w-sm py-8 text-center"><p className="text-heading font-semibold">Parlami della tua settimana</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">Posso adattare il piano a vacanze, caldo, escursioni, fatica o battiti troppo alti.</p></div>
+          <div className="mx-auto max-w-sm py-8 text-center"><p className="text-heading font-semibold">{t("emptyTitle")}</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t("emptyIntro")}</p></div>
         ))}
         {shown.map((item) => {
           if (isSessionMarker(item)) return <SessionDivider key={item.id} item={item} />;
@@ -523,7 +537,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
             </div>
           );
         })}
-        {pending && <div className="mr-16 flex items-center gap-2 rounded-2xl rounded-bl-md bg-muted/55 px-4 py-3 text-sm text-muted-foreground"><LoaderCircle size={15} className="animate-spin" /> Sto ragionando sul tuo contesto…</div>}
+        {pending && <div className="mr-16 flex items-center gap-2 rounded-2xl rounded-bl-md bg-muted/55 px-4 py-3 text-sm text-muted-foreground"><LoaderCircle size={15} className="animate-spin" /> {t("reasoning")}</div>}
       </div>
       {/* Il campo è un TextField (contenteditable), non un textarea: il
           riempimento automatico di Safari su iOS ignora autocomplete="off" e
@@ -534,7 +548,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
         // A tutto schermo: sopra l'indicatore home, o attaccato alla tastiera quando è aperta.
         style={isExpanded ? { paddingBottom: viewport?.keyboard ? "0.5rem" : "max(env(safe-area-inset-bottom, 0px), 0.75rem)" } : undefined}
       >
-        {!keyConfigured ? <Link href="/settings?tab=coach" className="pressable block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">Aggiungi una chiave Gemini o OpenRouter per parlare con il coach</Link> : <div className="flex items-end gap-2"><TextField aria-label="Scrivi al coach" value={message} onValueChange={setMessage} onKeyDown={sendOnEnter} rows={1} disabled={pending} placeholder="Es. Sono in vacanza 2 giorni…" className="max-h-32" /><Button type="button" size="icon" disabled={pending || !message.trim()} aria-label="Invia" onClick={submit}><Send size={17} /></Button></div>}
+        {!keyConfigured ? <Link href="/settings?tab=coach" className="pressable block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">{t("addKey")}</Link> : <div className="flex items-end gap-2"><TextField aria-label={t("writeLabel")} value={message} onValueChange={setMessage} onKeyDown={sendOnEnter} rows={1} disabled={pending} placeholder={t("writePlaceholder")} className="max-h-32" /><Button type="button" size="icon" disabled={pending || !message.trim()} aria-label={t("send")} onClick={submit}><Send size={17} /></Button></div>}
         {/* L'errore di un messaggio sta sotto il messaggio, con "Riprova". */}
         {error && !failedId && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
       </div>

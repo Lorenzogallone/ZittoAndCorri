@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Locale, Translator } from "@/i18n/config";
 import { addDays } from "@/lib/local-date";
 import {
   bodyTrends,
@@ -39,6 +40,8 @@ export async function loadBodyTrends(
   userId: string,
   today: string,
   load: LoadPoint[],
+  t: Translator,
+  locale: Locale,
   runs: RunInput[] = [],
 ): Promise<Record<BodyMetricKey, MetricTrend>> {
   const since = addDays(today, -BODY_HISTORY_DAYS);
@@ -50,5 +53,5 @@ export async function loadBodyTrends(
   const wellnessKeys = WELLNESS_COLUMNS.split(", ").slice(1);
   const zepp = zeppResult.error ? [] : (zeppResult.data ?? []).map((row) => numericRow<ZeppDayInput>(row, zeppKeys));
   const wellness = wellnessResult.error ? [] : (wellnessResult.data ?? []).map((row) => numericRow<WellnessDayInput>(row, wellnessKeys));
-  return bodyTrends({ today, zepp, wellness, runs, load });
+  return bodyTrends({ today, zepp, wellness, runs, load }, t, locale);
 }

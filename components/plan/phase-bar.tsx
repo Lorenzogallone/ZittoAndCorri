@@ -1,8 +1,11 @@
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import type { PhasePlan } from "@/lib/plan/phases";
+import { phaseLabel, type PhasePlan } from "@/lib/plan/phases";
 
 /** Barra delle fasi di preparazione con la posizione di oggi. */
 export function PhaseBar({ plan }: { plan: PhasePlan }) {
+  const t = useTranslations("plan.phaseBar");
+  const tl = useTranslations("labels");
   const totalWeeks = plan.phases.reduce((sum, phase) => sum + phase.weeks, 0);
   const currentIndex = plan.phases.findIndex((phase) => phase.key === plan.current);
   const current = plan.phases[currentIndex];
@@ -30,8 +33,11 @@ export function PhaseBar({ plan }: { plan: PhasePlan }) {
       </div>
       {current && (
         <p className="mt-2 text-xs text-muted-foreground">
-          Fase di <span className="font-medium text-foreground">{current.label.toLowerCase()}</span>
-          {next ? ` · poi ${next.label.toLowerCase()}` : " · ultimi giorni prima della gara"}
+          {t.rich(next ? "currentThen" : "currentLast", {
+            phase: phaseLabel(tl, current.key).toLowerCase(),
+            next: next ? phaseLabel(tl, next.key).toLowerCase() : "",
+            b: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
+          })}
         </p>
       )}
     </div>

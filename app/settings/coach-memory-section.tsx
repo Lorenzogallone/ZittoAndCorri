@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,22 +15,14 @@ import { clearCoachHistory } from "@/app/coach/actions";
 import { deleteCoachMemory, saveCoachMemory } from "./memory-actions";
 import type { CoachMemory, CoachMemoryCategory } from "@/lib/types";
 
-const CATEGORY_LABELS: Record<CoachMemoryCategory, string> = {
-  guideline: "Linea guida",
-  preference: "Preferenza",
-  availability: "Disponibilità",
-  vacation: "Vacanza",
-  weather: "Meteo",
-  fatigue: "Fatica",
-  limitation: "Limite",
-  pace_hr: "Passo e cuore",
-  long_term: "Percorso",
-};
+// Il valore salvato sul database è la chiave; l'etichetta viene da messages/.
+const CATEGORIES: CoachMemoryCategory[] = [
+  "guideline", "preference", "availability", "vacation", "weather",
+  "fatigue", "limitation", "pace_hr", "long_term",
+];
 
-const CATEGORIES = Object.keys(CATEGORY_LABELS) as CoachMemoryCategory[];
-
-function shortDate(iso: string): string {
-  return new Date(`${iso}T12:00:00`).toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" });
+function shortDate(iso: string, locale: Locale): string {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "short", year: "numeric" });
 }
 
 function todayIso(): string {
@@ -53,6 +47,7 @@ function MemoryEditor({
   onDelete?: () => void;
 }) {
   const router = useRouter();
+  const t = useTranslations("settingsLinks.memory");
   const [draft, setDraft] = useState<Draft>({
     category: memory?.category ?? "preference",
     content: memory?.content ?? "",
@@ -83,20 +78,20 @@ function MemoryEditor({
   return (
     <form onSubmit={save} className="grid gap-3 rounded-2xl bg-muted/45 p-3">
       <div className="grid gap-1.5">
-        <Label htmlFor={`memory-category-${fieldId}`}>Tipo</Label>
+        <Label htmlFor={`memory-category-${fieldId}`}>{t("editor.typeLabel")}</Label>
         <Select value={draft.category} onValueChange={(value) => setDraft({ ...draft, category: value as CoachMemoryCategory })}>
           <SelectTrigger id={`memory-category-${fieldId}`}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {CATEGORIES.map((category) => (
-              <SelectItem key={category} value={category}>{CATEGORY_LABELS[category]}</SelectItem>
+              <SelectItem key={category} value={category}>{t(`categories.${category}`)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
       <div className="grid gap-1.5">
-        <Label id={`memory-content-${fieldId}-label`} htmlFor={`memory-content-${fieldId}`}>Cosa deve ricordare</Label>
+        <Label id={`memory-content-${fieldId}-label`} htmlFor={`memory-content-${fieldId}`}>{t("editor.contentLabel")}</Label>
         <TextField
           id={`memory-content-${fieldId}`}
           aria-labelledby={`memory-content-${fieldId}-label`}
@@ -104,12 +99,12 @@ function MemoryEditor({
           onValueChange={(content) => setDraft({ ...draft, content })}
           rows={3}
           maxLength={600}
-          placeholder="Es. Riscaldamento e defaticamento al passo easy, oppure camminando…"
+          placeholder={t("editor.contentPlaceholder")}
           className="min-h-24"
         />
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor={`memory-until-${fieldId}`}>Vale fino al</Label>
+        <Label htmlFor={`memory-until-${fieldId}`}>{t("editor.validUntilLabel")}</Label>
         <Input
           id={`memory-until-${fieldId}`}
           type="date"
@@ -117,15 +112,15 @@ function MemoryEditor({
           min={todayIso()}
           onChange={(event) => setDraft({ ...draft, valid_until: event.target.value })}
         />
-        <p className="text-micro text-muted-foreground">Lascia vuoto se vale sempre.</p>
+        <p className="text-micro text-muted-foreground">{t("editor.validUntilHint")}</p>
       </div>
       {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
       <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" size="sm" disabled={pending || draft.content.trim().length < 3}>
-          {pending ? "Salvo…" : "Salva"}
+          {pending ? t("editor.saving") : t("editor.save")}
         </Button>
         <Button type="button" variant="outline" size="sm" disabled={pending} onClick={onClose}>
-          Annulla
+          {t("editor.cancel")}
         </Button>
         {onDelete && (
           <Button
@@ -136,7 +131,7 @@ function MemoryEditor({
             className="ml-auto text-destructive hover:text-destructive"
             onClick={onDelete}
           >
-            Elimina
+            {t("editor.delete")}
           </Button>
         )}
       </div>
@@ -146,6 +141,8 @@ function MemoryEditor({
 
 export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
   const router = useRouter();
+  const t = useTranslations("settingsLinks.memory");
+  const locale = useLocale() as Locale;
   const [pending, setPending] = useState(false);
   // Id del ricordo aperto in modifica, "new" per uno nuovo.
   const [editing, setEditing] = useState<string | null>(null);
@@ -161,9 +158,9 @@ export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
 
   async function remove(memory: CoachMemory) {
     const confirmed = await confirm({
-      title: "Eliminare questo ricordo?",
-      description: "Il coach non ne terrà più conto. Non si può annullare.",
-      action: "Elimina",
+      title: t("confirm.delete.title"),
+      description: t("confirm.delete.description"),
+      action: t("confirm.delete.action"),
     });
     if (!confirmed) return;
     const result = await deleteCoachMemory(memory.id);
@@ -180,14 +177,14 @@ export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
     const confirmed = await confirm(
       includeMemories
         ? {
-            title: "Cancellare chat e ricordi?",
-            description: "Il coach dimentica anche quello che ha imparato su di te. Non si può annullare.",
-            action: "Cancella tutto",
+            title: t("confirm.clearAll.title"),
+            description: t("confirm.clearAll.description"),
+            action: t("confirm.clearAll.action"),
           }
         : {
-            title: "Cancellare la cronologia della chat?",
-            description: "I ricordi del coach restano.",
-            action: "Cancella chat",
+            title: t("confirm.clearChat.title"),
+            description: t("confirm.clearChat.description"),
+            action: t("confirm.clearChat.action"),
           },
     );
     if (!confirmed) return;
@@ -209,10 +206,10 @@ export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
                 <div className={`flex items-start gap-2 ${expired(memory) ? "opacity-55" : ""}`}>
                   <div className="min-w-0 flex-1">
                     <p className="text-micro font-medium uppercase tracking-wide text-muted-foreground">
-                      {CATEGORY_LABELS[memory.category] ?? memory.category}
+                      {t.has(`categories.${memory.category}`) ? t(`categories.${memory.category}`) : memory.category}
                       {memory.valid_until && (expired(memory)
-                        ? ` · scaduto il ${shortDate(memory.valid_until)}`
-                        : ` · fino al ${shortDate(memory.valid_until)}`)}
+                        ? ` · ${t("expiredOn", { date: shortDate(memory.valid_until, locale) })}`
+                        : ` · ${t("validUntil", { date: shortDate(memory.valid_until, locale) })}`)}
                     </p>
                     <p className="mt-0.5 text-sm leading-relaxed">{memory.content}</p>
                   </div>
@@ -221,7 +218,7 @@ export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
                     variant="ghost"
                     size="icon-sm"
                     className="-mr-2 -mt-1 shrink-0 text-muted-foreground"
-                    aria-label="Modifica ricordo"
+                    aria-label={t("list.editAria")}
                     onClick={() => setEditing(memory.id)}
                   >
                     <Pencil />
@@ -232,7 +229,7 @@ export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-muted-foreground">Ancora niente: impara dalle tue conversazioni, oppure aggiungi tu un ricordo.</p>
+        <p className="text-sm text-muted-foreground">{t("list.empty")}</p>
       )}
       {editing === "new" && (
         <div className="mt-3">
@@ -243,11 +240,11 @@ export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
       <div className="mt-4 flex flex-wrap gap-2">
         {editing !== "new" && (
           <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => setEditing("new")}>
-            <Plus /> Aggiungi ricordo
+            <Plus /> {t("list.add")}
           </Button>
         )}
         <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => clear(false)}>
-          Cancella chat
+          {t("list.clearChat")}
         </Button>
         <Button
           type="button"
@@ -257,7 +254,7 @@ export function CoachMemorySection({ memories }: { memories: CoachMemory[] }) {
           className="text-destructive hover:text-destructive"
           onClick={() => clear(true)}
         >
-          Cancella tutto
+          {t("list.clearAll")}
         </Button>
       </div>
       {confirmSheet}

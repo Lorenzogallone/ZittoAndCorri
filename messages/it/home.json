@@ -1,0 +1,91 @@
+{
+  "page": {
+    "greeting": {
+      "morning": "Buongiorno, {name}",
+      "afternoon": "Buon pomeriggio, {name}",
+      "evening": "Buonasera, {name}"
+    },
+    "fallbackName": "Runner",
+    "logActivity": "Registra un'attività"
+  },
+  "error": {
+    "title": "Qualcosa è andato storto",
+    "text": "Si è verificato un errore imprevisto. Riprova: se il problema persiste, ricarica l'app.",
+    "retry": "Riprova"
+  },
+  "login": {
+    "tagline": "Il tuo coach di corsa personale.",
+    "redirecting": "Reindirizzo…",
+    "signIn": "Accedi con Google",
+    "footnote": "Nessuna password. Nessuna pubblicità. Zitto e corri."
+  },
+  "refresh": {
+    "syncFailed": "Sincronizzazione con l'orologio non riuscita."
+  },
+  "syncBanner": {
+    "check": "Controlla",
+    "dismiss": "Chiudi l'avviso"
+  },
+  "gettingStarted": {
+    "title": "Inizia da qui",
+    "progress": "{done} di {total} fatto",
+    "hide": "Nascondi",
+    "stateDone": "Fatto",
+    "stateTodo": "Da fare",
+    "planPrompt": "Mi prepari il piano delle prossime due settimane?",
+    "steps": {
+      "activity": {
+        "title": "Importa la prima corsa",
+        "hint": "Un file dall'orologio o una corsa a mano"
+      },
+      "watch": {
+        "title": "Collega l'orologio",
+        "hint": "Intervals.icu o Zepp: le corse arrivano da sole"
+      },
+      "plan": {
+        "title": "Chiedi un piano al coach",
+        "hintReady": "Le prossime due settimane, sul tuo livello",
+        "hintNoKey": "Serve una chiave AI"
+      }
+    }
+  },
+  "today": {
+    "weekdays": {
+      "mon": "L",
+      "tue": "M",
+      "wed": "M",
+      "thu": "G",
+      "fri": "V",
+      "sat": "S",
+      "sun": "D"
+    },
+    "nextWorkout": "Prossima seduta",
+    "noWorkout": "Nessuna seduta in programma",
+    "planPrompt": "Mi prepari il piano delle prossime due settimane?",
+    "askPlan": "Chiedi un piano al coach",
+    "heatAdjusted": "Passi adattati al caldo",
+    "raceToday": "Oggi si corre",
+    "goodLuck": "In bocca al lupo!",
+    "raceAfter": "Com'è andata?",
+    "recoveryText": "Ti preparo qualche giorno di recupero.",
+    "planRecovery": "Pianifica il recupero",
+    "sessionDone": "Fatta",
+    "thisWeek": "Questa settimana"
+  },
+  "upcoming": {
+    "title": "Poi in programma",
+    "plan": "Piano",
+    "today": "Oggi",
+    "tomorrow": "Domani"
+  },
+  "goalCard": {
+    "noGoalPrompt": "Vorrei impostare un obiettivo",
+    "noGoal": "Nessun obiettivo · parlane al coach",
+    "title": "Obiettivo",
+    "noDate": "senza data",
+    "today": "Oggi",
+    "tomorrow": "Domani",
+    "inDays": "{days} gg",
+    "targetTime": "in {time}"
+  }
+}

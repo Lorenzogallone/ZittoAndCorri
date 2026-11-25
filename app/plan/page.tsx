@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getLocale, getTranslations } from "next-intl/server";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { CalendarDays, ChevronLeft, ChevronRight, MessageCircle, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
@@ -25,12 +27,14 @@ interface Props {
 
 const isIsoDate = (value: string | undefined): value is string => !!value && /^\d{4}-\d{2}-\d{2}$/.test(value);
 
-function rangeLabel(start: string, end: string): string {
-  const format = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "UTC" });
+function rangeLabel(start: string, end: string, locale: Locale): string {
+  const format = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "short", timeZone: "UTC" });
   return `${format(start)} – ${format(end)}`;
 }
 
 export default async function PlanPage({ searchParams }: Props) {
+  const t = await getTranslations("plan");
+  const locale = (await getLocale()) as Locale;
   const params = await searchParams;
   const view = params.view === "month" ? "month" : "weeks";
   const today = romeDay();
@@ -104,7 +108,7 @@ export default async function PlanPage({ searchParams }: Props) {
   const rangeEmpty = days.every((day) => !day.workouts.length && !day.activities.length);
 
   return (
-    <AppShell title="Piano" headerAction={<AdaptSheet />} wide>
+    <AppShell title={t("title")} headerAction={<AdaptSheet />} wide>
       {adaptationUntil && (
         <AdaptationBanner until={adaptationUntil} paused={(adapted ?? []).some((row) => row.status === "skipped")} />
       )}
@@ -115,21 +119,23 @@ export default async function PlanPage({ searchParams }: Props) {
             <p className="truncate font-display text-title font-bold tracking-tight">{goal.race_name}</p>
             {daysToRace != null && daysToRace >= 0 && (
               <p className="shrink-0 font-display text-heading font-bold tabular-nums tracking-tight text-primary">
-                {daysToRace === 0 ? "Oggi" : daysToRace < 14 ? `tra ${daysToRace} giorni` : `${Math.ceil(daysToRace / 7)} settimane`}
+                {daysToRace === 0 ? t("page.today") : daysToRace < 14 ? t("page.inDays", { days: daysToRace }) : t("page.inWeeks", { weeks: Math.ceil(daysToRace / 7) })}
               </p>
             )}
           </div>
           <p className="mb-4 mt-1 text-caption text-muted-foreground tabular-nums">
-            {formatDistance(goal.distance_m)}
             {goal.race_date
-              ? ` · ${new Date(`${goal.race_date}T12:00:00Z`).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}`
-              : " · obiettivo senza data"}
+              ? t("page.goalMeta", {
+                distance: formatDistance(goal.distance_m, locale),
+                date: new Date(`${goal.race_date}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }),
+              })
+              : t("page.goalMetaNoDate", { distance: formatDistance(goal.distance_m, locale) })}
           </p>
           {phases && <PhaseBar plan={phases} />}
         </Link>
       ) : (
-        <Link href="/?prompt=Vorrei+impostare+un+obiettivo" className="surface mb-8 flex items-center justify-between px-4 py-3 text-body text-muted-foreground">
-          Nessun obiettivo · parlane al coach
+        <Link href={`/?prompt=${encodeURIComponent(t("page.promptSetGoal"))}`} className="surface mb-8 flex items-center justify-between px-4 py-3 text-body text-muted-foreground">
+          {t("page.noGoal")}
           <ChevronRight size={16} />
         </Link>
       )}
@@ -137,10 +143,10 @@ export default async function PlanPage({ searchParams }: Props) {
       {nothingPlanned && (
         <EmptyState
           icon={CalendarDays}
-          title="Nessuna seduta in programma"
-          text="Qui vedrai le sedute della settimana, giorno per giorno. Il coach può prepararti le prossime due settimane."
-          action={{ href: "/?prompt=Mi+prepari+il+piano+delle+prossime+due+settimane%3F", label: "Chiedi un piano al coach", icon: MessageCircle }}
-          secondary={{ href: "/plan/new", label: "Aggiungi una seduta", icon: Plus }}
+          title={t("page.empty.title")}
+          text={t("page.empty.text")}
+          action={{ href: `/?prompt=${encodeURIComponent(t("page.promptMakePlan"))}`, label: t("page.empty.action"), icon: MessageCircle }}
+          secondary={{ href: "/plan/new", label: t("page.empty.secondary"), icon: Plus }}
           className="mb-8"
         />
       )}
@@ -150,24 +156,24 @@ export default async function PlanPage({ searchParams }: Props) {
           <div className="mb-5 flex items-center justify-between gap-3">
             <Segmented
               className="inline-grid"
-              ariaLabel="Vista"
+              ariaLabel={t("page.view.label")}
               value={view}
               options={[
-                { key: "weeks", label: "Settimane", href: "/plan" },
-                { key: "month", label: "Mese", href: "/plan?view=month" },
+                { key: "weeks", label: t("page.view.weeks"), href: "/plan" },
+                { key: "month", label: t("page.view.month"), href: "/plan?view=month" },
               ]}
             />
             {view === "weeks" && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Link href={`/plan?week=${addDays(firstMonday, -14)}`} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted" aria-label="Settimane precedenti">
+                <Link href={`/plan?week=${addDays(firstMonday, -14)}`} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted" aria-label={t("page.previousWeeks")}>
                   <ChevronLeft size={17} />
                 </Link>
                 {firstMonday === thisMonday ? (
-                  <span className="tabular-nums">{rangeLabel(rangeStart, rangeEnd)}</span>
+                  <span className="tabular-nums">{rangeLabel(rangeStart, rangeEnd, locale)}</span>
                 ) : (
-                  <Link href="/plan" className="font-medium text-primary">Torna a oggi</Link>
+                  <Link href="/plan" className="font-medium text-primary">{t("page.backToToday")}</Link>
                 )}
-                <Link href={`/plan?week=${addDays(firstMonday, 14)}`} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted" aria-label="Settimane successive">
+                <Link href={`/plan?week=${addDays(firstMonday, 14)}`} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted" aria-label={t("page.nextWeeks")}>
                   <ChevronRight size={17} />
                 </Link>
               </div>
@@ -187,7 +193,7 @@ export default async function PlanPage({ searchParams }: Props) {
                     days={week}
                     today={today}
                     highlight={isCurrent}
-                    title={isCurrent ? "Questa settimana" : isNext && index > 0 ? "Prossima settimana" : undefined}
+                    title={isCurrent ? t("page.thisWeek") : isNext && index > 0 ? t("page.nextWeek") : undefined}
                   />
                 );
               })}
@@ -203,7 +209,7 @@ export default async function PlanPage({ searchParams }: Props) {
       {!nothingPlanned && (
         <Button asChild variant="outline" className="mt-2 w-full lg:w-auto">
           <Link href="/plan/new">
-            <Plus size={16} /> Aggiungi una seduta
+            <Plus size={16} /> {t("page.addWorkout")}
           </Link>
         </Button>
       )}

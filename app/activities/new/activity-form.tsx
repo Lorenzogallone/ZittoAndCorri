@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { createActivity, saveParsedActivity, type ActivityFormState } from "../actions";
 import { navigateAfterMutation } from "@/lib/nav";
 import { ACTIVITY_TYPES, WORKOUT_TYPES, SPORTS } from "@/lib/types";
@@ -24,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Upload, PenLine } from "lucide-react";
-import { TYPE_LABELS, SPORT_LABELS } from "@/lib/activity-meta";
+import { typeLabel, sportLabel } from "@/lib/activity-meta";
 
 /** Select sport condiviso tra form manuale e review file. */
 function SportSelect({
@@ -34,9 +35,11 @@ function SportSelect({
   value: Sport;
   onChange: (s: Sport) => void;
 }) {
+  const t = useTranslations("activities.fields");
+  const tl = useTranslations("labels");
   return (
     <div className="grid gap-2.5">
-      <Label htmlFor="sport">Sport</Label>
+      <Label htmlFor="sport">{t("sport")}</Label>
       <Select name="sport" value={value} onValueChange={(v) => onChange(v as Sport)}>
         <SelectTrigger id="sport">
           <SelectValue />
@@ -44,7 +47,7 @@ function SportSelect({
         <SelectContent>
           {SPORTS.map((s) => (
             <SelectItem key={s} value={s}>
-              {SPORT_LABELS[s]}
+              {sportLabel(tl, s)}
             </SelectItem>
           ))}
         </SelectContent>
@@ -56,6 +59,9 @@ function SportSelect({
 // ── Sotto-form manuale ──────────────────────────────────────────────────────
 
 function ManualForm() {
+  const t = useTranslations("activities.new");
+  const tf = useTranslations("activities.fields");
+  const tl = useTranslations("labels");
   const initialState: ActivityFormState = {};
   const [state, formAction, pending] = useActionState(createActivity, initialState);
   const router = useRouter();
@@ -71,7 +77,7 @@ function ManualForm() {
   return (
     <form action={formAction} onKeyDown={handleEnterKeyHint} className="flex flex-col gap-5">
       <div className="grid gap-2.5">
-        <Label htmlFor="started_at">Data e ora</Label>
+        <Label htmlFor="started_at">{tf("dateTime")}</Label>
         <Input id="started_at" name="started_at" type="datetime-local" required />
       </div>
 
@@ -79,15 +85,15 @@ function ManualForm() {
 
       {isRunning && (
         <div className="grid gap-2.5">
-          <Label htmlFor="type">Tipo</Label>
+          <Label htmlFor="type">{tf("type")}</Label>
           <Select name="type" defaultValue="easy">
             <SelectTrigger id="type">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {WORKOUT_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {TYPE_LABELS[t] ?? t}
+              {WORKOUT_TYPES.map((workoutType) => (
+                <SelectItem key={workoutType} value={workoutType}>
+                  {typeLabel(tl, workoutType)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -98,7 +104,7 @@ function ManualForm() {
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2.5">
           <Label htmlFor="distance_km">
-            Distanza (km{isRunning ? "" : ", opzionale"})
+            {isRunning ? tf("distanceKm") : tf("distanceKmOptional")}
           </Label>
           <Input
             id="distance_km"
@@ -113,7 +119,7 @@ function ManualForm() {
           />
         </div>
         <div className="grid gap-2.5">
-          <Label htmlFor="duration">Durata (h:mm:ss)</Label>
+          <Label htmlFor="duration">{tf("duration")}</Label>
           <Input
             id="duration"
             name="duration"
@@ -129,33 +135,33 @@ function ManualForm() {
       </div>
 
       <div className="separator my-1" />
-      <p className="text-xs text-muted-foreground uppercase tracking-wider">Opzionali</p>
+      <p className="text-xs text-muted-foreground uppercase tracking-wider">{t("manual.optional")}</p>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2.5">
-          <Label htmlFor="avg_hr">HR media</Label>
+          <Label htmlFor="avg_hr">{tf("avgHr")}</Label>
           <Input id="avg_hr" name="avg_hr" type="number" inputMode="numeric" enterKeyHint="next" autoComplete="off" min="0" placeholder="150" />
         </div>
         <div className="grid gap-2.5">
-          <Label htmlFor="max_hr">HR max</Label>
+          <Label htmlFor="max_hr">{tf("maxHr")}</Label>
           <Input id="max_hr" name="max_hr" type="number" inputMode="numeric" enterKeyHint="next" autoComplete="off" min="0" placeholder="175" />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2.5">
-          <Label htmlFor="elevation_gain_m">Dislivello + (m)</Label>
+          <Label htmlFor="elevation_gain_m">{tf("elevation")}</Label>
           <Input id="elevation_gain_m" name="elevation_gain_m" type="number" inputMode="numeric" enterKeyHint="next" autoComplete="off" min="0" placeholder="120" />
         </div>
         <div className="grid gap-2.5">
-          <Label htmlFor="rpe">RPE 1–10</Label>
+          <Label htmlFor="rpe">{t("manual.rpe")}</Label>
           <Input id="rpe" name="rpe" type="number" inputMode="numeric" enterKeyHint="next" autoComplete="off" min="1" max="10" placeholder="4" />
         </div>
       </div>
 
       <div className="grid gap-2.5">
-        <Label id="notes-label" htmlFor="notes">Note</Label>
-        <TextField id="notes" aria-labelledby="notes-label" name="notes" rows={3} placeholder="Gambe ok, fresco." />
+        <Label id="notes-label" htmlFor="notes">{t("manual.notes")}</Label>
+        <TextField id="notes" aria-labelledby="notes-label" name="notes" rows={3} placeholder={t("manual.notesPlaceholder")} />
       </div>
 
       {state.error && (
@@ -165,7 +171,7 @@ function ManualForm() {
       )}
 
       <Button type="submit" disabled={pending} size="lg" className="w-full mt-2">
-        {pending ? "Salvo…" : isRunning ? "Salva corsa" : "Salva attività"}
+        {pending ? t("manual.saving") : isRunning ? t("saveRun") : t("saveActivity")}
       </Button>
     </form>
   );
@@ -192,6 +198,10 @@ interface GpxReviewFormProps {
 }
 
 function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
+  const t = useTranslations("activities.new");
+  const tf = useTranslations("activities.fields");
+  const tl = useTranslations("labels");
+  const te = useTranslations("activities.errors");
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -216,14 +226,14 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
 
     const duration_s = parseDuration(durationStr);
     if (duration_s == null || duration_s <= 0) {
-      setError("Durata non valida (usa h:mm:ss o mm:ss).");
+      setError(te("durationInvalid"));
       setPending(false);
       return;
     }
 
     const startedAtDate = new Date(startedAtLocal);
     if (isNaN(startedAtDate.getTime())) {
-      setError("Data/ora non valida.");
+      setError(te("dateInvalid"));
       setPending(false);
       return;
     }
@@ -258,17 +268,20 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
   return (
     <form onSubmit={handleSubmit} onKeyDown={handleEnterKeyHint} className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
-        <h3 className="text-heading font-semibold text-foreground">Revisione attività</h3>
+        <h3 className="text-heading font-semibold text-foreground">{t("review.title")}</h3>
         <p className="text-xs text-muted-foreground">
-          I dati sono stati estratti con successo. Puoi modificarli prima di salvare.
+          {t("review.intro")}
         </p>
       </div>
 
       <div className="grid gap-2.5">
-        <Label id="import-notes-label" htmlFor="notes">Note per il coach</Label>
+        <Label id="import-notes-label" htmlFor="notes">{t("review.notes")}</Label>
         {initialData.source_title && (
           <p className="rounded-lg bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-            Titolo dal file: <span className="font-medium text-foreground">{initialData.source_title}</span>
+            {t.rich("review.titleFromFile", {
+              title: initialData.source_title,
+              b: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
+            })}
           </p>
         )}
         <TextField
@@ -278,7 +291,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
           singleLine
           enterKeyHint="next"
           defaultValue={initialData.notes ?? ""}
-          placeholder="Es. gambe pesanti, caldo, respirazione facile…"
+          placeholder={t("review.notesPlaceholder")}
         />
       </div>
 
@@ -286,15 +299,15 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
 
       {isRunning && (
         <div className="grid gap-2.5">
-          <Label htmlFor="type">Tipo (Tag)</Label>
+          <Label htmlFor="type">{tf("typeTag")}</Label>
           <Select name="type" defaultValue={initialData.type ?? "unclassified"}>
             <SelectTrigger id="type">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {ACTIVITY_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {TYPE_LABELS[t] ?? t}
+              {ACTIVITY_TYPES.map((activityType) => (
+                <SelectItem key={activityType} value={activityType}>
+                  {typeLabel(tl, activityType)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -303,7 +316,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
       )}
 
       <div className="grid gap-2.5">
-        <Label htmlFor="started_at">Data e ora (dal file)</Label>
+        <Label htmlFor="started_at">{tf("dateTimeFromFile")}</Label>
         <Input
           id="started_at"
           name="started_at"
@@ -317,7 +330,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2.5">
-          <Label htmlFor="distance_km">Distanza (km - dal file)</Label>
+          <Label htmlFor="distance_km">{t("review.distanceKmFromFile")}</Label>
           <Input
             id="distance_km"
             name="distance_km"
@@ -330,7 +343,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
           />
         </div>
         <div className="grid gap-2.5">
-          <Label htmlFor="duration">Durata (dal file)</Label>
+          <Label htmlFor="duration">{t("review.durationFromFile")}</Label>
           <Input
             id="duration"
             name="duration"
@@ -345,11 +358,11 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
       </div>
 
       <div className="separator my-1" />
-      <p className="text-xs text-muted-foreground uppercase tracking-wider">Dati Cardio & Dislivello (dal file)</p>
+      <p className="text-xs text-muted-foreground uppercase tracking-wider">{t("review.cardioSection")}</p>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2.5">
-          <Label htmlFor="avg_hr">HR media</Label>
+          <Label htmlFor="avg_hr">{tf("avgHr")}</Label>
           <Input
             id="avg_hr"
             name="avg_hr"
@@ -363,7 +376,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
           />
         </div>
         <div className="grid gap-2.5">
-          <Label htmlFor="max_hr">HR max</Label>
+          <Label htmlFor="max_hr">{tf("maxHr")}</Label>
           <Input
             id="max_hr"
             name="max_hr"
@@ -380,7 +393,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2.5">
-          <Label htmlFor="elevation_gain_m">Dislivello + (m)</Label>
+          <Label htmlFor="elevation_gain_m">{tf("elevation")}</Label>
           <Input
             id="elevation_gain_m"
             name="elevation_gain_m"
@@ -394,7 +407,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
           />
         </div>
         <div className="grid gap-2.5">
-          <Label htmlFor="rpe">RPE (Sforzo 1-10)</Label>
+          <Label htmlFor="rpe">{t("review.rpe")}</Label>
           <Input
             id="rpe"
             name="rpe"
@@ -418,10 +431,10 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
 
       <div className="flex gap-3 mt-2">
         <Button type="button" variant="outline" onClick={onCancel} className="flex-1" disabled={pending}>
-          Indietro
+          {t("review.back")}
         </Button>
         <Button type="submit" className="flex-1" disabled={pending}>
-          {pending ? "Salvo..." : isRunning ? "Salva corsa" : "Salva attività"}
+          {pending ? t("review.saving") : isRunning ? t("saveRun") : t("saveActivity")}
         </Button>
       </div>
     </form>
@@ -429,6 +442,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
 }
 
 function GpxUploadForm() {
+  const t = useTranslations("activities.new.file");
   const [parsedInput, setParsedInput] = useState<ActivityInput | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
@@ -439,7 +453,7 @@ function GpxUploadForm() {
     const ext = file.name.split(".").pop()?.toLowerCase();
     if (ext === "fit") return parseFit(await file.arrayBuffer());
     if (ext === "gpx") return parseGpx(await file.text());
-    throw new Error("Formato non supportato: usa file .gpx o .fit.");
+    throw new Error(t("unsupported"));
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -452,7 +466,7 @@ function GpxUploadForm() {
 
     try {
       if (files.length > 2) {
-        throw new Error("Massimo due file: un .gpx e un .fit della stessa attività.");
+        throw new Error(t("tooMany"));
       }
       let input: ActivityInput;
       if (files.length === 2) {
@@ -462,9 +476,7 @@ function GpxUploadForm() {
         const fitFile = files[exts.indexOf("fit")];
         const gpxFile = files[exts.indexOf("gpx")];
         if (!fitFile || !gpxFile) {
-          throw new Error(
-            "Con due file servono un .gpx e un .fit della stessa attività.",
-          );
+          throw new Error(t("needPair"));
         }
         input = mergeActivityInputs(
           await parseOne(fitFile),
@@ -475,7 +487,7 @@ function GpxUploadForm() {
       }
       setParsedInput(input);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore durante il parsing del file.");
+      setError(err instanceof Error ? err.message : t("parseFailed"));
       setParsedInput(null);
     } finally {
       setIsParsing(false);
@@ -498,7 +510,7 @@ function GpxUploadForm() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
-        <Label className="text-sm font-medium">File GPX o FIT</Label>
+        <Label className="text-sm font-medium">{t("label")}</Label>
         <input
           ref={inputRef}
           type="file"
@@ -515,16 +527,13 @@ function GpxUploadForm() {
         >
           <Upload size={32} className="text-muted-foreground" />
           <span className="text-sm text-muted-foreground font-medium">
-            {isParsing ? "Analisi file in corso..." : fileName ? fileName : "Tocca per scegliere file .gpx e/o .fit"}
+            {isParsing ? t("parsing") : fileName ? fileName : t("choose")}
           </span>
         </button>
         <p className="text-xs text-muted-foreground text-center">
-          File .gpx o .fit esportati da Strava, Garmin, Coros o Zepp. Puoi
-          selezionare anche entrambi (GPX + FIT) della stessa attività: i dati
-          vengono combinati.
+          {t("helpSources")}
           <br />
-          Lo sport viene riconosciuto dal file; passo, zone HR, split, cadenza e
-          deriva cardiaca sono calcolati in automatico.
+          {t("helpAuto")}
         </p>
       </div>
 
@@ -540,6 +549,7 @@ function GpxUploadForm() {
 // ── Wrapper con toggle ────────────────────────────────────────────────────
 
 export function ActivityForm() {
+  const t = useTranslations("activities.new.mode");
   const [mode, setMode] = useState<"manual" | "gpx">("manual");
 
   return (
@@ -556,7 +566,7 @@ export function ActivityForm() {
           }`}
         >
           <PenLine size={15} />
-          Manuale
+          {t("manual")}
         </button>
         <button
           type="button"
@@ -568,7 +578,7 @@ export function ActivityForm() {
           }`}
         >
           <Upload size={15} />
-          Da file (GPX/FIT)
+          {t("file")}
         </button>
       </div>
 

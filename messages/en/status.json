@@ -1,0 +1,76 @@
+{
+  "sync": {
+    "issue": {
+      "intervalsErrorSince": "Intervals.icu isn't syncing · last data from {date}",
+      "intervalsError": "Intervals.icu isn't syncing",
+      "watchStaleSince": "Your watch hasn't synced since {date}",
+      "watchNeverSynced": "Your watch has never synced",
+      "healthStaleSince": "Health data last updated {date}",
+      "healthNone": "No health data received"
+    },
+    "push": {
+      "intervalsError": {
+        "title": "Intervals.icu isn't syncing",
+        "bodyFallback": "Open settings to reconnect it."
+      },
+      "watchStale": {
+        "title": "Watch not syncing",
+        "bodySince": "No sync since {date}. Open the Zepp app on your phone.",
+        "bodyNever": "No sync yet. Open the Zepp app on your phone."
+      },
+      "healthStale": {
+        "title": "Health data stalled",
+        "bodySince": "Last data from {date}: the coach is working without sleep and recovery.",
+        "bodyNone": "No health data has arrived yet."
+      }
+    }
+  },
+  "refresh": {
+    "offline": "No connection. Try again.",
+    "stillSyncing": "Your watch is still syncing",
+    "newActivities": "{count, plural, one {# new activity} other {# new activities}}",
+    "updated": "Up to date"
+  },
+  "aiJob": {
+    "stale": "Analysis interrupted. Try again.",
+    "tooSlow": "The AI is taking too long. Try again shortly.",
+    "notShown": "Reply received, but it couldn't be shown. Try again.",
+    "failed": "AI request failed. Try again.",
+    "missing": "AI request not found. Try again.",
+    "notStarted": "Request not started. Try again."
+  },
+  "ai": {
+    "openrouterInvalidKey": "Invalid OpenRouter key: check it in settings.",
+    "openrouterNoCredit": "OpenRouter credit used up: top up your credit or switch to Gemini.",
+    "openrouterModelUnavailable": "OpenRouter model unavailable: pick another one in settings.",
+    "openrouterRateLimit": "Too many requests to OpenRouter: try again shortly or change model.",
+    "openrouterBadFormat": "The OpenRouter model didn't reply in the expected format, even on the second attempt. Try again or use another model.",
+    "openrouterTimeout": "The model took too long to reply. Try again, or pick a faster model for the chat.",
+    "openrouterFailed": "OpenRouter request failed. Try again shortly.",
+    "invalidResponse": "The coach gave an unreadable reply, even on the second attempt. Try again.",
+    "geminiTimeout": "The AI is taking too long and the request timed out. Try again shortly.",
+    "geminiQuota": "Gemini model quota used up. Pick another model in settings or wait for it to reset.",
+    "failed": "AI request failed. Try again shortly."
+  },
+  "intervals": {
+    "source": {
+      "laps": "from your watch laps",
+      "notes": "from your note",
+      "plan": "from the plan",
+      "auto": "detected automatically"
+    },
+    "plannedContinuous": {
+      "long": "a long run",
+      "easy": "an easy run",
+      "recovery": "a recovery run"
+    }
+  },
+  "manifest": {
+    "description": "Your personal running coach. Track, improve, run.",
+    "shortcuts": {
+      "newRun": { "name": "New run", "description": "Log or import a run" },
+      "plan": { "name": "Plan", "description": "Your training plan" },
+      "coach": { "name": "Coach", "description": "Ask the coach" }
+    }
+  }
+}

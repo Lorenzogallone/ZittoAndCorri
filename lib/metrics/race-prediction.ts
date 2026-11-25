@@ -1,7 +1,7 @@
 // Previsione dei tempi gara dai best effort recenti: forbice attorno a Riegel
 // (vedi predict.ts per formule e fonti). Funzioni pure.
 
-import { EFFORTS, type BestEfforts } from "./best-efforts.ts";
+import { EFFORTS, type BestEfforts, type EffortKey } from "./best-efforts.ts";
 import {
   predictRange,
   racePaceAdvice,
@@ -13,6 +13,8 @@ import {
 } from "./predict.ts";
 import { daysBetween, romeDay } from "../local-date.ts";
 import { formatDuration, formatPace } from "../format.ts";
+import { DEFAULT_LOCALE, intlLocale, type Locale, type Translator } from "../../i18n/config.ts";
+import { itMetrics } from "../italian-translator.ts";
 
 export interface PredictionReference {
   meters: number;
@@ -23,17 +25,18 @@ export interface PredictionReference {
 }
 
 export interface RacePrediction {
-  label: string;
+  /** Distanza: il nome si ricava con effortLabel(). */
+  key: EffortKey;
   meters: number;
   range: RaceRange;
 }
 
 /** Distanze mostrate nelle previsioni. */
 export const PREDICTION_DISTANCES = [
-  { label: "5 km", meters: 5_000 },
-  { label: "10 km", meters: 10_000 },
-  { label: "Mezza", meters: 21_097 },
-  { label: "Maratona", meters: 42_195 },
+  { key: "5k", meters: 5_000 },
+  { key: "10k", meters: 10_000 },
+  { key: "half", meters: 21_097 },
+  { key: "marathon", meters: 42_195 },
 ] as const;
 
 /** Distanza minima di un best effort per fare da riferimento affidabile. */
@@ -204,40 +207,43 @@ export function predictTimeRange(
 
 export function predictRaceTimes(reference: PredictionReference, base: EnduranceBase, today: string): RacePrediction[] {
   return PREDICTION_DISTANCES.map((distance) => ({
-    label: distance.label,
+    key: distance.key,
     meters: distance.meters,
     range: predictTimeRange(reference, distance.meters, base, today),
   }));
 }
 
 // ── Testi ───────────────────────────────────────────────────────────────────
+// I testi arrivano da messages/<lingua>/metrics.json. Senza traduttore restano
+// in italiano: servono così anche al contesto del coach (prompt in italiano).
 
 /** Sotto questa copertura volume o lungo vengono citati come causa. */
 const WEAK_COVER = 0.75;
 /** Oltre questa età (giorni) il riferimento viene citato come poco recente. */
 const OLD_REFERENCE_DAYS = 42;
 
-/** «sui 5 km», «sulla mezza»: distanza con la preposizione giusta. */
-function onDistance(meters: number): string {
-  if (Math.abs(meters - 21_097) < 1) return "sulla mezza";
-  if (Math.abs(meters - 42_195) < 1) return "sulla maratona";
+/** Distanza per i messaggi: mezza e maratona hanno un nome, le altre si scrivono in km. */
+function distanceParams(meters: number, locale: Locale): { kind: "half" | "marathon" | "other"; km: string } {
   const km = meters / 1000;
-  return `sui ${Number.isInteger(km) ? km : km.toFixed(1).replace(".", ",")} km`;
+  const kind = Math.abs(meters - 21_097) < 1 ? "half" : Math.abs(meters - 42_195) < 1 ? "marathon" : "other";
+  return { kind, km: km.toLocaleString(intlLocale(locale), { maximumFractionDigits: 1 }) };
+}
+
+/** «sui 5 km», «sulla mezza»: distanza con la preposizione giusta. */
+function onDistance(meters: number, t: Translator, locale: Locale): string {
+  return t("racePrediction.distanceOn", distanceParams(meters, locale));
 }
 
 /** «i 5 km», «la mezza»: distanza con l'articolo. */
-function theDistance(meters: number): string {
-  if (Math.abs(meters - 21_097) < 1) return "la mezza";
-  if (Math.abs(meters - 42_195) < 1) return "la maratona";
-  const km = meters / 1000;
-  return `i ${Number.isInteger(km) ? km : km.toFixed(1).replace(".", ",")} km`;
+function theDistance(meters: number, t: Translator, locale: Locale): string {
+  return t("racePrediction.distanceThe", distanceParams(meters, locale));
 }
 
-function shortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "Europe/Rome" });
+function shortDate(iso: string, locale: Locale): string {
+  return new Date(iso).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "short", timeZone: "Europe/Rome" });
 }
 
-const shortDay = (date: string) => shortDate(`${date}T12:00:00Z`);
+const shortDay = (date: string, locale: Locale) => shortDate(`${date}T12:00:00Z`, locale);
 
 /**
  * Su cosa si basa la forbice e cosa la stringe o la allarga, in italiano
@@ -249,46 +255,51 @@ export function rangeExplanation(
   range: RaceRange,
   base: EnduranceBase,
   today: string,
+  t: Translator = itMetrics,
+  locale: Locale = DEFAULT_LOCALE,
 ): string {
   const longer = range.target_m > reference.meters;
   const effort = range.sources?.find((source) => source.kind === "effort");
   const pace = range.sources?.find((source) => source.kind === "threshold");
   const sentences: string[] = [];
   if (effort && pace && base.threshold) {
-    const days = base.threshold.dates.slice(0, 2).reverse().map(shortDay).join(" e del ");
-    const sessions = base.threshold.sessions === 1 ? `la seduta di soglia del ${days}` : `le sedute di soglia del ${days}`;
+    // Dalla seduta più vecchia alla più recente, al massimo due.
+    const [first = "", second = ""] = base.threshold.dates.slice(0, 2).reverse().map((date) => shortDay(date, locale));
+    const sessions = t("racePrediction.thresholdSessions", { count: base.threshold.sessions === 1 ? 1 : 2, first, second });
     sentences.push(
-      `Combina ${theDistance(reference.meters)} del ${shortDate(reference.started_at)} (da soli: ${formatDuration(effort.central_s)}) e ${sessions} a ${formatPace(base.threshold.pace_s_km)} (${formatDuration(pace.central_s)}).`,
+      t("racePrediction.combines", {
+        distance: theDistance(reference.meters, t, locale),
+        date: shortDate(reference.started_at, locale),
+        effortTime: formatDuration(effort.central_s),
+        sessions,
+        pace: formatPace(base.threshold.pace_s_km),
+        paceTime: formatDuration(pace.central_s),
+      }),
     );
     const agreement = range.agreement ?? 0;
-    sentences.push(
-      agreement >= 0.6
-        ? "I due dati concordano, quindi la forbice è più stretta."
-        : agreement > 0
-          ? "I due dati sono vicini ma non uguali."
-          : "I due dati non concordano: la forbice li contiene entrambi.",
-    );
+    sentences.push(t(agreement >= 0.6 ? "racePrediction.agreement.high" : agreement > 0 ? "racePrediction.agreement.close" : "racePrediction.agreement.low"));
   } else {
-    sentences.push(`Si basa ${onDistance(reference.meters)} del ${shortDate(reference.started_at)}.`);
+    sentences.push(t("racePrediction.basedOn", { distance: onDistance(reference.meters, t, locale), date: shortDate(reference.started_at, locale) }));
   }
   if (longer && base.durability && range.durability_factor != null && range.durability_factor !== 1) {
-    const drift = String(base.durability.drift_pct).replace(".", ",");
-    sentences.push(
-      range.durability_factor < 1
-        ? `Nei lunghi il cuore resta stabile (deriva ${drift}%): un punto a favore.`
-        : `Nei lunghi il cuore sale molto (deriva ${drift}%): la tenuta è da costruire.`,
-    );
+    const drift = base.durability.drift_pct.toLocaleString(intlLocale(locale), { maximumFractionDigits: 1 });
+    sentences.push(t(range.durability_factor < 1 ? "racePrediction.durability.steady" : "racePrediction.durability.rising", { drift }));
   }
   const causes: string[] = [];
-  if (longer && range.volume_cover < WEAK_COVER) causes.push(`il volume basso (${Math.round(base.weekly_km)} km a settimana)`);
-  if (longer && range.long_cover < WEAK_COVER) causes.push(`il lungo corto (massimo ${Math.round(base.longest_m / 1000)} km)`);
-  if (daysBetween(romeDay(reference.started_at), today) > OLD_REFERENCE_DAYS) causes.push("una prova non recente");
+  if (longer && range.volume_cover < WEAK_COVER) causes.push(t("racePrediction.causes.volume", { km: Math.round(base.weekly_km) }));
+  if (longer && range.long_cover < WEAK_COVER) causes.push(t("racePrediction.causes.longRun", { km: Math.round(base.longest_m / 1000) }));
+  if (daysBetween(romeDay(reference.started_at), today) > OLD_REFERENCE_DAYS) causes.push(t("racePrediction.causes.oldReference"));
   if (causes.length === 0) {
-    if (!pace) sentences.push("Volume e lungo sono adeguati, la forbice è stretta.");
+    if (!pace) sentences.push(t("racePrediction.adequate"));
   } else {
-    const verb = causes.length > 1 ? "tengono" : "tiene";
-    const where = longer && (range.volume_cover < WEAK_COVER || range.long_cover < WEAK_COVER) ? " verso il prudente" : "";
-    sentences.push(`${causes.join(" e ").replace(/^./, (c) => c.toUpperCase())} ${verb} larga la forbice${where}.`);
+    const joined = causes.reduce((text, cause) => t("racePrediction.causes.join", { first: text, second: cause }));
+    sentences.push(
+      t("racePrediction.causes.sentence", {
+        causes: joined.replace(/^./, (c) => c.toUpperCase()),
+        count: causes.length > 1 ? 2 : 1,
+        toward: longer && (range.volume_cover < WEAK_COVER || range.long_cover < WEAK_COVER) ? "yes" : "no",
+      }),
+    );
   }
   return sentences.join(" ");
 }
@@ -298,20 +309,20 @@ export function rangeLabel(range: RaceRange): string {
 }
 
 /** Frase onesta su obiettivo e passo di partenza. */
-export function paceAdviceText(advice: PaceAdvice, range: RaceRange, goal_s: number | null): string {
+export function paceAdviceText(advice: PaceAdvice, range: RaceRange, goal_s: number | null, t: Translator = itMetrics): string {
   const pace = `${formatPace(advice.fast_s_km).replace("/km", "")}–${formatPace(advice.slow_s_km)}`;
-  if (goal_s == null || advice.goal_fit == null) return `Passo di partenza consigliato ${pace}.`;
+  if (goal_s == null || advice.goal_fit == null) return t("racePrediction.advice.noGoal", { pace });
   const goal = formatDuration(goal_s);
   if (advice.goal_fit === "too_fast") {
-    return `L'obiettivo ${goal} oggi è fuori dalla forbice (serve meglio di ${formatDuration(range.optimistic_s)}): parti prudente a ${pace} e decidi dopo metà gara.`;
+    return t("racePrediction.advice.tooFast", { goal, best: formatDuration(range.optimistic_s), pace });
   }
   if (advice.goal_fit === "too_slow") {
-    return `L'obiettivo ${goal} è più lento anche della stima prudente: è alla portata, parti a ${pace}.`;
+    return t("racePrediction.advice.tooSlow", { goal, pace });
   }
   if (advice.goal_ambitious) {
-    return `L'obiettivo ${goal} è dentro la forbice ma sul lato veloce: serve una giornata buona. Parti a ${pace}, non a ${formatPace(advice.goal_pace_s_km)}, e accelera solo nel finale se stai bene.`;
+    return t("racePrediction.advice.ambitious", { goal, pace, goalPace: formatPace(advice.goal_pace_s_km) });
   }
-  return `L'obiettivo ${goal} è dentro la forbice: parti a ${pace}.`;
+  return t("racePrediction.advice.inside", { goal, pace });
 }
 
 export interface GoalRaceRange {
@@ -327,13 +338,15 @@ export function goalRaceRange(
   base: EnduranceBase,
   goal: { distance_m: number; target_time_s: number | null },
   today: string,
+  t: Translator = itMetrics,
+  locale: Locale = DEFAULT_LOCALE,
 ): GoalRaceRange {
   const range = predictTimeRange(reference, goal.distance_m, base, today);
   const advice = racePaceAdvice(range, goal.target_time_s);
   return {
     range,
     advice,
-    explanation: rangeExplanation(reference, range, base, today),
-    advice_text: paceAdviceText(advice, range, goal.target_time_s),
+    explanation: rangeExplanation(reference, range, base, today, t, locale),
+    advice_text: paceAdviceText(advice, range, goal.target_time_s, t),
   };
 }

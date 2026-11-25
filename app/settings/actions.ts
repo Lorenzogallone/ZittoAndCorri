@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { refreshTimeInZones } from "@/lib/ingest/zone-refresh";
 import { sanitizePrefs, type ThemePrefs } from "@/lib/theme";
@@ -36,6 +37,7 @@ export async function updateProfile(
   _prevState: ProfileFormState,
   formData: FormData,
 ): Promise<ProfileFormState> {
+  const t = await getTranslations("settings.errors");
   const supabase = await createClient();
   const {
     data: { user },
@@ -48,7 +50,7 @@ export async function updateProfile(
   const birthdate = birthdateRaw || null;
 
   if (max_hr != null && resting_hr != null && max_hr <= resting_hr) {
-    return { error: "HR max deve essere maggiore della HR a riposo." };
+    return { error: t("hrOrder") };
   }
 
   const { error } = await supabase
@@ -138,24 +140,26 @@ export async function regenerateApiKey(): Promise<{ error?: string; ok?: boolean
 export async function saveGeminiApiKey(
   apiKey: string,
 ): Promise<{ error?: string; ok?: boolean }> {
+  const t = await getTranslations("settings.errors");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const key = apiKey.trim();
-  if (key.length < 16) return { error: "La chiave Gemini non sembra valida." };
+  if (key.length < 16) return { error: t("geminiKeyInvalidFormat") };
 
   try {
     await verifyGeminiApiKey(key);
     await storeGeminiApiKey(user.id, key);
   } catch (error) {
     console.error("saveGeminiApiKey:", error instanceof Error ? error.message : error);
-    return { error: "Chiave non valida o non autorizzata per Gemini." };
+    return { error: t("geminiKeyRejected") };
   }
   return { ok: true };
 }
 
 export async function deleteGeminiApiKey(): Promise<{ error?: string; ok?: boolean }> {
+  const t = await getTranslations("settings.errors");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -163,7 +167,7 @@ export async function deleteGeminiApiKey(): Promise<{ error?: string; ok?: boole
     await removeGeminiApiKey(user.id);
   } catch (error) {
     console.error("deleteGeminiApiKey:", error instanceof Error ? error.message : error);
-    return { error: "Impossibile rimuovere la chiave. Riprova." };
+    return { error: t("keyRemoveFailed") };
   }
   return { ok: true };
 }
@@ -173,30 +177,29 @@ export async function deleteGeminiApiKey(): Promise<{ error?: string; ok?: boole
 /** Id del catalogo OpenRouter, es. "openai/gpt-5-mini" o "meta-llama/llama-4:free". */
 const isOpenRouterModel = (model: string) => /^[a-z0-9][\w.-]*\/[\w.:-]+$/i.test(model) && model.length <= 120;
 
-const MIGRATION_ERROR = "Per usare OpenRouter serve aggiornare il database (migrazione 0023).";
-const ROUTING_MIGRATION_ERROR = "Per scegliere un modello per la chat e uno per le analisi serve aggiornare il database (migrazione 0024).";
 const notMigrated = (error: unknown) => {
   const code = (error as { code?: string } | null)?.code;
   return code === "PGRST202" || code === "42P01" || code === "PGRST205" || code === "42703";
 };
 
 export async function saveOpenRouterKey(apiKey: string): Promise<{ error?: string; ok?: boolean }> {
+  const t = await getTranslations("settings.errors");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const key = apiKey.trim();
-  if (key.length < 16) return { error: "La chiave OpenRouter non sembra valida." };
+  if (key.length < 16) return { error: t("openrouterKeyInvalidFormat") };
   try {
     await verifyOpenRouterKey(key);
   } catch (error) {
     console.error("saveOpenRouterKey verify:", error instanceof Error ? error.message : error);
-    return { error: error instanceof OpenRouterError && error.status === 401 ? "Chiave OpenRouter non valida." : "Non riesco a verificare la chiave con OpenRouter. Riprova." };
+    return { error: error instanceof OpenRouterError && error.status === 401 ? t("openrouterKeyUnauthorized") : t("openrouterVerifyFailed") };
   }
   try {
     await storeOpenRouterApiKey(user.id, key);
   } catch (error) {
     console.error("saveOpenRouterKey:", error instanceof Error ? error.message : error);
-    return { error: notMigrated(error) ? MIGRATION_ERROR : "Impossibile salvare la chiave. Riprova." };
+    return { error: notMigrated(error) ? t("openrouterMigration") : t("keySaveFailed") };
   }
   revalidatePath("/settings");
   revalidatePath("/");
@@ -204,6 +207,7 @@ export async function saveOpenRouterKey(apiKey: string): Promise<{ error?: strin
 }
 
 export async function deleteOpenRouterKey(): Promise<{ error?: string; ok?: boolean }> {
+  const t = await getTranslations("settings.errors");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -213,7 +217,7 @@ export async function deleteOpenRouterKey(): Promise<{ error?: string; ok?: bool
     await setAiProvider(user.id, "gemini");
   } catch (error) {
     console.error("deleteOpenRouterKey:", error instanceof Error ? error.message : error);
-    return { error: "Impossibile rimuovere la chiave. Riprova." };
+    return { error: t("keyRemoveFailed") };
   }
   revalidatePath("/");
   return { ok: true };
@@ -221,10 +225,11 @@ export async function deleteOpenRouterKey(): Promise<{ error?: string; ok?: bool
 
 /** Provider e modello predefiniti per la chat del coach o per l'analisi delle corse. */
 export async function saveAiRoute(task: AiTask, provider: AiProvider, model: string): Promise<{ error?: string; ok?: boolean }> {
-  if (task !== "chat" && task !== "analysis") return { error: "Compito non valido." };
-  if (provider !== "gemini" && provider !== "openrouter") return { error: "Provider non valido." };
+  const t = await getTranslations("settings.errors");
+  if (task !== "chat" && task !== "analysis") return { error: t("invalidTask") };
+  if (provider !== "gemini" && provider !== "openrouter") return { error: t("invalidProvider") };
   const chosen = model.trim();
-  if (provider === "gemini" ? !isGeminiModelId(chosen) : !isOpenRouterModel(chosen)) return { error: "Modello non valido." };
+  if (provider === "gemini" ? !isGeminiModelId(chosen) : !isOpenRouterModel(chosen)) return { error: t("invalidModel") };
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -233,24 +238,25 @@ export async function saveAiRoute(task: AiTask, provider: AiProvider, model: str
     .select("user_id")
     .eq("user_id", user.id)
     .maybeSingle<{ user_id: string }>();
-  if (credentialError) return { error: notMigrated(credentialError) ? MIGRATION_ERROR : "Impossibile salvare il modello. Riprova." };
-  if (!credential) return { error: `Aggiungi prima la chiave ${provider === "gemini" ? "Gemini" : "OpenRouter"}.` };
+  if (credentialError) return { error: notMigrated(credentialError) ? t("openrouterMigration") : t("modelSaveFailed") };
+  if (!credential) return { error: t("addKeyFirst", { provider: provider === "gemini" ? "Gemini" : "OpenRouter" }) };
   try {
     await setAiRoute(user.id, task, { provider, [provider]: chosen });
   } catch (error) {
     console.error("saveAiRoute:", error instanceof Error ? error.message : error);
-    return { error: notMigrated(error) ? ROUTING_MIGRATION_ERROR : "Impossibile salvare il modello. Riprova." };
+    return { error: notMigrated(error) ? t("routingMigration") : t("modelSaveFailed") };
   }
   revalidatePath("/");
   return { ok: true };
 }
 
 export async function setHeatAdjust(enabled: boolean): Promise<{ error?: string }> {
+  const t = await getTranslations("settings.errors");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { error } = await supabase.from("profiles").update({ heat_adjust: Boolean(enabled) }).eq("id", user.id);
-  if (error) return { error: "Impostazione non salvata." };
+  if (error) return { error: t("heatNotSaved") };
   revalidatePath("/", "layout");
   return {};
 }

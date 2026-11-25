@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import type { Translator } from "@/i18n/config";
 import { refreshAppData, type RefreshResult } from "@/app/actions/refresh";
 
 /** Evento sul window a ricarica fatta: chi fa polling (analisi AI) riparte subito. */
@@ -32,6 +34,7 @@ const MIN_SPIN_MS = 600;
 export function useAppRefresh() {
   const state = useSyncExternalStore(subscribe, () => snapshot, () => serverSnapshot);
   const [transitionPending, startTransition] = useTransition();
+  const t = useTranslations("status");
 
   const refresh = useCallback(() => {
     if (snapshot.busy) return;
@@ -42,26 +45,25 @@ export function useAppRefresh() {
       try {
         result = await refreshAppData();
       } catch {
-        result = { imported: 0, error: "Connessione assente. Riprova." };
+        result = { imported: 0, error: t("refresh.offline") };
       }
       const wait = MIN_SPIN_MS - (Date.now() - started);
       if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
       window.dispatchEvent(new Event(APP_REFRESH_EVENT));
       set({ busy: false, result });
     });
-  }, []);
+  }, [t]);
 
   return { refreshing: state.busy || transitionPending, result: state.result, refresh };
 }
 
-/** Riga breve sull'esito: null quando non c'è niente da dire. */
-export function refreshMessage(result: RefreshResult | null): string | null {
+/** Riga breve sull'esito: null quando non c'è niente da dire. `t` è legato al namespace "status". */
+export function refreshMessage(result: RefreshResult | null, t: Translator): string | null {
   if (!result) return null;
   if (result.error) return result.error;
-  if (result.stillSyncing) return "L'orologio sta ancora sincronizzando";
-  if (result.imported === 1) return "1 attività nuova";
-  if (result.imported > 1) return `${result.imported} attività nuove`;
-  return "Aggiornato";
+  if (result.stillSyncing) return t("refresh.stillSyncing");
+  if (result.imported >= 1) return t("refresh.newActivities", { count: result.imported });
+  return t("refresh.updated");
 }
 
 /**

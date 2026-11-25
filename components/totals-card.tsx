@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocale, type Locale } from "@/i18n/config";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Footprints, Mountain, Route, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Segmented } from "@/components/ui/segmented";
 import { Stat } from "@/components/stat";
 import type { PeriodTotals, TotalsPeriodKey } from "@/lib/metrics/totals";
 
-const km = (meters: number, digits = 1) =>
-  (meters / 1000).toLocaleString("it-IT", { minimumFractionDigits: 0, maximumFractionDigits: digits });
+const km = (meters: number, locale: Locale, digits = 1) =>
+  (meters / 1000).toLocaleString(intlLocale(locale), { minimumFractionDigits: 0, maximumFractionDigits: digits });
 
 function hours(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -16,27 +18,29 @@ function hours(seconds: number): string {
   return h > 0 ? `${h} h ${String(m).padStart(2, "0")}′` : `${m}′`;
 }
 
-function comparison(period: PeriodTotals): { text: string; trend: "up" | "down" | "flat" } | null {
+function comparison(period: PeriodTotals, t: ReturnType<typeof useTranslations>, locale: Locale): { text: string; trend: "up" | "down" | "flat" } | null {
   if (period.previous_m == null || period.previous_label == null) return null;
   if (period.previous_m === 0 && period.running_m === 0) return null;
   const diff = period.running_m - period.previous_m;
-  if (Math.abs(diff) < 500) return { text: `In linea rispetto ${period.previous_label}`, trend: "flat" };
-  return { text: `${diff > 0 ? "+" : "−"}${km(Math.abs(diff))} km rispetto ${period.previous_label}`, trend: diff > 0 ? "up" : "down" };
+  if (Math.abs(diff) < 500) return { text: t("inLine", { period: period.previous_label }), trend: "flat" };
+  return { text: t("difference", { value: `${diff > 0 ? "+" : "−"}${km(Math.abs(diff), locale)}`, period: period.previous_label }), trend: diff > 0 ? "up" : "down" };
 }
 
 const TREND_ICONS = { up: ArrowUpRight, down: ArrowDownRight, flat: ArrowRight } as const;
 
 /** Quanto hai corso: settimana, mese, anno e da sempre. */
 export function TotalsCard({ periods, initial = "month", className }: { periods: PeriodTotals[]; initial?: TotalsPeriodKey; className?: string }) {
+  const t = useTranslations("activities.totals");
+  const locale = useLocale() as Locale;
   const [active, setActive] = useState<TotalsPeriodKey>(initial);
   const period = periods.find((candidate) => candidate.key === active) ?? periods[0];
-  const note = comparison(period);
+  const note = comparison(period, t, locale);
   const TrendIcon = TREND_ICONS[note?.trend ?? "flat"];
   return (
     <section className={cn("surface mb-8 p-4", className)}>
       <Segmented
         size="sm"
-        ariaLabel="Periodo"
+        ariaLabel={t("periodAria")}
         options={periods.map(({ key, label }) => ({ key, label }))}
         value={active}
         onChange={setActive}
@@ -45,7 +49,7 @@ export function TotalsCard({ periods, initial = "month", className }: { periods:
       <div className="mt-5" role="tabpanel">
         <p className="eyebrow">{period.caption}</p>
         <p className="mt-1 flex items-baseline gap-1.5">
-          <span className="font-display text-display font-bold tabular-nums tracking-tight">{km(period.running_m)}</span>
+          <span className="font-display text-display font-bold tabular-nums tracking-tight">{km(period.running_m, locale)}</span>
           <span className="text-heading font-medium text-muted-foreground">km</span>
         </p>
         {note && (
@@ -62,14 +66,14 @@ export function TotalsCard({ periods, initial = "month", className }: { periods:
 
         {/* Due colonne: su telefono quattro tagliavano le etichette con l'icona. */}
         <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 border-t border-border/60 pt-4">
-          <Stat size="sm" icon={Footprints} label="Uscite" value={String(period.runs)} />
-          <Stat size="sm" icon={Timer} label="Tempo" value={hours(period.seconds)} />
-          <Stat size="sm" icon={Mountain} label="Dislivello" value={Math.round(period.elevation_m).toLocaleString("it-IT")} unit="m" />
-          <Stat size="sm" icon={Route} label="Più lunga" value={km(period.longest_m)} unit="km" />
+          <Stat size="sm" icon={Footprints} label={t("runs")} value={String(period.runs)} />
+          <Stat size="sm" icon={Timer} label={t("time")} value={hours(period.seconds)} />
+          <Stat size="sm" icon={Mountain} label={t("elevation")} value={Math.round(period.elevation_m).toLocaleString(intlLocale(locale))} unit="m" />
+          <Stat size="sm" icon={Route} label={t("longest")} value={km(period.longest_m, locale)} unit="km" />
         </div>
         {period.walking_m > 0 && (
           <p className="mt-3 text-caption text-muted-foreground">
-            Più {km(period.walking_m)} km di camminate ed escursioni
+            {t("walking", { km: km(period.walking_m, locale) })}
           </p>
         )}
       </div>

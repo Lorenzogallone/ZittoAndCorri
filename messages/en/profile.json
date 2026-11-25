@@ -1,0 +1,164 @@
+{
+  "title": "Profile",
+  "view": {
+    "settingsAria": "Open settings",
+    "settings": "Settings",
+    "emptyHint": "Once you log your first runs, your fitness trend, weekly km, race predictions and records show up here.",
+    "trends": {
+      "title": "Trends",
+      "form": "Fitness and fatigue",
+      "formHint": "Fitness: training over the last 6 weeks. Fatigue: training over the last 7 days.",
+      "km": "Weekly km"
+    },
+    "performance": {
+      "title": "Performance",
+      "predictions": "Predictions",
+      "records": "Records"
+    },
+    "pace": "Pace in speed sessions",
+    "goal": {
+      "eyebrow": "Goal",
+      "unset": "Not set",
+      "inTime": "in {time}",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "days": "{days} d"
+    }
+  },
+  "page": {
+    "fallbackName": "Runner",
+    "formTrend": {
+      "up": "Your fitness is up compared with a month ago.",
+      "down": "Your fitness is down compared with a month ago.",
+      "stable": "Your fitness is stable compared with a month ago."
+    },
+    "highlights": {
+      "vo2max": "VO₂max",
+      "restingHr": "Resting HR",
+      "load": "Load",
+      "sleep": "Sleep",
+      "loadCalibrating": "7d · calibrating",
+      "loadAbove": "7d · above average",
+      "loadBelow": "7d · below average",
+      "loadAverage": "7d · about average",
+      "sleepRecent": "2-week average",
+      "sleepLatest": "last night"
+    }
+  },
+  "loadStates": {
+    "calibrating": { "label": "Calibrating", "text": "A few more runs and the reading becomes stable." },
+    "fresh": { "label": "Well recovered", "text": "You have margin: a good time for a hard session." },
+    "balanced": { "label": "Balanced", "text": "Fitness and fatigue are in balance." },
+    "strained": { "label": "Carrying some load", "text": "Recent work is heavy: look after your recovery." },
+    "fatigued": { "label": "Fatigued", "text": "Better a light day or a rest day." }
+  },
+  "formStatus": {
+    "title": "Fitness status",
+    "readinessStates": {
+      "intense": { "label": "Ready to push", "text": "Your recovery and sleep say you can handle a hard session." },
+      "ready": { "label": "Ready", "text": "Good conditions to train as planned." },
+      "moderate": { "label": "Moderate load", "text": "Train, but don't force it." },
+      "recovery": { "label": "Recovery advised", "text": "Something easy is better today." },
+      "rest": { "label": "Rest", "text": "Rest or very light activity." }
+    },
+    "readinessAria": "Readiness {value} out of 100",
+    "syncToday": "today at {time}",
+    "syncYesterday": "yesterday at {time}",
+    "syncOther": "{date} at {time}",
+    "metrics": {
+      "sleep": "Sleep",
+      "restingHr": "Resting HR",
+      "hrv": "HRV",
+      "vo2max": "VO₂max"
+    },
+    "empty": {
+      "text": "Log your first runs to see how you're doing.",
+      "import": "Import a run"
+    },
+    "trendLink": "Trend",
+    "stale": "Your watch hasn't synced in a few days, so for now only your activities are counted.",
+    "lastSync": "Last watch sync: {when}"
+  },
+  "trend": {
+    "better": "Improving",
+    "worse": "Declining",
+    "stable": "Stable",
+    "up": "Rising",
+    "down": "Falling"
+  },
+  "pace": {
+    "status": {
+      "on_target": "On target",
+      "fast": "Faster",
+      "slow": "Slower"
+    },
+    "deviationOk": "ok",
+    "prompt": {
+      "fast": "In my last speed sessions I've been consistently faster than the planned paces. Can you update the paces in my plan?",
+      "slow": "In my last speed sessions I've been struggling to hold the planned paces. Can you review them?"
+    },
+    "legend": "Seconds per km versus planned pace: − faster, + slower.",
+    "trendText": {
+      "fast": "In your recent speed sessions you've been consistently faster than planned: it may be time to update your paces.",
+      "slow": "In your recent speed sessions you've been struggling to hold the planned paces: better to review them."
+    },
+    "askCoach": "Ask the coach →"
+  },
+  "predictions": {
+    "goalRange": "<race>{name}</race>: between <num>{optimistic}</num> and <num>{prudent}</num>, most likely <num>{central}</num>.",
+    "how": "How I predict it"
+  },
+  "forma": {
+    "title": "Fitness status",
+    "back": "Profile",
+    "summary": {
+      "eyebrow": "How your body is changing",
+      "better": "<good>Improving</good> {list}.",
+      "worse": "<bad>Declining</bad> {list}.",
+      "none": "No clear change over the last 4 weeks, or more data is needed to see it.",
+      "comparison": "Comparison between the last 2 weeks and the 2 weeks a month ago (the gray bands in the charts).",
+      "labels": {
+        "vo2max": "VO₂max",
+        "efficiency": "pace at the same heart rate",
+        "fitness": "fitness",
+        "restingHr": "resting HR",
+        "hrv": "HRV",
+        "sleep": "hours of sleep",
+        "sleepDeep": "deep sleep",
+        "stress": "stress"
+      }
+    },
+    "groups": {
+      "aerobic": "Aerobic engine",
+      "recovery": "Recovery",
+      "sleep": "Sleep",
+      "dailyLoad": "Watch load and daily activity"
+    },
+    "metric": {
+      "latestWithDate": "{label}, {date}",
+      "latestData": "Latest reading from {date}",
+      "about": "What is this?"
+    },
+    "load": {
+      "title": "Load",
+      "form": "Fitness (CTL)",
+      "fatigue": "Fatigue (ATL)",
+      "freshness": "Freshness (TSB)",
+      "load7": "7-day load",
+      "calibrating": "7-day load: you still need 3 weeks of history to compare it with your average.",
+      "above": "7-day load is above your average ({percent}%).",
+      "below": "7-day load is below your average ({percent}%).",
+      "average": "7-day load is around your average.",
+      "formSentence": "Fitness: {sentence}",
+      "chartHint": "Fitness: training over the last 6 weeks. Fatigue: training over the last 7 days. Freshness = fitness − fatigue."
+    },
+    "noWatch": "Connect your watch (Zepp app or Intervals.icu) in settings to see VO₂max, sleep, resting HR, HRV and stress.",
+    "notes": {
+      "title": "Good to know",
+      "zepp": "Zepp app data arrives when you sync your watch: days without a sync stay empty instead of being estimated.",
+      "hrv": "HRV only comes from Intervals.icu: the watch app can't read it.",
+      "missing": "Zepp recovery time, REM and light sleep phases and skin temperature are not shown here: the first has a unit not yet verified, and the watch app doesn't send the others.",
+      "metersPerBeat": "Meters per beat: only easy runs and long runs of at least 20 minutes, without intervals, threshold or tests; heat and hills lower it."
+    }
+  }
+}

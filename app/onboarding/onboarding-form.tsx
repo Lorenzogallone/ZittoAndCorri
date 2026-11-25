@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Activity, CalendarDays, ChevronLeft, ChevronRight, MessageCircle, Watch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { TextField } from "@/components/ui/text-field";
 import { Label } from "@/components/ui/label";
 import { Segmented } from "@/components/ui/segmented";
 import { RunnerMark } from "@/components/runner-mark";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { cn } from "@/lib/utils";
 import { handleEnterKeyHint } from "@/lib/form-keys";
 import { DECIMAL_PATTERN, DURATION_PATTERN } from "@/lib/format";
@@ -17,11 +19,11 @@ const initialState: OnboardingState = {};
 
 // Stesse distanze dei form obiettivo (app/goals/goal-fields.tsx), in km.
 const DISTANCES = [
-  { key: "5", label: "5 km", km: "5" },
-  { key: "10", label: "10 km", km: "10" },
-  { key: "half", label: "Mezza", km: "21.0975" },
-  { key: "full", label: "Maratona", km: "42.195" },
-  { key: "other", label: "Altro", km: "" },
+  { key: "5", km: "5" },
+  { key: "10", km: "10" },
+  { key: "half", km: "21.0975" },
+  { key: "full", km: "42.195" },
+  { key: "other", km: "" },
 ] as const;
 
 type DistanceKey = (typeof DISTANCES)[number]["key"];
@@ -31,18 +33,14 @@ const STEPS = 5;
 type GoalKind = "race" | "improve" | "none";
 type Provider = "gemini" | "openrouter";
 
-const GOAL_OPTIONS: Array<{ key: GoalKind; title: string; text: string }> = [
-  { key: "race", title: "Preparare una gara", text: "Hai una data: il piano punta a quel giorno." },
-  { key: "improve", title: "Migliorare su una distanza", text: "Nessuna gara in vista: lavori per correre meglio sui 5 km, sui 10 km…" },
-  { key: "none", title: "Solo allenarmi", text: "Nessun obiettivo per ora. Potrai aggiungerlo quando vuoi." },
-];
+const GOAL_KINDS: GoalKind[] = ["race", "improve", "none"];
 
 const INTRO = [
-  { icon: MessageCircle, title: "Coach AI", text: "Una chat con un coach che conosce i tuoi allenamenti e propone modifiche al piano, sempre da approvare." },
-  { icon: CalendarDays, title: "Piano su misura", text: "Quattordici giorni di allenamenti che si adattano a come stai e al meteo." },
-  { icon: Activity, title: "Corse e progressi", text: "Importa le corse da file o dall'orologio: analisi, forma, previsioni e record." },
-  { icon: Watch, title: "Il tuo orologio", text: "I dati di sonno e recupero arrivano dall'orologio e il piano ci torna come allenamenti guidati." },
-];
+  { icon: MessageCircle, key: "coach" },
+  { icon: CalendarDays, key: "plan" },
+  { icon: Activity, key: "runs" },
+  { icon: Watch, key: "watch" },
+] as const;
 
 export interface ModelSuggestion {
   id: string;
@@ -52,6 +50,8 @@ export interface ModelSuggestion {
 }
 
 export function OnboardingForm({ modelSuggestions }: { modelSuggestions: ModelSuggestion[] }) {
+  const t = useTranslations("onboarding");
+  const tc = useTranslations("common");
   const [step, setStep] = useState(0);
   const [goalKind, setGoalKind] = useState<GoalKind>("none");
   const [provider, setProvider] = useState<Provider>("gemini");
@@ -81,12 +81,12 @@ export function OnboardingForm({ modelSuggestions }: { modelSuggestions: ModelSu
       <div className="flex h-9 items-center justify-between">
         {step > 0 ? (
           <Button type="button" variant="ghost" size="sm" className="-ml-3" onClick={() => setStep((value) => value - 1)}>
-            <ChevronLeft /> Indietro
+            <ChevronLeft /> {tc("back")}
           </Button>
         ) : (
           <span />
         )}
-        <p className="eyebrow tabular-nums">Passo {step + 1} di {STEPS}</p>
+        <p className="eyebrow tabular-nums">{t("stepCounter", { current: step + 1, total: STEPS })}</p>
       </div>
 
       <div className="mb-8 mt-3 flex gap-1.5" aria-hidden="true">
@@ -106,65 +106,66 @@ export function OnboardingForm({ modelSuggestions }: { modelSuggestions: ModelSu
           <RunnerMark size={48} cutout="var(--hero)" node="var(--hero-foreground)" />
         </span>
         <div>
-          <h1 className="font-display text-display font-bold tracking-tight">Benvenuto in Zitto e Corri</h1>
-          <p className="mt-2 text-body text-muted-foreground">Il tuo coach di corsa sempre in tasca. Ti servono un paio di minuti per configurarlo su di te; tutto si può cambiare dopo dalle impostazioni.</p>
+          <h1 className="font-display text-display font-bold tracking-tight">{t("welcome.title")}</h1>
+          <p className="mt-2 text-body text-muted-foreground">{t("welcome.intro")}</p>
         </div>
         <ul className="space-y-4">
-          {INTRO.map(({ icon: Icon, title, text }) => (
-            <li key={title} className="flex gap-3">
+          {INTRO.map(({ icon: Icon, key }) => (
+            <li key={key} className="flex gap-3">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-primary"><Icon size={18} aria-hidden="true" /></span>
               <div>
-                <p className="text-body font-semibold">{title}</p>
-                <p className="text-caption text-muted-foreground">{text}</p>
+                <p className="text-body font-semibold">{t(`welcome.features.${key}.title`)}</p>
+                <p className="text-caption text-muted-foreground">{t(`welcome.features.${key}.text`)}</p>
               </div>
             </li>
           ))}
         </ul>
+        <LanguageSwitcher />
       </div>
 
       <div className={step === 1 ? "animate-enter space-y-5" : "hidden"}>
         <div>
-          <h1 className="font-display text-display font-bold tracking-tight">Conosciamoci meglio</h1>
-          <p className="mt-2 text-body text-muted-foreground">Questi dati rendono affidabili zone e suggerimenti. Puoi lasciare vuoto ciò che non conosci.</p>
+          <h1 className="font-display text-display font-bold tracking-tight">{t("profile.title")}</h1>
+          <p className="mt-2 text-body text-muted-foreground">{t("profile.intro")}</p>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2"><Label htmlFor="max_hr">HR massima</Label><Input id="max_hr" name="max_hr" type="number" inputMode="numeric" enterKeyHint="next" autoComplete="off" min="100" max="240" placeholder="190" /></div>
-          <div className="space-y-2"><Label htmlFor="resting_hr">HR a riposo</Label><Input id="resting_hr" name="resting_hr" type="number" inputMode="numeric" enterKeyHint="next" autoComplete="off" min="30" max="120" placeholder="50" /></div>
+          <div className="space-y-2"><Label htmlFor="max_hr">{t("profile.maxHr")}</Label><Input id="max_hr" name="max_hr" type="number" inputMode="numeric" enterKeyHint="next" autoComplete="off" min="100" max="240" placeholder="190" /></div>
+          <div className="space-y-2"><Label htmlFor="resting_hr">{t("profile.restingHr")}</Label><Input id="resting_hr" name="resting_hr" type="number" inputMode="numeric" enterKeyHint="next" autoComplete="off" min="30" max="120" placeholder="50" /></div>
         </div>
-        <div className="space-y-2"><Label htmlFor="birthdate">Data di nascita</Label><Input id="birthdate" name="birthdate" type="date" autoComplete="bday" /></div>
+        <div className="space-y-2"><Label htmlFor="birthdate">{t("profile.birthdate")}</Label><Input id="birthdate" name="birthdate" type="date" autoComplete="bday" /></div>
       </div>
 
       <div className={step === 2 ? "animate-enter space-y-5" : "hidden"}>
         <div>
-          <h1 className="font-display text-display font-bold tracking-tight">Cosa vuoi ottenere?</h1>
-          <p className="mt-2 text-body text-muted-foreground">Non serve una gara: puoi anche solo voler correre meglio. Si cambia quando vuoi.</p>
+          <h1 className="font-display text-display font-bold tracking-tight">{t("goal.title")}</h1>
+          <p className="mt-2 text-body text-muted-foreground">{t("goal.intro")}</p>
         </div>
         <input type="hidden" name="goal_kind" value={goalKind} />
-        <div role="group" aria-label="Tipo di obiettivo" className="space-y-2">
-          {GOAL_OPTIONS.map((option) => {
-            const selected = goalKind === option.key;
+        <div role="group" aria-label={t("goal.groupLabel")} className="space-y-2">
+          {GOAL_KINDS.map((kind) => {
+            const selected = goalKind === kind;
             return (
               <button
-                key={option.key}
+                key={kind}
                 type="button"
                 aria-pressed={selected}
-                onClick={() => setGoalKind(option.key)}
+                onClick={() => setGoalKind(kind)}
                 className={cn(
                   "pressable block w-full rounded-2xl px-4 py-3 text-left",
                   selected ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "bg-muted text-foreground",
                 )}
               >
-                <span className="block text-body font-semibold">{option.title}</span>
-                <span className={cn("block text-caption", selected ? "text-primary-foreground/80" : "text-muted-foreground")}>{option.text}</span>
+                <span className="block text-body font-semibold">{t(`goal.kinds.${kind}.title`)}</span>
+                <span className={cn("block text-caption", selected ? "text-primary-foreground/80" : "text-muted-foreground")}>{t(`goal.kinds.${kind}.text`)}</span>
               </button>
             );
           })}
         </div>
 
         <div className={goalKind === "none" ? "hidden" : "animate-enter space-y-5"}>
-          <div className={goalKind === "race" ? "space-y-2" : "hidden"}><Label id="race_name-label" htmlFor="race_name">Nome gara (opzionale)</Label><TextField id="race_name" aria-labelledby="race_name-label" name="race_name" singleLine enterKeyHint="next" placeholder="Es. Mezza di Roma" /></div>
+          <div className={goalKind === "race" ? "space-y-2" : "hidden"}><Label id="race_name-label" htmlFor="race_name">{t("goal.raceName")}</Label><TextField id="race_name" aria-labelledby="race_name-label" name="race_name" singleLine enterKeyHint="next" placeholder={t("goal.raceNamePlaceholder")} /></div>
           <div className="space-y-2">
-            <Label id="distance_label">Distanza</Label>
+            <Label id="distance_label">{t("goal.distance")}</Label>
             <input type="hidden" name="distance_km" value={distanceKm} />
             <div role="group" aria-labelledby="distance_label" className="flex flex-wrap gap-2">
               {DISTANCES.map((option) => {
@@ -180,14 +181,14 @@ export function OnboardingForm({ modelSuggestions }: { modelSuggestions: ModelSu
                       selected ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "bg-muted text-foreground",
                     )}
                   >
-                    {option.label}
+                    {t(`goal.distances.${option.key}`)}
                   </button>
                 );
               })}
             </div>
             {distanceChoice === "other" && (
               <div className="animate-enter pt-1">
-                <Label htmlFor="distance_other" className="sr-only">Distanza in km</Label>
+                <Label htmlFor="distance_other" className="sr-only">{t("goal.distanceOtherLabel")}</Label>
                 <Input
                   ref={otherRef}
                   id="distance_other"
@@ -196,7 +197,7 @@ export function OnboardingForm({ modelSuggestions }: { modelSuggestions: ModelSu
                   pattern={DECIMAL_PATTERN}
                   enterKeyHint="next"
                   autoComplete="off"
-                  placeholder="Distanza in km, es. 15"
+                  placeholder={t("goal.distanceOtherPlaceholder")}
                   value={distanceKm}
                   onChange={(event) => setDistanceKm(event.target.value)}
                 />
@@ -204,38 +205,38 @@ export function OnboardingForm({ modelSuggestions }: { modelSuggestions: ModelSu
             )}
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className={goalKind === "race" ? "space-y-2" : "hidden"}><Label htmlFor="race_date">Data gara</Label><Input id="race_date" name="race_date" type="date" /></div>
-            <div className={cn("space-y-2", goalKind !== "race" && "col-span-2")}><Label htmlFor="target_time">Tempo target</Label><Input id="target_time" name="target_time" type="text" inputMode="decimal" pattern={DURATION_PATTERN} enterKeyHint="done" autoComplete="off" placeholder="1:45:00" /></div>
+            <div className={goalKind === "race" ? "space-y-2" : "hidden"}><Label htmlFor="race_date">{t("goal.raceDate")}</Label><Input id="race_date" name="race_date" type="date" /></div>
+            <div className={cn("space-y-2", goalKind !== "race" && "col-span-2")}><Label htmlFor="target_time">{t("goal.targetTime")}</Label><Input id="target_time" name="target_time" type="text" inputMode="decimal" pattern={DURATION_PATTERN} enterKeyHint="done" autoComplete="off" placeholder="1:45:00" /></div>
           </div>
         </div>
       </div>
 
       <div className={step === 3 ? "animate-enter space-y-5" : "hidden"}>
         <div>
-          <h1 className="font-display text-display font-bold tracking-tight">Attiva il Coach AI</h1>
-          <p className="mt-2 text-body text-muted-foreground">Scegli con quale servizio farlo funzionare. Serve una tua chiave; puoi saltare e aggiungerla più tardi, ma senza il coach resta spento.</p>
+          <h1 className="font-display text-display font-bold tracking-tight">{t("ai.title")}</h1>
+          <p className="mt-2 text-body text-muted-foreground">{t("ai.intro")}</p>
         </div>
         <input type="hidden" name="ai_provider" value={provider} />
         <Segmented<Provider>
-          ariaLabel="Servizio AI"
+          ariaLabel={t("ai.serviceLabel")}
           value={provider}
           onChange={setProvider}
           options={[{ key: "gemini", label: "Gemini" }, { key: "openrouter", label: "OpenRouter" }]}
         />
 
         <div className={provider === "gemini" ? "space-y-4" : "hidden"}>
-          <p className="text-caption text-muted-foreground">La scelta più semplice: una chiave di Google AI Studio.</p>
-          <div className="space-y-2"><Label htmlFor="gemini_key">Chiave Gemini</Label><Input id="gemini_key" name="gemini_key" type="password" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="done" placeholder="AIza…" /></div>
-          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="inline-block text-sm font-medium text-primary">Crea una chiave in Google AI Studio ↗</a>
+          <p className="text-caption text-muted-foreground">{t("ai.geminiHint")}</p>
+          <div className="space-y-2"><Label htmlFor="gemini_key">{t("ai.geminiKey")}</Label><Input id="gemini_key" name="gemini_key" type="password" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="done" placeholder="AIza…" /></div>
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="inline-block text-sm font-medium text-primary">{t("ai.geminiLink")}</a>
         </div>
 
         <div className={provider === "openrouter" ? "space-y-4" : "hidden"}>
-          <p className="text-caption text-muted-foreground">Una sola chiave per centinaia di modelli (Claude, GPT, DeepSeek…), a consumo; alcuni sono gratuiti.</p>
-          <div className="space-y-2"><Label htmlFor="openrouter_key">Chiave OpenRouter</Label><Input id="openrouter_key" name="openrouter_key" type="password" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="next" placeholder="sk-or-…" /></div>
+          <p className="text-caption text-muted-foreground">{t("ai.openrouterHint")}</p>
+          <div className="space-y-2"><Label htmlFor="openrouter_key">{t("ai.openrouterKey")}</Label><Input id="openrouter_key" name="openrouter_key" type="password" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="next" placeholder="sk-or-…" /></div>
           <div className="space-y-2">
-            <Label htmlFor="openrouter_model">Modello</Label>
+            <Label htmlFor="openrouter_model">{t("ai.model")}</Label>
             {modelSuggestions.length > 0 && (
-              <div role="group" aria-label="Modelli suggeriti" className="space-y-2">
+              <div role="group" aria-label={t("ai.suggestedModels")} className="space-y-2">
                 {modelSuggestions.map((model) => {
                   const selected = openRouterModel === model.id;
                   return (
@@ -256,37 +257,37 @@ export function OnboardingForm({ modelSuggestions }: { modelSuggestions: ModelSu
                 })}
               </div>
             )}
-            <Input id="openrouter_model" name="openrouter_model" type="text" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="done" value={openRouterModel} onChange={(event) => setOpenRouterModel(event.target.value)} placeholder="Oppure scrivi l'id, es. openai/gpt-5-mini" />
+            <Input id="openrouter_model" name="openrouter_model" type="text" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="done" value={openRouterModel} onChange={(event) => setOpenRouterModel(event.target.value)} placeholder={t("ai.modelPlaceholder")} />
           </div>
-          <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer" className="inline-block text-sm font-medium text-primary">Crea una chiave su OpenRouter ↗</a>
+          <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer" className="inline-block text-sm font-medium text-primary">{t("ai.openrouterLink")}</a>
         </div>
-        <p className="text-caption text-muted-foreground">In seguito puoi cambiare servizio e scegliere modelli diversi per chat e analisi da Impostazioni → Coach.</p>
+        <p className="text-caption text-muted-foreground">{t("ai.later")}</p>
       </div>
 
       <div className={step === 4 ? "animate-enter space-y-5" : "hidden"}>
         <div>
-          <h1 className="font-display text-display font-bold tracking-tight">Il tuo orologio</h1>
-          <p className="mt-2 text-body text-muted-foreground">Con un orologio collegato il coach vede sonno, recupero e frequenza a riposo, e il piano arriva sul polso. Non è obbligatorio.</p>
+          <h1 className="font-display text-display font-bold tracking-tight">{t("watch.title")}</h1>
+          <p className="mt-2 text-body text-muted-foreground">{t("watch.intro")}</p>
         </div>
         <div className="space-y-3">
           <div className="rounded-2xl bg-muted p-4">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-body font-semibold">Amazfit</p>
-              <span className="rounded-full bg-primary px-2.5 py-0.5 text-caption font-semibold text-primary-foreground">Disponibile</span>
+              <p className="text-body font-semibold">{t("watch.amazfit.name")}</p>
+              <span className="rounded-full bg-primary px-2.5 py-0.5 text-caption font-semibold text-primary-foreground">{t("watch.amazfit.badge")}</span>
             </div>
-            <p className="mt-1 text-caption text-muted-foreground">Balance 2 e Active 3 Premium. Corse e dati salute arrivano da Intervals.icu, e il piano torna sull&apos;orologio come allenamenti guidati. L&apos;app Zepp dedicata aggiunge anche i dati di forma e, sul Balance 2, il widget «Oggi» (richiede la modalità sviluppatore di Zepp).</p>
+            <p className="mt-1 text-caption text-muted-foreground">{t("watch.amazfit.text")}</p>
           </div>
           <div className="rounded-2xl bg-muted p-4">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-body font-semibold">Garmin e altri orologi</p>
-              <span className="rounded-full bg-card px-2.5 py-0.5 text-caption font-semibold text-muted-foreground">In lavorazione</span>
+              <p className="text-body font-semibold">{t("watch.others.name")}</p>
+              <span className="rounded-full bg-card px-2.5 py-0.5 text-caption font-semibold text-muted-foreground">{t("watch.others.badge")}</span>
             </div>
-            <p className="mt-1 text-caption text-muted-foreground">Nel frattempo puoi importare le corse da file FIT o GPX, da qualsiasi orologio.</p>
+            <p className="mt-1 text-caption text-muted-foreground">{t("watch.others.text")}</p>
           </div>
         </div>
         <input type="hidden" name="after" value={after} />
-        <div role="group" aria-label="Quando collegarlo" className="flex flex-wrap gap-2">
-          {([{ key: "home", label: "Lo collego più tardi" }, { key: "links", label: "Collega ora" }] as const).map((option) => (
+        <div role="group" aria-label={t("watch.whenLabel")} className="flex flex-wrap gap-2">
+          {([{ key: "home", label: t("watch.later") }, { key: "links", label: t("watch.now") }] as const).map((option) => (
             <button
               key={option.key}
               type="button"
@@ -301,7 +302,7 @@ export function OnboardingForm({ modelSuggestions }: { modelSuggestions: ModelSu
             </button>
           ))}
         </div>
-        <p className="text-caption text-muted-foreground">Il collegamento si fa da Impostazioni → Collegamenti.</p>
+        <p className="text-caption text-muted-foreground">{t("watch.where")}</p>
       </div>
 
       {state.error && <p role="alert" className="mt-5 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>}
@@ -311,11 +312,11 @@ export function OnboardingForm({ modelSuggestions }: { modelSuggestions: ModelSu
             "Continua" del passo 2, diventato type="submit", invierebbe il form. */}
         {step < STEPS - 1 ? (
           <Button key="next" type="button" size="lg" className="w-full" onClick={() => setStep((value) => value + 1)}>
-            Continua <ChevronRight />
+            {tc("continue")} <ChevronRight />
           </Button>
         ) : (
           <Button key="submit" type="submit" size="lg" className="w-full" disabled={pending}>
-            {pending ? "Configuro…" : after === "links" ? "Vai ai collegamenti" : "Entra nell'app"}
+            {pending ? t("submit.pending") : after === "links" ? t("submit.goToLinks") : t("submit.enter")}
           </Button>
         )}
       </div>

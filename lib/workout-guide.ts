@@ -1,18 +1,15 @@
 // Traduce i workout_steps di una seduta in istruzioni leggibili: raggruppa le
 // ripetizioni ("6 × 400 m + 90\" recupero") e spiega ogni fase a parole.
+import { DEFAULT_LOCALE, type Locale, type Translator } from "../i18n/config.ts";
 import type { WorkoutStepInput, WorkoutStepVariant, WorkoutType } from "@/lib/types";
+
+// Le etichette sono nel namespace "labels": `t` è il traduttore già legato a
+// quel namespace. Le funzioni che formattano numeri prendono la lingua
+// (italiano se omessa, per testi che finiscono in prompt, database o Intervals.icu).
 
 export type StepBlock<S extends WorkoutStepInput = WorkoutStepInput> =
   | { kind: "single"; step: S }
   | { kind: "repeat"; times: number; steps: S[] };
-
-export const STEP_KIND_LABELS: Record<WorkoutStepInput["kind"], string> = {
-  warmup: "Riscaldamento",
-  work: "Tratto veloce",
-  recovery: "Recupero",
-  steady: "Corsa continua",
-  cooldown: "Defaticamento",
-};
 
 /** Variante valida per il tipo di fase: sprint sui tratti veloci, jog/walk sui recuperi. */
 export function stepVariant(step: Pick<WorkoutStepInput, "kind" | "variant">): WorkoutStepVariant | null {
@@ -21,28 +18,14 @@ export function stepVariant(step: Pick<WorkoutStepInput, "kind" | "variant">): W
   return null;
 }
 
-const VARIANT_STEP_LABELS: Record<WorkoutStepVariant, string> = {
-  sprint: "Sprint",
-  jog: "Recupero corricchiando",
-  walk: "Recupero camminando",
-};
-
 /** Nome della fase per la UI: "Sprint", "Recupero camminando"… */
-export function stepKindLabel(step: Pick<WorkoutStepInput, "kind" | "variant">): string {
+export function stepKindLabel(t: Translator, step: Pick<WorkoutStepInput, "kind" | "variant">): string {
   const variant = stepVariant(step);
-  return variant ? VARIANT_STEP_LABELS[variant] : STEP_KIND_LABELS[step.kind];
+  return variant ? t(`stepVariant.${variant}`) : t(`stepKind.${step.kind}`);
 }
 
 /** Spiegazione breve, per chi non conosce il gergo, di ogni tipo di seduta. */
-export const WORKOUT_TYPE_GUIDE: Record<WorkoutType, string> = {
-  easy: "Corsa facile: ritmo da chiacchierata, devi riuscire a parlare in frasi complete. Se il fiato si accorcia o il cuore sale oltre il limite, rallenta: andare piano qui è la cosa giusta.",
-  recovery: "Corsa di recupero: ancora più piano di una easy. Serve solo a sciogliere le gambe dopo giorni impegnativi.",
-  long: "Lungo: la corsa più lunga della settimana, sempre a ritmo facile. Conta il tempo passato sulle gambe, non la velocità.",
-  tempo: "Tempo (soglia): ritmo «comodamente impegnativo», riesci a dire solo poche parole. Tienilo costante dall'inizio alla fine del tratto, senza partire forte.",
-  interval: "Ripetute: tratti veloci alternati a recuperi. Corri ogni tratto veloce al passo indicato, poi recupera (camminando o corricchiando piano) per il tempo indicato e ripeti il blocco il numero di volte indicato. Punta a tenere lo stesso passo su tutte le ripetute: meglio la prima un filo più lenta che l'ultima in crisi.",
-  race: "Gara o test: sforzo massimo che riesci a sostenere su tutta la distanza. Riscaldati bene prima e parti controllato.",
-  cross: "Allenamento alternativo (es. palestra o altro sport): segui la durata indicata.",
-};
+export const workoutTypeGuide = (t: Translator, type: WorkoutType): string => t(`typeGuide.${type}`);
 
 function sameStep(a: WorkoutStepInput, b: WorkoutStepInput): boolean {
   return a.kind === b.kind &&
@@ -103,13 +86,13 @@ function clock(totalSeconds: number): string {
 }
 
 /** Durata o distanza di una fase in forma leggibile: 400 m, 2 km, 10', 90". */
-export function formatStepAmount(step: WorkoutStepInput): string | null {
+export function formatStepAmount(step: WorkoutStepInput, locale: Locale = DEFAULT_LOCALE): string | null {
   const value = step.completion_value;
   if (step.completion_type === "manual" || value == null) return null;
   if (step.completion_type === "distance") {
     if (value >= 1000) {
       const km = value / 1000;
-      return `${km.toFixed(2).replace(/\.?0+$/, "").replace(".", ",")} km`;
+      return `${km.toFixed(2).replace(/\.?0+$/, "").replace(".", locale === "it" ? "," : ".")} km`;
     }
     return `${value} m`;
   }
@@ -118,11 +101,11 @@ export function formatStepAmount(step: WorkoutStepInput): string | null {
   return `${Math.floor(value / 60)}'${String(value % 60).padStart(2, "0")}"`;
 }
 
-export function formatStepPace(step: WorkoutStepInput): string | null {
+export function formatStepPace(t: Translator, step: WorkoutStepInput): string | null {
   const { pace_min_s_km: min, pace_max_s_km: max } = step;
   if (min != null && max != null) return min === max ? `${clock(min)}/km` : `${clock(min)}–${clock(max)}/km`;
-  if (min != null) return `più lento di ${clock(min)}/km`;
-  if (max != null) return `non più veloce di ${clock(max)}/km`;
+  if (min != null) return t("step.slowerThan", { pace: `${clock(min)}/km` });
+  if (max != null) return t("step.notFasterThan", { pace: `${clock(max)}/km` });
   return null;
 }
 
@@ -135,27 +118,27 @@ export function formatStepHr(step: WorkoutStepInput): string | null {
 }
 
 /** Frase completa per una singola fase, es. "400 m a 4:20–4:30/km". */
-export function describeStep(step: WorkoutStepInput): string {
-  const amount = formatStepAmount(step);
-  const pace = formatStepPace(step);
+export function describeStep(t: Translator, step: WorkoutStepInput, locale: Locale = DEFAULT_LOCALE): string {
+  const amount = formatStepAmount(step, locale);
+  const pace = formatStepPace(t, step);
   const hr = formatStepHr(step);
   const variant = stepVariant(step);
-  const parts = [amount ?? "a sensazione"];
-  if (variant === "walk") parts.push("camminando");
-  if (variant === "jog") parts.push("corricchiando");
-  if (pace) parts.push(`a ${pace}`);
-  else if (variant === "sprint") parts.push("a tutta");
-  if (hr) parts.push(`(cuore ${hr})`);
+  const parts = [amount ?? t("step.byFeel")];
+  if (variant === "walk") parts.push(t("step.walking"));
+  if (variant === "jog") parts.push(t("step.jogging"));
+  if (pace) parts.push(t("step.atPace", { pace }));
+  else if (variant === "sprint") parts.push(t("step.allOut"));
+  if (hr) parts.push(t("step.heartRate", { hr }));
   return parts.join(" ");
 }
 
 /** Titolo sintetico della seduta, es. "6 × 400 m" o "3 × 8'". */
-export function workoutHeadline(steps: WorkoutStepInput[]): string | null {
+export function workoutHeadline(steps: WorkoutStepInput[], locale: Locale = DEFAULT_LOCALE): string | null {
   const repeat = groupWorkoutSteps(steps).find((block) => block.kind === "repeat");
   if (!repeat || repeat.kind !== "repeat") return null;
   const work = repeat.steps
     .filter((step) => step.kind === "work")
-    .map((step) => formatStepAmount(step) ?? step.label);
+    .map((step) => formatStepAmount(step, locale) ?? step.label);
   if (!work.length) return null;
   return `${repeat.times} × ${work.length > 1 ? `(${work.join(" + ")})` : work[0]}`;
 }

@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
+import { useTranslations } from "next-intl";
 import { Check, ChevronRight, MessageCircle, Upload, Watch, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "zc:getting-started-hidden";
-const PLAN_PROMPT = "/?prompt=Mi+prepari+il+piano+delle+prossime+due+settimane%3F";
 
 // Flag "Nascondi" in localStorage, letto come store esterno: sul server e al
 // primo render del client vale "sconosciuto" e la card non appare, così chi
@@ -46,6 +46,7 @@ interface Step {
 }
 
 function StepRow({ step }: { step: Step }) {
+  const t = useTranslations("home.gettingStarted");
   const Icon = step.icon;
   return (
     <li>
@@ -67,7 +68,7 @@ function StepRow({ step }: { step: Step }) {
           </span>
           {!step.done && <span className="block truncate text-caption text-muted-foreground">{step.hint}</span>}
         </span>
-        <span className="sr-only">{step.done ? "Fatto" : "Da fare"}</span>
+        <span className="sr-only">{step.done ? t("stateDone") : t("stateTodo")}</span>
         <ChevronRight size={16} className="shrink-0 text-muted-foreground/60" aria-hidden="true" />
       </Link>
     </li>
@@ -93,29 +94,31 @@ export function GettingStarted({
   aiReady: boolean;
   className?: string;
 }) {
+  const t = useTranslations("home.gettingStarted");
+  const planPrompt = `/?${new URLSearchParams({ prompt: t("planPrompt") })}`;
   const visibility = useSyncExternalStore(subscribe, readHidden, () => null);
   const steps: Step[] = [
     {
       key: "activity",
-      title: "Importa la prima corsa",
-      hint: "Un file dall'orologio o una corsa a mano",
+      title: t("steps.activity.title"),
+      hint: t("steps.activity.hint"),
       href: "/activities/new",
       icon: Upload,
       done: hasActivity,
     },
     {
       key: "watch",
-      title: "Collega l'orologio",
-      hint: "Intervals.icu o Zepp: le corse arrivano da sole",
+      title: t("steps.watch.title"),
+      hint: t("steps.watch.hint"),
       href: "/settings?tab=links",
       icon: Watch,
       done: watchLinked,
     },
     {
       key: "plan",
-      title: "Chiedi un piano al coach",
-      hint: aiReady ? "Le prossime due settimane, sul tuo livello" : "Serve una chiave AI",
-      href: aiReady ? PLAN_PROMPT : "/settings?tab=coach",
+      title: t("steps.plan.title"),
+      hint: aiReady ? t("steps.plan.hintReady") : t("steps.plan.hintNoKey"),
+      href: aiReady ? planPrompt : "/settings?tab=coach",
       icon: MessageCircle,
       done: hasPlan,
     },
@@ -127,15 +130,15 @@ export function GettingStarted({
     <section aria-labelledby="getting-started-title" className={cn("surface animate-enter px-4 pb-1.5 pt-3", className)}>
       <div className="flex items-center justify-between gap-3">
         <p className="eyebrow truncate">
-          <span id="getting-started-title">Inizia da qui</span>
-          <span className="font-medium normal-case tracking-normal tabular-nums"> · {doneCount} di {steps.length} fatto</span>
+          <span id="getting-started-title">{t("title")}</span>
+          <span className="font-medium normal-case tracking-normal tabular-nums"> · {t("progress", { done: doneCount, total: steps.length })}</span>
         </p>
         <button
           type="button"
           onClick={hide}
           className="-my-2 -mr-2 shrink-0 rounded-full px-2 py-2 text-caption font-medium text-muted-foreground transition-colors active:text-foreground"
         >
-          Nascondi
+          {t("hide")}
         </button>
       </div>
       <ol className="mt-1 divide-y divide-border/60">

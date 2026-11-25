@@ -2,6 +2,7 @@
 
 import { after } from "next/server";
 import { refresh } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { claimIntervalsImport } from "@/lib/intervals/credentials";
 import { runIntervalsSync } from "@/lib/intervals/sync";
@@ -36,6 +37,7 @@ export async function refreshAppData(): Promise<RefreshResult> {
 }
 
 async function syncFromWatch(): Promise<RefreshResult> {
+  const t = await getTranslations("home.refresh");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { imported: 0 };
@@ -55,10 +57,10 @@ async function syncFromWatch(): Promise<RefreshResult> {
     }
     return {
       imported: result.import?.activities.imported ?? 0,
-      error: result.error ? "Sincronizzazione con l'orologio non riuscita." : undefined,
+      error: result.error ? t("syncFailed") : undefined,
     };
   } catch (error) {
     console.error("refreshAppData:", error instanceof Error ? error.message : error);
-    return { imported: 0, error: "Sincronizzazione con l'orologio non riuscita." };
+    return { imported: 0, error: t("syncFailed") };
   }
 }

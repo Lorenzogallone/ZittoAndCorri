@@ -1,0 +1,153 @@
+{
+  "countdown": {
+    "today": "Today!",
+    "days": "{count, plural, one {# day} other {# days}}"
+  },
+  "efforts": {
+    "1k": "1 km",
+    "5k": "5 km",
+    "10k": "10 km",
+    "half": "Half",
+    "marathon": "Marathon"
+  },
+  "totals": {
+    "week": {
+      "label": "Week",
+      "caption": "since Monday",
+      "previous": "last week"
+    },
+    "month": {
+      "label": "Month",
+      "caption": "{month} {year}",
+      "previous": "the same point in {month}"
+    },
+    "year": {
+      "label": "Year",
+      "previous": "the same point in {year}"
+    },
+    "all": {
+      "label": "All time",
+      "since": "since {date}"
+    }
+  },
+  "racePrediction": {
+    "distanceOn": "{kind, select, half {your half marathon} marathon {your marathon} other {your {km} km}}",
+    "distanceThe": "{kind, select, half {your half marathon} marathon {your marathon} other {your {km} km}}",
+    "combines": "Combines {distance} from {date} (alone: {effortTime}) and {sessions} at {pace} ({paceTime}).",
+    "thresholdSessions": "{count, plural, one {the threshold session on {first}} other {the threshold sessions on {first} and {second}}}",
+    "agreement": {
+      "high": "The two data points agree, so the range is narrower.",
+      "close": "The two data points are close but not identical.",
+      "low": "The two data points disagree: the range contains both."
+    },
+    "basedOn": "Based on {distance} from {date}.",
+    "durability": {
+      "steady": "On long runs your heart rate stays steady (drift {drift}%): a point in your favor.",
+      "rising": "On long runs your heart rate climbs a lot (drift {drift}%): endurance still needs building."
+    },
+    "causes": {
+      "volume": "low weekly volume ({km} km a week)",
+      "longRun": "a long run that is too short (longest {km} km)",
+      "oldReference": "a reference effort that is not recent",
+      "join": "{first} and {second}",
+      "sentence": "{causes} {count, plural, one {keeps} other {keep}} the range wide{toward, select, yes { toward the cautious end} other {}}."
+    },
+    "adequate": "Volume and long run are adequate, so the range is narrow.",
+    "advice": {
+      "noGoal": "Suggested starting pace: {pace}.",
+      "tooFast": "Your goal of {goal} is outside the range today (you would need better than {best}): start cautiously at {pace} and decide after halfway.",
+      "tooSlow": "Your goal of {goal} is slower even than the cautious estimate: it is within reach, start at {pace}.",
+      "ambitious": "Your goal of {goal} is inside the range but on the fast side: you need a good day. Start at {pace}, not at {goalPace}, and only speed up late if you feel good.",
+      "inside": "Your goal of {goal} is inside the range: start at {pace}."
+    }
+  },
+  "body": {
+    "sentence": {
+      "range": "average of the last 2 weeks {recent}, a month ago {previous}",
+      "better": "Improving: {range}.",
+      "worse": "Declining: {range}.",
+      "up": "Rising: {range}.",
+      "down": "Falling: {range}.",
+      "stable": "Stable: average of the last 2 weeks {value}, same as a month ago.",
+      "notEnough": "You need a few more weeks of data to see a trend.",
+      "noData": "No data from the watch."
+    },
+    "vo2max": {
+      "label": "VO₂max",
+      "good": "the aerobic engine is growing",
+      "bad": "often follows weeks with less running or more fatigue",
+      "about": "The watch's estimate of how much oxygen you can use at maximum effort (ml per kg per minute). The higher it is, the bigger the aerobic engine. It changes slowly: what counts is the trend over weeks."
+    },
+    "fitness": {
+      "label": "Fitness (CTL)",
+      "good": "you are building fitness",
+      "bad": "you are doing less than before",
+      "about": "Average of your training load over the last 6 weeks. It rises when you train consistently and falls when you do less."
+    },
+    "load7": {
+      "label": "7-day load",
+      "about": "Sum of your load over the last 7 days, from the duration and intensity of your activities."
+    },
+    "sleep": {
+      "label": "Sleep",
+      "good": "more hours to recover",
+      "bad": "fewer hours to recover",
+      "about": "Hours slept per night according to the watch. It is the first building block of recovery from training."
+    },
+    "sleepDeep": {
+      "label": "Deep sleep",
+      "good": "better physical recovery",
+      "bad": "shorter physical recovery",
+      "about": "Minutes of deep sleep: the phase when the body repairs muscles and tissues."
+    },
+    "sleepScore": {
+      "label": "Sleep score",
+      "about": "The watch's score for the night (0–100): it combines duration, stages and awakenings."
+    },
+    "restingHr": {
+      "label": "Resting HR",
+      "good": "a sign of adaptation",
+      "bad": "may mean fatigue, stress or an illness coming on",
+      "about": "Beats per minute at rest, measured overnight. It drops as your heart gets trained; a few extra beats for several days is a sign of fatigue, stress or illness."
+    },
+    "hrv": {
+      "label": "HRV",
+      "good": "your nervous system is recovering well",
+      "bad": "harder recovery",
+      "about": "Variation between one heartbeat and the next, measured overnight. The higher it is compared with your usual values, the better you are recovering. The trend matters, not a single number."
+    },
+    "stress": {
+      "label": "Stress",
+      "good": "calmer days",
+      "bad": "busier days",
+      "about": "Average stress of the day (0–100), estimated by the watch from heart rate and variability."
+    },
+    "spo2": {
+      "label": "SpO₂",
+      "about": "Blood oxygen measured by the watch. Normally between 95 and 100%: it only matters if it drops a lot."
+    },
+    "efficiency": {
+      "label": "Meters per beat",
+      "good": "you run faster at the same heart rate",
+      "bad": "at the same heart rate you run slower (heat and fatigue weigh in)",
+      "about": "How many meters you cover per heartbeat on easy runs: speed (meters per minute) divided by average HR. If it rises, you go faster at the same heart rate: your fitness is improving. Intervals, tests and threshold runs don't count; heat and hills lower it.",
+      "latest": "Last easy run"
+    },
+    "steps": {
+      "label": "Steps",
+      "about": "Steps for the day, running included."
+    },
+    "pai": {
+      "label": "PAI",
+      "about": "Zepp score for your activity over the last 7 days, weighted by heart rate. 100 or more is the recommended level for health."
+    },
+    "watchLoad": {
+      "label": "Watch load",
+      "about": "Training load calculated by the Zepp watch over the last 7 days."
+    },
+    "weight": {
+      "label": "Weight",
+      "about": "Weight recorded on Intervals.icu."
+    }
+  }
+}

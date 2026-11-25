@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { Switch } from "@/components/ui/switch";
 import { setHeatAdjust } from "./actions";
 
-const LABEL = "Adatta i passi al caldo";
-
 export function HeatSetting({ initial }: { initial: boolean }) {
+  const t = useTranslations("settings.heat");
   const [enabled, setEnabled] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -27,10 +27,10 @@ export function HeatSetting({ initial }: { initial: boolean }) {
     <div className="py-4">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-sm font-medium">{LABEL}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Con caldo e umidità previsti rallenta i passi delle sedute, anche sull&apos;orologio.</p>
+          <p className="text-sm font-medium">{t("label")}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t("description")}</p>
         </div>
-        <Switch checked={enabled} onCheckedChange={toggle} disabled={pending} aria-label={LABEL} />
+        <Switch checked={enabled} onCheckedChange={toggle} disabled={pending} aria-label={t("label")} />
       </div>
       {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
     </div>
