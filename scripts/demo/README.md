@@ -77,6 +77,9 @@ Requirements: Docker (or Colima), Node, and Google Chrome.
    npx supabase stop --no-backup
    ```
 
+The demo story ("today's 5 × 1 km" in the chat) is written for a **Wednesday**; the
+seed warns on other days.
+
 Run steps 2 and 4 within ten minutes of each other: the seed marks the fake
 Intervals.icu connection as just synced, and opening the app later than that would
 try to import from the real Intervals.icu API with the fake key and show a sync
@@ -90,7 +93,8 @@ error banner.
 | `coach.png` | Full-screen coach chat |
 | `plan.png` | Goal, training phases and the 14-day plan |
 | `activity.png` | Run detail with map and key numbers |
+| `splits.png` | The same run, km by km |
 | `profile.png` | Fitness status, goal, trends |
 | `predictions.png` | Race predictions and pace in speed sessions |
 | `settings.png` | Connections (Intervals.icu, Zepp) |
-| `onboarding.png` | Welcome screen |
+| `onboarding.png` | Welcome screen (optional: `capture.mjs onboarding`) |

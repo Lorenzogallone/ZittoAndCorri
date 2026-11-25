@@ -31,21 +31,23 @@ mkdirSync(outDir, { recursive: true });
 /**
  * One entry per screenshot. `who` picks the signed-in user, `scrollText` is the
  * text of an element to bring near the top of the page before shooting and
- * `click` the aria-label of a button to press first.
+ * `click` the aria-label of a button to press first. `optional` shots only run
+ * when named on the command line.
  */
 const SHOTS = [
   { name: "home", path: "/", who: "alex", settle: 1500 },
   { name: "coach", path: "/", who: "alex", settle: 1500, click: "Expand the chat to full screen" },
   { name: "plan", path: "/plan", who: "alex", settle: 1000 },
   { name: "activity", path: `/activities/${session.showcaseActivityId}`, who: "alex", settle: 5000 },
+  { name: "splits", path: `/activities/${session.showcaseActivityId}`, who: "alex", settle: 5000, scrollText: "Km by km" },
   { name: "profile", path: "/profile", who: "alex", settle: 1500 },
   { name: "predictions", path: "/profile", who: "alex", settle: 1500, scrollText: "Performance" },
   { name: "settings", path: "/settings?tab=links", who: "alex", settle: 1500 },
-  { name: "onboarding", path: "/onboarding", who: "newcomer", settle: 1200 },
+  { name: "onboarding", path: "/onboarding", who: "newcomer", settle: 1200, optional: true },
 ];
 
 const wanted = process.argv.slice(2);
-const shots = wanted.length ? SHOTS.filter((shot) => wanted.includes(shot.name)) : SHOTS;
+const shots = wanted.length ? SHOTS.filter((shot) => wanted.includes(shot.name)) : SHOTS.filter((shot) => !shot.optional);
 
 const browser = await chromium.launch({
   channel: "chrome",

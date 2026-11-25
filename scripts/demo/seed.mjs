@@ -289,6 +289,9 @@ function simulateRun({ kind, km, startsAt, paces, seed, laneOffset }) {
 // ── Training history (8 weeks) and plan ─────────────────────────────────────
 
 const today = romeDay();
+if (new Date(`${today}T12:00:00Z`).getUTCDay() !== 3) {
+  console.warn("seed: today is not a Wednesday. The demo story (\"today's 5 × 1 km\") assumes one; the data is still valid, but the chat text will not match the day.");
+}
 const thisMonday = mondayOf(today);
 const raceDate = (() => {
   // The Sunday about 10 weeks from now.
@@ -480,9 +483,9 @@ function describeRuns(longRunSpec, tempoSpec) {
   };
 }
 
-const chatFor = (r) => [
-  { role: "user", minutesAgo: 7 * 1440 + 170, content: `Finished the ${r.tempoKm} km tempo. The first half felt great, but the second half was harder than expected and my heart rate was a bit higher than usual.` },
-  { role: "assistant", minutesAgo: 7 * 1440 + 168, content: [
+const chatFor = (r, at) => [
+  { role: "user", at: at.tempo, content: `Finished the ${r.tempoKm} km tempo. The first half felt great, but the second half was harder than expected and my heart rate was a bit higher than usual.` },
+  { role: "assistant", at: new Date(at.tempo.getTime() + 2 * 60_000), content: [
     "Nice work, that was a **solid session**. A few things stand out:",
     "",
     `- **Pace:** ${r.tempoBlockKm} km of tempo at ${r.tempoPace}/km, right on target, with no fade in the final kilometres.`,
@@ -491,14 +494,14 @@ const chatFor = (r) => [
     "",
     "Your threshold work is clearly moving in the right direction.",
   ].join("\n") },
-  { role: "user", minutesAgo: 3 * 1440 + 150, content: `Long run done: ${r.longKm} km, felt really good!` },
-  { role: "assistant", minutesAgo: 3 * 1440 + 148, content: [
+  { role: "user", at: at.long, content: `Long run done: ${r.longKm} km, felt really good!` },
+  { role: "assistant", at: new Date(at.long.getTime() + 2 * 60_000), content: [
     `Great long run. **${r.longKm} km at ${r.longPace}/km** with a clear negative split: the second half was ${r.halfGap} s/km faster, with heart rate going from ${r.hrFirst} to ${r.hrSecond} bpm.`,
     "",
     "That is exactly the aerobic progress we want eight weeks into the block. Next Sunday goes to **18 km**; I will keep the pace target easy and add two gels for fuelling practice.",
   ].join("\n") },
-  { role: "user", minutesAgo: 540, content: "Slept badly last night, only about 6 hours. Is it still ok to do the 5 × 1 km today?" },
-  { role: "assistant", minutesAgo: 538, content: [
+  { role: "user", at: at.today, content: "Slept badly last night, only about 6 hours. Is it still ok to do the 5 × 1 km today?" },
+  { role: "assistant", at: new Date(at.today.getTime() + 2 * 60_000), content: [
     "Good that you asked. Sleep was **6h 06** (score 61) and HRV is 59 against your usual 66: a mild dip, not a red flag.",
     "",
     "**Keep the session, with a safety valve:** run rep 1 at the slow end of the range (4:42). If the first two reps feel harder than 7/10, stop at four and take the cool-down.",
@@ -614,9 +617,15 @@ check(await admin.from("wellness_daily").insert(wellnessRows(alexId)), "wellness
 
 // Coach conversation (rows are written directly: no AI key needed) and memory.
 const now = Date.now();
-check(await admin.from("coach_messages").insert(chatFor(described).map((message) => ({
+const afterRun = (spec, hours) => new Date(spec.run.startsAt.getTime() + (spec.run.duration_s + hours * 3600) * 1000);
+const chatTimes = {
+  tempo: afterRun(tempoSpec, 3),
+  long: afterRun(showcase, 4),
+  today: new Date(Math.min(romeToUtc(today, 8, 29).getTime(), now - 10 * 60_000)),
+};
+check(await admin.from("coach_messages").insert(chatFor(described, chatTimes).map((message) => ({
   user_id: alexId, role: message.role, kind: "chat", content: message.content,
-  created_at: new Date(now - message.minutesAgo * 60_000).toISOString(),
+  created_at: message.at.toISOString(),
 }))), "coach messages");
 check(await admin.from("coach_memories").insert(MEMORIES.map((memory) => ({
   user_id: alexId, category: memory.category, content: memory.content, valid_until: memory.until ?? null, source: "chat",
