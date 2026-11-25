@@ -22,7 +22,7 @@ export async function flushPending(requester) {
       if (result?.revoked) {
         clearPendingSyncs()
         setIntegrationEnabled(false)
-        throw new Error("Collegamento revocato")
+        throw new Error("Connection revoked")
       }
       if (!result || result.ok !== true) throw new Error(result?.error || "sync failed")
       acknowledgeSync(payload.clientSyncId)
@@ -38,8 +38,8 @@ export async function flushPending(requester) {
       })
       sent += 1
     } catch (error) {
-      // Teniamo ora, readiness e riepilogo dell'ultimo invio riuscito: li
-      // mostrano la pagina e il widget "Oggi".
+      // Keep time, readiness and summary of the last successful send: the page
+      // and the "Today" widget show them.
       const previous = getLastResult()
       setLastResult({
         ...(previous?.at ? previous : {}),
@@ -54,7 +54,7 @@ export async function flushPending(requester) {
 }
 
 export async function collectAndSync(requester, trigger = "manual") {
-  if (!getIntegrationEnabled()) throw new Error("Zepp OS non collegato")
+  if (!getIntegrationEnabled()) throw new Error("Zepp OS not connected")
   enqueueSync(collectHealthPayload(trigger))
   return flushPending(requester)
 }

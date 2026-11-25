@@ -1,5 +1,5 @@
-// Piano di allenamento per il widget "Oggi": stesso endpoint e stessa forma
-// della Workout Extension, ma salvato nello storage di questa Mini App.
+// Training plan for the "Today" widget: same endpoint and same shape as the
+// Workout Extension, but saved in this Mini App's storage.
 import { getPlan, setPlan } from "./storage"
 
 function pad(value) {
@@ -20,7 +20,7 @@ export async function pullPlan(requester, force = false) {
       knownRevision: force ? null : cached?.revision || null,
     },
   })
-  if (!result?.ok) throw new Error(result?.error || "Sincronizzazione piano fallita")
+  if (!result?.ok) throw new Error(result?.error || "Plan sync failed")
   if (result.notModified && cached) {
     const updated = {
       ...cached,

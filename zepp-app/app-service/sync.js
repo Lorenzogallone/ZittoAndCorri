@@ -1,7 +1,7 @@
-// Servizio "single execution" svegliato dagli alarm giornalieri e dall'evento
-// di sistema del sonno. Il sistema lo termina dopo 600 ms e non concede timer:
-// qui niente BLE, niente zml, niente codice asincrono. Si raccoglie, si accoda
-// e si esce; l'invio avviene quando si apre la pagina o il widget.
+// "Single execution" service woken by the daily alarms and by the system
+// sleep event. The system kills it after 600 ms and grants no timers: no BLE,
+// no zml, no async code here. It collects, enqueues and exits; the send
+// happens when the page or the widget is opened.
 import { exit } from "@zos/app-service"
 import { collectHealthPayload } from "../shared/collect"
 import {
@@ -28,7 +28,7 @@ function hourDistance(a, b) {
   return Math.min(diff, 24 - diff)
 }
 
-// Se il parametro dell'alarm non arriva, scegliamo l'orario programmato più vicino.
+// If the alarm parameter does not arrive, pick the nearest scheduled time.
 function triggerFromClock(now) {
   const hours = getScheduleHours()
   const hour = now.getHours()
@@ -43,8 +43,8 @@ function readTrigger(param, now) {
   return { trigger: triggerFromClock(now), wake: false }
 }
 
-// L'evento del sonno scatta a ogni cambio di stato (anche quando ci si
-// addormenta): teniamo solo il primo risveglio della mattina.
+// The sleep event fires on every state change (also when falling asleep):
+// keep only the first wake-up of the morning.
 function shouldCaptureWake(now) {
   const hour = now.getHours()
   if (hour < 4 || hour >= 14) return false
