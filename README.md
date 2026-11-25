@@ -6,6 +6,21 @@ personal AI coach (Gemini or OpenRouter) in one installable web app.
 
 The app is available in English and Italian (see [Languages](#languages)).
 
+<p align="center">
+  <img src="docs/screenshots/home.png" width="200" alt="Home: today's session, the week and the coach chat">
+  <img src="docs/screenshots/plan.png" width="200" alt="Training plan">
+  <img src="docs/screenshots/activity.png" width="200" alt="Run details with map">
+  <img src="docs/screenshots/coach.png" width="200" alt="AI coach chat">
+</p>
+<p align="center">
+  <img src="docs/screenshots/splits.png" width="200" alt="Splits km by km">
+  <img src="docs/screenshots/profile.png" width="200" alt="Profile: fitness and fatigue">
+  <img src="docs/screenshots/predictions.png" width="200" alt="Race predictions and records">
+  <img src="docs/screenshots/settings.png" width="200" alt="Connections settings">
+</p>
+
+<sub>Screenshots use made-up demo data (`scripts/demo`).</sub>
+
 ## What it does
 
 - Tracks running and other sports through manual entries or FIT/GPX imports.
@@ -58,7 +73,7 @@ SUPABASE_SECRET_KEY=your-server-side-secret-key
 ```
 
 Initialize the Supabase database by applying every SQL file in
-`supabase/migrations` in order (`0001` to `0032`; numbers 0020 and 0031 do not
+`supabase/migrations` in order (`0001` to `0033`; numbers 0020 and 0031 do not
 exist). On an existing database apply only the files newer than the last one
 you ran. Paste each file into the Supabase SQL editor (or run them with `psql`).
 
