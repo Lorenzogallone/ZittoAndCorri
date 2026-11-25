@@ -1,10 +1,10 @@
-// Cron Intervals.icu: importa attività e wellness e pubblica il piano futuro,
-// per ogni utente con una chiave salvata. Con ?scope=import salta la
-// pubblicazione: lo usa il giro orario di GitHub Actions
-// (.github/workflows/intervals-import.yml), perché Vercel Hobby concede un solo
-// cron al giorno. Auth: Authorization: Bearer ${CRON_SECRET}.
-// Lo status resta 200 anche con errori (GitHub Actions e Vercel non devono
-// riprovare): il corpo dice `ok`, quanti utenti sono falliti e perché.
+// Intervals.icu cron: imports activities and wellness and publishes the future
+// plan, for every user with a saved key. With ?scope=import it skips
+// publishing: the hourly GitHub Actions run uses it
+// (.github/workflows/intervals-import.yml), because Vercel Hobby allows only
+// one cron a day. Auth: Authorization: Bearer ${CRON_SECRET}.
+// The status stays 200 even with errors (GitHub Actions and Vercel must not
+// retry): the body says `ok`, how many users failed and why.
 
 import { cronAuthError } from "@/lib/push/cron-auth";
 import { syncAllIntervalsUsers } from "@/lib/intervals/sync";

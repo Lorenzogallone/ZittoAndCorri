@@ -99,6 +99,12 @@ language is stored in the `NEXT_LOCALE` cookie, chosen on the first onboarding
 step or in **Settings → App**; without a cookie it follows the browser's
 `Accept-Language` (Italian or English, else Italian).
 
+The chosen language is also saved on the profile (`profiles.locale`, migration
+`0033`), because cron jobs and push notifications have no cookie: the reminder
+for tomorrow's session, the weekly recap (including the coach message, written
+in that language), the "analysis ready" and stale-data alerts follow the saved
+language. Without the migration they stay in Italian.
+
 Messages live in `messages/<language>/<area>.json`, one file per area, so areas
 can be translated independently. A new area must be added to `NAMESPACES` in
 `i18n/config.ts`; `tests/i18n.test.ts` checks that every language has the same

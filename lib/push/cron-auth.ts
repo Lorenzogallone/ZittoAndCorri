@@ -5,8 +5,8 @@ import { createHash, timingSafeEqual } from "node:crypto";
 const digest = (value: string) => createHash("sha256").update(value).digest();
 
 /**
- * Autorizza le route cron con `Authorization: Bearer ${CRON_SECRET}`.
- * Ritorna la risposta d'errore da restituire, oppure null se autorizzato.
+ * Authorizes cron routes with `Authorization: Bearer ${CRON_SECRET}`.
+ * Returns the error response to send back, or null if authorized.
  */
 export function cronAuthError(request: Request): Response | null {
   const secret = process.env.CRON_SECRET;

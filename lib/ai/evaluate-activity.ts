@@ -12,7 +12,7 @@ import { isoDateShift } from "@/lib/dates";
 import type { Activity, EvaluationResult, PlannedWorkout, Profile } from "@/lib/types";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 import { sendPushToUser } from "@/lib/push/send";
-import { analysisPushBody } from "@/lib/push/messages";
+import { analysisPush } from "@/lib/push/analysis-push";
 import { extractDeclaredStructure, mayDescribeStructure } from "@/lib/ai/interval-structure";
 import { intervalsUpToDate, isMissingColumn, persistIntervals, plannedForActivity, type DeclaredIntervals } from "@/lib/derived";
 import type { IntervalAnalysis } from "@/lib/metrics/intervals";
@@ -333,8 +333,7 @@ async function runActivityEvaluation(
     if (notify) {
       try {
         await sendPushToUser(userId, {
-          title: "Analisi pronta",
-          body: analysisPushBody(result.summary),
+          ...(await analysisPush(admin, userId, locale, result.summary)),
           url: `/activities/${activityId}`,
           tag: `eval-${activityId}`,
         });

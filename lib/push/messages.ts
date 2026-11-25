@@ -1,9 +1,10 @@
-// Testi brevi delle notifiche. Modulo puro: solo import relativi, testabile.
+// Short notification texts. Pure module: relative imports only, testable.
 import type { WorkoutStepInput } from "@/lib/types";
+import type { Locale, Translator } from "../../i18n/config.ts";
 import { workoutHeadline } from "../workout-guide.ts";
 import { formatPlannedDistance } from "../format.ts";
 
-/** Prima frase di un testo, senza markdown, al massimo `max` caratteri. */
+/** First sentence of a text, without markdown, at most `max` characters. */
 export function firstSentence(text: string | null | undefined, max = 120): string {
   const clean = (text ?? "").replace(/[*_#`>]/g, "").replace(/\s+/g, " ").trim();
   const match = clean.match(/^.*?[.!?](?=\s|$)/);
@@ -14,23 +15,23 @@ export function firstSentence(text: string | null | undefined, max = 120): strin
   return `${(lastSpace > max / 2 ? cut.slice(0, lastSpace) : cut).replace(/[\s,;:.]+$/, "")}…`;
 }
 
-/** Corpo della notifica "Analisi pronta". */
-export function analysisPushBody(summary: string | null | undefined): string {
-  return firstSentence(summary) || "Il coach ha commentato la tua corsa.";
+/** Body of the "Analysis ready" notification (`t` bound to the "push" namespace). */
+export function analysisPushBody(summary: string | null | undefined, t: Translator): string {
+  return firstSentence(summary) || t("analysis.fallback");
 }
 
-/** Corpo del promemoria: "6 × 400 m · ~7,50 km". */
+/** Reminder body: "6 × 400 m · ~7,50 km" (`t` bound to the "push" namespace). */
 export function reminderBody(workout: {
   workout_steps?: WorkoutStepInput[] | null;
   target_distance_m?: number | null;
   target_duration_s?: number | null;
   target_pace_s_km?: number | null;
-}): string {
-  const headline = workoutHeadline(workout.workout_steps ?? []);
-  const distance = formatPlannedDistance(workout) ?? null;
+}, t: Translator, locale: Locale): string {
+  const headline = workoutHeadline(workout.workout_steps ?? [], locale);
+  const distance = formatPlannedDistance(workout, locale) ?? null;
   const duration = !distance && workout.target_duration_s
-    ? `${Math.round(workout.target_duration_s / 60)} min`
+    ? t("reminder.minutes", { minutes: Math.round(workout.target_duration_s / 60) })
     : null;
   const parts = [headline, distance ?? duration].filter((part): part is string => Boolean(part));
-  return parts.length ? parts.join(" · ") : "Apri per i dettagli della seduta.";
+  return parts.length ? parts.join(" · ") : t("reminder.fallback");
 }
