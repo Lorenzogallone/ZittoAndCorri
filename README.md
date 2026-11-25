@@ -7,6 +7,10 @@ personal AI coach (Gemini or OpenRouter) in one installable web app.
 The app is available in English and Italian (see [Languages](#languages)).
 
 <p align="center">
+  <img src="docs/screenshots/demo.gif" width="300" alt="Demo: today's session, coach chat, training plan and a run with map">
+</p>
+
+<p align="center">
   <img src="docs/screenshots/home.png" width="200" alt="Home: today's session, the week and the coach chat">
   <img src="docs/screenshots/plan.png" width="200" alt="Training plan">
   <img src="docs/screenshots/activity.png" width="200" alt="Run details with map">
