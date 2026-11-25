@@ -51,7 +51,7 @@ The app is available in English and Italian (see [Languages](#languages)).
 - Node.js 20.9 or later
 - npm
 - A Supabase project
-- Google OAuth configured in Supabase Authentication
+- Optionally, Google OAuth configured in Supabase Authentication (email sign-in needs no setup)
 - An AI key for each user who wants AI coaching: Gemini (Google AI Studio) or
   OpenRouter
 
@@ -77,18 +77,24 @@ Initialize the Supabase database by applying every SQL file in
 exist). On an existing database apply only the files newer than the last one
 you ran. Paste each file into the Supabase SQL editor (or run them with `psql`).
 
-Sign-in uses Google through Supabase Auth:
+Sign-in uses Supabase Auth. Email magic links work out of the box; Google is
+optional.
 
-1. In the [Google Cloud console](https://console.cloud.google.com/), configure
-   the OAuth consent screen, then **APIs & Services → Credentials → Create
-   credentials → OAuth client ID**, type **Web application**.
-2. Add `https://<your-project-ref>.supabase.co/auth/v1/callback` as an
-   authorized redirect URI and copy the client ID and secret.
-3. In Supabase, **Authentication → Sign In / Providers → Google**: enable it and
-   paste the client ID and secret.
-4. In Supabase, **Authentication → URL Configuration**: set the Site URL to
-   your app's URL and add `http://localhost:3000/auth/callback` and
-   `https://<your-app>/auth/callback` to the redirect URLs.
+1. **Email (default, no setup).** In Supabase, **Authentication → URL
+   Configuration**: set the Site URL to your app's URL and add
+   `http://localhost:3000/auth/callback` and `https://<your-app>/auth/callback`
+   to the redirect URLs. Supabase's built-in mailer then sends the sign-in
+   link. It is limited to a few emails per hour and only to your team members'
+   addresses, so for production set up your own SMTP server under
+   **Authentication → Emails → SMTP Settings**.
+2. **Google (optional).** In the [Google Cloud console](https://console.cloud.google.com/),
+   configure the OAuth consent screen, then **APIs & Services → Credentials →
+   Create credentials → OAuth client ID**, type **Web application**. Add
+   `https://<your-project-ref>.supabase.co/auth/v1/callback` as an authorized
+   redirect URI, copy the client ID and secret, and paste them in Supabase
+   **Authentication → Sign In / Providers → Google**. The button is shown by
+   default; set `NEXT_PUBLIC_AUTH_GOOGLE=false` to hide it if you skip this
+   step.
 
 Start the development server:
 
@@ -101,8 +107,8 @@ Optional variables (see `.env.example`): `NEXT_PUBLIC_VAPID_PUBLIC_KEY`,
 `CRON_SECRET` for the scheduled jobs. Without the VAPID keys the app works,
 minus notifications; the cron endpoints reject calls without `CRON_SECRET`.
 
-Open [http://localhost:3000](http://localhost:3000), sign in with Google, and
-complete the onboarding flow. AI features remain disabled until the user adds a
+Open [http://localhost:3000](http://localhost:3000), sign in with your email (or
+Google), and complete the onboarding flow. AI features remain disabled until the user adds a
 personal Gemini or OpenRouter key, in onboarding or later under
 **Settings → Coach**.
 

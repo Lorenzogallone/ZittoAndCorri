@@ -17,7 +17,20 @@
     "tagline": "Your personal running coach.",
     "redirecting": "Redirecting…",
     "signIn": "Sign in with Google",
-    "footnote": "No password. No ads. Zitto e corri."
+    "footnote": "No password. No ads. Zitto e corri.",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@example.com",
+    "emailSignIn": "Sign in with email",
+    "sending": "Sending…",
+    "or": "or",
+    "checkEmailTitle": "Check your email",
+    "checkEmailBody": "We sent a sign-in link to {email}. Open it on this device.",
+    "resend": "Send again",
+    "resendIn": "Send again in {seconds} s",
+    "changeEmail": "Use a different address",
+    "errorInvalidEmail": "That email address isn't valid.",
+    "errorRateLimit": "Too many requests. Try again in a few minutes.",
+    "errorGeneric": "Couldn't send the link. Try again."
   },
   "refresh": {
     "syncFailed": "Couldn't sync with your watch."
