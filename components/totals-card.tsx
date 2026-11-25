@@ -28,7 +28,7 @@ function comparison(period: PeriodTotals, t: ReturnType<typeof useTranslations>,
 
 const TREND_ICONS = { up: ArrowUpRight, down: ArrowDownRight, flat: ArrowRight } as const;
 
-/** Quanto hai corso: settimana, mese, anno e da sempre. */
+/** How much you ran: week, month, year and all time. */
 export function TotalsCard({ periods, initial = "month", className }: { periods: PeriodTotals[]; initial?: TotalsPeriodKey; className?: string }) {
   const t = useTranslations("activities.totals");
   const locale = useLocale() as Locale;
@@ -64,7 +64,7 @@ export function TotalsCard({ periods, initial = "month", className }: { periods:
           </p>
         )}
 
-        {/* Due colonne: su telefono quattro tagliavano le etichette con l'icona. */}
+        {/* Two columns: on phones four cut off the labels with the icon. */}
         <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 border-t border-border/60 pt-4">
           <Stat size="sm" icon={Footprints} label={t("runs")} value={String(period.runs)} />
           <Stat size="sm" icon={Timer} label={t("time")} value={hours(period.seconds)} />

@@ -14,9 +14,9 @@ interface BackButtonProps {
 }
 
 /**
- * Se è indicata una destinazione, l'etichetta descrive una navigazione precisa
- * e deve sempre portare lì. `router.back()` resta solo per i pulsanti generici
- * senza destinazione, così la cronologia PWA non può contraddire la UI.
+ * If a destination is given, the label describes a specific navigation
+ * and must always lead there. `router.back()` is kept only for generic buttons
+ * without a destination, so PWA history cannot contradict the UI.
  */
 export function BackButton({ fallbackHref, label }: BackButtonProps) {
   const t = useTranslations("shell");

@@ -60,7 +60,7 @@ function metric(overrides: Partial<ZeppDailyMetric> = {}): ZeppDailyMetric {
   };
 }
 
-test("Zepp resta opt-in e ricade integralmente sul calcolo interno", () => {
+test("Zepp stays opt-in and falls back entirely to the internal calculation", () => {
   const result = computeZeppReadiness(
     [metric({ recovery_raw: 0, sleep_score: 100 })],
     internal,
@@ -72,7 +72,7 @@ test("Zepp resta opt-in e ricade integralmente sul calcolo interno", () => {
   assert.equal(result.internal, internal);
 });
 
-test("richiede un segnale di carico e uno di recupero", () => {
+test("requires a load signal and a recovery signal", () => {
   const result = computeZeppReadiness(
     [metric({ training_load: 466 })],
     internal,
@@ -82,7 +82,7 @@ test("richiede un segnale di carico e uno di recupero", () => {
   assert.equal(result.source, "internal");
 });
 
-test("ridistribuisce i pesi Zepp mancanti e limita il carico interno al 5%", () => {
+test("redistributes missing Zepp weights and caps the internal load at 5%", () => {
   const result = computeZeppReadiness(
     [metric({ recovery_raw: 0, sleep_score: 100 })],
     internal,
@@ -94,7 +94,7 @@ test("ridistribuisce i pesi Zepp mancanti e limita il carico interno al 5%", () 
   assert.deepEqual(result.components.map((part) => part.weight), [45, 20, 5]);
 });
 
-test("dati Zepp oltre 36 ore non modificano lo stato", () => {
+test("Zepp data older than 36 hours doesn't change the status", () => {
   const result = computeZeppReadiness(
     [metric({ recovery_raw: 0, sleep_score: 100 })],
     internal,
@@ -105,7 +105,7 @@ test("dati Zepp oltre 36 ore non modificano lo stato", () => {
   assert.ok((result.freshness_hours ?? 0) > 36);
 });
 
-test("il payload V1 filtra sentinelle senza iniziare misurazioni", () => {
+test("the V1 payload filters sentinels without starting measurements", () => {
   const parsed = ZeppSyncPayloadSchema.parse({
     schemaVersion: 1,
     clientSyncId: "zc:1724572800000:1",
@@ -136,7 +136,7 @@ test("il payload V1 filtra sentinelle senza iniziare misurazioni", () => {
   assert.equal("skin_temp_avg_c" in normalized, false);
 });
 
-test("un singolo valore sensore malformato non blocca tutto il payload", () => {
+test("a single malformed sensor value doesn't block the whole payload", () => {
   const parsed = ZeppSyncPayloadSchema.parse({
     schemaVersion: 1,
     clientSyncId: "zc:1724572800000:2",
@@ -171,7 +171,7 @@ test("un singolo valore sensore malformato non blocca tutto il payload", () => {
   assert.deepEqual(normalized.device_profile, { height_cm: 175 });
 });
 
-test("l'audit Zepp non conserva serie grezze, temperatura o dati identificativi", () => {
+test("the Zepp audit doesn't keep raw series, temperature or identifying data", () => {
   const parsed = ZeppSyncPayloadSchema.parse({
     schemaVersion: 1,
     clientSyncId: "zc:1724572800000:3",
@@ -198,19 +198,19 @@ test("l'audit Zepp non conserva serie grezze, temperatura o dati identificativi"
   assert.match(audit, /resting_hr/);
 });
 
-test("zone di fabbrica in % della FC max: l'app usa la riserva cardiaca con i tagli Zepp", () => {
+test("factory zones in % of max HR: the app uses heart rate reserve with Zepp cuts", () => {
   const zones = hrZones({
     max_hr: 180,
     resting_hr: 47,
     hr_zone_ranges: [98, 117, 137, 156, 176, 196],
   });
-  // Stessi numeri della schermata Zepp "Zona frequenza cardiaca riservata".
+  // Same numbers as the Zepp screen "Zona frequenza cardiaca riservata".
   assert.deepEqual(zones?.lower, { z1: 134, z2: 157, z3: 172, z4: 178, z5: 188 });
   assert.equal(zones?.max_hr, 196);
   assert.equal(zones?.method, "hrr");
 });
 
-test("zone impostate sull'orologio (riserva cardiaca o personalizzate) si usano così come sono", () => {
+test("zones set on the watch (heart rate reserve or custom) are used as they are", () => {
   const zones = hrZones({
     max_hr: 196,
     resting_hr: 47,
@@ -221,7 +221,7 @@ test("zone impostate sull'orologio (riserva cardiaca o personalizzate) si usano 
   assert.equal(zones?.method, "watch");
 });
 
-test("senza FC a riposo restano le soglie dell'orologio", () => {
+test("without resting HR the watch thresholds stay", () => {
   const zones = hrZones({
     max_hr: null,
     resting_hr: null,
@@ -231,7 +231,7 @@ test("senza FC a riposo restano le soglie dell'orologio", () => {
   assert.equal(zones?.method, "watch");
 });
 
-test("FC riposo, FC massima e zone Zepp prevalgono sui valori manuali", () => {
+test("resting HR, max HR and Zepp zones prevail over manual values", () => {
   const effective = resolveEffectiveHrConfig(
     { max_hr: 180, resting_hr: 60 },
     [{ resting_hr: 47, hr_zone_rest: 0, hr_zone_ranges: [98, 117, 137, 156, 176, 196] }],
@@ -250,7 +250,7 @@ test("FC riposo, FC massima e zone Zepp prevalgono sui valori manuali", () => {
   assert.equal(fallback.zones_source, "derived");
 });
 
-test("la migrazione Zepp applica isolamento utente, idempotenza e cascade", () => {
+test("the Zepp migration applies user isolation, idempotence and cascade", () => {
   const sql = readFileSync("supabase/migrations/0014_zepp_os.sql", "utf8");
   for (const table of [
     "zepp_pairing_codes",
@@ -267,7 +267,7 @@ test("la migrazione Zepp applica isolamento utente, idempotenza e cascade", () =
   assert.match(sql, /using \(auth\.uid\(\) = user_id\)/);
 });
 
-test("la migrazione compatta aggiunge solo riepiloghi utili", () => {
+test("the compact migration adds only useful summaries", () => {
   const sql = readFileSync("supabase/migrations/0015_zepp_compact_metrics.sql", "utf8");
   for (const column of [
     "sleep_start_min", "sleep_end_min", "nap_total_min", "nap_count",
@@ -276,12 +276,12 @@ test("la migrazione compatta aggiunge solo riepiloghi utili", () => {
   assert.doesNotMatch(sql, /add column if not exists .*temp/);
 });
 
-test("la calibrazione tollera pochi battiti sopra la zona facile", () => {
+test("calibration tolerates a few beats above the easy zone", () => {
   const profile = { max_hr: 196, resting_hr: 47, hr_zone_ranges: [98, 117, 137, 156, 176, 196] };
   const easy = (avg_hr: number) => calibratePaces([
     { type: "easy", sport: "running", avg_pace_s_km: 400, avg_hr },
   ], profile)?.[0];
-  // Limite alto della Z1: 156 bpm.
+  // Upper limit of Z1: 156 bpm.
   assert.equal(easy(156)?.too_hard, false);
   assert.equal(easy(158)?.over_bpm, 2);
   assert.equal(easy(158)?.too_hard, false);

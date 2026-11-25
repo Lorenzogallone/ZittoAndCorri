@@ -1,18 +1,18 @@
--- ZittoAndCorri — Fase 1 schema (PLAN.md §5)
--- Da eseguire nel SQL Editor di Supabase. Idempotente dove possibile.
+-- ZittoAndCorri — Phase 1 schema (PLAN.md §5)
+-- Run in the Supabase SQL Editor. Idempotent where possible.
 
--- ============ PROFILES (estende auth.users con config atleta) ============
+-- ============ PROFILES (extends auth.users with athlete config) ============
 create table if not exists public.profiles (
   id           uuid primary key references auth.users on delete cascade,
   display_name text,
-  -- config per il calcolo zone/carico (valori di default modificabili dall'utente)
-  max_hr       int,            -- es. 190
+  -- config for zone/load calculation (defaults the user can change)
+  max_hr       int,            -- e.g. 190
   resting_hr   int default 50,
   birthdate    date,
   created_at   timestamptz default now()
 );
 
--- crea automaticamente il profilo al signup
+-- automatically creates the profile on signup
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
@@ -26,14 +26,14 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users for each row execute function public.handle_new_user();
 
--- ============ GOALS (obiettivo di gara) ============
+-- ============ GOALS (race goal) ============
 create table if not exists public.goals (
   id            uuid primary key default gen_random_uuid(),
   user_id       uuid not null references auth.users on delete cascade,
   race_name     text not null,
   race_date     date,
-  distance_m    int not null,         -- es. 21097
-  target_time_s int,                  -- tempo obiettivo in secondi
+  distance_m    int not null,         -- e.g. 21097
+  target_time_s int,                  -- goal time in seconds
   is_active     boolean default true,
   created_at    timestamptz default now()
 );
@@ -51,7 +51,7 @@ do $$ begin
   create type activity_source as enum ('manual','json_import','file','strava','healthkit');
 exception when duplicate_object then null; end $$;
 
--- ============ PLANNED_WORKOUTS (il piano) ============
+-- ============ PLANNED_WORKOUTS (the plan) ============
 create table if not exists public.planned_workouts (
   id                 uuid primary key default gen_random_uuid(),
   user_id            uuid not null references auth.users on delete cascade,
@@ -59,15 +59,15 @@ create table if not exists public.planned_workouts (
   date               date not null,
   type               workout_type not null,
   target_distance_m  int,
-  target_pace_s_km   int,             -- passo target s/km
+  target_pace_s_km   int,             -- target pace s/km
   target_duration_s  int,
   description        text,
   status             planned_status default 'planned',
-  activity_id        uuid,            -- collega alla corsa reale che lo soddisfa (FK sotto)
+  activity_id        uuid,            -- links to the actual run that fulfils it (FK below)
   created_at         timestamptz default now()
 );
 
--- ============ ACTIVITIES (la corsa, dettaglio leggero) ============
+-- ============ ACTIVITIES (the run, light detail) ============
 create table if not exists public.activities (
   id               uuid primary key default gen_random_uuid(),
   user_id          uuid not null references auth.users on delete cascade,
@@ -75,18 +75,18 @@ create table if not exists public.activities (
   type             workout_type not null default 'easy',
   started_at       timestamptz not null,
   distance_m       int not null,
-  duration_s       int not null,           -- tempo totale
+  duration_s       int not null,           -- total time
   moving_time_s    int,
-  avg_pace_s_km    int,                    -- DERIVATO in ingest
+  avg_pace_s_km    int,                    -- DERIVED at ingest
   avg_hr           int,
   max_hr           int,
   elevation_gain_m int,
-  rpe              int check (rpe between 1 and 10),  -- sforzo percepito (chiave per il carico)
+  rpe              int check (rpe between 1 and 10),  -- perceived effort (key for load)
   calories         int,
-  time_in_zone     jsonb,                  -- {"z1":120,"z2":900,...} secondi — DERIVATO
-  splits           jsonb,                  -- [{"km":1,"time_s":340,"avg_hr":150}, ...] DERIVATO
+  time_in_zone     jsonb,                  -- {"z1":120,"z2":900,...} seconds — DERIVED
+  splits           jsonb,                  -- [{"km":1,"time_s":340,"avg_hr":150}, ...] DERIVED
   notes            text,
-  raw_payload      jsonb,                  -- payload originale, per audit/riprocessing
+  raw_payload      jsonb,                  -- original payload, for audit/reprocessing
   created_at       timestamptz default now()
 );
 
@@ -96,7 +96,7 @@ do $$ begin
     foreign key (activity_id) references public.activities on delete set null;
 exception when duplicate_object then null; end $$;
 
--- ============ ACTIVITY_STREAMS (pesante, mai nel prompt) ============
+-- ============ ACTIVITY_STREAMS (heavy, never in the prompt) ============
 create table if not exists public.activity_streams (
   activity_id uuid primary key references public.activities on delete cascade,
   hr_series   jsonb,   -- [{"t":0,"bpm":120}, ...]
@@ -104,28 +104,28 @@ create table if not exists public.activity_streams (
   cadence     jsonb
 );
 
--- ============ EVALUATIONS (output AI per singola corsa) ============
+-- ============ EVALUATIONS (AI output per run) ============
 create table if not exists public.evaluations (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references auth.users on delete cascade,
   activity_id uuid not null references public.activities on delete cascade,
   model       text,
-  summary     text,        -- valutazione discorsiva della corsa
-  flags       jsonb,       -- es. {"overreaching":true,"good_progress":true}
+  summary     text,        -- narrative evaluation of the run
+  flags       jsonb,       -- e.g. {"overreaching":true,"good_progress":true}
   created_at  timestamptz default now()
 );
 
--- ============ ATHLETE_SNAPSHOT (il digest per l'LLM, 1 riga per utente) ============
+-- ============ ATHLETE_SNAPSHOT (the LLM digest, 1 row per user) ============
 create table if not exists public.athlete_snapshot (
   user_id       uuid primary key references auth.users on delete cascade,
-  metrics       jsonb,   -- BLOCCO 1: numeri deterministici (vol, passi, vdot, predizioni, carico)
-  goal_summary  jsonb,   -- BLOCCO 2: obiettivo + settimane rimaste
-  adherence     jsonb,   -- BLOCCO 2: aderenza al piano ultimi 14gg
-  narrative     jsonb,   -- BLOCCO 3: {state, fatigue, morale, notes, coach_notes}
+  metrics       jsonb,   -- BLOCK 1: deterministic numbers (vol, paces, vdot, predictions, load)
+  goal_summary  jsonb,   -- BLOCK 2: goal + weeks left
+  adherence     jsonb,   -- BLOCK 2: plan adherence over the last 14 days
+  narrative     jsonb,   -- BLOCK 3: {state, fatigue, morale, notes, coach_notes}
   updated_at    timestamptz default now()
 );
 
--- ============ RLS: ogni utente vede solo le proprie righe ============
+-- ============ RLS: each user sees only their own rows ============
 alter table public.profiles          enable row level security;
 alter table public.goals             enable row level security;
 alter table public.planned_workouts  enable row level security;
@@ -146,7 +146,7 @@ drop policy if exists "own eval" on public.evaluations;
 create policy "own eval"      on public.evaluations       for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 drop policy if exists "own snap" on public.athlete_snapshot;
 create policy "own snap"      on public.athlete_snapshot  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
--- streams: accesso via join con activities di proprietà
+-- streams: access via join with owned activities
 drop policy if exists "own streams" on public.activity_streams;
 create policy "own streams"   on public.activity_streams  for all using (
   exists (select 1 from public.activities a where a.id = activity_id and a.user_id = auth.uid())

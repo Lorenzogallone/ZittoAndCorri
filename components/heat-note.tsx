@@ -3,7 +3,7 @@ import { useTranslations } from "next-intl";
 import type { HeatInfo } from "@/lib/weather";
 import { HUMID_DEW_POINT_C, heatDeltaSeconds } from "@/lib/metrics/heat";
 
-/** Avviso di caldo previsto, con il rallentamento già applicato ai passi. */
+/** Forecast heat warning, with the slowdown already applied to the paces. */
 export function HeatNote({ heat, referencePace }: { heat: HeatInfo; referencePace: number | null }) {
   const t = useTranslations("plan.heat");
   const delta = referencePace ? heatDeltaSeconds(referencePace, heat.pct) : null;

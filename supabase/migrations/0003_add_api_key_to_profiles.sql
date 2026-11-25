@@ -1,10 +1,10 @@
--- ZittoAndCorri — Aggiunta Chiave API personale per integrazione iPhone
--- Da eseguire nel SQL Editor di Supabase o tramite CLI. Idempotente.
+-- ZittoAndCorri — Add personal API key for iPhone integration
+-- Run in the Supabase SQL Editor or via CLI. Idempotent.
 
--- 1. Aggiunge la colonna api_key come UUID autogenerato se non esiste
+-- 1. Add the api_key column as an auto-generated UUID if it does not exist
 alter table public.profiles add column if not exists api_key uuid unique default gen_random_uuid();
 
--- 2. Aggiorna il trigger/funzione handle_new_user per popolare api_key al signup
+-- 2. Update the handle_new_user trigger/function to populate api_key on signup
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin

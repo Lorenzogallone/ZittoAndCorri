@@ -8,12 +8,12 @@ import {
   matchesDeletedImport,
 } from "../lib/ingest/deleted-imports.ts";
 
-test("cancellare una corsa importata lascia una traccia, una manuale no", () => {
+test("deleting an imported run leaves a trace, a manual one does not", () => {
   assert.deepEqual(
     deletedImportFor({ source: "intervals", external_id: "intervals:i42", sport: "running", started_at: "2026-11-20T06:30:00Z" }),
     { external_id: "intervals:i42", sport: "running", started_at: "2026-11-20T06:30:00Z" },
   );
-  // GPX cancellato prima che Intervals.icu ne portasse l'id.
+  // GPX deleted before Intervals.icu brought its id.
   assert.deepEqual(
     deletedImportFor({ source: "file", external_id: null, sport: "running", started_at: "2026-11-20T06:30:00Z" }),
     { external_id: null, sport: "running", started_at: "2026-11-20T06:30:00Z" },
@@ -21,7 +21,7 @@ test("cancellare una corsa importata lascia una traccia, una manuale no", () => 
   assert.equal(deletedImportFor({ source: "manual", sport: "running", started_at: "2026-11-20T06:30:00Z" }), null);
 });
 
-test("l'import riconosce la corsa cancellata per id o per sessione", () => {
+test("the import recognises the deleted run by id or by session", () => {
   const rows = [
     { external_id: "intervals:i42", sport: "running", started_at: "2026-11-20T06:30:00Z" },
     { external_id: null, sport: "running", started_at: "2026-11-21T17:00:00Z" },
@@ -33,20 +33,20 @@ test("l'import riconosce la corsa cancellata per id o per sessione", () => {
   assert.equal(matchesDeletedImport({ sport: "cycling", started_at: "2026-11-21T17:00:00Z" }, rows), null);
 });
 
-test("senza la tabella (migrazione 0032) cancellazione e import vanno avanti", () => {
+test("without the table (migration 0032) deletion and import carry on", () => {
   assert.equal(isMissingTable({ code: "42P01" }), true);
   assert.equal(isMissingTable({ code: "PGRST205" }), true);
   assert.equal(isMissingTable({ code: "42501" }), false);
 });
 
-test("cancellazione e import da Intervals.icu usano la traccia", () => {
+test("deletion and import from Intervals.icu use the trace", () => {
   const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
   const actions = read("app/activities/actions.ts");
   const deleteBody = actions.slice(actions.indexOf("export async function deleteActivity"));
   assert.ok(deleteBody.indexOf('from("deleted_imports").insert') < deleteBody.indexOf('from("activities").delete()'));
   const importer = read("lib/intervals/import.ts");
   assert.match(importer, /!deletedIds\.has\(intervalsActivityExternalId\(activity\)\)/);
-  // I tombstone si scartano prima del limite per giro, così non occupano posti.
+  // Tombstones are discarded before the per-lap limit, so they don't take up slots.
   assert.ok(importer.indexOf("deletedIds.has") < importer.indexOf(".slice(0, MAX_ACTIVITIES_PER_RUN)"));
   assert.match(importer, /matchesDeletedImport\(/);
   const sql = read("supabase/migrations/0032_deleted_imports.sql");

@@ -6,19 +6,19 @@ import { cn } from "@/lib/utils";
 
 interface AppShellProps {
   children: React.ReactNode;
-  /** Titolo grande in cima al contenuto (scorre con la pagina) */
+  /** Large title at the top of the content (scrolls with the page) */
   title?: string;
-  /** Azione a destra del titolo (o della barra con il pulsante indietro) */
+  /** Action to the right of the title (or of the bar with the back button) */
   headerAction?: React.ReactNode;
-  /** Nasconde la tab bar (form e dettagli) */
+  /** Hides the tab bar (forms and details) */
   hideTabBar?: boolean;
-  /** Link "indietro": mostra una barra minimale in alto */
+  /** "Back" link: shows a minimal bar at the top */
   backHref?: string;
-  /** Etichetta del link indietro */
+  /** Label of the back link */
   backLabel?: string;
-  /** Contenuto a tutta altezza (home con la chat): margine minimo sopra la tab bar. */
+  /** Full-height content (home with the chat): minimal margin above the tab bar. */
   fill?: boolean;
-  /** Desktop: pagina larga (griglie a più colonne). Sul telefono non cambia nulla. */
+  /** Desktop: wide page (multi-column grids). Nothing changes on phones. */
   wide?: boolean;
 }
 
@@ -32,16 +32,16 @@ export function AppShell({
   fill = false,
   wide = false,
 }: AppShellProps) {
-  // Da lg in su: barra laterale al posto della tab bar e colonna più larga.
-  // Tutte le classi desktop hanno il prefisso lg:, così il telefono resta com'è.
-  // Le pagine "wide" crescono con lo schermo: 1152px, poi 1280px da 2xl,
-  // poi 1792px sui monitor grandi (3xl), dove le griglie passano a 3 colonne.
+  // From lg up: sidebar instead of the tab bar and a wider column.
+  // All desktop classes have the lg: prefix, so the phone stays as is.
+  // "wide" pages grow with the screen: 1152px, then 1280px from 2xl,
+  // then 1792px on large monitors (3xl), where grids switch to 3 columns.
   const width = wide ? "lg:max-w-6xl 2xl:max-w-7xl 3xl:max-w-8xl" : "lg:max-w-3xl";
   return (
-    // Colonna a tutta altezza: solo il contenuto scorre, tab bar sempre in
-    // fondo. La safe-area in alto è uno spazio pieno (niente vetro sfocato):
-    // su iPhone in PWA la status bar resta pulita, senza sfumature, e il
-    // contenuto non le passa sotto. `.app-viewport` gestisce 100dvh/100vh.
+    // Full-height column: only the content scrolls, tab bar always at
+    // the bottom. The top safe area is a solid space (no blurred glass):
+    // on iPhone in a PWA the status bar stays clean, without gradients, and the
+    // content does not pass under it. `.app-viewport` handles 100dvh/100vh.
     <div className="app-viewport flex h-screen flex-col overflow-hidden bg-background lg:pl-60">
       <SideNav />
       <div className="pt-safe shrink-0 bg-background" />
@@ -55,7 +55,7 @@ export function AppShell({
         </header>
       )}
 
-      {/* Il contenitore che scorre: trascina giù dalla cima per ricaricare. */}
+      {/* The scrolling container: pull down from the top to reload. */}
       <PullToRefresh className="min-h-0 flex-1 overflow-y-auto scroll-touch">
         <div className={cn("animate-enter mx-auto h-full w-full max-w-lg px-5 pt-3 lg:px-10", width, fill ? "pb-2 lg:pb-6 lg:pt-6" : "pb-8 lg:pb-12 lg:pt-8")}>
           {title && (

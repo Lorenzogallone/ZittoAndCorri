@@ -7,8 +7,8 @@ const VALUE_SIZE = {
   lg: "text-display font-bold",
 } as const;
 
-/** Metrica: etichetta eyebrow sopra, valore in display con l'unità accanto.
- *  `tone="hero"` per le card inchiostro (etichetta e unità in --hero-muted). */
+/** Metric: eyebrow label above, display value with the unit beside it.
+ *  `tone="hero"` for ink cards (label and unit in --hero-muted). */
 export function Stat({
   label,
   value,

@@ -1,10 +1,10 @@
--- Più sedute nello stesso giorno: ordine, momento della giornata e legame.
--- day_order: posizione della seduta nella giornata (1 = prima).
--- day_part:  mattina, pomeriggio o sera (null = non specificato).
--- chained:   la seduta si fa subito dopo la precedente dello stesso giorno, come
---            un'unica uscita divisa solo per comodità (es. riscaldamento e poi
---            ripetute come due allenamenti sull'orologio). Senza chained due
---            sedute dello stesso giorno sono separate (es. mattina e sera).
+-- Multiple sessions on the same day: order, time of day and link.
+-- day_order: position of the session in the day (1 = first).
+-- day_part:  morning, afternoon or evening (null = unspecified).
+-- chained:   the session is done right after the previous one of the same day, as
+--            a single outing split only for convenience (e.g. warm-up and then
+--            repeats as two workouts on the watch). Without chained, two
+--            sessions on the same day are separate (e.g. morning and evening).
 
 alter table public.planned_workouts
   add column if not exists day_order smallint not null default 1,
@@ -22,7 +22,7 @@ comment on column public.planned_workouts.day_order is 'Posizione della seduta n
 comment on column public.planned_workouts.day_part is 'Momento della giornata: morning, afternoon, evening; null se non specificato.';
 comment on column public.planned_workouts.chained is 'Fatta subito dopo la seduta precedente dello stesso giorno: un''unica uscita divisa in due allenamenti.';
 
--- Le proposte del coach salvano anche ordine, momento e legame.
+-- Coach proposals also save order, time of day and link.
 create or replace function public.apply_plan_proposal_v2(p_proposal_id uuid)
 returns text
 language plpgsql security definer set search_path = public as $$
@@ -76,12 +76,12 @@ begin
     from unnest(v_touched) as d
   )
   select
-    -- Giorni da riscrivere: da oggi in avanti, o fino a 14 giorni indietro
-    -- solo per svuotarli; mai un giorno già corso.
+    -- Days to rewrite: from today onwards, or up to 14 days back
+    -- only to empty them; never a day already run.
     coalesce(array_agg(d order by d) filter (
       where not done and (d >= v_today or (d >= v_remove_from and d = any(p.remove_dates)))
     ), '{}'),
-    -- Giorni già corsi, da oggi in avanti: si aggiungono sedute e basta.
+    -- Days already run, from today onwards: sessions are only added.
     coalesce(array_agg(d order by d) filter (
       where done and d >= v_today and not (d = any(p.remove_dates))
     ), '{}')

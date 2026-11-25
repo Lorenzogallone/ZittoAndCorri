@@ -10,7 +10,7 @@ const ZONES: Array<{ key: ZoneKey; color: string }> = [
   { key: "z5", color: "bg-rose-500" },
 ];
 
-/** Tempo nelle zone cardiache: una barra unica e i valori sotto. */
+/** Time in heart rate zones: a single bar with the values below. */
 export function ZonesBar({ zones }: { zones: TimeInZone }) {
   const t = useTranslations("activities.zones");
   const total = ZONES.reduce((sum, zone) => sum + (zones[zone.key] ?? 0), 0);

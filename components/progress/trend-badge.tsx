@@ -11,8 +11,8 @@ const TONE = {
   down: "text-muted-foreground",
 } as const;
 
-/** Freccia nel verso del numero, colore nel verso del giudizio: la FC a
- *  riposo che scende è una freccia in giù, ma verde. */
+/** Arrow in the direction of the number, colour in the direction of the judgement: resting
+ *  HR going down is a down arrow, but green. */
 export function TrendBadge({ trend, className }: { trend: Pick<MetricTrend, "direction" | "recent" | "previous">; className?: string }) {
   const t = useTranslations("profile.trend");
   const { direction, recent, previous } = trend;

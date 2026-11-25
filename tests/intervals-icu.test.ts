@@ -39,7 +39,7 @@ const intervals: WorkoutStepInput[] = [
   step({ kind: "cooldown", label: "Defaticamento", completion_value: 600, hr_max_bpm: 140 }),
 ];
 
-test("durate nel formato del workout builder", () => {
+test("durations in the workout builder format", () => {
   assert.equal(formatIntervalsDuration(step({ completion_value: 600 })), "10m");
   assert.equal(formatIntervalsDuration(step({ completion_value: 90 })), "1m30");
   assert.equal(formatIntervalsDuration(step({ completion_value: 45 })), "45s");
@@ -49,7 +49,7 @@ test("durate nel formato del workout builder", () => {
   assert.equal(formatIntervalsDuration(step({ completion_type: "manual", completion_value: null })), "20m");
 });
 
-test("un solo target per fase: passo nel lavoro, FC nel resto", () => {
+test("one target per phase: pace in the work, HR in the rest", () => {
   assert.equal(stepTarget(intervals[1], ctx), "4:20-4:10/km Pace");
   assert.equal(stepTarget(intervals[0], ctx), "63-76% HR");
   assert.equal(stepTarget(intervals[1], { ...ctx, preference: "hr" }), "50-95% HR");
@@ -57,7 +57,7 @@ test("un solo target per fase: passo nel lavoro, FC nel resto", () => {
   assert.equal(stepTarget(intervals[0], { max_hr: null, preference: "auto" }), null);
 });
 
-test("le ripetute identiche diventano un blocco Nx", () => {
+test("identical repeats become an Nx block", () => {
   const blocks = groupRepeats(intervals.slice(1, -1));
   assert.equal(blocks.length, 1);
   assert.equal(blocks[0].repeat, 6);
@@ -66,7 +66,7 @@ test("le ripetute identiche diventano un blocco Nx", () => {
   assert.deepEqual(mixed.map((block) => block.repeat), [1, 2]);
 });
 
-test("descrizione completa con sezioni e ripetute", () => {
+test("full description with sections and repeats", () => {
   assert.equal(workoutDescription(intervals, ctx), [
     "Warmup",
     "- Riscaldamento 15m intensity=warmup",
@@ -80,7 +80,7 @@ test("descrizione completa con sezioni e ripetute", () => {
   ].join("\n"));
 });
 
-test("un limite solo resta aperto: niente avvisi «FC bassa» o «troppo lento» inventati", () => {
+test("a single limit stays open: no invented «low HR» or «too slow» warnings", () => {
   assert.equal(stepTarget(step({ kind: "recovery", hr_max_bpm: 150 }), ctx), "50-79% HR");
   assert.equal(stepTarget(step({ kind: "work", hr_min_bpm: 165 }), ctx), "87-100% HR");
   assert.equal(stepTarget(step({ kind: "work", pace_max_s_km: 300 }), ctx), "5:00-3:30/km Pace");
@@ -88,7 +88,7 @@ test("un limite solo resta aperto: niente avvisi «FC bassa» o «troppo lento»
   assert.equal(stepTarget(step({ kind: "recovery", hr_max_bpm: 90 }), ctx), "37-47% HR");
 });
 
-test("3 × (8' + 2') senza l'ultimo recupero: «3x» pieno, recupero preso dal defaticamento", () => {
+test("3 × (8' + 2') without the last recovery: full «3x», recovery taken from the cooldown", () => {
   const warm = step({ kind: "warmup", label: "Riscaldamento", completion_value: 300, hr_min_bpm: 120, hr_max_bpm: 145 });
   const threshold = step({ kind: "work", label: "Soglia", completion_value: 480, pace_min_s_km: 265, pace_max_s_km: 275 });
   const jog = step({ kind: "recovery", label: "Corricchia", completion_value: 120, hr_max_bpm: 150, variant: "jog" });
@@ -105,14 +105,14 @@ test("3 × (8' + 2') senza l'ultimo recupero: «3x» pieno, recupero preso dal d
     "- Defaticamento 8m intensity=cooldown",
   ].join("\n");
   assert.equal(workoutDescription([warm, threshold, jog, threshold, jog, threshold, cool], ctx), expected);
-  // Con l'ultimo recupero già scritto il defaticamento resta intero.
+  // With the last recovery already written, the cooldown stays whole.
   assert.equal(
     workoutDescription([warm, threshold, jog, threshold, jog, threshold, jog, cool], ctx),
     expected.replace("Defaticamento 8m", "Defaticamento 10m"),
   );
 });
 
-test("ripetuta finale lasciata com'è senza un defaticamento abbastanza lungo", () => {
+test("final repeat left as is without a long enough cooldown", () => {
   const threshold = step({ kind: "work", label: "Soglia", completion_value: 480, pace_min_s_km: 265, pace_max_s_km: 275 });
   const jog = step({ kind: "recovery", label: "Corricchia", completion_value: 120, hr_max_bpm: 150, variant: "jog" });
   const reps = [threshold, jog, threshold, jog, threshold];
@@ -122,7 +122,7 @@ test("ripetuta finale lasciata com'è senza un defaticamento abbastanza lungo", 
   assert.ok(orphan(workoutDescription([...reps, step({ kind: "cooldown", completion_type: "distance", completion_value: 2000 })], ctx)), "unità diverse");
 });
 
-test("allunghi e ripetute: ogni blocco Nx è un paragrafo separato", () => {
+test("strides and repeats: each Nx block is a separate paragraph", () => {
   const sprint = step({ kind: "work", label: "Allungo", completion_value: 20, variant: "sprint" });
   const walk = (seconds: number) => step({ kind: "recovery", label: "Cammina", completion_value: seconds, variant: "walk" });
   const rep = step({ kind: "work", label: "1000", completion_type: "distance", completion_value: 1000, pace_min_s_km: 298, pace_max_s_km: 312 });
@@ -162,11 +162,11 @@ test("allunghi e ripetute: ogni blocco Nx è un paragrafo separato", () => {
   assert.equal(stridesOnly.name, 'Corsa facile · 2×20"');
 });
 
-test("un solo tipo di target per seduta: Zepp scarta il passo se c'è anche la FC", () => {
-  // Soglia e ripetute: passo ovunque ci sia, niente FC.
+test("one target type per session: Zepp drops pace if HR is also there", () => {
+  // Threshold and repeats: pace wherever there is one, no HR.
   assert.equal(workoutTargetKind(intervals, ctx), "pace");
   assert.ok(!workoutDescription(intervals, ctx).includes("% HR"));
-  // Facile con passo indicativo e tetto di FC: tutta a FC.
+  // Easy with indicative pace and an HR cap: all HR.
   const easy = [
     step({ kind: "warmup", completion_value: 300, hr_max_bpm: 140 }),
     step({ kind: "steady", completion_value: 1800, pace_min_s_km: 380, pace_max_s_km: 410, hr_max_bpm: 150 }),
@@ -179,14 +179,14 @@ test("un solo tipo di target per seduta: Zepp scarta il passo se c'è anche la F
     "Main Set",
     "- Corsa 30m 50-79% HR intensity=active",
   ].join("\n"));
-  // La preferenza dell'atleta vale per tutta la seduta, con ripiego se manca quel tipo.
+  // The athlete's preference applies to the whole session, with a fallback if that type is missing.
   assert.equal(workoutTargetKind(intervals, { ...ctx, preference: "hr" }), "hr");
   assert.equal(workoutTargetKind(easy, { ...ctx, preference: "pace" }), "pace");
   assert.equal(workoutTargetKind([step({ hr_max_bpm: 150 })], { ...ctx, preference: "pace" }), "hr");
   assert.equal(workoutTargetKind([step({})], ctx), null);
 });
 
-test("evento WORKOUT con id esterno riconoscibile", () => {
+test("WORKOUT event with a recognisable external id", () => {
   const draft = workoutToIntervalsDraft({
     id: "abc", date: "2026-10-24", title: "Ripetute", target_distance_m: null, target_duration_s: null, steps: intervals,
   }, ctx);
@@ -213,13 +213,13 @@ function day(date: string, overrides: Partial<WellnessDay> = {}): WellnessDay {
   };
 }
 
-test("HRV sotto la propria mediana abbassa il punteggio", () => {
+test("HRV below its own median lowers the score", () => {
   assert.equal(hrvScore(60, null), 70);
   assert.equal(hrvScore(62, 60), 90);
   assert.equal(hrvScore(50, 60), 25);
 });
 
-test("readiness dal solo wellness Intervals.icu, senza Mini App Zepp", () => {
+test("readiness from Intervals.icu wellness alone, without the Zepp Mini App", () => {
   const history = Array.from({ length: 10 }, (_, index) => day(`2026-10-${String(11 + index).padStart(2, "0")}`));
   const good = computeZeppReadiness([], internal, new Date("2026-10-21T09:00:00.000Z"), false, [day("2026-10-21", { hrv: 64 }), ...history]);
   assert.equal(good.available, true);
@@ -229,12 +229,12 @@ test("readiness dal solo wellness Intervals.icu, senza Mini App Zepp", () => {
   assert.ok((tired.score ?? 0) < (good.score ?? 0) - 20);
 });
 
-test("senza HRV né dati Zepp il wellness da solo non basta", () => {
+test("without HRV or Zepp data wellness alone is not enough", () => {
   const result = computeZeppReadiness([], internal, new Date("2026-10-21T09:00:00.000Z"), false, [day("2026-10-21", { hrv: null })]);
   assert.equal(result.available, false);
 });
 
-test("wellness vecchio non modifica lo stato", () => {
+test("old wellness does not change the status", () => {
   const result = computeZeppReadiness([], internal, new Date("2026-10-25T09:00:00.000Z"), false, [day("2026-10-21")]);
   assert.equal(result.available, false);
   assert.ok((result.freshness_hours ?? 0) > 36);

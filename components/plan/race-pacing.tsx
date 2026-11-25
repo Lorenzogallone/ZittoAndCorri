@@ -4,7 +4,7 @@ import { formatDuration, formatPace } from "@/lib/format";
 import { racePacing } from "@/lib/plan/race";
 import { adjustPace } from "@/lib/metrics/heat";
 
-/** Strategia di gara a ritmo costante con i tempi di passaggio. */
+/** Even-pace race strategy with split times. */
 export function RacePacingCard({
   distance_m,
   target_s,
@@ -15,7 +15,7 @@ export function RacePacingCard({
   distance_m: number;
   target_s: number;
   source: "goal" | "prediction";
-  /** Passo di partenza consigliato dalla previsione, quando l'obiettivo è ambizioso o fuori forbice. */
+  /** Starting pace recommended by the prediction, when the goal is ambitious or out of range. */
   advice?: string;
   heatPct?: number;
 }) {

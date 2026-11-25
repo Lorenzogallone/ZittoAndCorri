@@ -11,19 +11,19 @@ import { PACE_SCALE, paceGradientStops } from "@/lib/metrics/pace-colors";
 interface ActivityMapClientProps {
   gpsSeries: GpsPoint[];
   /**
-   * Dentro la card dell'attività, sopra l'anteprima statica: riempie il
-   * riquadro, compare solo a mappa pronta e si sposta con due dita (con un
-   * dito si scorre la pagina). onFail riporta all'anteprima se WebGL cede.
+   * Inside the activity card, above the static preview: fills the
+   * frame, shows only once the map is ready and pans with two fingers (with one
+   * finger the page scrolls). onFail falls back to the preview if WebGL gives out.
    */
   embedded?: boolean;
   onFail?: () => void;
-  /** Tratti della seduta con il loro colore (come la card Ripetute): sostituiscono i colori del passo. */
+  /** Session segments with their colour (like the Repeats card): they replace the pace colours. */
   parts?: RoutePart[] | null;
-  /** Tratto scelto nella card: in primo piano, gli altri attenuati. */
+  /** Segment chosen in the card: highlighted, the others dimmed. */
   selected?: number | null;
 }
 
-/** Tratto da colorare sul percorso (secondi dall'inizio, orologio reale dei punti GPS). */
+/** Segment to colour on the route (seconds from the start, real clock of the GPS points). */
 export interface RoutePart {
   index: number;
   start: number;
@@ -46,8 +46,8 @@ export default function ActivityMapClient({ gpsSeries, embedded = false, onFail,
   useEffect(() => {
     if (!mapContainerRef.current || gpsSeries.length < 2) return;
 
-    // Rileva il tema: la classe forzata (.dark/.light, impostata dal theme
-    // init) ha priorità; in automatico si cade sulla preferenza di sistema.
+    // Detect the theme: the forced class (.dark/.light, set by the theme
+    // init) takes priority; in auto mode it falls back to the system preference.
     const root = document.documentElement;
     const isDarkTheme = root.classList.contains("dark")
       ? true
@@ -60,7 +60,7 @@ export default function ActivityMapClient({ gpsSeries, embedded = false, onFail,
       : "https://tiles.openfreemap.org/styles/positron";
 
     // Initialize MapLibre Map
-    // Memoria contenuta: su iOS in PWA una mappa WebGL pesante fa ricaricare la pagina.
+    // Contained memory: on iOS in a PWA a heavy WebGL map makes the page reload.
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: styleUrl,
@@ -103,8 +103,8 @@ export default function ActivityMapClient({ gpsSeries, embedded = false, onFail,
         animate: false,
       });
 
-      // Percorso colorato per velocità (giallo = lento, rosso = veloce) quando
-      // la traccia ha tempi sufficienti, altrimenti tinta unica.
+      // Route coloured by speed (yellow = slow, red = fast) when
+      // the track has enough timing data, otherwise a single colour.
       const stops = paceGradientStops(gpsSeries);
       map.addSource("route", {
         type: "geojson",
@@ -141,7 +141,7 @@ export default function ActivityMapClient({ gpsSeries, embedded = false, onFail,
       });
       setColored(Boolean(stops));
 
-      // Tratti della seduta, con i colori della card Ripetute, sopra (e al posto) del passo.
+      // Session segments, with the Repeats card colours, above (and instead of) the pace.
       map.addSource("parts", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addLayer({
         id: "parts-casing",
@@ -189,17 +189,17 @@ export default function ActivityMapClient({ gpsSeries, embedded = false, onFail,
     };
   }, [gpsSeries, embedded, onFail, touchHelp, windowsHelp, macHelp, zoomIn, zoomOut]);
 
-  // Colori per tratto: si aggiornano quando cambia la scelta nella card.
+  // Per-segment colours: updated when the choice in the card changes.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapLoaded) return;
     const source = map.getSource("parts") as maplibregl.GeoJSONSource | undefined;
     if (!source) return;
     const list = parts ?? [];
-    // Con i tratti il gradiente del passo non si vede: due scale di colore insieme confondono.
+    // With segments the pace gradient is not visible: two colour scales together confuse.
     if (map.getLayer("route-line")) map.setLayoutProperty("route-line", "visibility", list.length ? "none" : "visible");
     const features = list.flatMap((part, i) => {
-      // Fino al primo punto del tratto dopo: niente buchi tra un tratto e l'altro.
+      // Up to the first point of the next segment: no gaps between segments.
       const end = list[i + 1]?.start ?? part.end;
       const coordinates = gpsSeries.filter((p) => p.t >= part.start && p.t <= end).map((p) => [p.lon, p.lat]);
       if (coordinates.length < 2) return [];

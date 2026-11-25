@@ -11,9 +11,9 @@ interface EmptyAction {
 }
 
 /**
- * Schermata o sezione ancora vuota: tessera hero con l'icona, cosa comparirà
- * qui, un'azione principale che porta a riempirla e, se serve, una seconda
- * via più leggera. Usata da corse, piano e profilo (stessa forma ovunque).
+ * Empty screen or section: hero tile with the icon, what will appear
+ * here, a primary action that leads to filling it and, if needed, a second
+ * lighter path. Used by runs, plan and profile (same shape everywhere).
  */
 export function EmptyState({
   icon: Icon,
@@ -25,7 +25,7 @@ export function EmptyState({
   className,
 }: {
   icon?: LucideIcon;
-  /** Al posto dell'icona (es. RunnerMark). */
+  /** In place of the icon (e.g. RunnerMark). */
   mark?: ReactNode;
   title: string;
   text: string;

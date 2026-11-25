@@ -5,7 +5,7 @@ import { intlLocale, type Locale } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 import { formatTokens, formatUsd, shortModelName, type AiUsage } from "@/lib/ai/usage";
 
-/** Quale parte del costo mostrare nella riga compatta. */
+/** Which part of the cost to show in the compact row. */
 export type CostPart = "prompt" | "reply" | "total";
 
 type CostT = ReturnType<typeof useTranslations<"coach.cost">>;
@@ -13,7 +13,7 @@ type CostT = ReturnType<typeof useTranslations<"coach.cost">>;
 const approx = (usage: AiUsage, value: number | null | undefined) =>
   value == null ? null : `${usage.estimated && value > 0 ? "≈ " : ""}${formatUsd(value)}`;
 
-/** Testo breve per la riga sotto il messaggio. */
+/** Short text for the row under the message. */
 export function costSummary(usage: AiUsage, part: CostPart, t: CostT): string {
   if (part === "prompt") {
     return [t("promptTokens", { tokens: formatTokens(usage.input_tokens) }), approx(usage, usage.input_cost_usd)].filter(Boolean).join(" · ");
@@ -38,7 +38,7 @@ const precise = (value: number | null | undefined, t: CostT, locale: Locale) => 
 
 const int = (value: number, locale: Locale) => value.toLocaleString(intlLocale(locale));
 
-/** Dettaglio completo: token, costo di prompt e risposta, modello. */
+/** Full detail: tokens, prompt and reply cost, model. */
 export function UsageBreakdown({ usage, className }: { usage: AiUsage; className?: string }) {
   const t = useTranslations("coach.cost");
   const locale = useLocale() as Locale;
@@ -71,7 +71,7 @@ export function UsageBreakdown({ usage, className }: { usage: AiUsage; className
   );
 }
 
-/** Riga compatta che si apre sul dettaglio. */
+/** Compact row that opens the detail. */
 export function AiCost({ usage, part, prefix, className }: { usage: AiUsage; part: CostPart; prefix?: string; className?: string }) {
   const t = useTranslations("coach.cost");
   return (

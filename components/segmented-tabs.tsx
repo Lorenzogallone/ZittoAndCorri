@@ -9,7 +9,7 @@ export interface SegmentedTab {
   content: ReactNode;
 }
 
-/** Controllo a segmenti: una sola vista alla volta, cambio con animazione. */
+/** Segmented control: one view at a time, switching with animation. */
 export function SegmentedTabs({
   tabs,
   initial,

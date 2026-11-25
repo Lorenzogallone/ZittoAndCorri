@@ -4,7 +4,7 @@ import { analyzeIntervals, areAutoLaps, describeStructure, type FitLap } from ".
 import { itLabels } from "../lib/italian-translator.ts";
 import type { WorkoutStepInput } from "../lib/types.ts";
 
-// Corsa sintetica: fasi a velocità costante con rumore deterministico.
+// Synthetic run: constant-speed phases with deterministic noise.
 interface Phase { seconds: number; speed: number; hr: number }
 
 function random(seed: number) {
@@ -36,7 +36,7 @@ function simulate(phases: Phase[], seed = 7) {
   return { distance, hr, bounds };
 }
 
-/** Traccia GPS lungo un meridiano con errore di posizione di qualche metro. */
+/** GPS track along a meridian with a position error of a few metres. */
 function toGps(distance: Array<{ t: number; d: number }>, seed = 3) {
   const rnd = random(seed);
   return distance.map((p) => ({ t: p.t, lat: 45 + (p.d + rnd() * 6) / 111_195, lon: 9 + rnd() * 0.00003 }));
@@ -67,7 +67,7 @@ function run5x1000() {
   return simulate(phases);
 }
 
-test("le ripetute del piano si allineano sulla distanza dell'orologio", () => {
+test("the plan's repeats align on the watch distance", () => {
   const { distance, hr } = run5x1000();
   const result = analyzeIntervals({ distance, hr, structures: [{ source: "plan", steps: plan5x1000 }] });
   assert.equal(result.source, "plan");
@@ -80,18 +80,18 @@ test("le ripetute del piano si allineano sulla distanza dell'orologio", () => {
     assert.equal(segment.rep, i + 1);
     assert.equal(segment.reps, 5);
   });
-  // Il terzo recupero è durato di più: deve vedersi.
+  // The third recovery lasted longer: it must show.
   const recoveries = result.segments.filter((s) => s.kind === "recovery");
   assert.equal(recoveries.length, 4);
   assert.ok(recoveries[2].duration_s > recoveries[0].duration_s + 15, recoveries.map((r) => r.duration_s).join(","));
   assert.ok(recoveries.every((r) => (r.hr_drop ?? 0) > 10), "il cuore scende nei recuperi");
   assert.ok(result.summary!.fade_pct! > 0, "le ultime più lente");
-  // 4:00/km è più lento del range 3:55–4:05? No: 1000/4.0 = 250 s/km → +5 s.
+  // Is 4:00/km slower than the 3:55–4:05 range? No: 1000/4.0 = 250 s/km → +5 s.
   assert.ok(work[4].pace_deviation_s! > 0);
   assert.equal(result.description, "5 × 1 km");
 });
 
-test("funziona anche con il solo GPS", () => {
+test("it also works with GPS only", () => {
   const { distance, hr } = run5x1000();
   const result = analyzeIntervals({ gps: toGps(distance), hr, structures: [{ source: "plan", steps: plan5x1000 }] });
   assert.equal(result.source, "plan");
@@ -108,7 +108,7 @@ const notesStructure: WorkoutStepInput[] = Array.from({ length: 3 }, () => [
   step("work", "sprint", "time", 60),
 ]).flat();
 
-test("la struttura scritta nella nota trova anche le pause non dichiarate", () => {
+test("the structure written in the note also finds undeclared pauses", () => {
   const phases: Phase[] = [{ seconds: 900, speed: 2.7, hr: 132 }];
   for (let set = 0; set < 3; set++) {
     phases.push({ seconds: 180, speed: 3.9, hr: 165 });
@@ -128,16 +128,16 @@ test("la struttura scritta nella nota trova anche le pause non dichiarate", () =
   assert.equal(sprint.length, 3);
   forte.forEach((s) => assert.ok(Math.abs(s.duration_s - 180) <= 8, `forte ${s.duration_s}`));
   sprint.forEach((s) => assert.ok(Math.abs(s.duration_s - 60) <= 6, `sprint ${s.duration_s}`));
-  // Prima ripetuta: inizia dopo il riscaldamento di 900 s.
+  // First repeat: starts after the 900 s warm-up.
   assert.ok(Math.abs(forte[0].start_s - bounds[1]) <= 6, `start ${forte[0].start_s}`);
-  // Le pause camminate dopo lo sprint diventano recuperi.
+  // Walked pauses after the sprint become recoveries.
   const walks = result.segments.filter((s) => s.kind === "recovery" && s.duration_s > 70);
   assert.equal(walks.length, 2);
   assert.ok(sprint.every((s) => s.pace_s_km! < forte[0].pace_s_km!), "lo sprint è più veloce");
   assert.equal(describeStructure(notesStructure), "3 × (3' forte + 1' jog + 1' sprint)");
 });
 
-test("senza pause tra sprint e tratto successivo non inventa recuperi", () => {
+test("without pauses between sprint and next stretch it doesn't invent recoveries", () => {
   const phases: Phase[] = [{ seconds: 600, speed: 2.7, hr: 132 }];
   for (let set = 0; set < 3; set++) {
     phases.push({ seconds: 180, speed: 3.9, hr: 165 }, { seconds: 60, speed: 2.4, hr: 150 }, { seconds: 60, speed: 5.4, hr: 176 });
@@ -150,14 +150,14 @@ test("senza pause tra sprint e tratto successivo non inventa recuperi", () => {
   assert.deepEqual(main.map((s) => s.variant), [null, "jog", "sprint", null, "jog", "sprint", null, "jog", "sprint"]);
 });
 
-test("una seduta pianificata ma non fatta non produce ripetute inventate", () => {
+test("a planned but undone session produces no invented repeats", () => {
   const { distance, hr } = simulate([{ seconds: 3000, speed: 2.8, hr: 140 }]);
   const result = analyzeIntervals({ distance, hr, structures: [{ source: "plan", steps: plan5x1000 }] });
   assert.equal(result.source, "none");
   assert.equal(result.segments.length, 0);
 });
 
-test("senza struttura riconosce da solo un'alternanza netta", () => {
+test("without a structure it recognises a clear alternation on its own", () => {
   const phases: Phase[] = [{ seconds: 600, speed: 2.8, hr: 135 }];
   for (let i = 0; i < 6; i++) {
     phases.push({ seconds: 90, speed: 4.6, hr: 170 });
@@ -174,7 +174,7 @@ test("senza struttura riconosce da solo un'alternanza netta", () => {
   assert.equal(result.segments[result.segments.length - 1].kind, "cooldown");
 });
 
-test("una corsa costante non ha ripetute", () => {
+test("a constant run has no repeats", () => {
   const { distance, hr } = simulate([{ seconds: 2400, speed: 3.0, hr: 145 }]);
   assert.equal(analyzeIntervals({ distance, hr }).source, "none");
 });
@@ -183,11 +183,11 @@ const lap = (start_s: number, duration_s: number, distance_m: number, trigger: s
   start_s, duration_s, distance_m, avg_hr: null, max_hr: null, intensity, trigger, step: null,
 });
 
-test("i lap automatici a km vengono ignorati, quelli manuali no", () => {
+test("automatic km laps are ignored, manual ones are not", () => {
   const auto = [lap(0, 330, 1000, "distance"), lap(330, 325, 1000, "distance"), lap(655, 200, 600, "sessionEnd")];
   assert.equal(areAutoLaps(auto), true);
   const { distance, hr } = run5x1000();
-  // Lap manuali premuti a ogni cambio: riscaldamento, 5 tratti, recuperi, defaticamento.
+  // Manual laps pressed at every change: warm-up, 5 stretches, recoveries, cooldown.
   const phases = [620, ...repSpeeds.flatMap((s, i) => [Math.round(1000 / s), ...(i < 4 ? [i === 2 ? 150 : 120] : [])]), 500];
   let start = 0;
   const laps = phases.map((seconds, i) => {
@@ -202,12 +202,12 @@ test("i lap automatici a km vengono ignorati, quelli manuali no", () => {
   assert.equal(result.source, "laps");
   const work = result.segments.filter((s) => s.kind === "work");
   assert.equal(work.length, 5);
-  // Le etichette arrivano dal piano, i tempi dai lap.
+  // Labels come from the plan, times from the laps.
   assert.equal(work[0].label, "1 km veloce");
   assert.equal(work[0].duration_s, Math.round(1000 / repSpeeds[0]));
 });
 
-test("le righe per il coach riassumono le ripetute", async () => {
+test("the coach lines summarise the repeats", async () => {
   const { intervalsForPrompt, intervalsOneLine } = await import("../lib/intervals-text.ts");
   const { distance, hr } = run5x1000();
   const result = analyzeIntervals({ distance, hr, structures: [{ source: "plan", steps: plan5x1000 }] });
@@ -219,7 +219,7 @@ test("le righe per il coach riassumono le ripetute", async () => {
   assert.equal(intervalsOneLine({ ...result, source: "none", segments: [] }), null);
 });
 
-test("le righe per il coach dicono cadenza e pause dei tratti", async () => {
+test("the coach lines give cadence and pauses of the stretches", async () => {
   const { intervalsForPrompt, intervalsOneLine } = await import("../lib/intervals-text.ts");
   const { distance, hr, bounds } = run5x1000();
   const mid = Math.round((bounds[3] + bounds[4]) / 2);
@@ -236,8 +236,8 @@ test("le righe per il coach dicono cadenza e pause dei tratti", async () => {
   assert.match(intervalsForPrompt(result)!, /di pausa \(fuori da tempo e passo\)/);
 });
 
-// Sessione reale dell'atleta: riscaldamento, poi 4 × (3' veloce + 30" jogging
-// + 30" sprint + 2' camminata), FC con buchi. Va riconosciuta da sola.
+// The athlete's real session: warm-up, then 4 × (3' fast + 30" jogging
+// + 30" sprint + 2' walking), HR with gaps. It must be recognised on its own.
 function athleteSession(seed = 21) {
   const phases: Phase[] = [{ seconds: 320, speed: 2.99, hr: 140 }, { seconds: 40, speed: 1.2, hr: 135 }];
   for (let set = 0; set < 4; set++) {
@@ -246,12 +246,12 @@ function athleteSession(seed = 21) {
   }
   phases.push({ seconds: 25, speed: 1.4, hr: 130 });
   const run = simulate(phases, seed);
-  // Il sensore perde la FC per qualche decina di secondi ogni tanto.
+  // The sensor loses HR for a few tens of seconds now and then.
   run.hr = run.hr.filter((p) => Math.floor(p.t / 50) % 3 !== 1);
   return run;
 }
 
-test("riconosce da sola veloce, jogging, sprint e camminata", () => {
+test("recognises fast, jogging, sprint and walking on its own", () => {
   const { distance, hr } = athleteSession();
   const result = analyzeIntervals({ distance, hr });
   assert.equal(result.source, "auto");
@@ -265,11 +265,11 @@ test("riconosce da sola veloce, jogging, sprint e camminata", () => {
   assert.ok(sprints.every((s) => (s.max_speed_kmh ?? 0) > 16), "velocità di punta");
   assert.equal(result.summary!.work_count, 4);
   assert.equal(result.summary!.sprint!.count, 4);
-  // Con i buchi della FC ogni tratto ha comunque un valore.
+  // With HR gaps every stretch still has a value.
   assert.ok(main.every((s) => s.avg_hr != null), main.map((s) => s.avg_hr).join(","));
 });
 
-test("allunghi alla fine di una corsa facile", () => {
+test("strides at the end of an easy run", () => {
   const phases: Phase[] = [{ seconds: 2400, speed: 2.9, hr: 145 }];
   for (let i = 0; i < 6; i++) phases.push({ seconds: 20, speed: 5.2, hr: 160 }, { seconds: 60, speed: 2.4, hr: 145 });
   const { distance, hr } = simulate(phases, 5);
@@ -281,7 +281,7 @@ test("allunghi alla fine di una corsa facile", () => {
   assert.match(result.description!, /^6 × \(20" sprint \+ 1' jogging\)$/);
 });
 
-test("le salite e discese di una corsa facile non sono ripetute", () => {
+test("climbs and descents of an easy run are not repeats", () => {
   const rnd = random(9);
   const distance: Array<{ t: number; d: number }> = [];
   let d = 0;
@@ -292,7 +292,7 @@ test("le salite e discese di una corsa facile non sono ripetute", () => {
   assert.equal(analyzeIntervals({ distance }).source, "none");
 });
 
-test("lap manuali senza intensità: classificati a più livelli", () => {
+test("manual laps without intensity: classified at several levels", () => {
   const { distance, hr, bounds } = athleteSession(3);
   const laps = bounds.slice(0, -1).map((start, i) => lap(start, bounds[i + 1] - start, Math.round(distance[bounds[i + 1] - 1].d - (start ? distance[start - 1].d : 0)), i === bounds.length - 2 ? "sessionEnd" : "manual"));
   const result = analyzeIntervals({ distance, hr, laps });
@@ -303,7 +303,7 @@ test("lap manuali senza intensità: classificati a più livelli", () => {
   assert.equal(main.filter((s) => s.variant === "jog").length, 4);
 });
 
-test("le fasi del piano sanno essere sprint, jogging o camminata", async () => {
+test("plan phases can be sprint, jogging or walking", async () => {
   const { stepKindLabel, describeStep, stepVariant } = await import("../lib/workout-guide.ts");
   const { estimateStep, stepIntensity } = await import("../lib/workout-estimate.ts");
   const { WorkoutStepsInputSchema } = await import("../lib/workout-steps.ts");
@@ -315,11 +315,11 @@ test("le fasi del piano sanno essere sprint, jogging o camminata", async () => {
   assert.equal(stepKindLabel(itLabels, jog), "Recupero corricchiando");
   assert.equal(describeStep(itLabels, sprint), '20" a tutta');
   assert.equal(describeStep(itLabels, walk), "2' camminando");
-  // Variante incoerente con il tipo: ignorata, non rompe nulla.
+  // Variant inconsistent with the type: ignored, breaks nothing.
   assert.equal(stepVariant({ kind: "warmup", variant: "sprint" }), null);
   assert.ok(estimateStep(walk).meters < estimateStep(jog).meters * 4 * 0.8, "si cammina più piano");
   assert.ok(stepIntensity(walk) < stepIntensity(jog));
-  // Lo schema conserva la variante e scarta valori sconosciuti senza invalidare la seduta.
+  // The schema keeps the variant and discards unknown values without invalidating the session.
   const parsed = WorkoutStepsInputSchema.parse([sprint, { ...walk, variant: "boh" }]);
   assert.equal(parsed[0].variant, "sprint");
   assert.equal(parsed[1].variant, null);
@@ -331,7 +331,7 @@ test("le fasi del piano sanno essere sprint, jogging o camminata", async () => {
   assert.equal(describeStructure(block), `3 × (3' + 30" jogging + 20" sprint + 2' camminata)`);
 });
 
-test("la struttura dichiarata con camminata, ma corricchiando: vale il misurato", () => {
+test("declared structure with walking, but jogging slowly: the measured value holds", () => {
   const { distance, hr } = athleteSession(8);
   const declared: WorkoutStepInput[] = [];
   for (let set = 0; set < 4; set++) {
@@ -345,14 +345,14 @@ test("la struttura dichiarata con camminata, ma corricchiando: vale il misurato"
   assert.equal(result.segments.filter((s) => s.variant === "sprint").length, 4);
 });
 
-/** Toglie i punti in un intervallo [da, a): l'orologio è in pausa, poi riparte dallo stesso punto. */
+/** Removes the points in an interval [from, to): the watch is paused, then restarts from the same point. */
 function pauseWatch<P extends { t: number }>(series: P[], from: number, seconds: number): P[] {
   return series.map((p) => (p.t > from ? { ...p, t: p.t + seconds } : p));
 }
 
-test("una pausa dell'orologio dentro una ripetuta non la fa sembrare più lenta", () => {
+test("a watch pause inside a repeat doesn't make it look slower", () => {
   const { distance, hr, bounds } = run5x1000();
-  // 25" di pausa a metà della seconda ripetuta (fase 3: dopo riscaldamento e primo recupero).
+  // 25" pause in the middle of the second repeat (phase 3: after warm-up and first recovery).
   const mid = Math.round((bounds[3] + bounds[4]) / 2);
   const paused = analyzeIntervals({
     distance: pauseWatch(distance, mid, 25),
@@ -364,9 +364,9 @@ test("una pausa dell'orologio dentro una ripetuta non la fa sembrare più lenta"
   pace(paused).forEach((value, i) => assert.ok(Math.abs(value - pace(plain)[i]) <= 3, `rep ${i + 1}: ${value} vs ${pace(plain)[i]}`));
 });
 
-test("un recupero fatto a orologio fermo resta un recupero; la pausa si conta a parte", () => {
+test("a recovery done with the watch stopped stays a recovery; the pause is counted separately", () => {
   const { distance, hr, bounds } = run5x1000();
-  // Primo recupero: l'atleta mette in pausa per 60" all'inizio.
+  // First recovery: the athlete pauses for 60" at the start.
   const at = bounds[2] + 5;
   const result = analyzeIntervals({
     distance: pauseWatch(distance, at, 60),
@@ -375,13 +375,13 @@ test("un recupero fatto a orologio fermo resta un recupero; la pausa si conta a 
   });
   assert.equal(result.segments.filter((s) => s.kind === "work").length, 5);
   const first = result.segments.find((s) => s.kind === "recovery")!;
-  // La pausa non entra nel tempo del tratto ma resta visibile accanto.
+  // The pause doesn't enter the stretch's time but stays visible next to it.
   assert.ok(first.paused_s! >= 50, `pausa di ${first.paused_s}s`);
   assert.ok(first.duration_s + first.paused_s! >= 170, `recupero di ${first.duration_s}s + ${first.paused_s}s`);
 });
 
-// Seduta a tempo come quella del 19/11: 5' facile, 3 × (8' + 2'), defaticamento
-// previsto ma non fatto; l'orologio chiude un lap a ogni step più un lap di 5".
+// Tempo session like the one on 19/11: 5' easy, 3 × (8' + 2'), cooldown
+// planned but not done; the watch closes a lap at every step plus a 5" lap.
 const tempoPlan: WorkoutStepInput[] = [
   step("warmup", "Corsa facile per scaldarti", "time", 300),
   step("work", "Sostenuto", "time", 480),
@@ -403,7 +403,7 @@ function tempoRun() {
   ]);
 }
 
-test("defaticamento non fatto: l'ultima ripetuta resta intera (lap del piano)", () => {
+test("cooldown not done: the last repeat stays whole (plan laps)", () => {
   const { distance, hr, bounds } = tempoRun();
   const durations = [301, 480, 120, 480, 121, 479, 5];
   let start = 0;
@@ -420,7 +420,7 @@ test("defaticamento non fatto: l'ultima ripetuta resta intera (lap del piano)", 
   assert.equal(result.segments.some((s) => s.kind === "cooldown"), false);
 });
 
-test("defaticamento non fatto: l'ultima ripetuta resta intera (senza lap)", () => {
+test("cooldown not done: the last repeat stays whole (no laps)", () => {
   const { distance, hr } = tempoRun();
   const result = analyzeIntervals({ distance, hr, structures: [{ source: "plan", steps: tempoPlan }] });
   assert.equal(result.source, "plan");
@@ -430,7 +430,7 @@ test("defaticamento non fatto: l'ultima ripetuta resta intera (senza lap)", () =
   assert.equal(result.segments.some((s) => s.kind === "cooldown"), false);
 });
 
-test("riscaldamento saltato: i lap combaciano dal primo tratto", () => {
+test("warm-up skipped: laps match from the first stretch", () => {
   const { distance, hr } = simulate([
     { seconds: 480, speed: 3.1, hr: 166 },
     { seconds: 120, speed: 2.2, hr: 150 },
@@ -450,7 +450,7 @@ test("riscaldamento saltato: i lap combaciano dal primo tratto", () => {
   assert.equal(result.segments.filter((s) => s.kind === "work").length, 3);
 });
 
-test("cadenza media per tratto, senza i secondi in pausa", () => {
+test("average cadence per stretch, without the seconds in pause", () => {
   const { distance, hr } = tempoRun();
   const cadence = distance.map((p) => ({ t: p.t, rpm: p.t > 301 && p.t <= 781 ? 84 : 78 }));
   const result = analyzeIntervals({ distance, hr, cadence, structures: [{ source: "plan", steps: tempoPlan }] });
@@ -458,7 +458,7 @@ test("cadenza media per tratto, senza i secondi in pausa", () => {
   assert.ok(Math.abs(first.cadence_spm! - 168) <= 2, `cadenza ${first.cadence_spm}`);
 });
 
-test("una sosta con l'orologio che registra è una pausa, non un rallentamento", () => {
+test("a stop with the watch recording is a pause, not a slowdown", () => {
   const { distance, hr } = simulate([
     { seconds: 300, speed: 2.5, hr: 130 },
     { seconds: 150, speed: 3.3, hr: 165 },
@@ -480,9 +480,9 @@ test("una sosta con l'orologio che registra è una pausa, non un rallentamento",
   assert.ok(Math.abs(first.pace_s_km! - 303) <= 10, `passo ${first.pace_s_km}`);
 });
 
-// ── Il piano come riferimento ────────────────────────────────────────────────
+// ── The plan as a reference ────────────────────────────────────────────────
 
-test("lungo nel piano: le variazioni di ritmo di 15 km continui non sono ripetute", async () => {
+test("long run in the plan: the pace variations of 15 continuous km are not repeats", async () => {
   const { readFile } = await import("node:fs/promises");
   const raw = JSON.parse(await readFile(new URL("./fixtures/long-15k.json", import.meta.url), "utf8"));
   const run = {
@@ -496,7 +496,7 @@ test("lungo nel piano: le variazioni di ritmo di 15 km continui non sono ripetut
   assert.equal(long.segments.length, 0);
 });
 
-test("lungo nel piano ma ripetute nette: le mostra e dice che non era il piano", () => {
+test("long run in the plan but clear repeats: shows them and says it wasn't the plan", () => {
   const phases: Phase[] = [{ seconds: 600, speed: 2.8, hr: 135 }];
   for (let i = 0; i < 6; i++) phases.push({ seconds: 180, speed: 4.4, hr: 170 }, { seconds: 90, speed: 2.0, hr: 140 });
   phases.push({ seconds: 400, speed: 2.7, hr: 135 });
@@ -507,7 +507,7 @@ test("lungo nel piano ma ripetute nette: le mostra e dice che non era il piano",
   assert.equal(result.segments.filter((s) => s.kind === "work").length, 6);
 });
 
-test("allunghi in una corsa facile del piano: restano, senza contraddire il piano", () => {
+test("strides in an easy run of the plan: they stay, without contradicting the plan", () => {
   const phases: Phase[] = [{ seconds: 2400, speed: 2.9, hr: 145 }];
   for (let i = 0; i < 6; i++) phases.push({ seconds: 20, speed: 5.2, hr: 160 }, { seconds: 60, speed: 2.4, hr: 145 });
   const { distance, hr } = simulate(phases, 5);
@@ -517,7 +517,7 @@ test("allunghi in una corsa facile del piano: restano, senza contraddire il pian
   assert.equal(result.segments.filter((s) => s.variant === "sprint").length, 6);
 });
 
-test("il coach ha l'ultima parola solo sulle ripetute trovate in automatico", async () => {
+test("the coach has the last word only on automatically found repeats", async () => {
   const { withCoachVerdict } = await import("../lib/intervals-text.ts");
   const phases: Phase[] = [{ seconds: 600, speed: 2.8, hr: 135 }];
   for (let i = 0; i < 6; i++) phases.push({ seconds: 90, speed: 4.6, hr: 170 }, { seconds: 90, speed: 2.2, hr: 140 });
@@ -528,7 +528,7 @@ test("il coach ha l'ultima parola solo sulle ripetute trovate in automatico", as
   assert.equal(withCoachVerdict(auto, {}), auto);
   const declared = { ...auto, source: "plan" as const };
   assert.equal(withCoachVerdict(declared, { structured_session: false }), declared);
-  // Allunghi in una corsa facile: il coach la dice continua, ma restano.
+  // Strides in an easy run: the coach calls it continuous, but they stay.
   const easy: Phase[] = [{ seconds: 2400, speed: 2.9, hr: 145 }];
   for (let i = 0; i < 6; i++) easy.push({ seconds: 20, speed: 5.2, hr: 160 }, { seconds: 60, speed: 2.4, hr: 145 });
   const strides = analyzeIntervals({ ...simulate(easy, 5), planned: "easy" });
@@ -536,12 +536,12 @@ test("il coach ha l'ultima parola solo sulle ripetute trovate in automatico", as
   assert.equal(withCoachVerdict(strides, { structured_session: false }), strides);
 });
 
-test("facile nel piano ma 10 × 45\" netti: restano, anche se brevi", () => {
+test("easy in the plan but 10 × 45\" clear: they stay, even if short", () => {
   const phases: Phase[] = [{ seconds: 600, speed: 2.8, hr: 135 }];
   for (let i = 0; i < 10; i++) phases.push({ seconds: 45, speed: 4.8, hr: 168 }, { seconds: 75, speed: 2.0, hr: 140 });
   phases.push({ seconds: 300, speed: 2.7, hr: 135 });
   const result = analyzeIntervals({ ...simulate(phases), planned: "easy" });
   assert.equal(result.source, "auto");
-  // Sotto i 75" il rilevamento li chiama sprint: passano come allunghi.
+  // Under 75" detection calls them sprints: they pass as strides.
   assert.equal(result.segments.filter((s) => s.kind === "work" && s.duration_s >= 40 && s.duration_s <= 60).length, 9);
 });

@@ -12,9 +12,9 @@ interface UpdateToastProps {
 }
 
 /**
- * Toast "Nuova versione pronta" sopra la tab bar. Non blocca: niente overlay,
- * il contenitore fisso lascia passare i tocchi fuori dalla pillola. La regione
- * aria-live resta sempre montata, così l'arrivo del messaggio viene annunciato.
+ * "Nuova versione pronta" toast above the tab bar. It does not block: no overlay,
+ * the fixed container lets touches pass outside the pill. The aria-live
+ * region stays always mounted, so the arrival of the message is announced.
  */
 export function UpdateToast({ visible, updating, onUpdate, onDismiss }: UpdateToastProps) {
   const t = useTranslations("shell");
@@ -23,7 +23,7 @@ export function UpdateToast({ visible, updating, onUpdate, onDismiss }: UpdateTo
       role="status"
       aria-live="polite"
       className="pointer-events-none fixed inset-x-0 z-[70] px-4"
-      // Sopra la tab bar (~4.5rem di pillola + la sua quota di safe area).
+      // Above the tab bar (~4.5rem of pill + its share of safe area).
       style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 4.5rem)" }}
     >
       {visible && (

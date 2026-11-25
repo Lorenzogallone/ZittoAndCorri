@@ -26,7 +26,7 @@ interface Props {
   raceDate: string | null;
 }
 
-/** Vista mese: un pallino per seduta, pieno se fatta, vuoto se saltata. */
+/** Month view: one dot per session, filled if done, empty if skipped. */
 export function PlanCalendar({ days, month, today, raceDate }: Props) {
   const t = useTranslations("plan.calendar");
   const locale = useLocale() as Locale;

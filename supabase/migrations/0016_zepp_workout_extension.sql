@@ -1,4 +1,4 @@
--- Allenamenti guidati e secondo client Zepp dedicato alla Workout Extension.
+-- Guided workouts and a second Zepp client dedicated to the Workout Extension.
 
 alter table public.planned_workouts
   add column if not exists workout_steps jsonb not null default '[]'::jsonb;
@@ -6,8 +6,8 @@ alter table public.planned_workouts
 comment on column public.planned_workouts.workout_steps is
   'Schema V1 delle fasi guidate: tempo/distanza/manuale con range passo e HR.';
 
--- Gli allenamenti già presenti diventano una singola fase guidata. In questo
--- modo anche client meno recenti ricevono immediatamente uno schema completo.
+-- Existing workouts become a single guided phase. This way
+-- even older clients immediately receive a complete schema.
 update public.planned_workouts
 set workout_steps = jsonb_build_array(jsonb_build_object(
   'id', 'step-1',
@@ -49,8 +49,8 @@ alter table public.zepp_connections
 create index if not exists zepp_connections_user_kind_idx
   on public.zepp_connections (user_id, client_kind);
 
--- Sostituisce l'ultima versione della RPC: le fasi arrivano dalla proposta
--- validata e vengono applicate nella stessa transazione del resto del piano.
+-- Replaces the latest version of the RPC: the phases come from the validated
+-- proposal and are applied in the same transaction as the rest of the plan.
 create or replace function public.apply_plan_proposal(p_proposal_id uuid)
 returns text
 language plpgsql security definer set search_path = public as $$

@@ -21,7 +21,7 @@ function weekLabel(iso: string, locale: Locale): string {
   return new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "short", timeZone: "UTC" });
 }
 
-/** Km di corsa per settimana: barra piena = fatti, traccia chiara = previsti. */
+/** Running km per week: solid bar = done, light track = planned. */
 export function WeekBars({ weeks, current }: { weeks: WeekBar[]; current: string }) {
   const t = useTranslations("activities.charts.weeks");
   const locale = useLocale() as Locale;

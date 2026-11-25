@@ -1,18 +1,18 @@
--- Coach: proposte applicate giorno per giorno e OpenRouter come alternativa a Gemini.
+-- Coach: proposals applied day by day and OpenRouter as an alternative to Gemini.
 --
--- 1. Prima una proposta cancellava tutte le sedute non completate tra il
---    giorno della proposta e i 13 successivi, anche quelle non citate e anche
---    giorni ormai passati (se applicata il giorno dopo). Ora tocca solo i
---    giorni delle nuove sedute e quelli da svuotare esplicitamente
---    (remove_dates), mai giorni passati né giorni in cui l'atleta ha già corso.
--- 2. Chiave OpenRouter personale (cifrata in Vault come quella Gemini) e
---    preferenza del provider AI attivo.
+-- 1. Before, a proposal deleted all uncompleted sessions between the
+--    proposal day and the next 13, even those not mentioned and even
+--    days already past (if applied the next day). Now it only touches the
+--    days of the new sessions and those to be explicitly emptied
+--    (remove_dates), never past days or days the athlete already ran.
+-- 2. Personal OpenRouter key (encrypted in Vault like the Gemini one) and
+--    preference for the active AI provider.
 
--- ── 1. Proposte giorno per giorno ───────────────────────────────────────────
+-- ── 1. Day-by-day proposals ──────────────────────────────────────────────────
 
 alter table public.plan_proposals
   add column if not exists remove_dates date[] not null default '{}',
-  -- Prima/dopo per giorno, mostrato in chat: [{date, before: [...], after: [...]}]
+  -- Before/after per day, shown in chat: [{date, before: [...], after: [...]}]
   add column if not exists changes jsonb;
 
 create or replace function public.apply_plan_proposal_v2(p_proposal_id uuid)
@@ -32,7 +32,7 @@ begin
   if not found then return 'missing'; end if;
   if p.status <> 'pending' then return p.status; end if;
 
-  -- Giorni citati dalla proposta: nuove sedute e giorni da svuotare.
+  -- Days mentioned by the proposal: new sessions and days to empty.
   select coalesce(array_agg(distinct d order by d), '{}') into v_touched
   from (
     select (x->>'date')::date as d from jsonb_array_elements(p.workouts) as x
@@ -41,7 +41,7 @@ begin
   ) t
   where d is not null;
 
-  -- Se nel frattempo il piano di quei giorni è cambiato, la proposta è superata.
+  -- If the plan for those days has changed in the meantime, the proposal is stale.
   select coalesce(array_agg(id order by id), '{}'), max(updated_at)
   into v_ids, v_latest
   from public.planned_workouts
@@ -53,7 +53,7 @@ begin
     return 'stale';
   end if;
 
-  -- Mai nel passato, mai un giorno già corso o con una seduta completata.
+  -- Never in the past, never a day already run or with a completed session.
   select coalesce(array_agg(d order by d), '{}') into v_dates
   from unnest(v_touched) as d
   where d >= v_today
@@ -108,21 +108,21 @@ end; $$;
 revoke all on function public.apply_plan_proposal_v2(uuid) from public, anon;
 grant execute on function public.apply_plan_proposal_v2(uuid) to authenticated;
 
--- La vecchia funzione passa alla logica nuova: nessun client può più usare
--- quella che cancellava l'intera finestra.
+-- The old function moves to the new logic: no client can use
+-- the one that deleted the whole window any more.
 create or replace function public.apply_plan_proposal(p_proposal_id uuid)
 returns text
 language sql security definer set search_path = public as $$
   select public.apply_plan_proposal_v2(p_proposal_id);
 $$;
 
--- ── 2. OpenRouter ───────────────────────────────────────────────────────────
+-- ── 2. OpenRouter ────────────────────────────────────────────────────────────
 
 create table if not exists public.user_openrouter_credentials (
   user_id         uuid primary key references auth.users on delete cascade,
   vault_secret_id uuid not null,
   last_four       text not null check (char_length(last_four) = 4),
-  -- Modello scelto, es. "openai/gpt-5-mini" (id del catalogo OpenRouter).
+  -- Chosen model, e.g. "openai/gpt-5-mini" (OpenRouter catalogue id).
   model           text,
   verified_at     timestamptz not null,
   updated_at      timestamptz not null default now()
@@ -213,7 +213,7 @@ revoke all on function public.admin_set_openrouter_credential(uuid, text, text, 
 revoke all on function public.admin_get_openrouter_credential(uuid) from public, anon, authenticated;
 revoke all on function public.admin_delete_openrouter_credential(uuid) from public, anon, authenticated;
 
--- Provider AI attivo (scelto in chat o nelle impostazioni).
+-- Active AI provider (chosen in chat or in settings).
 alter table public.profiles
   add column if not exists ai_provider text not null default 'gemini'
   check (ai_provider in ('gemini', 'openrouter'));

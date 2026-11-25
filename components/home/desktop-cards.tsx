@@ -11,8 +11,8 @@ import { daysBetween } from "@/lib/local-date";
 import type { PhasePlan } from "@/lib/plan/phases";
 import type { Goal, PlannedWorkout } from "@/lib/types";
 
-// Card della colonna laterale della home, solo desktop (la pagina le
-// nasconde sotto lg): sul telefono la home resta seduta, settimana e chat.
+// Side column cards of the home, desktop only (the page
+// hides them below lg): on the phone the home stays session, week and chat.
 
 function dayLabel(iso: string, today: string, labels: { today: string; tomorrow: string }, locale: Locale): string {
   const diff = daysBetween(today, iso);
@@ -21,7 +21,7 @@ function dayLabel(iso: string, today: string, labels: { today: string; tomorrow:
   return new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { weekday: "short", day: "numeric", timeZone: "UTC" }).replace(".", "");
 }
 
-/** Le sedute dopo quella in evidenza, una riga ciascuna. */
+/** The sessions after the featured one, one row each. */
 export function UpcomingCard({ workouts, today }: { workouts: PlannedWorkout[]; today: string }) {
   const t = useTranslations("home.upcoming");
   const locale = useLocale() as Locale;
@@ -56,7 +56,7 @@ export function UpcomingCard({ workouts, today }: { workouts: PlannedWorkout[]; 
   );
 }
 
-/** Obiettivo attivo: gara, conto alla rovescia e fase della preparazione. */
+/** Active goal: race, countdown and preparation phase. */
 export function GoalCard({
   goal,
   today,

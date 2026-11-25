@@ -1,11 +1,11 @@
--- Il coach ha pieno controllo di piano e corse:
--- 1. una seduta passata non corsa si può togliere dal piano (spostata a oggi,
---    saltata): prima i giorni passati erano intoccabili e restavano "saltati";
--- 2. una corsa si può escludere da totali e carico (malessere, errore,
---    interrotta) senza cancellarla: resta visibile, ripristinabile e non viene
---    reimportata da Intervals.icu.
+-- The coach has full control of plan and runs:
+-- 1. a past unrun session can be removed from the plan (moved to today,
+--    skipped): before, past days were untouchable and stayed "skipped";
+-- 2. a run can be excluded from totals and load (illness, error,
+--    interrupted) without deleting it: it stays visible, restorable and is not
+--    re-imported from Intervals.icu.
 
--- ── 1. Corse escluse ───────────────────────────────────────────────────────
+-- ── 1. Excluded runs ───────────────────────────────────────────────────────
 
 alter table public.activities
   add column if not exists excluded_at timestamptz,
@@ -14,7 +14,7 @@ alter table public.activities
 comment on column public.activities.excluded_at is
   'Se valorizzato la corsa non conta in totali, record, carico e contesto del coach (ma il coach la vede tra le escluse).';
 
--- ── 2. Proposte: anche i giorni passati non corsi si possono svuotare ──────
+-- ── 2. Proposals: past unrun days can also be emptied ───────────────────────
 
 create or replace function public.apply_plan_proposal_v2(p_proposal_id uuid)
 returns text
@@ -53,9 +53,9 @@ begin
     return 'stale';
   end if;
 
-  -- Giorni modificabili: da oggi in avanti per nuove sedute; fino a 14 giorni
-  -- indietro solo per svuotare (remove_dates). Mai un giorno già corso o con
-  -- una seduta completata.
+  -- Editable days: from today onwards for new sessions; up to 14 days
+  -- back only to empty them (remove_dates). Never a day already run or with
+  -- a completed session.
   select coalesce(array_agg(d order by d), '{}') into v_dates
   from unnest(v_touched) as d
   where (d >= v_today or (d >= v_remove_from and d = any(p.remove_dates)))

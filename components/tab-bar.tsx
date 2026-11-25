@@ -6,8 +6,8 @@ import { useTranslations } from "next-intl";
 import { MessageCircle, Activity, Calendar, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// `fill`: icone con un'area chiusa da riempire quando la tab è attiva; le
-// altre (linee aperte o dettagli interni) prendono solo un tratto più spesso.
+// `fill`: icons with a closed area to fill when the tab is active; the
+// others (open lines or inner details) just get a thicker stroke.
 const tabs = [
   { href: "/", labelKey: "coach", icon: MessageCircle, fill: true },
   { href: "/activities", labelKey: "activities", icon: Activity, fill: false },
@@ -25,11 +25,11 @@ export function TabBar() {
   }
 
   return (
-    // Resta l'ultimo elemento della colonna di AppShell (niente position:
-    // fixed): cambia solo l'aspetto, una pillola che galleggia sullo sfondo.
+    // Stays the last element of the AppShell column (no position:
+    // fixed): only the look changes, a pill floating over the background.
     <nav className="z-50 shrink-0 bg-background lg:hidden" role="tablist">
-      {/* Solo una piccola parte della safe-area in basso: la barra siede vicino
-          alla home-indicator senza il gap dell'intera env(safe-area-inset-bottom). */}
+      {/* Only a small part of the bottom safe area: the bar sits close
+          to the home indicator without the gap of the full env(safe-area-inset-bottom). */}
       <div
         className="mx-auto max-w-md"
         style={{
@@ -68,7 +68,7 @@ export function TabBar() {
                 >
                   {t(`nav.${labelKey}`)}
                 </span>
-                {/* Segno della tab attiva: puntino nel colore principale. */}
+                {/* Active tab mark: a dot in the main colour. */}
                 <span
                   aria-hidden="true"
                   className={cn(

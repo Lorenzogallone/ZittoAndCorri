@@ -1,12 +1,12 @@
--- Rimozione dell'integrazione Strava (richiede un abbonamento Strava per
--- l'app API): serve solo a chi aveva applicato la vecchia migrazione 0020.
--- Idempotente: su un database che non l'ha mai avuta non fa nulla.
+-- Removal of the Strava integration (requires a Strava subscription for
+-- the API app): only needed by those who applied the old 0020 migration.
+-- Idempotent: on a database that never had it, it does nothing.
 
 drop function if exists public.admin_set_strava_tokens(uuid, text);
 drop function if exists public.admin_get_strava_tokens(uuid);
 drop function if exists public.admin_delete_strava_connection(uuid);
 
--- Token OAuth eventualmente salvati in Vault.
+-- OAuth tokens possibly stored in Vault.
 delete from vault.secrets where name like 'strava:%';
 
 drop table if exists public.strava_connections;

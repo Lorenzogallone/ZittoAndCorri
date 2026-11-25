@@ -1,5 +1,5 @@
--- Integrazione opzionale Zepp OS: pairing, connessione, audit degli invii e
--- riepiloghi giornalieri. Le attività restano intenzionalmente indipendenti.
+-- Optional Zepp OS integration: pairing, connection, send audit and
+-- daily summaries. Activities intentionally stay independent.
 
 create table if not exists public.zepp_pairing_codes (
   id          uuid primary key default gen_random_uuid(),

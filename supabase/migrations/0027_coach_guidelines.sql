@@ -1,7 +1,7 @@
--- Linee guida di allenamento: regole decise per l'atleta in un periodo
--- (volume, lunghi, sedute chiave, forza, recupero, avvicinamento gara).
--- Sono ricordi del coach come gli altri: il coach le scrive, aggiorna e chiude
--- dalla chat, scadono con valid_until e prevalgono sulla metodologia generica.
+-- Training guidelines: rules decided for the athlete over a period
+-- (volume, long runs, key sessions, strength, recovery, race approach).
+-- They are coach memories like the others: the coach writes, updates and closes them
+-- from the chat, they expire with valid_until and take precedence over generic methodology.
 
 alter table public.coach_memories
   drop constraint if exists coach_memories_category_check;

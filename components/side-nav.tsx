@@ -8,8 +8,8 @@ import { RunnerMark } from "@/components/runner-mark";
 import { cn } from "@/lib/utils";
 import { refreshMessage, useAppRefresh } from "@/lib/use-app-refresh";
 
-// Navigazione laterale della versione desktop (da lg in su). Sul telefono
-// resta la tab bar in basso: questa barra non viene mai mostrata.
+// Desktop sidebar navigation (lg and up). On phones
+// the tab bar at the bottom stays: this bar is never shown.
 const items = [
   { href: "/", labelKey: "coach", icon: MessageCircle },
   { href: "/activities", labelKey: "activities", icon: Activity },
@@ -17,7 +17,7 @@ const items = [
   { href: "/profile", labelKey: "profile", icon: User },
 ] as const;
 
-/** Ripiego del trascina-giù su desktop: stessa ricarica (orologio + dati). */
+/** Desktop fallback for pull-down: same reload (clock + data). */
 function RefreshButton() {
   const t = useTranslations("shell");
   const tStatus = useTranslations("status");

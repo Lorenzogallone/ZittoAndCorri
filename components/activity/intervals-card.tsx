@@ -16,10 +16,10 @@ const clock = (seconds: number | null) => {
   return `${m}:${String(s).padStart(2, "0")}`;
 };
 
-/** Colori coerenti con il profilo della seduta prevista (WorkoutGraph) e con la mappa. */
+/** Colours consistent with the planned session profile (WorkoutGraph) and with the map. */
 const tone = (segment: IntervalSegment) => TONES[segmentToneKey(segment)];
 
-/** Puntino del tratto: rispetto al range previsto se c'è, altrimenti il tipo. */
+/** Segment dot: relative to the planned range if there is one, otherwise the type. */
 function dotTone(segment: IntervalSegment): string {
   if (segment.pace_deviation_s == null) return tone(segment).dot;
   if (segment.pace_deviation_s < 0) return "bg-sky-500";
@@ -27,14 +27,14 @@ function dotTone(segment: IntervalSegment): string {
   return "bg-emerald-500";
 }
 
-/** Scarto dal range solo quando c'è: "nel range" lo dice già il puntino verde. */
+/** Deviation from the range only when there is one: "in range" is already told by the green dot. */
 function deviationText(segment: IntervalSegment): string | null {
   const d = segment.pace_deviation_s;
   if (!d) return null;
   return `${d > 0 ? "+" : "−"}${Math.abs(d)}″`;
 }
 
-/** Etichette lunghe del piano ("Ripetuta 1 km veloce") → la quantità: "1 km". */
+/** Long plan labels ("Fast 1 km repeat") → the quantity: "1 km". */
 function displayLabel(segment: IntervalSegment): string {
   if (segment.label.length <= 10 || !segment.target || (segment.kind !== "work" && segment.kind !== "steady")) return segment.label;
   const { type, value } = segment.target;
@@ -42,11 +42,11 @@ function displayLabel(segment: IntervalSegment): string {
   return value % 60 === 0 ? `${value / 60}'` : value < 120 ? `${value}"` : `${Math.floor(value / 60)}'${String(value % 60).padStart(2, "0")}"`;
 }
 
-/** Il passo dei tratti camminati (oltre 10:00/km) non dice nulla. */
+/** Pace of walked segments (over 10:00/km) says nothing. */
 const shownPace = (segment: IntervalSegment) =>
   segment.kind !== "work" && (segment.pace_s_km ?? 0) > 600 ? null : segment.pace_s_km;
 
-/** Come è stata corsa la seduta: larghezza = durata, altezza = velocità. */
+/** How the session was run: width = duration, height = speed. */
 function ExecutedProfile({ segments }: { segments: IntervalSegment[] }) {
   const t = useTranslations("activities.intervals");
   const speeds = segments.map((s) => (s.pace_s_km ? 1000 / s.pace_s_km : 0));
@@ -78,7 +78,7 @@ function ExecutedProfile({ segments }: { segments: IntervalSegment[] }) {
 function Row({ segment, muted, selected, onSelect }: { segment: IntervalSegment; muted: boolean; selected: boolean; onSelect: () => void }) {
   const t = useTranslations("activities.intervals");
   const deviation = deviationText(segment);
-  // Riga intera toccabile (sottogriglia): evidenzia il tratto nel grafico e sulla mappa.
+  // Whole row is tappable (subgrid): highlights the segment on the chart and on the map.
   return (
     <button
       type="button"
@@ -121,7 +121,7 @@ function Row({ segment, muted, selected, onSelect }: { segment: IntervalSegment;
   );
 }
 
-/** Tratti della seduta con tempo, passo, cuore e cadenza di ognuno; le pause a parte. */
+/** Session segments with time, pace, heart rate and cadence for each; rests separate. */
 export function IntervalsCard({
   analysis,
   workoutId,
@@ -147,7 +147,7 @@ export function IntervalsCard({
   ].filter(Boolean).join(" · ");
   const kmh = (value: number) => `${String(value).replace(".", ",")} km/h`;
   const sprintTop = analysis.segments.filter((x) => x.variant === "sprint").map((x) => x.max_speed_kmh ?? 0);
-  // Sprint insieme ai tratti veloci: riga a parte. Solo sprint: basta la punta.
+  // Sprints alongside the fast segments: separate row. Sprints only: the tip is enough.
   const sprint = s?.sprint
     ? [s.sprint.avg_pace_s_km ? t("sprintPace", { pace: clock(s.sprint.avg_pace_s_km) }) : t("sprint"), s.sprint.max_speed_kmh ? t("sprintTop", { speed: kmh(s.sprint.max_speed_kmh) }) : null].filter(Boolean).join(" · ")
     : s?.main === "sprint" && Math.max(0, ...sprintTop) > 0 ? t("topOnly", { speed: kmh(Math.max(...sprintTop)) }) : null;

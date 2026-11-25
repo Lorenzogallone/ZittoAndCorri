@@ -6,14 +6,14 @@ export interface SegmentedOption<K extends string = string> {
   key: K;
   label: string;
   icon?: ReactNode;
-  /** Se presente il segmento è un link (navigazione), altrimenti un bottone. */
+  /** If present the segment is a link (navigation), otherwise a button. */
   href?: string;
 }
 
-/** Controllo a segmenti presentazionale: unico posto per lo stile dei toggle.
- *  Colonne di pari larghezza; per un controllo compatto passare `inline-grid`
- *  in `className`. Senza "use client": da un server component si usa solo con
- *  segmenti `href` (i bottoni con onChange servono un componente client). */
+/** Presentational segmented control: the only place for toggle styling.
+ *  Equal-width columns; for a compact control pass `inline-grid`
+ *  in `className`. Without "use client": from a server component use it only with
+ *  `href` segments (buttons with onChange need a client component). */
 export function Segmented<K extends string = string>({
   options,
   value,

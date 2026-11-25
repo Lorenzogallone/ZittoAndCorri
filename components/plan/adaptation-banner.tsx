@@ -7,7 +7,7 @@ import { intlLocale, type Locale } from "@/i18n/config";
 import { BatteryLow } from "lucide-react";
 import { undoAdaptation } from "@/app/plan/actions";
 
-/** Avviso di piano adattato con il ripristino a un tocco. */
+/** Notice of adapted plan with one-tap restore. */
 export function AdaptationBanner({ until, paused }: { until: string; paused: boolean }) {
   const t = useTranslations("plan.banner");
   const locale = useLocale() as Locale;

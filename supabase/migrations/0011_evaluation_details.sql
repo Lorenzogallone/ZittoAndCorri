@@ -1,4 +1,4 @@
--- Dettagli ordinati estratti dal coach dalle note libere dell'atleta.
+-- Ordered details extracted by the coach from the athlete's free-form notes.
 alter table public.evaluations
   add column if not exists details jsonb not null default '[]'::jsonb;
 

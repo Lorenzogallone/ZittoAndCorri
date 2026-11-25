@@ -14,7 +14,7 @@ import { estimateWorkout } from "../lib/workout-estimate.ts";
 import { addDays, mondayOf, romeDay } from "../lib/local-date.ts";
 import type { GpsPoint, WorkoutStep, WorkoutStepInput } from "../lib/types.ts";
 
-// Traccia sintetica verso nord: ogni secondo percorre `speeds[i]` metri.
+// Synthetic track heading north: every second covers `speeds[i]` metres.
 function track(speeds: number[]): GpsPoint[] {
   const metersPerDegree = 111_195;
   const points: GpsPoint[] = [{ t: 0, lat: 45, lon: 9 }];
@@ -42,8 +42,8 @@ function step(partial: Partial<WorkoutStepInput>): WorkoutStepInput {
   };
 }
 
-test("il best effort trova la finestra più veloce sulla distanza", () => {
-  // 1 km lento (2,5 m/s), 1 km veloce (4 m/s), 1 km lento.
+test("best effort finds the fastest window over the distance", () => {
+  // 1 km slow (2.5 m/s), 1 km fast (4 m/s), 1 km slow.
   const gps = track([...repeat(2.5, 400), ...repeat(4, 250), ...repeat(2.5, 400)]);
   const efforts = bestEffortsFromGps(gps);
   assert.ok(efforts["1k"] != null);
@@ -51,7 +51,7 @@ test("il best effort trova la finestra più veloce sulla distanza", () => {
   assert.equal(efforts["5k"], undefined);
 });
 
-test("senza GPS conta solo una corsa lunga quanto una distanza standard", () => {
+test("without GPS only a run as long as a standard distance counts", () => {
   assert.deepEqual(
     bestEffortsForActivity({ sport: "running", distance_m: 10_050, duration_s: 2_800 }),
     { "10k": 2_786 },
@@ -60,7 +60,7 @@ test("senza GPS conta solo una corsa lunga quanto una distanza standard", () => 
   assert.equal(bestEffortsForActivity({ sport: "cycling", distance_m: 10_000, duration_s: 1_200 }), null);
 });
 
-test("i record personali scelgono il tempo migliore per distanza", () => {
+test("personal records pick the best time per distance", () => {
   const records = personalRecords([
     { id: "a", started_at: "2026-05-01T08:00:00Z", best_efforts: { "5k": 1_500, "1k": 280 } },
     { id: "b", started_at: "2026-06-01T08:00:00Z", best_efforts: { "5k": 1_450 } },
@@ -69,7 +69,7 @@ test("i record personali scelgono il tempo migliore per distanza", () => {
   assert.deepEqual(records.map((r) => [r.key, r.time_s, r.activity_id]), [["1k", 280, "a"], ["5k", 1_450, "b"]]);
 });
 
-test("la previsione usa il miglior 10 km equivalente", () => {
+test("the forecast uses the best equivalent 10 km", () => {
   const reference = predictionReference([
     { id: "a", sport: "running", started_at: "2026-11-01T08:00:00Z", distance_m: 12_000, active_s: 4_000, best_efforts: { "5k": 1_500, "10k": 3_100 } },
     { id: "b", sport: "running", started_at: "2026-11-10T08:00:00Z", distance_m: 6_000, active_s: 1_900, best_efforts: { "5k": 1_440 } },
@@ -80,8 +80,8 @@ test("la previsione usa il miglior 10 km equivalente", () => {
   assert.ok(times[1].range.central_s > 2 * 1_440);
 });
 
-test("la verifica del passo riconosce ripetute più veloci del previsto", () => {
-  // Riscaldamento lento, 3 × 400 m a 4,4 m/s (~3:47/km) con recupero lento.
+test("the pace check recognises repeats faster than expected", () => {
+  // Slow warm-up, 3 × 400 m at 4.4 m/s (~3:47/km) with slow recovery.
   const speeds = [
     ...repeat(2.6, 300),
     ...repeat(4.4, 91), ...repeat(2, 90),
@@ -98,7 +98,7 @@ test("la verifica del passo riconosce ripetute più veloci del previsto", () => 
   assert.ok(result.reps.every((rep) => rep.pace_s_km < 250));
 });
 
-test("la verifica del passo è in linea su un tempo corso al ritmo giusto", () => {
+test("the pace check is on target for a tempo run at the right pace", () => {
   const speeds = [...repeat(2.6, 300), ...repeat(1000 / 270, 900), ...repeat(2.6, 300)];
   const result = checkPace(track(speeds), [
     step({ kind: "warmup" }),
@@ -109,13 +109,13 @@ test("la verifica del passo è in linea su un tempo corso al ritmo giusto", () =
   assert.equal(checkPace(track(speeds), [step({ kind: "steady" })]), null);
 });
 
-test("il caldo rallenta i passi solo oltre la soglia", () => {
+test("heat slows paces only beyond the threshold", () => {
   assert.equal(heatSlowdownPct(18, 8), 0);
   assert.equal(heatSlowdownPct(20, 10), 0);
-  // 21° e afoso la sera non è caldo: niente passi rallentati.
+  // 21° and muggy in the evening is not hot: no slowed paces.
   assert.equal(heatSlowdownPct(21, 18), 0);
   assert.equal(heatSlowdownPct(23, 21), 0);
-  // Caldo ma secco: l'effetto è trascurabile.
+  // Hot but dry: the effect is negligible.
   assert.equal(heatSlowdownPct(24, 8), 0);
   assert.ok(heatSlowdownPct(26, 18) >= 2);
   const hot = heatSlowdownPct(30, 20);
@@ -124,7 +124,7 @@ test("il caldo rallenta i passi solo oltre la soglia", () => {
   assert.deepEqual([adjusted.pace_min_s_km, adjusted.pace_max_s_km], [312, 322]);
 });
 
-test("lo stato del giorno distingue fatto, saltato e riposo", () => {
+test("the day's status distinguishes done, skipped and rest", () => {
   const today = "2026-10-16";
   const run = [{ sport: "running" }];
   assert.equal(dayState({ date: "2026-10-14", today, planned: [{ type: "easy", status: "planned" }], activities: run }), "done");
@@ -137,11 +137,11 @@ test("lo stato del giorno distingue fatto, saltato e riposo", () => {
   assert.deepEqual(adherence(["done", "missed", "today", "rest", "done"]), { done: 2, due: 3 });
 });
 
-test("il volume settimanale somma corse e sedute previste per settimana", () => {
+test("weekly volume sums runs and planned sessions per week", () => {
   const weeks = weeklyVolume(
     [
       { started_at: "2026-10-13T07:00:00Z", sport: "running", distance_m: 8_000 },
-      { started_at: "2026-10-12T21:30:00Z", sport: "running", distance_m: 5_000 }, // lunedì a Roma
+      { started_at: "2026-10-12T21:30:00Z", sport: "running", distance_m: 5_000 }, // Monday in Rome
       { started_at: "2026-10-14T07:00:00Z", sport: "cycling", distance_m: 30_000 },
     ],
     [
@@ -158,7 +158,7 @@ test("il volume settimanale somma corse e sedute previste per settimana", () => 
   ]);
 });
 
-test("le fasi finiscono il giorno prima della gara", () => {
+test("phases end the day before the race", () => {
   const plan = trainingPhases({ race_date: "2027-03-21", distance_m: 42_195, start_date: "2026-11-01", today: "2026-12-15" });
   assert.ok(plan);
   assert.deepEqual(plan.phases.map((p) => p.key), ["base", "build", "peak", "taper"]);
@@ -194,7 +194,7 @@ function workout(partial: Partial<AdaptableWorkout>): AdaptableWorkout {
   };
 }
 
-test("alleggerire trasforma la qualità in corsa facile e si può annullare", () => {
+test("lightening turns quality into an easy run and can be undone", () => {
   const original = workout({});
   const tired = adaptWorkout(original, "tired")!;
   assert.equal(tired.type, "easy");
@@ -213,7 +213,7 @@ test("alleggerire trasforma la qualità in corsa facile e si può annullare", ()
   assert.equal(adaptWorkout(workout({ status: "completed" }), "tired"), null);
 });
 
-test("la strategia di gara divide il tempo obiettivo in passaggi", () => {
+test("the race strategy splits the goal time into splits", () => {
   const pacing = racePacing(21_097, 6_300)!;
   assert.equal(pacing.pace_s_km, 299);
   assert.deepEqual(pacing.checkpoints.map((c) => c.label), ["5 km", "10 km", "15 km", "20 km", "Arrivo"]);
@@ -222,19 +222,19 @@ test("la strategia di gara divide il tempo obiettivo in passaggi", () => {
   assert.ok(racePacing(42_195, 12_600)!.checkpoints.some((c) => c.label === "Mezza"));
 });
 
-test("il recupero post-gara parte da oggi e resta facile", () => {
+test("post-race recovery starts today and stays easy", () => {
   const plan = recoveryWorkouts({ race_date: "2026-10-12", distance_m: 21_097, today: "2026-10-16", hr_cap: 150 });
   assert.deepEqual(plan.map((w) => w.date), ["2026-10-17", "2026-10-19", "2026-10-21"]);
   assert.ok(plan.every((w) => w.workout_steps[0].hr_max_bpm === 150));
 });
 
-test("le date locali seguono Europe/Rome", () => {
+test("local dates follow Europe/Rome", () => {
   assert.equal(romeDay("2026-10-12T22:30:00Z"), "2026-10-13");
   assert.equal(mondayOf("2026-10-18"), "2026-10-12");
   assert.equal(addDays("2026-10-31", 1), "2026-11-01");
 });
 
-test("la stima della seduta somma tempi e distanze delle fasi", () => {
+test("the session estimate sums times and distances of the phases", () => {
   const estimate = estimateWorkout([
     step({ kind: "warmup", completion_value: 600, pace_min_s_km: 360, pace_max_s_km: 360 }),
     step({ kind: "work", completion_type: "distance", completion_value: 1_000, pace_min_s_km: 240, pace_max_s_km: 240 }),
@@ -243,7 +243,7 @@ test("la stima della seduta somma tempi e distanze delle fasi", () => {
   assert.equal(Math.round(estimate.meters), 2_667);
 });
 
-test("i totali per periodo contano la corsa e confrontano con il periodo prima", async () => {
+test("period totals count running and compare with the previous period", async () => {
   const { periodTotals } = await import("../lib/metrics/totals.ts");
   const { itMetrics } = await import("../lib/italian-translator.ts");
   const run = (day: string, km: number, extra: Partial<{ sport: string; elevation_gain_m: number }> = {}) => ({
@@ -258,7 +258,7 @@ test("i totali per periodo contano la corsa e confrontano con il periodo prima",
     run("2026-10-14", 10),
     run("2026-10-02", 8),
     run("2026-09-10", 12),
-    run("2026-09-25", 30), // oltre il 16 settembre: fuori dal confronto mensile
+    run("2026-09-25", 30), // past 16 September: outside the monthly comparison
     run("2025-06-01", 21),
     run("2026-10-15", 6, { sport: "hiking" }),
   ], "2026-10-16", itMetrics, "it");
@@ -274,19 +274,19 @@ test("i totali per periodo contano la corsa e confrontano con il periodo prima",
   assert.equal(byKey.all.previous_m, null);
 });
 
-test("i dati Zepp vecchi vengono ignorati", async () => {
+test("old Zepp data is ignored", async () => {
   const { isZeppFresh, resolveEffectiveHrConfig } = await import("../lib/zepp/hr-values.ts");
   const now = new Date("2026-10-16T12:00:00Z");
   assert.equal(isZeppFresh("2026-10-15T08:00:00Z", 3, now), true);
   assert.equal(isZeppFresh("2026-10-10T08:00:00Z", 3, now), false);
   assert.equal(isZeppFresh(null, 3, now), false);
-  // Senza metriche fresche si usano i valori manuali.
+  // Without fresh metrics the manual values are used.
   const config = resolveEffectiveHrConfig({ max_hr: 188, resting_hr: 50 }, [], true);
   assert.equal(config.max_hr_source, "user");
   assert.equal(config.max_hr, 188);
 });
 
-test("easy, lunghi e recuperi: riscaldamento e defaticamento diventano parte della corsa", async () => {
+test("easy, long and recovery runs: warm-up and cooldown become part of the run", async () => {
   const { withoutEasyWarmups } = await import("../lib/plan/easy-steps.ts");
   const base = { completion_type: "distance" as const, hr_min_bpm: null, hr_max_bpm: 150, variant: null };
   const steps: WorkoutStep[] = [
@@ -302,15 +302,15 @@ test("easy, lunghi e recuperi: riscaldamento e defaticamento diventano parte del
     ["steady", 1000, 345],
   ]);
   assert.deepEqual(easy.map((step) => step.id), ["step-1", "step-2", "step-3"]);
-  // Le sedute di qualità restano come sono.
+  // Quality sessions stay as they are.
   assert.equal(withoutEasyWarmups("interval", steps), steps);
 });
 
-// ── Stato di forma: trend del corpo ─────────────────────────────────────────
+// ── Form state: body trend ─────────────────────────────────────────
 import { aerobicEfficiency, bodyTrends, isQualityRun, trendFor, withoutOutliers } from "../lib/metrics/body-trends.ts";
 import { itMetrics } from "../lib/italian-translator.ts";
 
-test("trend del corpo: confronta 2 settimane con 4 settimane prima", () => {
+test("body trend: compares 2 weeks with the 4 weeks before", () => {
   const today = "2026-11-11";
   const days = (from: number, to: number, value: (age: number) => number) =>
     Array.from({ length: to - from + 1 }, (_, i) => ({ date: addDays(today, -(from + i)), value: value(from + i) }));
@@ -329,7 +329,7 @@ test("trend del corpo: confronta 2 settimane con 4 settimane prima", () => {
   assert.equal(load.direction, "up");
 });
 
-test("trend del corpo: Zepp prima di Intervals, HRV 0 scartata, efficienza solo nelle corse facili", () => {
+test("body trend: Zepp before Intervals, HRV 0 discarded, efficiency only on easy runs", () => {
   const today = "2026-11-11";
   const zeppDay = { date: today, vo2_max: 45, training_load: null, sleep_total_min: null, sleep_deep_min: null, sleep_score: null, resting_hr: 50, stress_avg: null, spo2_avg: null, steps: null, pai_total: null };
   const wellnessDay = { date: today, sleep_secs: 25_200, sleep_score: null, resting_hr: 55, hrv: 0, stress: null, spo2: null, steps: null, vo2max: 40, weight_kg: null };
@@ -348,7 +348,7 @@ test("trend del corpo: Zepp prima di Intervals, HRV 0 scartata, efficienza solo 
   assert.ok(Math.abs(efficiency[0].value - (8000 / 48) / 140) < 1e-9);
 });
 
-test("metri per battito: le corse non classificate con ripetute o test non contano, gli allunghi sì", () => {
+test("metres per beat: unclassified runs with repeats or tests don't count, strides do", () => {
   const base = { sport: "running", type: "unclassified", distance_m: 6000, moving_time_s: 2100, duration_s: 2100, avg_hr: 160 };
   const seg = (kind: string, duration_s: number, variant: string | null = null) => ({ kind, variant, duration_s });
   const runs = [
@@ -361,10 +361,10 @@ test("metri per battito: le corse non classificate con ripetute o test non conta
   assert.deepEqual(aerobicEfficiency(runs).map((point) => point.date), ["2026-11-16", "2026-11-12", "2026-11-10"]);
 });
 
-test("metri per battito: una lettura del cuore sballata resta fuori dal trend", () => {
+test("metres per beat: a skewed heart reading stays out of the trend", () => {
   const values = [0.98, 1.0, 0.97, 1.02, 1.3, 0.99, 0.6];
   const points = values.map((value, i) => ({ date: `2026-10-${String(i + 1).padStart(2, "0")}`, value }));
   assert.deepEqual(withoutOutliers(points).map((point) => point.value), [0.98, 1.0, 0.97, 1.02, 0.99]);
-  // Con pochi dati non si scarta nulla: non c'è ancora una mediana affidabile.
+  // With little data nothing is discarded: there is no reliable median yet.
   assert.equal(withoutOutliers(points.slice(0, 4)).length, 4);
 });

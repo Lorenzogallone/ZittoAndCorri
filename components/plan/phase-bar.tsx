@@ -2,7 +2,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { phaseLabel, type PhasePlan } from "@/lib/plan/phases";
 
-/** Barra delle fasi di preparazione con la posizione di oggi. */
+/** Bar of the preparation phases with today's position. */
 export function PhaseBar({ plan }: { plan: PhasePlan }) {
   const t = useTranslations("plan.phaseBar");
   const tl = useTranslations("labels");

@@ -34,7 +34,7 @@ import { romeDay } from "@/lib/local-date";
 const dayLabel = (iso: string, locale: Locale) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { weekday: "short", day: "numeric", timeZone: "UTC" });
 
-/** "10 km" se tondi, altrimenti "8,50 km" (it) / "8.50 km" (en). */
+/** "10 km" if round, otherwise "8,50 km" (it) / "8.50 km" (en). */
 const briefDistance = (meters: number, locale: Locale) =>
   Math.round(meters / 10) % 100 === 0 ? `${Math.round(meters / 1000)} km` : formatDistance(meters, locale);
 
@@ -44,7 +44,7 @@ function briefText(brief: WorkoutBrief, tl: Translator, locale: Locale): string 
   return [typeLabel(tl, brief.type), amount, part].filter(Boolean).join(" · ");
 }
 
-/** Sedute di un giorno: quelle concatenate (un'unica uscita) unite da "+". */
+/** Sessions of a day: chained ones (a single outing) joined by "+". */
 function briefsText(briefs: WorkoutBrief[], tl: Translator, locale: Locale): string {
   return briefs.reduce((text, brief, index) =>
     index === 0 ? briefText(brief, tl, locale) : `${text}${brief.chained ? " + " : ", "}${briefText(brief, tl, locale)}`, "");
@@ -54,9 +54,9 @@ const messageTime = (iso: string, locale: Locale) =>
   new Date(iso).toLocaleString(intlLocale(locale), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 /**
- * Data e costo sotto il messaggio: sotto la domanda il costo del prompt (tutto
- * il contesto inviato), sotto la risposta quello della risposta; tocca per il
- * dettaglio. Analisi e riepiloghi, senza domanda, mostrano il totale.
+ * Date and cost under the message: under the question the prompt cost (all
+ * the context sent), under the reply the reply cost; tap for the
+ * detail. Analyses and summaries, with no question, show the total.
  */
 function MessageFooter({ item, replyUsage }: { item: CoachMessage; replyUsage: ReturnType<typeof readUsage> }) {
   const locale = useLocale() as Locale;
@@ -72,10 +72,10 @@ function MessageFooter({ item, replyUsage }: { item: CoachMessage; replyUsage: R
 
 const statusText = (proposal: PlanProposal, t: ReturnType<typeof useTranslations<"coach.chat">>, tl: Translator) => proposal.status === "expired"
   ? proposalExpiryText(tl, proposal.expired_reason ?? "too_old")
-  // Il testo di ogni stato è in messages/it/coach.json (chat.proposalStatus.*).
+  // The text of each state is in messages/it/coach.json (chat.proposalStatus.*).
   : t(`proposalStatus.${proposal.status as "applied" | "rejected" | "stale"}`);
 
-/** Prima/dopo giorno per giorno: si vede subito cosa cambia e cosa no. */
+/** Before/after day by day: you see at once what changes and what does not. */
 function ChangeList({ proposal }: { proposal: PlanProposal }) {
   const t = useTranslations("coach.chat");
   const tl = useTranslations("labels");
@@ -193,8 +193,8 @@ function ProposalCard({ proposal, onStatusChange }: { proposal: PlanProposal; on
   );
 }
 
-// Area visibile della finestra: su iPhone la tastiera la riduce senza cambiare
-// il layout, quindi la chat a tutto schermo ne segue altezza e scostamento.
+// Visible area of the window: on iPhone the keyboard shrinks it without changing
+// the layout, so the full-screen chat follows its height and offset.
 function subscribeViewport(onChange: () => void) {
   const vv = window.visualViewport;
   vv?.addEventListener("resize", onChange);
@@ -215,7 +215,7 @@ function useVisibleViewport() {
   const snapshot = useSyncExternalStore(subscribeViewport, viewportSnapshot, () => "");
   if (!snapshot) return null;
   const [height, top, layout] = snapshot.split(":").map(Number);
-  // La tastiera occupa almeno un quarto dello schermo; sotto è solo la barra di Safari.
+  // The keyboard takes at least a quarter of the screen; below that it is just the Safari bar.
   return { height, top, keyboard: layout - height > layout / 4 };
 }
 
@@ -232,13 +232,13 @@ function SessionDivider({ item }: { item: CoachMessage }) {
 }
 
 /**
- * Sotto un messaggio rimasto senza risposta: cosa è successo e "Riprova", che
- * rimanda lo stesso messaggio senza riscriverlo.
+ * Under a message left unanswered: what happened and "Riprova", which
+ * resends the same message without retyping it.
  */
 function FailedNotice({ reason, retrying, disabled, onRetry }: { reason: string; retrying: boolean; disabled: boolean; onRetry: () => void }) {
   const t = useTranslations("coach.chat");
   return (
-    // Testo lungo e tasto da 44 pt: su schermi stretti il tasto va a capo sotto il testo.
+    // Long text and 44 pt button: on narrow screens the button wraps below the text.
     <div className="mt-1.5 flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5" role="status">
       <p className="flex min-w-0 flex-1 basis-48 items-start justify-end gap-1.5 text-right text-xs text-destructive">
         <CircleAlert size={14} className="mt-px shrink-0" aria-hidden="true" />
@@ -256,7 +256,7 @@ const newClientId = () => (typeof crypto !== "undefined" && "randomUUID" in cryp
   ? crypto.randomUUID()
   : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
 
-/** Lista del server più gli elementi locali più recenti che non contiene ancora. */
+/** Server list plus the most recent local items it does not contain yet. */
 function mergeServer<T extends { id: string; created_at: string }>(server: T[], local: T[]): T[] {
   const ids = new Set(server.map((item) => item.id));
   const newest = server.reduce((max, item) => (item.created_at > max ? item.created_at : max), "");
@@ -272,8 +272,8 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
   const [isExpanded, setIsExpanded] = useState(false);
   const [displayMessages, setDisplayMessages] = useState(messages);
   const [displayProposals, setDisplayProposals] = useState(proposals);
-  // Dopo un refresh (trascina-giù, analisi finita) arrivano i dati nuovi dal
-  // server: valgono loro, più i messaggi locali che il server non ha ancora.
+  // After a refresh (pull-down, analysis finished) the new data arrives from the
+  // server: it wins, plus the local messages the server does not have yet.
   const [serverData, setServerData] = useState({ messages, proposals });
   if (serverData.messages !== messages || serverData.proposals !== proposals) {
     setServerData({ messages, proposals });
@@ -285,11 +285,11 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
   const [resetError, setResetError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const viewport = useVisibleViewport();
-  // Analisi di corse nuove in corso: la risposta compare da sola in chat.
+  // Analysis of new runs in progress: the reply appears in the chat on its own.
   useRefreshWhile(analyzingActivities > 0);
-  // Messaggio dell'atleta che il coach sta elaborando: se il turno fallisce è lui il "non inviato".
+  // Athlete message the coach is processing: if the turn fails this is the "not sent" one.
   const [activeId, setActiveId] = useState<string | null>(null);
-  // Messaggio per cui "Riprova" sta aspettando il server.
+  // Message for which "Riprova" is waiting on the server.
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const showCoachResult = useCallback((status: AiJobStatus) => {
     if (!status.coachResult) throw new Error(t("resultMissing"));
@@ -298,7 +298,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
       ? current
       : [...current, coachMessage]);
     if (proposal) {
-      // La proposta nuova supera quelle ancora in attesa sugli stessi giorni.
+      // The new proposal supersedes those still pending on the same days.
       setDisplayProposals((current) => current.some((item) => item.id === proposal.id)
         ? current
         : withProposalExpiry([proposal, ...current], romeDay()));
@@ -307,25 +307,25 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
   }, [t]);
   const { pending, error, start } = useAiJob("coach", { onDone: showCoachResult });
   const proposalsById = new Map(displayProposals.map((proposal) => [proposal.id, proposal]));
-  // Costo di ogni risposta indicizzato per la domanda a cui risponde.
+  // Cost of each reply indexed by the question it answers.
   const usageByQuestion = new Map(displayMessages.flatMap((item) => {
     const replyTo = item.metadata?.reply_to;
     const usage = readUsage(item.metadata?.ai_usage);
     return typeof replyTo === "string" && usage ? [[replyTo, usage] as const] : [];
   }));
-  // Dopo "Nuova chat" si vede solo la conversazione corrente; le precedenti a richiesta.
+  // After "Nuova chat" only the current conversation is shown; earlier ones on request.
   const session = splitSessions(displayMessages);
   const shown = showEarlier
     ? displayMessages.filter((item) => item.kind !== "status" || isSessionMarker(item))
     : session.current;
   const freshSession = displayMessages.some(isSessionMarker) && session.current.length === 0;
-  // Errore di un turno ripreso dopo il riavvio della PWA (messaggio non noto):
-  // va sull'ultima domanda se è rimasta in fondo senza risposta.
+  // Error of a turn resumed after the PWA restart (message not known):
+  // goes on the last question if it was left unanswered at the bottom.
   const lastItem = [...shown].reverse().find((item) => item.kind !== "status");
   const failedId = activeId ?? (error && !pending && lastItem?.role === "user" ? lastItem.id : null);
 
-  // Scorre solo l'elenco dei messaggi (scrollIntoView spostava anche la pagina),
-  // anche quando si apre la tastiera: l'ultimo messaggio resta sopra il campo.
+  // Only the message list scrolls (scrollIntoView also moved the page),
+  // even when the keyboard opens: the last message stays above the field.
   const visibleHeight = isExpanded ? viewport?.height : undefined;
   useEffect(() => {
     const list = listRef.current;
@@ -363,13 +363,13 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
     }
   }
 
-  /** Sostituisce un messaggio locale con quello del server (o lo aggiorna). */
+  /** Replaces a local message with the server one (or updates it). */
   const replaceMessage = (id: string, next: CoachMessage) =>
     setDisplayMessages((current) => current.map((item) => (item.id === id ? next : item)));
 
-  /** Avvia il turno del coach; un errore lascia il messaggio in chat con "Riprova". */
+  /** Starts the coach turn; an error leaves the message in the chat with "Riprova". */
   function run(localId: string, request: () => Promise<CoachActionResult>, fallback: CoachMessage) {
-    // Il turno precedente fallito resta segnato anche quando ne parte un altro.
+    // The previous failed turn stays marked even when another one starts.
     if (error && activeId && activeId !== localId) {
       const failedId = activeId;
       setDisplayMessages((current) => current.map((item) => item.id === failedId && !sendErrorOf(item)
@@ -419,13 +419,13 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
   }
 
   /**
-   * "Riprova": lo stesso messaggio torna in fondo alla chat e riparte. Se non
-   * era mai arrivato al server si rimanda con lo stesso client_id (niente doppioni).
+   * "Riprova": the same message goes back to the bottom of the chat and restarts. If it
+   * never reached the server it is resent with the same client_id (no duplicates).
    */
   function retry(item: CoachMessage) {
     if (pending || retryingId) return;
     setRetryingId(item.id);
-    // In fondo alla chat subito; il segno d'errore resta finché il server non risponde.
+    // At the bottom of the chat right away; the error mark stays until the server replies.
     const moved: CoachMessage = { ...item, created_at: new Date().toISOString() };
     setDisplayMessages((current) => [...current.filter((candidate) => candidate.id !== item.id), moved]);
     const clientId = typeof item.metadata?.client_id === "string" ? item.metadata.client_id : undefined;
@@ -433,8 +433,8 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
     run(item.id, () => (item.id.startsWith("pending-") ? sendCoachMessage(item.content, clientId) : retryCoachMessage(item.id)), resent);
   }
 
-  // Su desktop (tastiera fisica) Invio manda e Maiusc+Invio va a capo; sul
-  // telefono Invio resta un a capo.
+  // On desktop (physical keyboard) Enter sends and Shift+Enter inserts a newline; on
+  // phones Enter stays a newline.
   function sendOnEnter(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
     if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
@@ -479,7 +479,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
           type="button"
           variant="ghost"
           size="icon-sm"
-          // Su desktop la chat è già grande: niente tutto schermo.
+          // On desktop the chat is already large: no full screen.
           className="lg:hidden"
           onClick={() => setIsExpanded((expanded) => !expanded)}
           aria-label={isExpanded ? t("collapseLabel") : t("expandLabel")}
@@ -513,7 +513,7 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
         {shown.map((item) => {
           if (isSessionMarker(item)) return <SessionDivider key={item.id} item={item} />;
           const proposal = item.plan_proposal_id ? proposalsById.get(item.plan_proposal_id) : null;
-          // Non inviato: segnato dal server, oppure turno appena fallito per questo messaggio.
+          // Not sent: marked by the server, or turn just failed for this message.
           const failure = item.role === "user"
             ? sendErrorOf(item)?.message ?? (!pending && error && failedId === item.id ? error : null)
             : null;
@@ -539,24 +539,24 @@ export function CoachChat({ messages, proposals, ai, analyzingActivities = 0 }: 
         })}
         {pending && <div className="mr-16 flex items-center gap-2 rounded-2xl rounded-bl-md bg-muted/55 px-4 py-3 text-sm text-muted-foreground"><LoaderCircle size={15} className="animate-spin" /> {t("reasoning")}</div>}
       </div>
-      {/* Il campo è un TextField (contenteditable), non un textarea: il
-          riempimento automatico di Safari su iOS ignora autocomplete="off" e
-          proponeva l'indirizzo di casa. L'invio passa dal pulsante e, con la
-          tastiera fisica, da Invio. */}
+      {/* The field is a TextField (contenteditable), not a textarea: Safari
+          iOS autofill ignores autocomplete="off" and
+          suggested the home address. Sending goes through the button and, with a
+          physical keyboard, through Enter. */}
       <div
         className={cn("border-t border-border/60 p-3", isExpanded ? "bg-background" : "bg-card")}
-        // A tutto schermo: sopra l'indicatore home, o attaccato alla tastiera quando è aperta.
+        // Full screen: above the home indicator, or attached to the keyboard when open.
         style={isExpanded ? { paddingBottom: viewport?.keyboard ? "0.5rem" : "max(env(safe-area-inset-bottom, 0px), 0.75rem)" } : undefined}
       >
         {!keyConfigured ? <Link href="/settings?tab=coach" className="pressable block rounded-xl bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary">{t("addKey")}</Link> : <div className="flex items-end gap-2"><TextField aria-label={t("writeLabel")} value={message} onValueChange={setMessage} onKeyDown={sendOnEnter} rows={1} disabled={pending} placeholder={t("writePlaceholder")} className="max-h-32" /><Button type="button" size="icon" disabled={pending || !message.trim()} aria-label={t("send")} onClick={submit}><Send size={17} /></Button></div>}
-        {/* L'errore di un messaggio sta sotto il messaggio, con "Riprova". */}
+        {/* A message's error sits under the message, with "Riprova". */}
         {error && !failedId && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
       </div>
     </section>
   );
 
-  // A tutto schermo la chat va direttamente nel body: fuori dal contenitore che
-  // scorre (che su iOS la ritagliava e la lasciava sotto la barra in basso).
+  // In full screen the chat goes straight into the body: outside the container that
+  // scrolls (which on iOS clipped it and left it under the bottom bar).
   return isExpanded ? (
     <>
       <div className="min-h-0 flex-1 basis-0 rounded-3xl bg-card ring-1 ring-border/60" aria-hidden="true" />

@@ -1,5 +1,5 @@
--- Modello Gemini scelto dall'utente. Il default privilegia la quota gratuita
--- (500 richieste/giorno nel piano disponibile al momento della migration).
+-- Gemini model chosen by the user. The default favours the free quota
+-- (500 requests/day on the plan available at the time of the migration).
 alter table public.user_ai_credentials
   add column if not exists model text not null default 'gemini-3.5-flash-lite';
 

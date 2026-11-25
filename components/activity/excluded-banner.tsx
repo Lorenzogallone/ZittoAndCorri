@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import { setActivityExcluded } from "@/app/activities/actions";
 
 /**
- * Corsa esclusa da totali, record e carico (per malessere, errore o file
- * doppio): resta visibile con il motivo e si ripristina in un tocco. Lo
- * stesso pulsante permette di escluderla a mano.
+ * Run excluded from totals, records and load (illness, mistake or duplicate
+ * file): it stays visible with the reason and is restored in one tap. The
+ * same button lets you exclude it manually.
  */
 export function ExcludedBanner({
   activityId,

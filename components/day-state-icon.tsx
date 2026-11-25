@@ -3,7 +3,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { DayState } from "@/lib/plan/day-status";
 
-/** Indicatore compatto dello stato di un giorno del piano. */
+/** Compact indicator of the state of a plan day. */
 export function DayStateIcon({ state, size = "md" }: { state: DayState; size?: "sm" | "md" }) {
   const t = useTranslations("plan.dayState");
   const label = t(state);

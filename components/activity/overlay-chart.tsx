@@ -13,11 +13,11 @@ type Key = "hr" | "pace" | "elevation" | "cadence";
 interface SeriesSpec {
   color: string;
   format: (value: number) => string;
-  /** Asse rovesciato: per il passo, più in alto = più veloce. */
+  /** Inverted axis: for pace, higher = faster. */
   invert?: boolean;
-  /** Disegnata come area di sfondo (la quota, come il profilo del percorso). */
+  /** Drawn as a background area (elevation, like the route profile). */
   area?: boolean;
-  /** Valori estremi tagliati: un punto GPS saltato non deve schiacciare la linea. */
+  /** Extreme values clipped: a skipped GPS point must not squash the line. */
   trim?: boolean;
 }
 
@@ -30,7 +30,7 @@ const SPECS: Record<Key, SeriesSpec> = {
   cadence: { color: "var(--chart-3)", format: (v) => `${Math.round(v)} spm`, trim: true },
 };
 
-/** Ordine di disegno: la quota sotto, le linee sopra. */
+/** Draw order: elevation underneath, lines on top. */
 const ORDER: Key[] = ["elevation", "cadence", "pace", "hr"];
 
 const HEIGHT = 180;
@@ -40,7 +40,7 @@ function quantile(sorted: number[], q: number): number {
   return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * q)))];
 }
 
-/** Punto più vicino a t (serie ordinata), se non è troppo lontano. */
+/** Point closest to t (sorted series), if not too far away. */
 function nearest(points: Point[], t: number, tolerance: number): Point | null {
   let lo = 0;
   let hi = points.length - 1;
@@ -55,9 +55,9 @@ function nearest(points: Point[], t: number, tolerance: number): Point | null {
 }
 
 /**
- * Andamento della corsa con più serie sovrapposte sullo stesso tempo (in
- * movimento): ognuna con la sua scala, scelte con i chip. Al tocco una riga
- * verticale e tutti i valori di quell'istante.
+ * Run trend with several series overlaid on the same time (moving
+ * time): each with its own scale, chosen with the chips. On touch a vertical
+ * line and all the values at that instant.
  */
 export function OverlayChart({
   series,
@@ -100,7 +100,7 @@ export function OverlayChart({
       const ratio = (clamped - min) / (max - min || 1);
       return PAD.top + innerH * (spec.invert ? ratio : 1 - ratio);
     };
-    // Interruzioni (camminate senza passo, buchi del sensore): nuovo tratto.
+    // Breaks (walking without pace, sensor gaps): new segment.
     const steps = points.slice(1).map((p, i) => p.t - points[i].t).sort((a, b) => a - b);
     const gap = Math.max(10, (steps[Math.floor(steps.length / 2)] ?? 1) * 4);
     const d = points
@@ -160,7 +160,7 @@ export function OverlayChart({
             aria-label={t("chartAria", { series: visible.map((key) => t(`series.${key}`).toLowerCase()).join(", ") })}
           >
             <line x1={PAD.left} x2={PAD.left + innerW} y1={PAD.top + innerH} y2={PAD.top + innerH} stroke="var(--border)" strokeWidth={1} />
-            {/* Ripetute come fasce tenui; il tratto scelto nella card più marcato. */}
+            {/* Intervals as faint bands; the segment chosen in the card more marked. */}
             {segments
               .filter((segment) => segment.kind === "work" || segment.index === selected)
               .map((segment) => {

@@ -1,8 +1,8 @@
--- Più sedute nello stesso giorno dalle proposte del coach.
--- Le sedute proposte per un giorno sostituiscono quelle in calendario (che
--- possono essere più d'una). In un giorno già corso (o con una seduta
--- completata), da oggi in poi, la proposta può solo aggiungere sedute: quelle
--- esistenti non si cancellano mai.
+-- Multiple sessions on the same day from coach proposals.
+-- Sessions proposed for a day replace those on the calendar (which
+-- can be more than one). On a day already run (or with a completed
+-- session), from today onwards, the proposal can only add sessions: existing
+-- ones are never deleted.
 
 create or replace function public.apply_plan_proposal_v2(p_proposal_id uuid)
 returns text
@@ -57,12 +57,12 @@ begin
     from unnest(v_touched) as d
   )
   select
-    -- Giorni da riscrivere: da oggi in avanti, o fino a 14 giorni indietro
-    -- solo per svuotarli; mai un giorno già corso.
+    -- Days to rewrite: from today onwards, or up to 14 days back
+    -- only to empty them; never a day already run.
     coalesce(array_agg(d order by d) filter (
       where not done and (d >= v_today or (d >= v_remove_from and d = any(p.remove_dates)))
     ), '{}'),
-    -- Giorni già corsi, da oggi in avanti: si aggiungono sedute e basta.
+    -- Days already run, from today onwards: sessions are only added.
     coalesce(array_agg(d order by d) filter (
       where done and d >= v_today and not (d = any(p.remove_dates))
     ), '{}')

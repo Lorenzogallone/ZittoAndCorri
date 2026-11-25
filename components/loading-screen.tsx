@@ -3,10 +3,10 @@
 import { useTranslations } from "next-intl";
 import { RunnerMark } from "@/components/runner-mark";
 
-/** Schermata di caricamento a tutta altezza, in linea con lo splash PWA:
- *  tile "inchiostro" con l'omino nel colore principale, nome app e barra
- *  indeterminata. Usata dai file `loading.tsx` (fallback Suspense dell'App
- *  Router) e ovunque serva un loader a piena pagina. */
+/** Full-height loading screen, in line with the PWA splash:
+ *  "ink" tile with the little runner in the main colour, app name and an
+ *  indeterminate bar. Used by the `loading.tsx` files (App Router Suspense
+ *  fallback) and wherever a full-page loader is needed. */
 export function LoadingScreen({
   label,
 }: {

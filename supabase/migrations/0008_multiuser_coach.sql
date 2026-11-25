@@ -1,13 +1,13 @@
--- ZittoAndCorri — coach conversazionale multiutente + credenziali AI personali.
--- Conserva i dati sportivi esistenti, ma sostituisce i vecchi contratti AI.
+-- ZittoAndCorri — multi-user conversational coach + personal AI credentials.
+-- Keeps the existing sports data, but replaces the old AI contracts.
 
 create extension if not exists supabase_vault with schema vault;
 
 alter table public.profiles
   add column if not exists onboarding_completed_at timestamptz;
 
--- Gli utenti esistenti non devono ripetere l'onboarding. Per i nuovi utenti i
--- valori fisiologici restano null finché non vengono forniti esplicitamente.
+-- Existing users must not repeat onboarding. For new users the
+-- physiological values stay null until explicitly provided.
 update public.profiles
 set onboarding_completed_at = coalesce(onboarding_completed_at, now());
 
@@ -49,7 +49,7 @@ create trigger planned_workouts_touch_updated_at
   before update on public.planned_workouts
   for each row execute function public.touch_updated_at();
 
--- Metadati visibili all'utente; il segreto vero vive cifrato in Vault.
+-- User-visible metadata; the real secret lives encrypted in Vault.
 create table if not exists public.user_ai_credentials (
   user_id         uuid primary key references auth.users on delete cascade,
   provider        text not null default 'gemini' check (provider = 'gemini'),
@@ -64,7 +64,7 @@ drop policy if exists "own ai credential metadata" on public.user_ai_credentials
 create policy "own ai credential metadata" on public.user_ai_credentials
   for select using (auth.uid() = user_id);
 
--- Queste funzioni sono invocabili esclusivamente dal backend con secret key.
+-- These functions can only be invoked by the backend with a secret key.
 create or replace function public.admin_set_gemini_credential(
   p_user_id uuid,
   p_secret text,
@@ -228,7 +228,7 @@ drop policy if exists "own plan proposals" on public.plan_proposals;
 create policy "own plan proposals" on public.plan_proposals
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
--- Porta la memoria narrativa esistente nel nuovo modello una volta sola.
+-- Brings the existing narrative memory into the new model once.
 insert into public.coach_memories (user_id, category, content, source, confidence)
 select s.user_id, 'long_term', s.narrative->>'coach_memory', 'migration', 0.8
 from public.athlete_snapshot s
@@ -241,7 +241,7 @@ where nullif(trim(s.narrative->>'coach_memory'), '') is not null
 alter table public.ai_jobs
   add column if not exists output_message_id uuid references public.coach_messages on delete set null;
 
--- Applica una proposta in una sola transazione e rifiuta snapshot obsoleti.
+-- Applies a proposal in a single transaction and rejects stale snapshots.
 create or replace function public.apply_plan_proposal(p_proposal_id uuid)
 returns text
 language plpgsql security definer set search_path = public as $$
@@ -304,6 +304,6 @@ begin
   return 'applied';
 end; $$;
 
--- L'RPC usa auth.uid() e non accetta user_id dal client.
+-- The RPC uses auth.uid() and does not accept user_id from the client.
 revoke all on function public.apply_plan_proposal(uuid) from public, anon;
 grant execute on function public.apply_plan_proposal(uuid) to authenticated;

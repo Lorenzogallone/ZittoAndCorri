@@ -16,7 +16,7 @@ function chipLabel(iso: string, today: string, t: (key: "today" | "tomorrow") =>
   return { top, day: String(date.getUTCDate()) };
 }
 
-/** Sposta la seduta scegliendo un giorno tra i prossimi dieci. */
+/** Moves the session by choosing a day among the next ten. */
 export function MoveWorkout({ id, date, today }: { id: string; date: string; today: string }) {
   const t = useTranslations("plan.move");
   const locale = useLocale() as Locale;

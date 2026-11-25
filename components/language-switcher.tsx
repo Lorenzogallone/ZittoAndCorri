@@ -8,11 +8,11 @@ import { Segmented } from "@/components/ui/segmented";
 import { LOCALES, isLocale, type Locale } from "@/i18n/config";
 import { setLocale } from "@/i18n/actions";
 
-// Nomi nella propria lingua: chi non capisce la lingua attuale deve poter
-// trovare la sua. Non si traducono.
+// Names in their own language: whoever does not understand the current language must be able to
+// find theirs. They are not translated.
 const NAMES: Record<Locale, string> = { it: "Italiano", en: "English" };
 
-/** Selettore della lingua dell'app: salva il cookie e rinfresca la pagina. */
+/** App language selector: saves the cookie and refreshes the page. */
 export function LanguageSwitcher() {
   const t = useTranslations("common");
   const locale = useLocale();

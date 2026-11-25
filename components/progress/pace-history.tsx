@@ -22,8 +22,8 @@ function deviationText(seconds: number, ok: string): string {
 }
 
 /**
- * Le ultime sedute con passo target: se lo scarto si ripete nella stessa
- * direzione, suggerisce di chiedere al coach di aggiornare i passi.
+ * The latest sessions with a target pace: if the gap repeats in the same
+ * direction, it suggests asking the coach to update the paces.
  */
 export function PaceHistory({ sessions }: { sessions: PaceSession[] }) {
   const t = useTranslations("profile.pace");

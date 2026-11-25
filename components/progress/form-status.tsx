@@ -9,7 +9,7 @@ import type { MetricTrend } from "@/lib/metrics/body-trends";
 import type { ATLCTLResult } from "@/lib/types";
 import type { WellnessDay, ZeppDailyMetric, ZeppReadinessResult } from "@/lib/zepp/types";
 
-/** Il colore di ogni stato di carico; etichetta e testo sono in `profile.loadStates.<stato>`. */
+/** The colour of each load state; label and text are in `profile.loadStates.<state>`. */
 export const LOAD_TONES = {
   calibrating: "text-foreground",
   fresh: "text-emerald-600 dark:text-emerald-400",
@@ -18,7 +18,7 @@ export const LOAD_TONES = {
   fatigued: "text-orange-600 dark:text-orange-400",
 } satisfies Record<ATLCTLResult["status"], string>;
 
-/** Colore di ogni stato di prontezza; testi in `profile.formStatus.readinessStates.<stato>`. */
+/** Colour of each readiness state; texts in `profile.formStatus.readinessStates.<state>`. */
 const ZEPP_TONES = {
   intense: "text-emerald-600 dark:text-emerald-400",
   ready: "text-emerald-600 dark:text-emerald-400",
@@ -27,8 +27,8 @@ const ZEPP_TONES = {
   rest: "text-orange-600 dark:text-orange-400",
 } as const;
 
-/** Anello di prontezza: l'arco prende il colore dello stato (verde, ambra,
- *  arancio) come l'etichetta accanto, non l'accento. */
+/** Readiness ring: the arc takes the state colour (green, amber,
+ *  orange) like the label beside it, not the accent. */
 function ScoreRing({ value, tone }: { value: number; tone: string }) {
   const t = useTranslations("profile.formStatus");
   const clamped = Math.max(0, Math.min(100, Math.round(value)));
@@ -55,7 +55,7 @@ function ScoreRing({ value, tone }: { value: number; tone: string }) {
   );
 }
 
-/** "oggi alle 07:42", "ieri alle 22:10", "3 nov alle 08:00" (ora di Roma). */
+/** "today at 07:42", "yesterday at 22:10", "3 Nov at 08:00" (Rome time). */
 function syncLabel(iso: string, t: ReturnType<typeof useTranslations>, locale: Locale, now = new Date()): string {
   const day = (date: Date) => date.toLocaleDateString("en-CA", { timeZone: "Europe/Rome" });
   const date = new Date(iso);
@@ -71,7 +71,7 @@ function sleepLabel(minutes: number): string {
   return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, "0")}′`;
 }
 
-/** Metrica in evidenza sotto lo stato: valore, e sotto il verso del trend o una nota. */
+/** Featured metric under the state: value, and below the trend direction or a note. */
 export interface FormHighlight {
   label: string;
   value: string;
@@ -81,8 +81,8 @@ export interface FormHighlight {
   note?: string;
 }
 
-/** Hero del profilo: stato di forma, prontezza dell'orologio e i pochi dati che contano.
- *  Con `href` tutta la card apre la vista di analisi. */
+/** Profile hero: form state, watch readiness and the few data that matter.
+ *  With `href` the whole card opens the analysis view. */
 export function FormStatus({
   load,
   readiness,
@@ -97,13 +97,13 @@ export function FormStatus({
   load: ATLCTLResult;
   readiness: ZeppReadinessResult | null;
   latest: ZeppDailyMetric | null;
-  /** Giorno più recente da Intervals.icu: riempie i dati che Zepp non ha. */
+  /** Most recent day from Intervals.icu: fills the data Zepp does not have. */
   wellness?: WellnessDay | null;
   stale: boolean;
-  /** Ultimo dato arrivato dall'orologio (Zepp o Intervals.icu). */
+  /** Latest data point from the watch (Zepp or Intervals.icu). */
   lastSync?: string | null;
   hasData: boolean;
-  /** Metriche in evidenza (VO₂max, carico, sonno); senza, quelle del giorno. */
+  /** Featured metrics (VO₂max, load, sleep); without them, the day's ones. */
   highlights?: FormHighlight[];
   href?: string;
 }) {
@@ -118,13 +118,13 @@ export function FormStatus({
         tone: ZEPP_TONES[assistedStatus],
       }
     : { label: tLoad(`${load.status}.label`), text: tLoad(`${load.status}.text`), tone: LOAD_TONES[load.status] };
-  // Zepp quando c'è, altrimenti i dati notturni da Intervals.icu.
+  // Zepp when available, otherwise the overnight data from Intervals.icu.
   const sleepMin = latest?.sleep_total_min ?? (wellness?.sleep_secs != null ? Math.round(wellness.sleep_secs / 60) : null);
   const restingHr = latest?.resting_hr ?? wellness?.resting_hr ?? null;
   const metrics = [
     sleepMin != null ? { label: t("metrics.sleep"), value: sleepLabel(sleepMin), icon: Moon } : null,
     restingHr != null ? { label: t("metrics.restingHr"), value: `${restingHr}`, unit: "bpm", icon: HeartPulse } : null,
-    // Intervals.icu salva 0 quando la notte non ha HRV: non è una misura.
+    // Intervals.icu stores 0 when the night has no HRV: it is not a measurement.
     wellness?.hrv != null && wellness.hrv > 0 ? { label: t("metrics.hrv"), value: `${Math.round(wellness.hrv)}`, unit: "ms", icon: Activity } : null,
     latest?.vo2_max != null ? { label: t("metrics.vo2max"), value: `${latest.vo2_max}`, icon: Wind } : null,
   ].filter((metric) => metric != null).slice(0, 3);
@@ -166,7 +166,7 @@ export function FormStatus({
           </div>
         </div>
       ) : (
-        // Senza orologio l'etichetta dello stato è l'elemento dominante.
+        // Without a watch the state label is the dominant element.
         <div className="mt-2">
           <p className={cn("font-display text-display font-bold tracking-tight text-balance", state.tone)}>{state.label}</p>
           <p className="mt-2 text-body text-muted-foreground">{state.text}</p>

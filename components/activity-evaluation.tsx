@@ -22,7 +22,7 @@ interface Props {
   initialNotes: string | null;
   evaluation: Pick<Evaluation, "summary" | "details" | "created_at" | "ai_usage"> | null;
   initialAnalyzing?: boolean;
-  /** Creazione del job pendente: oltre STALE_AI_JOB_MS l'analisi è scaduta. */
+  /** Pending job creation: past STALE_AI_JOB_MS the analysis has expired. */
   analyzingSince?: string | null;
   initialFailed?: boolean;
   initialError?: string | null;
@@ -41,8 +41,8 @@ export function ActivityEvaluation({
 }: Props) {
   const t = useTranslations("activities.evaluation");
   const tStatus = useTranslations("status");
-  // Il job lanciato dal server può non finire mai (funzione scaduta): passato
-  // il tempo massimo lo spinner lascia il posto all'errore e a "Riprova".
+  // The job launched by the server may never finish (function timed out): after
+  // the maximum time the spinner gives way to the error and "Retry".
   const [expiredSince, setExpiredSince] = useState<string | null>(null);
   useEffect(() => {
     if (!serverAnalyzing || !analyzingSince) return;
@@ -59,7 +59,7 @@ export function ActivityEvaluation({
   const initialFailed = serverFailed || expired;
   const initialError = localizeAiJobError(expired ? STALE_AI_JOB_ERROR : serverError, tStatus);
   const [displayedEvaluation, setDisplayedEvaluation] = useState(evaluation);
-  // Dopo un refresh (trascina-giù, analisi finita sul server) vale il dato nuovo.
+  // After a refresh (pull-down, analysis finished on the server) the new data wins.
   const [serverEvaluation, setServerEvaluation] = useState(evaluation);
   if (evaluation !== serverEvaluation) {
     setServerEvaluation(evaluation);
@@ -70,27 +70,27 @@ export function ActivityEvaluation({
   const showEvaluationResult = useCallback((status: AiJobStatus) => {
     if (!status.evaluationResult) throw new Error(t("missingResult"));
     setDisplayedEvaluation(status.evaluationResult);
-    // La valutazione può aver riletto le ripetute dalla nota: aggiorna la pagina.
+    // The evaluation may have re-read the repeats from the note: refresh the page.
     router.refresh();
   }, [router, t]);
-  // La chiave per-corsa permette di riprendere il polling se iOS sospende la
-  // PWA, mentre onDone aggiorna questa sezione senza ricaricare la pagina.
+  // The per-run key lets polling resume if iOS suspends the
+  // PWA, while onDone refreshes this section without reloading the page.
   const { pending, done, error, start } = useAiJob(`eval:${activityId}`, {
     onDone: showEvaluationResult,
   });
   const displayedError = error ?? initialError;
-  // Un errore terminale ricevuto dal polling deve prevalere sul valore server
-  // iniziale `initialAnalyzing`, che può restare true fino al prossimo refresh.
+  // A terminal error received from polling must win over the initial server
+  // value `initialAnalyzing`, which may stay true until the next refresh.
   const isAnalyzing = pending || (initialAnalyzing && !done && !displayedError);
-  // Analisi avviata dal server (corsa appena importata): nessun job da
-  // interrogare qui, quindi si ricarica la pagina finché non arriva.
+  // Analysis started by the server (run just imported): no job to
+  // poll here, so the page reloads until it arrives.
   useRefreshWhile(initialAnalyzing && !pending && !done, 6_000, 40);
-  // Con un'analisi già presente la nota resta nascosta finché non serve.
+  // With an existing analysis the note stays hidden until needed.
   const [showForm, setShowForm] = useState(false);
   const formVisible = !displayedEvaluation?.summary || showForm;
   const sectionRef = useRef<HTMLElement>(null);
 
-  // "#nota" (es. dalla scheda Ripetute): apre il campo e ci porta lì.
+  // "#nota" (e.g. from the Repeats tab): opens the field and scrolls there.
   useEffect(() => {
     const open = () => {
       if (window.location.hash !== "#nota") return;

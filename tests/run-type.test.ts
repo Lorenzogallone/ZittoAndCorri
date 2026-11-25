@@ -5,14 +5,14 @@ import { classifyRun } from "../lib/metrics/run-type.ts";
 const seg = (kind: string, duration_s: number, variant: string | null = null) => ({ kind, variant, duration_s });
 const run = { distance_m: 6000, moving_time_s: 2100, duration_s: 2100 };
 
-test("tipo di corsa: il piano vale se i dati lo confermano", () => {
+test("run type: the plan holds if the data confirms it", () => {
   const tempo = { source: "laps", segments: [seg("warmup", 300), seg("work", 480), seg("recovery", 120), seg("work", 480), seg("recovery", 120), seg("work", 484)] };
   assert.equal(classifyRun({ ...run, intervals: tempo, planned: "tempo" }), "tempo");
-  // Il piano chiedeva ripetute ma la corsa è stata tutta facile: vincono i dati.
+  // The plan asked for repeats but the run was all easy: the data wins.
   assert.equal(classifyRun({ ...run, intervals: null, planned: "interval" }), "easy");
 });
 
-test("tipo di corsa senza piano: ripetute, soglia, lungo, facile", () => {
+test("run type without a plan: repeats, threshold, long, easy", () => {
   const reps = { source: "auto", segments: Array.from({ length: 5 }, () => [seg("work", 240), seg("recovery", 120)]).flat() };
   assert.equal(classifyRun({ ...run, intervals: reps, planned: null }), "interval");
   const threshold = { source: "notes", segments: [seg("warmup", 600), seg("work", 1200), seg("cooldown", 300)] };

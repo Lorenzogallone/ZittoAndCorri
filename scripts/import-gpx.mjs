@@ -1,17 +1,17 @@
 /**
- * Import one-shot di un file GPX Strava → tabella activities.
- * Usa la secret key Supabase: non richiede sessione browser.
+ * One-shot import of a Strava GPX file → activities table.
+ * Uses the Supabase secret key: no browser session needed.
  *
- * Uso:
+ * Usage:
  *   export PATH="$HOME/.nvm/versions/node/v24.16.0/bin:$PATH"
- *   node scripts/import-gpx.mjs <percorso-gpx> <user-id>
+ *   node scripts/import-gpx.mjs <gpx-path> <user-id>
  *
- * <user-id>: lo trovi su Supabase → Authentication → Users → ID utente.
+ * <user-id>: find it on Supabase → Authentication → Users → User ID.
  */
 
 import { readFileSync } from "node:fs";
 
-// --- Legge .env.local -------------------------------------------------------
+// --- Reads .env.local -------------------------------------------------------
 function loadEnv(path = ".env.local") {
   const lines = readFileSync(path, "utf8").split("\n");
   for (const line of lines) {
@@ -39,7 +39,7 @@ if (!gpxPath || !userId) {
   process.exit(1);
 }
 
-// --- Haversine (distanza tra due punti GPS) ----------------------------------
+// --- Haversine (distance between two GPS points) ----------------------------------
 function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371000; // m
   const toRad = (d) => (d * Math.PI) / 180;
@@ -51,7 +51,7 @@ function haversine(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// --- Parser GPX (regex-based, formato Strava) --------------------------------
+// --- GPX parser (regex-based, Strava format) --------------------------------
 function parseGpx(xml) {
   const trackName = (xml.match(/<name>([^<]+)<\/name>/) || [])[1] || "Corsa";
 
@@ -123,7 +123,7 @@ function parseGpx(xml) {
   };
 }
 
-// --- Supabase REST insert (senza SDK, solo fetch) ----------------------------
+// --- Supabase REST insert (no SDK, fetch only) ----------------------------
 async function supabaseInsert(table, body) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
     method: "POST",
@@ -140,15 +140,15 @@ async function supabaseInsert(table, body) {
   return json;
 }
 
-// --- Calcola avg_pace e zone-da-media (inline, stesso algoritmo di lib/metrics) --
+// --- Computes avg_pace and zones-from-average (inline, same algorithm as lib/metrics) --
 function avgPace(distance_m, duration_s) {
   return Math.round(duration_s / (distance_m / 1000));
 }
 
 function timeInZoneFromAverage(avg_hr, duration_s) {
-  // Usato solo se il profilo non è disponibile (zone calcolate senza HRR).
-  // Il profilo reale sarà quello in DB. Qui non abbiamo max_hr/resting_hr.
-  // Lasciamo null: l'import da form avrebbe il profilo; lo script no.
+  // Only used if the profile is not available (zones computed without HRR).
+  // The real profile is the one in the DB. Here we have no max_hr/resting_hr.
+  // We leave null: the form import would have the profile; the script does not.
   return null;
 }
 
@@ -181,7 +181,7 @@ async function main() {
     avg_hr: parsed.avg_hr,
     max_hr: parsed.max_hr,
     elevation_gain_m: parsed.elevation_gain_m,
-    time_in_zone: null, // ricalcolabile con max_hr/resting_hr dell'utente
+    time_in_zone: null, // can be recomputed with the user's max_hr/resting_hr
     notes: parsed.trackName !== "Corsa serale" ? parsed.trackName : null,
     raw_payload: { source_file: gpxPath, parsed_at: new Date().toISOString() },
   });

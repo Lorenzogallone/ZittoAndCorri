@@ -1,17 +1,17 @@
--- ZittoAndCorri — Coaching di dettaglio + metriche ricche dall'import.
--- Da eseguire nel SQL Editor di Supabase. Idempotente.
+-- ZittoAndCorri — Detailed coaching + richer metrics from the import.
+-- Run in the Supabase SQL Editor. Idempotent.
 --
--- 1. `activities` guadagna due metriche derivate dagli stream (calcolate in
---    ingest, mai dall'LLM):
---    - avg_cadence_spm: cadenza media in passi/minuto (dai record FIT).
---    - hr_drift_pct: deriva cardiaca (decoupling passo/HR tra prima e seconda
---      metà). Positiva = il cuore sale a parità di sforzo → seduta più
---      faticosa di quanto dica il passo. Serve al coach per capire se un
---      ritmo "easy" è davvero easy.
--- 2. `planned_workouts` guadagna i campi da "coach che ti segue nel dettaglio":
---    - target_hr_bpm: HR media massima indicativa per la seduta.
---    - focus: cosa pensare durante la corsa, cosa privilegiare e cosa
---      sacrificare (testo del coach AI o dell'utente).
+-- 1. `activities` gains two metrics derived from the streams (computed at
+--    ingest, never by the LLM):
+--    - avg_cadence_spm: average cadence in steps/minute (from FIT records).
+--    - hr_drift_pct: cardiac drift (pace/HR decoupling between first and second
+--      half). Positive = heart rate rises at the same effort → the session is
+--      harder than the pace suggests. Helps the coach tell whether an "easy"
+--      pace is really easy.
+-- 2. `planned_workouts` gains the fields of a "coach who follows you in detail":
+--    - target_hr_bpm: indicative maximum average HR for the session.
+--    - focus: what to think about during the run, what to prioritise and what
+--      to sacrifice (text from the AI coach or the user).
 
 alter table public.activities
   add column if not exists avg_cadence_spm int,

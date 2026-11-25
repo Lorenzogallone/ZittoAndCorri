@@ -13,9 +13,9 @@ import {
 import type { EnduranceBase } from "@/lib/metrics/predict";
 
 /**
- * Tempi che oggi sei in grado di correre: una forbice ottimistica–prudente
- * attorno alla stima centrale, dalla prestazione migliore recente e dalla
- * base di resistenza (volume e lungo).
+ * Times you can run today: an optimistic–cautious range
+ * around the central estimate, from the best recent performance and the
+ * endurance base (volume and long run).
  */
 export function Predictions({
   reference,
@@ -33,7 +33,7 @@ export function Predictions({
   const locale = useLocale() as Locale;
   const times = predictRaceTimes(reference, base, today);
   const forGoal = goal ? goalRaceRange(reference, base, goal, today, tMetrics, locale) : null;
-  // Senza obiettivo la spiegazione si riferisce alla mezza, la distanza tipica.
+  // Without a goal the explanation refers to the half marathon, the typical distance.
   const half = times.find((time) => time.meters === 21_097)!;
   const explanation = forGoal?.explanation ?? rangeExplanation(reference, half.range, base, today, tMetrics, locale);
   return (
@@ -64,7 +64,7 @@ export function Predictions({
           <p className="mt-1 text-pretty">{forGoal.advice_text}</p>
         </div>
       )}
-      {/* Su quali dati si basa: a richiesta, per non appesantire la scheda. */}
+      {/* What data it is based on: on request, to keep the card light. */}
       <details className="group mt-2 text-caption">
         <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 font-medium text-primary [&::-webkit-details-marker]:hidden">
           {t("how")}

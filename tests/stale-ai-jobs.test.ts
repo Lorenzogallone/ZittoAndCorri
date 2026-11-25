@@ -12,13 +12,13 @@ import {
 const now = Date.parse("2026-11-22T10:00:00Z");
 const ago = (ms: number) => new Date(now - ms).toISOString();
 
-test("la soglia supera il tempo massimo della funzione e del polling", () => {
-  // maxDuration più lungo: 300 s; MAX_POLL_MS in use-ai-job: 330 s.
+test("the threshold exceeds the maximum time of the function and of polling", () => {
+  // longest maxDuration: 300 s; MAX_POLL_MS in use-ai-job: 330 s.
   assert.ok(STALE_AI_JOB_MS > 330_000);
   assert.ok(STALE_AI_JOB_MS <= 10 * 60_000);
 });
 
-test("un job pendente oltre la soglia è scaduto, uno recente no", () => {
+test("a pending job past the threshold is expired, a recent one is not", () => {
   assert.equal(isStaleAiJob({ status: "pending", created_at: ago(STALE_AI_JOB_MS + 1_000) }, now), true);
   assert.equal(isStaleAiJob({ status: "pending", created_at: ago(60_000) }, now), false);
   assert.equal(isStaleAiJob({ status: "done", created_at: ago(STALE_AI_JOB_MS * 10) }, now), false);
@@ -26,7 +26,7 @@ test("un job pendente oltre la soglia è scaduto, uno recente no", () => {
   assert.equal(staleAiJobCutoff(now), ago(STALE_AI_JOB_MS));
 });
 
-test("un job pendente scaduto si mostra come errore da riprovare", () => {
+test("an expired pending job is shown as an error to retry", () => {
   const stale = effectiveAiJob({ status: "pending", error: null, created_at: ago(STALE_AI_JOB_MS * 2) }, now);
   assert.equal(stale.status, "error");
   assert.equal(stale.error, STALE_AI_JOB_ERROR);
@@ -34,7 +34,7 @@ test("un job pendente scaduto si mostra come errore da riprovare", () => {
   assert.equal(fresh.status, "pending");
 });
 
-test("rianalisi, polling e pagine ignorano i job pendenti scaduti", () => {
+test("re-analysis, polling and pages ignore expired pending jobs", () => {
   const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
   const enqueue = read("lib/ai/evaluate-activity.ts");
   assert.match(enqueue, /isStaleAiJob\(job\)/);

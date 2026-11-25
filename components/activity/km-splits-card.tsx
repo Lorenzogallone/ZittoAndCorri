@@ -15,11 +15,11 @@ const clock = (seconds: number | null) => {
 
 const signed = (value: number) => `${value > 0 ? "+" : value < 0 ? "−" : ""}${Math.abs(value)}`;
 
-/** Km parziale (l'ultimo): la distanza al posto del numero. */
+/** Partial km (the last one): shows the distance instead of the number. */
 const kmLabel = (split: KmSplit, locale: Locale) =>
   split.distance_m >= 990 ? `${split.km}` : `${(split.distance_m / 1000).toLocaleString(intlLocale(locale), { maximumFractionDigits: 2 })} km`;
 
-/** Seconda metà contro prima: passo e cuore, in parole. */
+/** Second half versus first: pace and heart rate, in words. */
 function halvesText(analysis: KmAnalysis, t: ReturnType<typeof useTranslations>): string | null {
   const h = analysis.halves;
   if (!h) return null;
@@ -57,7 +57,7 @@ function Row({ split, fastest, slowest, selected, onSelect }: { split: KmSplit; 
   );
 }
 
-/** Corsa continua km per km: passo, cuore, cadenza e dislivello di ogni chilometro. */
+/** Run shown km by km: pace, heart rate, cadence and elevation of each kilometre. */
 export function KmSplitsCard({ analysis }: { analysis: KmAnalysis }) {
   const t = useTranslations("activities.kmSplits");
   const { selected, toggle } = useSegmentSelection();
@@ -65,7 +65,7 @@ export function KmSplitsCard({ analysis }: { analysis: KmAnalysis }) {
   const paces = full.map((split) => split.pace_s_km);
   const fastest = paces.length >= 3 ? Math.min(...paces) : null;
   const slowest = paces.length >= 3 ? Math.max(...paces) : null;
-  // Il passo medio è già tra i numeri in alto: qui solo l'escursione.
+  // Average pace is already in the top numbers: here only the range.
   const summary = fastest != null && slowest != null && fastest !== slowest
     ? t("summary", { fastest: clock(fastest), slowest: clock(slowest) })
     : null;

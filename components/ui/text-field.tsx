@@ -4,35 +4,35 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Campo di testo libero (chat, note) che Safari non scambia per un indirizzo.
+ * Free text field (chat, notes) that Safari does not mistake for an address.
  *
- * Perché non un <textarea>: su iOS il riempimento automatico di Safari
- * classifica da solo i campi del modulo (input e textarea) e il textarea è
- * l'unico controllo che la specifica HTML associa a un indirizzo su più righe
- * (street-address). Il classificatore ignora autocomplete="off", quindi sopra
- * la tastiera comparivano via e indirizzo di casa. Un elemento
- * contenteditable non è un campo di modulo: il riempimento automatico non lo
- * guarda, mentre correttore, maiuscole automatiche, dettatura e suggerimenti
- * di parola restano accesi.
+ * Why not a <textarea>: on iOS Safari autofill
+ * classifies form fields (input and textarea) on its own, and the textarea is
+ * the only control the HTML spec associates with a multi-line address
+ * (street-address). The classifier ignores autocomplete="off", so above
+ * the keyboard the street and home address appeared. A contenteditable
+ * element is not a form field: autofill does not look at it,
+ * while spellcheck, auto-capitalisation, dictation and word suggestions
+ * stay on.
  *
- * Nei <form> il valore arriva al server con un input nascosto (`name`).
+ * In <form>s the value reaches the server through a hidden input (`name`).
  */
 interface TextFieldProps {
   id?: string;
-  /** Nome del campo nel FormData (input nascosto). */
+  /** Field name in the FormData (hidden input). */
   name?: string;
-  /** Valore controllato. */
+  /** Controlled value. */
   value?: string;
-  /** Valore iniziale (non controllato). */
+  /** Initial value (uncontrolled). */
   defaultValue?: string;
   onValueChange?: (value: string) => void;
   onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
   placeholder?: string;
   disabled?: boolean;
   maxLength?: number;
-  /** Righe visibili a riposo: altezza minima del campo. */
+  /** Visible rows at rest: minimum field height. */
   rows?: number;
-  /** Una riga sola (come un input): Invio non va a capo. */
+  /** A single line (like an input): Enter does not wrap. */
   singleLine?: boolean;
   enterKeyHint?: React.HTMLAttributes<HTMLDivElement>["enterKeyHint"];
   className?: string;
@@ -41,7 +41,7 @@ interface TextFieldProps {
   "aria-describedby"?: string;
 }
 
-/** Testo del campo, con gli a capo; un campo svuotato a mano lascia solo un <br>. */
+/** Field text, with line breaks; a field cleared by hand leaves only a <br>. */
 function readText(element: HTMLElement): string {
   const text = element.innerText.replace(/ /g, " ");
   return text === "\n" ? "" : text;
@@ -82,14 +82,14 @@ export const TextField = React.forwardRef<HTMLDivElement, TextFieldProps>(functi
   const ref = React.useRef<HTMLDivElement>(null);
   React.useImperativeHandle(forwardedRef, () => ref.current as HTMLDivElement);
 
-  // Il DOM è la fonte del testo mentre si scrive: React lo riscrive solo quando
-  // il valore cambia da fuori (campo svuotato dopo l'invio, testo precompilato).
+  // The DOM is the source of the text while typing: React rewrites it only when
+  // the value changes from outside (field cleared after sending, prefilled text).
   React.useLayoutEffect(() => {
     const element = ref.current;
     if (element && readText(element) !== current) element.textContent = current;
   }, [current]);
 
-  // Un <label for> non mette a fuoco un elemento contenteditable: lo fa questo.
+  // A <label for> does not focus a contenteditable element: this does.
   React.useEffect(() => {
     if (!id) return;
     const labels = Array.from(document.querySelectorAll<HTMLLabelElement>(`label[for="${CSS.escape(id)}"]`));
@@ -121,12 +121,12 @@ export const TextField = React.forwardRef<HTMLDivElement, TextFieldProps>(functi
       element.textContent = text;
       placeCaretAtEnd(element);
     }
-    // Svuotato a mano: niente <br> residuo, così torna il segnaposto.
+    // Cleared by hand: no leftover <br>, so the placeholder returns.
     if (!text && element.innerHTML) element.innerHTML = "";
     update(text);
   }
 
-  // Incolla solo testo semplice anche dove plaintext-only non c'è.
+  // Paste plain text only, even where plaintext-only is unavailable.
   function handlePaste(event: React.ClipboardEvent<HTMLDivElement>) {
     event.preventDefault();
     const raw = event.clipboardData.getData("text/plain");
