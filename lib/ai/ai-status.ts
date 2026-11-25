@@ -1,8 +1,8 @@
 import "server-only";
 
-// Stato dei provider AI per l'interfaccia (mai segreti): chiavi configurate e,
-// per la chat del coach e per l'analisi delle corse, provider e modello in uso.
-// Tollerante se mancano le migrazioni 0023 (OpenRouter) e 0024 (per compito).
+// AI provider status for the UI (never secrets): configured keys and,
+// for the coach chat and run analysis, the provider and model in use.
+// Tolerant of missing migrations 0023 (OpenRouter) and 0024 (per task).
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { GEMINI_MODELS, normalizeGeminiModel } from "@/lib/ai/models";
@@ -11,27 +11,27 @@ import { AI_TASKS, resolveTask, taskModel, type AiProvider, type AiTask, type Pr
 import { shortModelName } from "@/lib/ai/usage";
 
 export interface ProviderTaskStatus {
-  /** Utilizzabile per il compito: chiave salvata e modello scelto. */
+  /** Usable for the task: key saved and model chosen. */
   configured: boolean;
   model: string | null;
-  /** Nome breve, es. "3.5 Flash Lite" o "claude-sonnet-5-5". */
+  /** Short name, e.g. "3.5 Flash Lite" or "claude-sonnet-5-5". */
   modelLabel: string | null;
 }
 
 export interface TaskStatus {
-  /** Provider usato davvero (scelto e pronto, altrimenti l'altro). */
+  /** Provider actually used (the chosen one if ready, otherwise the other). */
   active: AiProvider | null;
-  /** Provider scelto nelle impostazioni. */
+  /** Provider chosen in settings. */
   provider: AiProvider;
   gemini: ProviderTaskStatus;
-  /** Null se il database non ha ancora la migrazione 0023. */
+  /** Null if the database does not have migration 0023 yet. */
   openrouter: ProviderTaskStatus | null;
 }
 
 export interface AiStatus {
-  /** Provider della chat: basta a sapere se c'è almeno una chiave. */
+  /** Chat provider: enough to know whether there is at least one key. */
   active: AiProvider | null;
-  /** False senza la migrazione 0024: un solo provider per tutto. */
+  /** False without migration 0024: a single provider for everything. */
   perTask: boolean;
   keys: {
     gemini: { configured: boolean; lastFour: string | null };

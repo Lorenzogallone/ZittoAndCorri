@@ -1,23 +1,23 @@
-// Catalogo OpenRouter per il selettore dei modelli: raggruppato per azienda
-// (Anthropic, OpenAI, Google…), con prezzi leggibili. Modulo puro, lo usa
-// anche il client.
+// OpenRouter catalog for the model selector: grouped by company
+// (Anthropic, OpenAI, Google…), with readable prices. Pure module, also used
+// by the client.
 
 import { DEFAULT_LOCALE, type Locale, type Translator } from "../../i18n/config.ts";
 
 export interface OpenRouterModel {
   id: string;
   name: string;
-  /** Prezzo in dollari per milione di token (input, output); 0 = gratis. */
+  /** Price in dollars per million tokens (input, output); 0 = free. */
   prompt_per_m: number | null;
   completion_per_m: number | null;
   context: number | null;
-  /** Data di uscita (secondi unix), per suggerire i modelli più recenti. */
+  /** Release date (unix seconds), to suggest the most recent models. */
   created: number | null;
-  /** Token massimi in risposta dichiarati dal provider; null se non noto. */
+  /** Max response tokens declared by the provider; null if unknown. */
   max_output?: number | null;
 }
 
-/** "Anthropic: Claude Sonnet 5.5" → "Anthropic"; senza prefisso usa l'id ("x-ai/…" → "x-ai"). */
+/** "Anthropic: Claude Sonnet 5.5" → "Anthropic"; without a prefix uses the id ("x-ai/…" → "x-ai"). */
 export function providerOf(model: Pick<OpenRouterModel, "id" | "name">): string {
   const named = model.name.match(/^([^:]{2,40}):\s/);
   return named ? named[1].trim() : model.id.split("/")[0];
@@ -32,7 +32,7 @@ export const isFree = (model: OpenRouterModel) =>
 const money = (value: number, locale: Locale) =>
   (value >= 10 ? String(Math.round(value)) : String(+value.toFixed(2))).replace(".", locale === "it" ? "," : ".");
 
-/** "$2 / $10 per M token" oppure "gratis" (`t` legato al namespace "labels"). */
+/** "$2 / $10 per M token" or "gratis" (`t` bound to the "labels" namespace). */
 export function priceLabel(t: Translator, model: OpenRouterModel, locale: Locale = DEFAULT_LOCALE): string | null {
   if (isFree(model)) return t("price.free");
   if (model.prompt_per_m == null || model.completion_per_m == null) return null;
@@ -48,8 +48,8 @@ export interface ProviderGroup {
 }
 
 /**
- * Aziende ordinate per numero di modelli (le più note in cima), modelli dal più
- * recente. `query` filtra per nome, id o azienda; `freeOnly` tiene i gratuiti.
+ * Companies sorted by number of models (best known on top), models from the most
+ * recent. `query` filters by name, id or company; `freeOnly` keeps the free ones.
  */
 export function groupByProvider(models: OpenRouterModel[], options: { query?: string; provider?: string | null; freeOnly?: boolean } = {}): ProviderGroup[] {
   const words = (options.query ?? "").toLowerCase().split(/\s+/).filter(Boolean);
@@ -67,12 +67,12 @@ export function groupByProvider(models: OpenRouterModel[], options: { query?: st
     .sort((a, b) => b.models.length - a.models.length || a.provider.localeCompare(b.provider));
 }
 
-/** Aziende per i filtri rapidi: le più presenti nel catalogo. */
+/** Companies for the quick filters: the most present in the catalog. */
 export function topProviders(models: OpenRouterModel[], limit = 8): string[] {
   return groupByProvider(models).slice(0, limit).map((group) => group.provider);
 }
 
-/** Pochi suggerimenti: il modello più recente di alcune famiglie note, più uno gratuito. */
+/** A few suggestions: the most recent model of some known families, plus a free one. */
 export function suggestedOpenRouterModels(models: OpenRouterModel[]): OpenRouterModel[] {
   const families = [/^anthropic\/claude/, /^openai\/gpt/, /^google\/gemini/, /^deepseek\//, /:free$/];
   const picks: OpenRouterModel[] = [];

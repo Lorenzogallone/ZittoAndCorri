@@ -3,16 +3,16 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Salva una proposta con la fotografia delle sedute dei giorni che tocca: se nel
- * frattempo il piano di quei giorni cambia, apply_plan_proposal_v2 la marca
- * come superata invece di sovrascrivere modifiche più recenti.
+ * Saves a proposal with a snapshot of the sessions of the days it touches: if
+ * the plan for those days changes in the meantime, apply_plan_proposal_v2 marks it
+ * as superseded instead of overwriting more recent changes.
  */
 export async function insertPlanProposal(
   supabase: SupabaseClient,
   input: {
     userId: string;
     summary: string;
-    /** Giorni modificati dalla proposta (nuove sedute + giorni da svuotare). */
+        /** Days modified by the proposal (new sessions + days to clear). */
     touched: string[];
     workouts: unknown[];
     removeDates: string[];
@@ -48,8 +48,8 @@ export async function insertPlanProposal(
     .insert({ ...row, remove_dates: input.removeDates, changes: input.changes })
     .select("id")
     .single<{ id: string }>();
-  // Database senza migrazione 0023: la proposta si salva comunque (applicarla
-  // chiederà l'aggiornamento), così la chat continua a funzionare.
+    // Database without migration 0023: the proposal is saved anyway (applying it
+    // will ask for the update), so the chat keeps working.
   if (result.error?.code === "42703" || result.error?.code === "PGRST204") {
     result = await supabase.from("plan_proposals").insert(row).select("id").single<{ id: string }>();
   }

@@ -1,27 +1,27 @@
-// Pause dell'orologio: quando l'atleta mette in pausa (o scatta l'auto-pausa)
-// l'orologio smette di registrare punti, e negli stream resta un buco di tempo
-// in cui la distanza non avanza. Split, ripetute, best effort e deriva vanno
-// misurati sul tempo in movimento, come fa l'orologio: qui si trovano le pause
-// e si riportano gli stream su un "orologio in movimento" senza quei secondi.
-// Funzioni pure.
+// Watch pauses: when the athlete pauses (or auto-pause kicks in)
+// the watch stops recording points, and the streams are left with a time gap
+// in which distance doesn't advance. Splits, repeats, best efforts and drift
+// must be measured on moving time, as the watch does: here pauses are found
+// and the streams are brought onto a "moving clock" without those seconds.
+// Pure functions.
 
 import { cumulativeDistance, type TrackPoint } from "./geo.ts";
 
 export interface Pause {
-  /** Ultimo punto registrato prima della pausa (s dall'inizio). */
+  /** Last point recorded before the pause (s from the start). */
   from: number;
-  /** Primo punto registrato dopo la pausa. */
+  /** First point recorded after the pause. */
   to: number;
-  /** Secondi tolti: il buco meno un normale intervallo di registrazione. */
+  /** Seconds removed: the gap minus a normal recording interval. */
   removed: number;
 }
 
-/** Sotto questa velocità (m/s) un buco di registrazione è una pausa: fermi, o al massimo qualche passo. */
+/** Below this speed (m/s) a recording gap is a pause: stopped, or at most a few steps. */
 const PAUSE_SPEED = 0.8;
-/** Buchi lunghi: anche camminando piano mentre l'orologio è fermo. */
+/** Long gaps: even walking slowly while the watch is stopped. */
 const LONG_GAP_S = 15;
 const LONG_GAP_SPEED = 1.6;
-/** Un buco più corto non si distingue dalla registrazione "smart" dell'orologio. */
+/** A shorter gap is indistinguishable from the watch's "smart" recording. */
 const MIN_GAP_S = 3;
 
 function median(values: number[]): number {
@@ -31,9 +31,9 @@ function median(values: number[]): number {
 }
 
 /**
- * Pause da una traccia tempo/distanza cumulata. Un buco tra due punti è una
- * pausa se dura più di qualche intervallo di registrazione e in quel tempo la
- * distanza è avanzata a passo da fermo (o da camminata, se il buco è lungo).
+ * Pauses from a cumulative time/distance track. A gap between two points is a
+ * pause if it lasts more than a few recording intervals and in that time the
+ * distance advanced at a standing pace (or walking, if the gap is long).
  */
 export function detectPauses(track: Array<{ t: number; d: number }>): Pause[] {
   const points = track
@@ -58,7 +58,7 @@ export function detectPauses(track: Array<{ t: number; d: number }>): Pause[] {
   return pauses;
 }
 
-/** Traccia di riferimento: la distanza dell'orologio se c'è, altrimenti il GPS. */
+/** Reference track: the watch distance if available, otherwise GPS. */
 export function referenceTrack(streams: {
   distance?: Array<{ t: number; d: number }> | null;
   gps?: TrackPoint[] | null;
@@ -72,7 +72,7 @@ export function referenceTrack(streams: {
   return null;
 }
 
-/** Converte un istante dell'orologio reale nel tempo in movimento (pause tolte). */
+/** Converts an instant on the real watch clock into moving time (pauses removed). */
 export function movingClock(pauses: Pause[]): (t: number) => number {
   if (!pauses.length) return (t) => t;
   return (t) => {
@@ -82,7 +82,7 @@ export function movingClock(pauses: Pause[]): (t: number) => number {
         shift += pause.removed;
         continue;
       }
-      // Dentro la pausa: resta fermo all'inizio, più l'intervallo normale.
+      // Inside the pause: stays still at the start, plus the normal interval.
       if (t > pause.from) return pause.from - shift + Math.min(t - pause.from, pause.to - pause.from - pause.removed);
       break;
     }
@@ -103,13 +103,13 @@ export interface PauseStreams {
   laps?: Lap[] | null;
 }
 
-/** Totale dei secondi in pausa. */
+/** Total seconds paused. */
 export const pausedSeconds = (pauses: Pause[]) => pauses.reduce((sum, pause) => sum + pause.removed, 0);
 
 /**
- * Gli stessi stream sul tempo in movimento: ogni pausa sparisce e quello che
- * viene dopo scala indietro. I lap si accorciano dei secondi di pausa che
- * contengono. Stream senza pause tornano identici.
+ * The same streams on moving time: each pause disappears and what
+ * follows shifts back. Laps shorten by the paused seconds they
+ * contain. Streams without pauses come back identical.
  */
 export function withoutPauses<S extends PauseStreams>(streams: S): S {
   const track = referenceTrack(streams);
@@ -132,8 +132,8 @@ export function withoutPauses<S extends PauseStreams>(streams: S): S {
 }
 
 /**
- * Tempo in movimento ricavato dalle pause negli stream, per i file che non lo
- * dicono (o lo danno uguale al tempo totale). Null se non ci sono pause.
+ * Moving time derived from the pauses in the streams, for files that don't
+ * state it (or give it equal to the total time). Null if there are no pauses.
  */
 export function movingTimeFromStreams(
   duration_s: number,
@@ -145,7 +145,7 @@ export function movingTimeFromStreams(
   return moving > 0 && moving < duration_s ? moving : null;
 }
 
-/** Il tempo in movimento più affidabile tra quelli noti: il più corto sotto il totale. */
+/** The most reliable moving time among the known ones: the shortest below the total. */
 export function bestMovingTime(duration_s: number, ...candidates: Array<number | null | undefined>): number | null {
   const valid = candidates.filter((value): value is number => typeof value === "number" && value > 0 && value < duration_s);
   return valid.length ? Math.min(...valid) : null;

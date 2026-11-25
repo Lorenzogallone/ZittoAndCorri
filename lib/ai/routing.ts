@@ -1,7 +1,7 @@
-// Provider e modello per compito: la chat del coach e l'analisi delle corse
-// possono usare modelli diversi (es. uno più bravo in chat, uno economico per
-// le analisi). Per ogni compito si ricorda anche il modello scelto per l'altro
-// provider, così lo switch in chat non perde la scelta. Modulo puro.
+// Provider and model per task: the coach chat and the run analysis
+// can use different models (e.g. a stronger one in chat, a cheap one for
+// the analyses). For each task the model chosen for the other provider is
+// also remembered, so switching in chat does not lose the choice. Pure module.
 
 import { normalizeGeminiModel } from "./models.ts";
 
@@ -17,9 +17,9 @@ export const AI_TASK_LABELS: Record<AiTask, string> = {
 
 export interface TaskRoute {
   provider: AiProvider;
-  /** Modello Gemini per questo compito; null = quello della chiave. */
+  /** Gemini model for this task; null = the key's one. */
   gemini: string | null;
-  /** Modello OpenRouter per questo compito; null = quello salvato con la chiave. */
+  /** OpenRouter model for this task; null = the one saved with the key. */
   openrouter: string | null;
 }
 
@@ -28,7 +28,7 @@ export type AiRouting = Record<AiTask, TaskRoute>;
 const isProvider = (value: unknown): value is AiProvider => value === "gemini" || value === "openrouter";
 const modelOrNull = (value: unknown) => (typeof value === "string" && value.trim() && value.length <= 120 ? value.trim() : null);
 
-/** Legge `profiles.ai_routing`; i compiti mancanti usano il provider scelto prima (ai_provider). */
+/** Reads `profiles.ai_routing`; missing tasks use the previously chosen provider (ai_provider). */
 export function parseRouting(raw: unknown, legacyProvider: AiProvider): AiRouting {
   const source = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const route = (task: AiTask): TaskRoute => {
@@ -47,13 +47,13 @@ export function withRoute(routing: AiRouting, task: AiTask, patch: Partial<TaskR
 }
 
 export interface ProviderAvailability {
-  /** Chiave Gemini salvata e modello predefinito della chiave. */
+  /** Saved Gemini key and the key's default model. */
   gemini: { configured: boolean; model: string | null };
-  /** Chiave OpenRouter salvata e modello salvato con la chiave (può mancare). */
+  /** Saved OpenRouter key and the model saved with the key (may be missing). */
   openrouter: { configured: boolean; model: string | null };
 }
 
-/** Modello che il compito userebbe con quel provider, o null se non utilizzabile. */
+/** Model the task would use with that provider, or null if unusable. */
 export function taskModel(route: TaskRoute, provider: AiProvider, available: ProviderAvailability): string | null {
   if (provider === "gemini") {
     return available.gemini.configured ? normalizeGeminiModel(route.gemini ?? available.gemini.model) : null;
@@ -62,9 +62,9 @@ export function taskModel(route: TaskRoute, provider: AiProvider, available: Pro
 }
 
 /**
- * Provider e modello effettivi del compito: quello scelto se pronto, altrimenti
- * l'altro (meglio una risposta con l'altro provider che nessuna). Null se
- * nessuno dei due è configurato.
+ * Effective provider and model of the task: the chosen one if ready, otherwise
+ * the other (better an answer from the other provider than none). Null if
+ * neither is configured.
  */
 export function resolveTask(route: TaskRoute, available: ProviderAvailability): { provider: AiProvider; model: string } | null {
   const other: AiProvider = route.provider === "gemini" ? "openrouter" : "gemini";

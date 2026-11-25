@@ -1,8 +1,8 @@
 import "server-only";
 
-// Struttura della seduta scritta nella nota dell'atleta ("3 × (3' forte + 1'
-// jog + 1' sprint)", anche dettata a voce): Gemini la traduce in step, poi
-// l'allineamento sulla curva di velocità è deterministico (lib/metrics/intervals).
+// Session structure written in the athlete's note ("3 × (3' hard + 1'
+// jog + 1' sprint)", even dictated by voice): Gemini translates it into steps, then
+// the alignment on the speed curve is deterministic (lib/metrics/intervals).
 
 import { Type, type Schema } from "@google/genai";
 import { z } from "zod";
@@ -76,7 +76,7 @@ const responseZod = z.object({
   })).max(12),
 });
 
-/** Evita una chiamata AI quando la nota non contiene nemmeno un numero. */
+/** Avoids an AI call when the note does not even contain a number. */
 export function mayDescribeStructure(notes: string | null | undefined): notes is string {
   return !!notes && /\d|\b(un[oa]?|due|tre|quattro|cinque|sei|sette|otto|nove|dieci|dodici|quindici|venti|trenta|mezz[oa])\b/i.test(notes);
 }
@@ -99,8 +99,8 @@ function buildPrompt(notes: string, plannedHint: string | null): string {
 }
 
 /**
- * Struttura dichiarata nella nota (null se la nota non ne descrive una) e
- * token/costo della lettura, che si sommano all'analisi.
+ * Structure declared in the note (null if the note describes none) and
+ * tokens/cost of the reading, which add to the analysis.
  */
 export async function extractDeclaredStructure(
   notes: string,

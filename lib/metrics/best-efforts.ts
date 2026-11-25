@@ -1,6 +1,6 @@
-// Migliori prestazioni (best effort) su distanze standard e record personali.
-// Funzioni pure: il tempo migliore su ogni distanza è la finestra più veloce
-// della traccia GPS che copre almeno quella distanza.
+// Best efforts over standard distances and personal records.
+// Pure functions: the best time over each distance is the fastest window
+// of the GPS track that covers at least that distance.
 
 import type { Translator } from "../../i18n/config.ts";
 import type { GpsPoint } from "@/lib/types";
@@ -17,16 +17,16 @@ export const EFFORTS: ReadonlyArray<{ key: EffortKey; meters: number }> = [
   { key: "marathon", meters: 42_195 },
 ];
 
-/** Nome della distanza ("5 km", "Mezza"); `t` è legato al namespace "metrics". */
+/** Distance name ("5 km", "Mezza"); `t` is bound to the "metrics" namespace. */
 export const effortLabel = (key: EffortKey, t: Translator): string => t(`efforts.${key}`);
 
-/** Secondi per distanza standard. Oggetto vuoto = calcolato, nessun dato utile. */
+/** Seconds per standard distance. Empty object = computed, no useful data. */
 export type BestEfforts = Partial<Record<EffortKey, number>>;
 
-/** Velocità oltre la quale una finestra è sicuramente un errore GPS (m/s). */
+/** Speed above which a window is surely a GPS error (m/s). */
 const MAX_EFFORT_SPEED = 7;
 
-/** Tempo minimo (s) per coprire `meters` lungo la traccia, interpolando l'inizio. */
+/** Minimum time (s) to cover `meters` along the track, interpolating the start. */
 function fastestWindow(times: number[], cum: number[], meters: number): number | null {
   const n = cum.length;
   if (n < 2 || cum[n - 1] < meters) return null;
@@ -36,7 +36,7 @@ function fastestWindow(times: number[], cum: number[], meters: number): number |
     while (i + 1 < j && cum[j] - cum[i + 1] >= meters) i++;
     const covered = cum[j] - cum[i];
     if (covered < meters) continue;
-    // Punto esatto in cui inizia la finestra di `meters` metri.
+    // Exact point where the `meters`-long window starts.
     const startDistance = cum[j] - meters;
     const segment = cum[i + 1] - cum[i];
     const fraction = segment > 0 ? (startDistance - cum[i]) / segment : 0;
@@ -48,7 +48,7 @@ function fastestWindow(times: number[], cum: number[], meters: number): number |
   return best == null ? null : Math.round(best);
 }
 
-/** Best effort dalla traccia GPS di una corsa. */
+/** Best efforts from the GPS track of a run. */
 export function bestEffortsFromGps(track: GpsPoint[]): BestEfforts {
   if (!track || track.length < 2) return {};
   const gps = withoutPauses({ gps: track }).gps!;
@@ -63,10 +63,10 @@ export function bestEffortsFromGps(track: GpsPoint[]): BestEfforts {
 }
 
 /**
- * Best effort di un'attività. Usa il GPS quando c'è; senza GPS conta solo una
- * corsa la cui distanza totale corrisponde a una distanza standard (es. una
- * gara inserita a mano), riportando il tempo alla distanza esatta.
- * Null per le attività non di corsa.
+ * Best efforts of an activity. Uses GPS when available; without GPS only a
+ * run whose total distance matches a standard distance counts (e.g. a
+ * race entered by hand), scaling the time to the exact distance.
+ * Null for non-running activities.
  */
 export function bestEffortsForActivity(activity: {
   sport: string;
@@ -97,7 +97,7 @@ export interface PersonalRecord {
   date: string;
 }
 
-/** Record personali: per ogni distanza il miglior tempo e l'attività che lo detiene. */
+/** Personal records: for each distance the best time and the activity that holds it. */
 export function personalRecords(
   activities: Array<{ id: string; started_at: string; best_efforts: BestEfforts | null }>,
 ): PersonalRecord[] {

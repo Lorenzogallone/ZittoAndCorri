@@ -1,8 +1,8 @@
-// Client OpenRouter (API compatibile OpenAI) per l'output strutturato del
-// coach. Gli schemi sono scritti nel formato Gemini (lib/ai/prompt.ts): qui si
-// convertono in JSON Schema. Non tutti i modelli rispettano response_format,
-// quindi lo schema va anche nel prompt e la risposta si estrae con tolleranza;
-// la validazione vera resta nei parser zod dei chiamanti.
+// OpenRouter client (OpenAI-compatible API) for the coach's structured
+// output. Schemas are written in Gemini format (lib/ai/prompt.ts): here they are
+// converted to JSON Schema. Not all models honor response_format,
+// so the schema also goes in the prompt and the response is extracted tolerantly;
+// the real validation stays in the callers' zod parsers.
 import "server-only";
 
 import type { Schema } from "@google/genai";
@@ -17,13 +17,13 @@ export { suggestedOpenRouterModels } from "./openrouter-models.ts";
 const API = "https://openrouter.ai/api/v1";
 const DEADLINE_MS = 180_000;
 const MAX_ATTEMPTS = 3;
-/** Un nuovo tentativo ha senso solo se resta almeno questo tempo. */
+/** A retry makes sense only if at least this much time remains. */
 const MIN_ATTEMPT_MS = 45_000;
-/** Tetto ai token di risposta: il JSON del coach con un piano intero sta ben sotto. */
+/** Cap on response tokens: the coach's JSON with a whole plan is well below it. */
 const MAX_OUTPUT_TOKENS = 24_000;
 
 export class OpenRouterError extends Error {
-  /** Token e costo di una risposta arrivata ma non valida (si paga comunque). */
+  /** Tokens and cost of a response that arrived but is invalid (you pay anyway). */
   usage?: AiUsage;
   constructor(message: string, readonly status: number) {
     super(message);
@@ -35,7 +35,7 @@ function headers(apiKey: string): Record<string, string> {
   return {
     Authorization: `Bearer ${apiKey}`,
     "Content-Type": "application/json",
-    // Attribuzione facoltativa nelle statistiche di OpenRouter.
+    // Optional attribution in OpenRouter statistics.
     "X-Title": "Zitto e Corri",
   };
 }
@@ -46,7 +46,7 @@ async function errorFrom(response: Response): Promise<OpenRouterError> {
     const body = (await response.json()) as { error?: { message?: string } };
     if (body?.error?.message) message = body.error.message;
   } catch {
-    // corpo non JSON
+    // non-JSON body
   }
   return new OpenRouterError(message, response.status);
 }
@@ -62,9 +62,9 @@ interface ChatUsage {
 }
 
 /**
- * Legge la risposta in streaming (SSE): i modelli lenti (es. Opus) scrivono
- * per minuti, e un flusso continuo evita che la connessione venga chiusa
- * mentre il modello lavora. Ritorna il testo completo e l'uso dei token.
+ * Reads the streamed response (SSE): slow models (e.g. Opus) write
+ * for minutes, and a continuous stream keeps the connection from being closed
+ * while the model works. Returns the full text and the token usage.
  */
 async function readStream(response: Response): Promise<{ content: string; usage?: ChatUsage }> {
   if (!response.body) throw new OpenRouterError("Risposta vuota dal modello", 502);
@@ -80,7 +80,7 @@ async function readStream(response: Response): Promise<{ content: string; usage?
     buffer = done ? "" : lines.pop() ?? "";
     for (const raw of lines) {
       const line = raw.trim();
-      // Le righe ": OPENROUTER PROCESSING" sono solo keep-alive.
+      // The ": OPENROUTER PROCESSING" lines are only keep-alives.
       if (!line.startsWith("data:")) continue;
       const data = line.slice(5).trim();
       if (!data || data === "[DONE]") continue;
@@ -104,7 +104,7 @@ async function readStream(response: Response): Promise<{ content: string; usage?
   return { content, usage };
 }
 
-/** Scadenza del segnale, anche quando fetch la avvolge in un altro errore. */
+/** Signal timeout, even when fetch wraps it in another error. */
 function isTimeout(error: unknown): boolean {
   const name = (error as { name?: unknown } | null)?.name;
   if (name === "TimeoutError" || name === "AbortError") return true;
@@ -112,7 +112,7 @@ function isTimeout(error: unknown): boolean {
   return cause != null && cause !== error && isTimeout(cause);
 }
 
-/** Listino del catalogo per stimare o dividere il costo; null se non noto. */
+/** Catalog price list to estimate or split the cost; null if unknown. */
 async function catalogPrice(model: string) {
   const entry = (await listOpenRouterModels()).find((m) => m.id === model);
   return entry && entry.prompt_per_m != null && entry.completion_per_m != null
@@ -121,13 +121,13 @@ async function catalogPrice(model: string) {
 }
 
 /**
- * Output strutturato `T` da un modello OpenRouter, con token e costo. Il costo
- * è quello addebitato (`usage.cost`, sempre presente nelle risposte).
+ * Structured output `T` from an OpenRouter model, with tokens and cost. The cost
+ * is the amount charged (`usage.cost`, always present in responses).
  */
 export async function generateOpenRouter<T>(
   prompt: Prompt,
   schema: Schema,
-  opts: { apiKey: string; model: string; /** Istante (ms) entro cui finire; default fra 3 minuti. */ deadlineAt?: number },
+  opts: { apiKey: string; model: string; /** Instant (ms) by which to finish; default 3 minutes from now. */ deadlineAt?: number },
 ): Promise<{ data: T; usage: AiUsage }> {
   const jsonSchema = toJsonSchema(schema);
   const catalog = (await listOpenRouterModels().catch(() => [])).find((m) => m.id === opts.model);
@@ -136,7 +136,7 @@ export async function generateOpenRouter<T>(
     model: opts.model,
     stream: true,
     ...(maxTokens ? { max_tokens: maxTokens } : {}),
-    // Con Claude la parte fissa porta cache_control (lib/ai/prompt-cache.ts).
+    // With Claude the fixed part carries cache_control (lib/ai/prompt-cache.ts).
     messages: openRouterMessages(
       prompt,
       `Rispondi esclusivamente con un oggetto JSON valido, senza testo prima o dopo, conforme a questo JSON Schema:\n${JSON.stringify(jsonSchema)}`,
@@ -149,8 +149,8 @@ export async function generateOpenRouter<T>(
   };
   const deadline = opts.deadlineAt ?? Date.now() + DEADLINE_MS;
   let lastError: unknown;
-  // Alcuni provider rifiutano lo schema (400): si riprova senza response_format,
-  // con lo schema solo nel prompt.
+  // Some providers reject the schema (400): retry without response_format,
+  // with the schema only in the prompt.
   let withFormat = true;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const remaining = deadline - Date.now();
@@ -180,7 +180,7 @@ export async function generateOpenRouter<T>(
       }
       return { data: parsed, usage };
     } catch (caught) {
-      // Tempo scaduto: il modello è troppo lento per il tempo disponibile.
+      // Time expired: the model is too slow for the available time.
       const error = isTimeout(caught)
         ? new OpenRouterError("Il modello non ha finito in tempo", 504)
         : caught;
@@ -191,8 +191,8 @@ export async function generateOpenRouter<T>(
         withFormat = false;
         continue;
       }
-      // Chiave, credito o modello sbagliati: ritentare non serve. Una risposta
-      // non valida (422) la riprova lib/ai/llm.ts, che ne registra il costo.
+      // Wrong key, credit or model: retrying is pointless. An invalid response
+      // (422) is retried by lib/ai/llm.ts, which records its cost.
       if ([400, 401, 402, 403, 404, 422].includes(status)) throw error;
       if (attempt < MAX_ATTEMPTS - 1) await sleep(1_500 * (attempt + 1));
     }
@@ -200,16 +200,16 @@ export async function generateOpenRouter<T>(
   throw lastError ?? new OpenRouterError("Richiesta OpenRouter scaduta", 504);
 }
 
-/** Verifica la chiave senza consumare credito. */
+/** Checks the key without spending credit. */
 export async function verifyOpenRouterKey(apiKey: string): Promise<void> {
   const response = await fetch(`${API}/key`, { headers: headers(apiKey), cache: "no-store", signal: AbortSignal.timeout(15_000) });
   if (!response.ok) throw await errorFrom(response);
 }
 
 /**
- * Modelli che supportano l'output strutturato, dal catalogo pubblico di
- * OpenRouter (cache di un giorno). Vuoto se il catalogo non risponde: nelle
- * impostazioni si può sempre scrivere l'id del modello a mano.
+ * Models that support structured output, from OpenRouter's public
+ * catalog (cached for a day). Empty if the catalog does not respond: in
+ * settings the model id can always be typed by hand.
  */
 export async function listOpenRouterModels(): Promise<OpenRouterModel[]> {
   try {

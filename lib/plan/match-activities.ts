@@ -1,10 +1,10 @@
-// Abbina le sedute pianificate di un giorno alle attività fatte quel giorno.
-// Con più sedute e più corse nello stesso giorno (riscaldamento e ripetute,
-// mattina e sera) la prima corsa non è per forza la prima seduta: si sceglie
-// l'abbinamento che somiglia di più per distanza, durata, ordine e momento
-// della giornata. Una seduta rimasta senza corsa vale fatta anche con una
-// corsa dello stesso tipo fatta fino a due giorni prima o dopo (matchPlan).
-// Funzioni pure.
+// Matches the planned sessions of a day to the activities done that day.
+// With several sessions and several runs on the same day (warm-up and repeats,
+// morning and evening) the first run is not necessarily the first session: we pick
+// the match that is most similar in distance, duration, order and time
+// of day. A session left without a run counts as done even with a
+// run of the same type done up to two days before or after (matchPlan).
+// Pure functions.
 
 import type { DayPart, WorkoutStepInput, WorkoutType } from "../types.ts";
 import { plannedMeters } from "./planned-distance.ts";
@@ -32,7 +32,7 @@ export interface MatchActivity {
   moving_time_s?: number | null;
 }
 
-/** Ora del giorno a Roma (0-23). */
+/** Hour of the day in Rome (0-23). */
 function romeHour(iso: string): number {
   return Number(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hour12: false, timeZone: "Europe/Rome" }).format(new Date(iso))) % 24;
 }
@@ -41,7 +41,7 @@ function partOf(hour: number): DayPart {
   return hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
 }
 
-/** Differenza media (log) di distanza e durata; null se non si può dire. */
+/** Mean (log) difference in distance and duration; null if it cannot be determined. */
 function gap(workout: MatchWorkout, activity: MatchActivity): number | null {
   const steps = workout.workout_steps ?? [];
   const meters = plannedMeters({ ...workout, workout_steps: steps });
@@ -53,20 +53,20 @@ function gap(workout: MatchWorkout, activity: MatchActivity): number | null {
   return gaps.length ? gaps.reduce((sum, value) => sum + value, 0) / gaps.length : null;
 }
 
-/** Quanto la seduta e l'attività sono diverse (0 = uguali). Infinity se incompatibili. */
+/** How different the session and the activity are (0 = identical). Infinity if incompatible. */
 function cost(workout: MatchWorkout, activity: MatchActivity, workoutRank: number, activityRank: number): number {
   if (workout.type !== "cross" && activity.sport !== "running") return Infinity;
   let total = gap(workout, activity) ?? 0.5;
-  // A parità di somiglianza conta l'ordine: la prima seduta con la prima corsa.
+    // On equal similarity, order counts: first session with first run.
   total += Math.abs(workoutRank - activityRank) * 0.15;
   if (workout.day_part && workout.day_part !== partOf(romeHour(activity.started_at))) total += 0.5;
   return total;
 }
 
 /**
- * Abbinamento seduta → attività di un giorno: il massimo numero di coppie e,
- * tra questi, quello più simile. Ogni attività vale per una sola seduta.
- * Ritorna id seduta → id attività (le sedute senza corsa non compaiono).
+ * Session → activity matching for a day: the maximum number of pairs and,
+ * among those, the most similar one. Each activity counts for only one session.
+ * Returns session id → activity id (sessions without a run do not appear).
  */
 export function matchDay(workouts: MatchWorkout[], activities: MatchActivity[]): Map<string, string> {
   const plan = [...workouts]
@@ -79,7 +79,7 @@ export function matchDay(workouts: MatchWorkout[], activities: MatchActivity[]):
   if (!plan.length || !done.length) return result;
 
   const costs = plan.map((workout, i) => done.map((activity, j) => cost(workout, activity, i, j)));
-  // Poche sedute e poche corse al giorno: si provano tutte le combinazioni.
+    // Few sessions and few runs per day: all combinations are tried.
   if (plan.length <= 6 && done.length <= 6) {
     let best: { pairs: number; total: number; choice: number[] } = { pairs: 0, total: Infinity, choice: [] };
     const choice = new Array<number>(plan.length).fill(-1);
@@ -105,7 +105,7 @@ export function matchDay(workouts: MatchWorkout[], activities: MatchActivity[]):
     });
     return result;
   }
-  // Giornate fuori dal comune: in ordine, la prima corsa compatibile libera.
+    // Unusual days: in order, the first free compatible run.
   const used = new Set<number>();
   plan.forEach((workout, i) => {
     const j = done.findIndex((_, index) => !used.has(index) && Number.isFinite(costs[i][index]));
@@ -117,7 +117,7 @@ export function matchDay(workouts: MatchWorkout[], activities: MatchActivity[]):
   return result;
 }
 
-/** La seduta abbinata a un'attività, se c'è. */
+/** The session matched to an activity, if any. */
 export function workoutForActivity<W extends MatchWorkout>(activityId: string, workouts: W[], activities: MatchActivity[]): W | null {
   const match = matchDay(workouts, activities);
   for (const workout of workouts) {
@@ -126,13 +126,13 @@ export function workoutForActivity<W extends MatchWorkout>(activityId: string, w
   return null;
 }
 
-// ── Sedute spostate di giorno ───────────────────────────────────────────────
+// ── Sessions moved to another day ───────────────────────────────────────────
 
-/** Fino a quanti giorni prima o dopo una corsa vale per una seduta rimasta senza. */
+/** How many days before or after a run counts for a session left without one. */
 export const SHIFT_DAYS = 2;
 /**
- * Margine da caricare attorno ai giorni mostrati: le corse a ±SHIFT_DAYS e le
- * sedute che se le contendono (a loro volta a ±SHIFT_DAYS da quelle corse).
+ * Margin to load around the displayed days: runs at ±SHIFT_DAYS and the
+ * sessions competing for them (themselves within ±SHIFT_DAYS of those runs).
  */
 export const MATCH_MARGIN_DAYS = 2 * SHIFT_DAYS;
 
@@ -141,11 +141,11 @@ export interface PlanMatchWorkout extends MatchWorkout {
 }
 
 export interface PlanMatchActivity extends MatchActivity {
-  /** Tipo della corsa; "unclassified" o assente = non ancora deciso. */
+    /** Run type; "unclassified" or missing = not decided yet. */
   type?: string | null;
 }
 
-/** Tipi di corsa che valgono per una seduta fatta in un altro giorno. Gara e cross restano nel loro giorno. */
+/** Run types that count for a session done on another day. Race and cross stay on their own day. */
 const SHIFT_TYPES: Partial<Record<WorkoutType, string[]>> = {
   easy: ["easy", "recovery"],
   recovery: ["easy", "recovery"],
@@ -153,7 +153,7 @@ const SHIFT_TYPES: Partial<Record<WorkoutType, string[]>> = {
   tempo: ["tempo"],
   interval: ["interval"],
 };
-/** Corsa senza tipo: deve somigliare alla seduta (distanza e durata entro ~35%). */
+/** Run with no type: it must resemble the session (distance and duration within ~35%). */
 const UNTYPED_MAX_GAP = 0.3;
 
 function shiftable(workout: PlanMatchWorkout, activity: PlanMatchActivity): boolean {
@@ -165,14 +165,14 @@ function shiftable(workout: PlanMatchWorkout, activity: PlanMatchActivity): bool
 }
 
 /**
- * Abbinamento seduta → attività su più giorni. Prima ogni giorno con le sue
- * corse (matchDay: la corsa dello stesso giorno ha sempre la precedenza e
- * nessuna seduta già fatta nel suo giorno viene tolta). Poi le sedute rimaste
- * senza corsa prendono una corsa rimasta libera dello stesso tipo, fino a
- * SHIFT_DAYS giorni prima o dopo: prima la più vicina, a parità quella fatta
- * dopo la seduta (spostata in avanti), poi la più simile. Ritorna id seduta →
- * id attività. Per un risultato stabile servono sedute e corse anche per
- * MATCH_MARGIN_DAYS attorno ai giorni che interessano.
+ * Session → activity matching across days. First each day with its own
+ * runs (matchDay: a same-day run always takes precedence and
+ * no session already done on its day is removed). Then the sessions left
+ * without a run take a free leftover run of the same type, up to
+ * SHIFT_DAYS days before or after: the closest first, on ties the one done
+ * after the session (moved forward), then the most similar. Returns session id →
+ * activity id. For a stable result, sessions and runs are needed also for
+ * MATCH_MARGIN_DAYS around the days of interest.
  */
 export function matchPlan(workouts: PlanMatchWorkout[], activities: PlanMatchActivity[]): Map<string, string> {
   const result = new Map<string, string>();
@@ -212,15 +212,15 @@ export function matchPlan(workouts: PlanMatchWorkout[], activities: PlanMatchAct
   return result;
 }
 
-/** La seduta abbinata a un'attività su più giorni (vedi matchPlan), se c'è. */
+/** The session matched to an activity across days (see matchPlan), if any. */
 export function planWorkoutForActivity<W extends PlanMatchWorkout>(activityId: string, workouts: W[], activities: PlanMatchActivity[]): W | null {
   const match = matchPlan(workouts, activities);
   return workouts.find((workout) => match.get(workout.id) === activityId) ?? null;
 }
 
 /**
- * Solo le attività dei giorni della finestra: quelle caricate in più per il
- * fuso orario non hanno le loro sedute e sembrerebbero libere.
+ * Only the activities of the window's days: those loaded extra for the
+ * time zone have no sessions of their own and would look free.
  */
 export function withinWindow<A extends MatchActivity>(activities: A[], range: { from: string; to: string }): A[] {
   return activities.filter((activity) => {
@@ -229,7 +229,7 @@ export function withinWindow<A extends MatchActivity>(activities: A[], range: { 
   });
 }
 
-/** Intervallo di giorni da caricare per abbinare le sedute da `from` a `to`. */
+/** Range of days to load to match sessions from `from` to `to`. */
 export function matchWindow(from: string, to: string = from): { from: string; to: string } {
   return { from: addDays(from, -MATCH_MARGIN_DAYS), to: addDays(to, MATCH_MARGIN_DAYS) };
 }

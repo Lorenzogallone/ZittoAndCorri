@@ -1,11 +1,11 @@
-// Riga in chat con le parti della proposta del coach scartate dalla
-// validazione: l'atleta deve sapere che non tutto è arrivato nel piano e
-// perché. Modulo puro (tests/coach-reliability.test.ts).
+// Chat line with the parts of the coach proposal discarded by
+// validation: the athlete must know that not everything made it into the plan and
+// why. Pure module (tests/coach-reliability.test.ts).
 
 export type DiscardReason = "invalid" | "past" | "out_of_window" | "bad_type" | "no_steps" | "bad_date";
 
 export const DISCARD_TEXT: Record<DiscardReason, [string, string]> = {
-  // [singolare, plurale]
+    // [singular, plural]
   invalid: ["con una struttura non valida", "con una struttura non valida"],
   past: ["in un giorno già passato", "in giorni già passati"],
   out_of_window: ["oltre le prossime 4 settimane", "oltre le prossime 4 settimane"],
@@ -14,7 +14,7 @@ export const DISCARD_TEXT: Record<DiscardReason, [string, string]> = {
   bad_date: ["con una data non valida", "con una data non valida"],
 };
 
-/** Perché una seduta proposta non passa la validazione, null se è valida. */
+/** Why a proposed session fails validation, null if it is valid. */
 export function workoutDiscardReason(
   workout: { date: string; type: string },
   start: string,
@@ -32,8 +32,8 @@ export function workoutDiscardReason(
 }
 
 /**
- * Una riga in corsivo (Markdown) che riassume le sedute e i giorni da
- * togliere scartati, o stringa vuota se non è stato scartato nulla.
+ * An italic line (Markdown) summarizing the discarded sessions and days to
+ * remove, or an empty string if nothing was discarded.
  */
 export function discardedPlanNote(input: { workouts: DiscardReason[]; removeDates: number }): string {
   const counts = new Map<DiscardReason, number>();

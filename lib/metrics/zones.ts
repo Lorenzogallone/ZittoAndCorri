@@ -1,14 +1,14 @@
-// Funzioni pure: zone HR sulla riserva cardiaca (Karvonen), con gli stessi
-// tagli delle zone "riserva cardiaca" dell'app Zepp. PLAN.md §7.
-// soglia_i = floor(resting + pct_i * (max_hr - resting))
+// Pure functions: HR zones on heart rate reserve (Karvonen), with the same
+// cuts as the Zepp app's "heart rate reserve" zones. PLAN.md §7.
+// threshold_i = floor(resting + pct_i * (max_hr - resting))
 
 import type { HrPoint, Profile, TimeInZone, ZoneKey } from "@/lib/types";
 
 /**
- * Estremo inferiore (in % della riserva cardiaca) di ogni zona: sono i tagli
- * delle zone Zepp a riserva cardiaca (metodologia Daniels).
- * Z1 facile (easy e lunghi; sotto il 59% conta comunque come Z1),
- * Z2 medio / passo maratona, Z3 soglia, Z4 ripetute, Z5 massimale.
+ * Lower bound (in % of heart rate reserve) of each zone: these are the cuts
+ * of the Zepp heart-rate-reserve zones (Daniels methodology).
+ * Z1 easy (easy and long runs; below 59% still counts as Z1),
+ * Z2 medium / marathon pace, Z3 threshold, Z4 intervals, Z5 maximal.
  */
 export const ZONE_LOWER_PCT: Record<ZoneKey, number> = {
   z1: 0.59,
@@ -20,21 +20,21 @@ export const ZONE_LOWER_PCT: Record<ZoneKey, number> = {
 
 const ZONE_ORDER: ZoneKey[] = ["z1", "z2", "z3", "z4", "z5"];
 
-/** Tagli generici in % della FC max: l'impostazione di fabbrica dell'orologio. */
+/** Generic cuts in % of max HR: the watch's factory setting. */
 const PERCENT_OF_MAX = [0.5, 0.6, 0.7, 0.8, 0.9];
 
 export interface HrZones {
-  /** Soglia inferiore in bpm per ogni zona. */
+  /** Lower threshold in bpm for each zone. */
   lower: Record<ZoneKey, number>;
   max_hr: number;
   resting_hr: number;
-  /** hrr = riserva cardiaca calcolata dall'app; watch = zone impostate sull'orologio. */
+  /** hrr = heart rate reserve computed by the app; watch = zones set on the watch. */
   method: "hrr" | "watch";
 }
 
-/** Config HR sufficiente al calcolo zone. */
+/** HR config sufficient for the zone calculation. */
 export type HrConfig = Pick<Profile, "max_hr" | "resting_hr"> & {
-  /** Soglie Zepp: limiti inferiori Z1-Z5 seguiti dalla FC massima configurata. */
+  /** Zepp thresholds: lower limits Z1-Z5 followed by the configured max HR. */
   hr_zone_ranges?: number[] | null;
 };
 
@@ -50,23 +50,23 @@ function watchRanges(configured: number[] | null | undefined): number[] | null {
   return valid ? ranges : null;
 }
 
-/** True se le soglie dell'orologio sono quelle di fabbrica in % della FC max. */
+/** True if the watch thresholds are the factory ones in % of max HR. */
 export function isPercentOfMaxRanges(ranges: number[]): boolean {
   const max = ranges[5];
   return PERCENT_OF_MAX.every((pct, index) => Math.abs(ranges[index] - pct * max) <= 1.5);
 }
 
 /**
- * Soglie inferiori (bpm) delle 5 zone.
+ * Lower thresholds (bpm) of the 5 zones.
  *
- * - Zone impostate sull'orologio (riserva cardiaca, soglia del lattato o
- *   personalizzate): si usano così come sono, così app e orologio coincidono.
- * - Zone di fabbrica in % della FC max: non si usano, perché ignorano la FC a
- *   riposo e mettono in "Z4" una corsa aerobica. Si calcola la riserva
- *   cardiaca con i tagli Zepp, che dà gli stessi numeri della schermata
- *   "Zona frequenza cardiaca riservata" dell'app Zepp.
- * - Senza FC a riposo restano le soglie dell'orologio, se ci sono.
- * Ritorna null se mancano i dati (niente default fisiologici).
+ * - Zones set on the watch (heart rate reserve, lactate threshold or
+ *   custom): used as they are, so app and watch match.
+ * - Factory zones in % of max HR: not used, because they ignore resting HR
+ *   and put an aerobic run in "Z4". The heart rate reserve is computed
+ *   with the Zepp cuts, which gives the same numbers as the Zepp app's
+ *   "Reserved heart rate zone" screen.
+ * - Without resting HR the watch thresholds remain, if present.
+ * Returns null if data is missing (no physiological defaults).
  */
 export function hrZones(profile: HrConfig): HrZones | null {
   const ranges = watchRanges(profile.hr_zone_ranges);
@@ -91,7 +91,7 @@ export function hrZones(profile: HrConfig): HrZones | null {
     const reserve = max_hr - resting_hr;
     const lower = {} as Record<ZoneKey, number>;
     for (const key of ZONE_ORDER) {
-      // Zepp tronca all'intero: floor per avere al battito gli stessi numeri.
+      // Zepp truncates to the integer: floor to get the same numbers per beat.
       lower[key] = Math.floor(resting_hr + ZONE_LOWER_PCT[key] * reserve + 1e-9);
     }
     return { lower, max_hr, resting_hr, method: "hrr" };
@@ -100,12 +100,12 @@ export function hrZones(profile: HrConfig): HrZones | null {
 }
 
 /**
- * Zona HR per una singola frequenza. Ritorna null se le zone non sono calcolabili.
+ * HR zone for a single heart rate. Returns null if the zones can't be computed.
  */
 export function zoneForHr(bpm: number, profile: HrConfig): ZoneKey | null {
   const zones = hrZones(profile);
   if (!zones) return null;
-  // dalla più alta alla più bassa: la prima la cui soglia inferiore è <= bpm
+  // from highest to lowest: the first whose lower threshold is <= bpm
   for (let i = ZONE_ORDER.length - 1; i >= 0; i--) {
     const key = ZONE_ORDER[i];
     if (bpm >= zones.lower[key]) return key;
@@ -114,8 +114,8 @@ export function zoneForHr(bpm: number, profile: HrConfig): ZoneKey | null {
 }
 
 /**
- * Approssimazione "zone-da-media": senza stream HR, attribuisce l'intera durata
- * alla zona della HR media. Ritorna null se manca avg_hr o le zone non sono calcolabili.
+ * "Zone-from-average" approximation: without an HR stream, assigns the whole duration
+ * to the zone of the average HR. Returns null if avg_hr is missing or the zones can't be computed.
  */
 export function timeInZoneFromAverage(
   avg_hr: number | null | undefined,
@@ -129,10 +129,10 @@ export function timeInZoneFromAverage(
 }
 
 /**
- * Calcola il tempo (secondi) in ogni zona da una serie HR reale.
- * Per ogni campione somma Δt (distanza al campione successivo) nella zona di quel bpm.
- * Prevale su timeInZoneFromAverage quando la serie è disponibile.
- * Ritorna null se la serie è vuota o le zone non sono calcolabili.
+ * Computes the time (seconds) in each zone from a real HR series.
+ * For each sample adds Δt (distance to the next sample) to the zone of that bpm.
+ * Takes precedence over timeInZoneFromAverage when the series is available.
+ * Returns null if the series is empty or the zones can't be computed.
  */
 export function timeInZoneFromSeries(
   hr_series: HrPoint[],

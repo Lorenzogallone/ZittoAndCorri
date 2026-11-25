@@ -1,11 +1,11 @@
-// Scadenza delle proposte di piano rimaste in attesa. Solo logica dell'app:
-// nel database lo stato resta "pending", ma una proposta vecchia, superata da
-// una più recente sugli stessi giorni o con tutti i giorni già passati non si
-// mostra più come da confermare e non si può applicare. Modulo puro.
+// Expiry of plan proposals left pending. App logic only:
+// in the database the status stays "pending", but an old proposal, superseded by
+// a newer one on the same days or with all days already past is no
+// longer shown as awaiting confirmation and cannot be applied. Pure module.
 
 import type { Translator } from "../../i18n/config.ts";
 
-/** Dopo quanti giorni una proposta non confermata scade. */
+/** After how many days an unconfirmed proposal expires. */
 export const PROPOSAL_MAX_AGE_DAYS = 7;
 
 export type ProposalExpiry = "too_old" | "superseded" | "past";
@@ -19,14 +19,14 @@ interface ProposalLike {
   remove_dates?: string[] | null;
 }
 
-/** Giorni toccati da una proposta (nuove sedute + giorni svuotati). */
+/** Days touched by a proposal (new sessions + cleared days). */
 export function proposalDayList(proposal: Pick<ProposalLike, "workouts" | "remove_dates">): string[] {
   return [...new Set([...(proposal.workouts ?? []).map((w) => w.date.slice(0, 10)), ...(proposal.remove_dates ?? [])])].sort();
 }
 
 /**
- * Perché una proposta in attesa non vale più, null se è ancora valida.
- * `today` è la data di Roma (YYYY-MM-DD), `now` l'istante attuale in ms.
+ * Why a pending proposal is no longer valid, null if it is still valid.
+ * `today` is the Rome date (YYYY-MM-DD), `now` the current instant in ms.
  */
 export function proposalExpiry(
   proposal: ProposalLike,
@@ -50,13 +50,13 @@ export function proposalExpiry(
   return superseded ? "superseded" : null;
 }
 
-/** Spiegazione per l'utente di una proposta scaduta (`t` legato al namespace "labels"). */
+/** User-facing explanation of an expired proposal (`t` bound to the "labels" namespace). */
 export const proposalExpiryText = (t: Translator, reason: ProposalExpiry): string =>
   t(`expiry.${reason}`, { days: PROPOSAL_MAX_AGE_DAYS });
 
 /**
- * Stato da mostrare: "expired" al posto di "pending" quando la proposta è
- * scaduta, con il motivo. Le proposte valide restano identiche (stesso oggetto).
+ * Status to show: "expired" instead of "pending" when the proposal has
+ * expired, with the reason. Valid proposals stay identical (same object).
  */
 export function withProposalExpiry<P extends ProposalLike>(proposals: P[], today: string, now = Date.now()): P[] {
   return proposals.map((proposal) => {

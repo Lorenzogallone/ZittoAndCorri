@@ -13,7 +13,7 @@ import {
   type ZeppDayInput,
 } from "@/lib/metrics/body-trends";
 
-/** Giorni di storico per i trend dell'orologio. */
+/** Days of history for the watch trends. */
 export const BODY_HISTORY_DAYS = 120;
 
 const ZEPP_COLUMNS = "date, vo2_max, training_load, sleep_total_min, sleep_deep_min, sleep_score, resting_hr, stress_avg, spo2_avg, steps, pai_total";
@@ -31,9 +31,9 @@ function numericRow<T>(row: Record<string, unknown>, keys: readonly string[]): T
 }
 
 /**
- * Storico dell'orologio per i trend: tutte le righe degli ultimi 120 giorni,
- * anche se la sync è ferma (lo stato di forma di oggi invece le scarta).
- * Senza la migrazione 0025 wellness_daily non c'è: si va avanti con Zepp.
+ * Watch history for the trends: all rows of the last 120 days,
+ * even if sync is stopped (today's form state discards them instead).
+ * Without migration 0025 wellness_daily doesn't exist: carry on with Zepp.
  */
 export async function loadBodyTrends(
   supabase: SupabaseClient,

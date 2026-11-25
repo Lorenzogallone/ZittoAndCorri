@@ -1,8 +1,8 @@
-// Verifica del passo nelle sedute con target (ripetute, tempo, progressivi).
-// Per ogni tratto previsto cerca nella traccia GPS la finestra più veloce della
-// stessa lunghezza (in metri o in secondi), senza sovrapposizioni: così il
-// confronto funziona anche se l'atleta non ha avviato la seduta guidata.
-// Funzioni pure.
+// Pace check in sessions with targets (repeats, tempo, progressive).
+// For each planned segment it looks in the GPS track for the fastest window of
+// the same length (in metres or seconds), without overlaps: so the
+// comparison works even if the athlete didn't start the guided session.
+// Pure functions.
 
 import type { GpsPoint, WorkoutStepInput } from "@/lib/types";
 import { cumulativeDistance } from "./geo.ts";
@@ -14,7 +14,7 @@ export interface PaceCheckRep {
   target_min: number | null;
   target_max: number | null;
   pace_s_km: number;
-  /** Negativo = più veloce del range, positivo = più lento, 0 = dentro. */
+  /** Negative = faster than the range, positive = slower, 0 = inside. */
   deviation_s: number;
 }
 
@@ -24,7 +24,7 @@ export interface PaceCheck {
   reps: PaceCheckRep[];
 }
 
-/** Scarto medio entro cui la seduta è considerata in linea (s/km). */
+/** Average deviation within which the session is considered on target (s/km). */
 export const PACE_TOLERANCE_S = 5;
 
 interface Window {
@@ -37,7 +37,7 @@ function hasPace(step: WorkoutStepInput): boolean {
   return step.pace_min_s_km != null || step.pace_max_s_km != null;
 }
 
-/** Tratti da verificare: i "veloci" con passo, altrimenti le parti continue con passo. */
+/** Segments to check: the "fast" ones with pace, otherwise the continuous parts with pace. */
 export function stepsToCheck(steps: WorkoutStepInput[]): WorkoutStepInput[] {
   const measurable = steps.filter(
     (step) => hasPace(step) && step.completion_type !== "manual" && (step.completion_value ?? 0) > 0,
@@ -47,7 +47,7 @@ export function stepsToCheck(steps: WorkoutStepInput[]): WorkoutStepInput[] {
   return measurable.filter((step) => step.kind === "steady");
 }
 
-/** Intervalli di indici liberi [from, to] dato l'elenco delle finestre già usate. */
+/** Free index intervals [from, to] given the list of windows already used. */
 function freeRanges(n: number, used: Window[]): Array<[number, number]> {
   const sorted = [...used].sort((a, b) => a.start - b.start);
   const ranges: Array<[number, number]> = [];
@@ -95,8 +95,8 @@ function deviation(pace: number, min: number | null, max: number | null): number
 }
 
 /**
- * Confronta i tratti con passo target della seduta con la traccia GPS.
- * Null se la traccia non basta o la seduta non ha tratti con passo.
+ * Compares the session's target-pace segments with the GPS track.
+ * Null if the track isn't enough or the session has no segments with pace.
  */
 export function checkPace(track: GpsPoint[] | null | undefined, steps: WorkoutStepInput[]): PaceCheck | null {
   if (!track || track.length < 10) return null;
@@ -109,7 +109,7 @@ export function checkPace(track: GpsPoint[] | null | undefined, steps: WorkoutSt
   const used: Window[] = [];
   const found = new Array<Window | null>(targets.length).fill(null);
 
-  // I tratti più lunghi si piazzano per primi: i corti trovano posto negli spazi rimasti.
+  // Longest segments are placed first: the short ones fit in the remaining gaps.
   const order = targets
     .map((step, index) => ({ step, index }))
     .sort((a, b) => (b.step.completion_value ?? 0) - (a.step.completion_value ?? 0));

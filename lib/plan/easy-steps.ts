@@ -1,7 +1,7 @@
-// Easy, lunghi e recuperi sono una sola fase continua al passo easy: niente
-// riscaldamento né defaticamento separati. Se il modello li aggiunge comunque,
-// diventano parte della corsa (stesso passo e stessa FC della fase centrale)
-// e i tratti consecutivi dello stesso tipo si fondono, senza cambiare il totale.
+// Easy runs, long runs and recoveries are a single continuous easy-pace phase: no
+// separate warm-up or cool-down. If the model adds them anyway,
+// they become part of the run (same pace and HR as the main phase)
+// and consecutive stretches of the same type are merged, without changing the total.
 
 import type { WorkoutStep, WorkoutType } from "../types.ts";
 
@@ -29,8 +29,8 @@ export function withoutEasyWarmups(type: string, steps: WorkoutStep[]): WorkoutS
   const first = main.find((step) => step.kind === "steady") ?? main[0];
   const last = [...main].reverse().find((step) => step.kind === "steady") ?? main[main.length - 1];
 
-  // Riscaldamento e defaticamento prendono passo, FC ed etichetta della fase
-  // continua più vicina: la corsa è tutta al passo easy.
+    // Warm-up and cool-down take the pace, HR and label of the nearest
+    // continuous phase: the whole run is at easy pace.
   const converted = steps.map((step): WorkoutStep => {
     if (!isEdge(step)) return step;
     const target = step.kind === "warmup" ? first : last;

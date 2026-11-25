@@ -1,5 +1,5 @@
-// Previsione dei tempi gara dai best effort recenti: forbice attorno a Riegel
-// (vedi predict.ts per formule e fonti). Funzioni pure.
+// Race time prediction from recent best efforts: a range around Riegel
+// (see predict.ts for formulas and sources). Pure functions.
 
 import { EFFORTS, type BestEfforts, type EffortKey } from "./best-efforts.ts";
 import {
@@ -20,18 +20,18 @@ export interface PredictionReference {
   meters: number;
   time_s: number;
   activity_id: string;
-  /** Inizio della corsa che contiene la prova (ISO). */
+  /** Start of the run containing the effort (ISO). */
   started_at: string;
 }
 
 export interface RacePrediction {
-  /** Distanza: il nome si ricava con effortLabel(). */
+  /** Distance: the name is derived with effortLabel(). */
   key: EffortKey;
   meters: number;
   range: RaceRange;
 }
 
-/** Distanze mostrate nelle previsioni. */
+/** Distances shown in the predictions. */
 export const PREDICTION_DISTANCES = [
   { key: "5k", meters: 5_000 },
   { key: "10k", meters: 10_000 },
@@ -39,12 +39,12 @@ export const PREDICTION_DISTANCES = [
   { key: "marathon", meters: 42_195 },
 ] as const;
 
-/** Distanza minima di un best effort per fare da riferimento affidabile. */
+/** Minimum distance of a best effort to serve as a reliable reference. */
 const MIN_REFERENCE_M = 5_000;
 
 /**
- * Il riferimento è la prestazione con il miglior "10 km equivalente" tra i
- * best effort ≥ 5 km. Senza best effort ripiega sulle corse intere ≥ 3 km.
+ * The reference is the performance with the best "equivalent 10 km" among
+ * best efforts ≥ 5 km. Without best efforts it falls back to whole runs ≥ 3 km.
  */
 export function predictionReference(
   activities: Array<{
@@ -82,23 +82,23 @@ export function predictionReference(
   return best;
 }
 
-/** Finestre della base di resistenza: volume su 4 settimane, lungo su 8. */
+/** Endurance base windows: volume over 4 weeks, long run over 8. */
 const VOLUME_DAYS = 28;
 const LONG_RUN_DAYS = 56;
 
-/** Sedute di soglia degli ultimi 42 giorni: più vecchie non descrivono la forma di oggi. */
+/** Threshold sessions of the last 42 days: older ones don't describe today's form. */
 const THRESHOLD_DAYS = 42;
-/** Un tratto «di soglia» dura da 6 a 30 minuti: più corto è una ripetuta, più lungo è già una gara. */
+/** A "threshold" segment lasts 6 to 30 minutes: shorter is an interval, longer is already a race. */
 const THRESHOLD_MIN_S = 360;
 const THRESHOLD_MAX_S = 1800;
-/** Servono almeno 15 minuti di lavoro perché la seduta dica qualcosa. */
+/** At least 15 minutes of work are needed for the session to say anything. */
 const THRESHOLD_MIN_WORK_S = 900;
-/** Le sedute recenti pesano di più: il peso si dimezza circa ogni due settimane. */
+/** Recent sessions weigh more: the weight halves about every two weeks. */
 const THRESHOLD_DECAY_DAYS = 21;
-/** Lunghi da almeno 70 minuti: sotto, la deriva cardiaca dice poco sulla tenuta. */
+/** Long runs of at least 70 minutes: below that, heart rate drift says little about endurance. */
 const DURABILITY_MIN_S = 70 * 60;
 
-/** Quanto serve di una corsa per la base di resistenza; i campi facoltativi aggiungono soglia e tenuta. */
+/** How much of a run is needed for the endurance base; optional fields add threshold and endurance. */
 export interface EnduranceActivity {
   sport: string;
   started_at: string;
@@ -117,7 +117,7 @@ function median(values: number[]): number {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
-/** Passo sostenuto nelle sedute di soglia recenti (tratti da 6 a 30 minuti, almeno 15 in tutto). */
+/** Pace sustained in recent threshold sessions (segments of 6 to 30 minutes, at least 15 in total). */
 export function thresholdEvidence(activities: EnduranceActivity[], today: string): ThresholdEvidence | null {
   let weighted = 0;
   let weights = 0;
@@ -135,7 +135,7 @@ export function thresholdEvidence(activities: EnduranceActivity[], today: string
     );
     const seconds = work.reduce((sum, segment) => sum + segment.duration_s, 0);
     if (seconds < THRESHOLD_MIN_WORK_S) continue;
-    // Passo della seduta: tempo totale diviso distanza totale dei tratti.
+    // Session pace: total time divided by total distance of the segments.
     const meters = work.reduce((sum, segment) => sum + (segment.distance_m ?? (segment.duration_s / segment.pace_s_km!) * 1000), 0);
     if (meters <= 0) continue;
     const weight = seconds * Math.exp(-age / THRESHOLD_DECAY_DAYS);
@@ -153,7 +153,7 @@ export function thresholdEvidence(activities: EnduranceActivity[], today: string
   };
 }
 
-/** Deriva cardiaca mediana nei lunghi (≥ 70 minuti) delle ultime 8 settimane. */
+/** Median heart rate drift in long runs (≥ 70 minutes) of the last 8 weeks. */
 export function durabilityEvidence(activities: EnduranceActivity[], today: string): DurabilityEvidence | null {
   const drifts: number[] = [];
   for (const activity of activities) {
@@ -161,7 +161,7 @@ export function durabilityEvidence(activities: EnduranceActivity[], today: strin
     const age = daysBetween(romeDay(activity.started_at), today);
     if (age < 0 || age >= LONG_RUN_DAYS) continue;
     const seconds = activity.moving_time_s ?? activity.duration_s ?? 0;
-    // Fuori scala: sensore del cuore sbagliato, non tenuta.
+    // Out of range: wrong heart sensor, not endurance.
     if (seconds < DURABILITY_MIN_S || activity.hr_drift_pct < -5 || activity.hr_drift_pct > 30) continue;
     drifts.push(activity.hr_drift_pct);
   }
@@ -169,9 +169,9 @@ export function durabilityEvidence(activities: EnduranceActivity[], today: strin
 }
 
 /**
- * Km a settimana (ultime 4 settimane) e lungo più lungo (ultime 8) dalle
- * corse; se le corse portano tratti e deriva cardiaca, anche il passo di
- * soglia e la tenuta nei lunghi.
+ * Km per week (last 4 weeks) and longest run (last 8) from the
+ * runs; if the runs carry segments and heart rate drift, also the threshold
+ * pace and the endurance in long runs.
  */
 export function enduranceBase(activities: EnduranceActivity[], today: string): EnduranceBase {
   let volume = 0;
@@ -213,28 +213,28 @@ export function predictRaceTimes(reference: PredictionReference, base: Endurance
   }));
 }
 
-// ── Testi ───────────────────────────────────────────────────────────────────
-// I testi arrivano da messages/<lingua>/metrics.json. Senza traduttore restano
-// in italiano: servono così anche al contesto del coach (prompt in italiano).
+// ── Texts ───────────────────────────────────────────────────────────────────
+// The texts come from messages/<language>/metrics.json. Without a translator they stay
+// in Italian: that way they also serve the coach context (Italian prompt).
 
-/** Sotto questa copertura volume o lungo vengono citati come causa. */
+/** Below this coverage, volume or long run are cited as the cause. */
 const WEAK_COVER = 0.75;
-/** Oltre questa età (giorni) il riferimento viene citato come poco recente. */
+/** Beyond this age (days) the reference is cited as not recent. */
 const OLD_REFERENCE_DAYS = 42;
 
-/** Distanza per i messaggi: mezza e maratona hanno un nome, le altre si scrivono in km. */
+/** Distance for messages: half and marathon have a name, the others are written in km. */
 function distanceParams(meters: number, locale: Locale): { kind: "half" | "marathon" | "other"; km: string } {
   const km = meters / 1000;
   const kind = Math.abs(meters - 21_097) < 1 ? "half" : Math.abs(meters - 42_195) < 1 ? "marathon" : "other";
   return { kind, km: km.toLocaleString(intlLocale(locale), { maximumFractionDigits: 1 }) };
 }
 
-/** «sui 5 km», «sulla mezza»: distanza con la preposizione giusta. */
+/** «sui 5 km», «sulla mezza»: distance with the right preposition. */
 function onDistance(meters: number, t: Translator, locale: Locale): string {
   return t("racePrediction.distanceOn", distanceParams(meters, locale));
 }
 
-/** «i 5 km», «la mezza»: distanza con l'articolo. */
+/** «i 5 km», «la mezza»: distance with the article. */
 function theDistance(meters: number, t: Translator, locale: Locale): string {
   return t("racePrediction.distanceThe", distanceParams(meters, locale));
 }
@@ -246,9 +246,9 @@ function shortDate(iso: string, locale: Locale): string {
 const shortDay = (date: string, locale: Locale) => shortDate(`${date}T12:00:00Z`, locale);
 
 /**
- * Su cosa si basa la forbice e cosa la stringe o la allarga, in italiano
- * semplice: la prova, le sedute di soglia (e se concordano), la tenuta nei
- * lunghi, volume e lungo.
+ * What the range is based on and what narrows or widens it, in plain
+ * Italian: the effort, the threshold sessions (and whether they agree), endurance in
+ * long runs, volume and long run.
  */
 export function rangeExplanation(
   reference: PredictionReference,
@@ -263,7 +263,7 @@ export function rangeExplanation(
   const pace = range.sources?.find((source) => source.kind === "threshold");
   const sentences: string[] = [];
   if (effort && pace && base.threshold) {
-    // Dalla seduta più vecchia alla più recente, al massimo due.
+    // From the oldest session to the most recent, at most two.
     const [first = "", second = ""] = base.threshold.dates.slice(0, 2).reverse().map((date) => shortDay(date, locale));
     const sessions = t("racePrediction.thresholdSessions", { count: base.threshold.sessions === 1 ? 1 : 2, first, second });
     sentences.push(
@@ -308,7 +308,7 @@ export function rangeLabel(range: RaceRange): string {
   return `${formatDuration(range.optimistic_s)}–${formatDuration(range.prudent_s)}`;
 }
 
-/** Frase onesta su obiettivo e passo di partenza. */
+/** Honest sentence about goal and starting pace. */
 export function paceAdviceText(advice: PaceAdvice, range: RaceRange, goal_s: number | null, t: Translator = itMetrics): string {
   const pace = `${formatPace(advice.fast_s_km).replace("/km", "")}–${formatPace(advice.slow_s_km)}`;
   if (goal_s == null || advice.goal_fit == null) return t("racePrediction.advice.noGoal", { pace });
@@ -332,7 +332,7 @@ export interface GoalRaceRange {
   advice_text: string;
 }
 
-/** Tutto quello che serve a UI e coach per la distanza dell'obiettivo. */
+/** Everything the UI and coach need for the goal distance. */
 export function goalRaceRange(
   reference: PredictionReference,
   base: EnduranceBase,

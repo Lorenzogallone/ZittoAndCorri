@@ -1,10 +1,10 @@
-// Conversioni per i provider compatibili OpenAI (OpenRouter). Funzioni pure.
+// Conversions for OpenAI-compatible providers (OpenRouter). Pure functions.
 
 import type { Schema } from "@google/genai";
 
 export type JsonSchema = Record<string, unknown>;
 
-/** Schema Gemini (Type.OBJECT, nullable…) → JSON Schema standard. */
+/** Gemini schema (Type.OBJECT, nullable…) → standard JSON Schema. */
 export function toJsonSchema(schema: Schema): JsonSchema {
   const type = String(schema.type ?? "").toLowerCase();
   const out: JsonSchema = {};
@@ -23,7 +23,7 @@ export function toJsonSchema(schema: Schema): JsonSchema {
   return out;
 }
 
-/** JSON dalla risposta: accetta blocchi ```json e testo attorno all'oggetto. */
+/** JSON from the response: accepts ```json blocks and text around the object. */
 export function extractJson(text: string): unknown {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const candidate = (fenced ? fenced[1] : text).trim();

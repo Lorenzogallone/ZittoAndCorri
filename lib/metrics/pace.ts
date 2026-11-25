@@ -1,11 +1,11 @@
-// Funzione pura: passo medio. PLAN.md §7.
-// L'LLM non produce mai questo numero — è ricostruibile dalle corse.
+// Pure function: average pace. PLAN.md §7.
+// The LLM never produces this number — it can be rebuilt from the runs.
 
 /**
- * Passo medio in secondi per km.
- * @param distance_m distanza in metri (> 0)
- * @param duration_s durata totale in secondi (> 0)
- * @returns secondi/km arrotondato all'intero
+ * Average pace in seconds per km.
+ * @param distance_m distance in metres (> 0)
+ * @param duration_s total duration in seconds (> 0)
+ * @returns seconds/km rounded to the integer
  */
 export function avgPace(distance_m: number, duration_s: number): number {
   if (distance_m <= 0 || duration_s <= 0) {

@@ -1,4 +1,4 @@
-// Fasi indicative di preparazione verso una gara con data. Funzioni pure.
+// Indicative preparation phases toward a race with a date. Pure functions.
 
 import type { Translator } from "../../i18n/config.ts";
 import { addDays, daysBetween } from "../local-date.ts";
@@ -15,12 +15,12 @@ export interface Phase {
 export interface PhasePlan {
   phases: Phase[];
   current: PhaseKey | null;
-  /** Avanzamento 0-1 dall'inizio della preparazione alla gara. */
+    /** Progress 0-1 from the start of preparation to the race. */
   progress: number;
   weeks_left: number;
 }
 
-/** Nome della fase (`t` legato al namespace "labels"). */
+/** Phase name (`t` bound to the "labels" namespace). */
 export const phaseLabel = (t: Translator, key: PhaseKey): string => t(`phase.${key}`);
 
 function taperWeeks(distance: number): number {
@@ -54,7 +54,7 @@ export function trainingPhases(input: {
     counts = [["base", rest - build - peak], ["build", build], ["peak", peak], ["taper", taper]];
   }
 
-  // Le fasi si contano a ritroso dalla gara, così lo scarico finisce il giorno prima.
+    // Phases are counted backward from the race, so the taper ends the day before.
   const phases: Phase[] = [];
   let end = addDays(race, -1);
   for (let index = counts.length - 1; index >= 0; index--) {
