@@ -17,7 +17,20 @@
     "tagline": "Il tuo coach di corsa personale.",
     "redirecting": "Reindirizzo…",
     "signIn": "Accedi con Google",
-    "footnote": "Nessuna password. Nessuna pubblicità. Zitto e corri."
+    "footnote": "Nessuna password. Nessuna pubblicità. Zitto e corri.",
+    "emailLabel": "Indirizzo email",
+    "emailPlaceholder": "tu@esempio.it",
+    "emailSignIn": "Accedi con l'email",
+    "sending": "Invio…",
+    "or": "oppure",
+    "checkEmailTitle": "Controlla la tua email",
+    "checkEmailBody": "Ti abbiamo inviato un link di accesso a {email}. Aprilo da questo dispositivo.",
+    "resend": "Invia di nuovo",
+    "resendIn": "Invia di nuovo tra {seconds} s",
+    "changeEmail": "Usa un altro indirizzo",
+    "errorInvalidEmail": "Indirizzo email non valido.",
+    "errorRateLimit": "Troppe richieste. Riprova tra qualche minuto.",
+    "errorGeneric": "Invio non riuscito. Riprova."
   },
   "refresh": {
     "syncFailed": "Sincronizzazione con l'orologio non riuscita."
