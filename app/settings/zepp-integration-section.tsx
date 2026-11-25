@@ -165,8 +165,7 @@ export function ZeppIntegrationSection({ initialConnection }: Props) {
           <ol className="list-decimal space-y-1.5 pl-4">
             <li>{t("help.step1")}</li>
             <li>{t.rich("help.step2", richTags)}</li>
-            <li>{t.rich("help.step3", richTags)}</li>
-            <li>{t("help.step4")}</li>
+            <li>{t("help.step3")}</li>
           </ol>
           <p className="mt-3 text-muted-foreground">{t("help.note")}</p>
         </IntegrationHelp>

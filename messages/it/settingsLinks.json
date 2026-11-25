@@ -72,7 +72,7 @@
     "copied": "Copiato",
     "validUntil": "Valido fino alle {time}",
     "validFallback": "Valido fino alle prossime 10 min",
-    "codeHint": "Usalo per collegare sia l'app Salute che il Coach.",
+    "codeHint": "Usalo per collegare l'app Salute sull'orologio.",
     "generating": "Generazione…",
     "generate": "Genera codice di collegamento",
     "generateNew": "Genera un nuovo codice",
@@ -93,9 +93,8 @@
       "title": "Come collegare l'orologio",
       "step1": "Genera il codice qui sopra (valido 5 minuti, si blocca dopo 5 tentativi).",
       "step2": "<strong>App Salute (sync dati):</strong> apri Zepp sul telefono → il tuo orologio → App → Zitto e Corri → Impostazioni → incolla il codice → <em>Collega</em>.",
-      "step3": "<strong>App Coach (allenamenti):</strong> sempre in Zepp → App → Zitto e Corri Coach → Impostazioni → incolla lo <strong>stesso codice</strong> → <em>Collega</em>.",
-      "step4": "Apri il Mini Program sull'orologio per la prima sincronizzazione.",
-      "note": "Il codice può essere usato una volta per ciascuna app nello stesso intervallo di validità. Se scade prima di collegare la seconda app, genera un nuovo codice."
+      "step3": "Apri il Mini Program sull'orologio per la prima sincronizzazione.",
+      "note": "Il codice può essere usato una sola volta e vale 5 minuti: se scade, genera un nuovo codice."
     },
     "errors": {
       "generate": "Impossibile generare il codice. Riprova.",

@@ -135,7 +135,7 @@ where noted. Everything can be changed later in Settings.
 
 | Watch | Status | How |
 | --- | --- | --- |
-| Amazfit Balance 2, Active 3 Premium | Available | [Intervals.icu](#intervalsicu-integration-recommended-for-amazfit-watches) for runs, health data and plan on the watch; optional [Zepp OS companion](#zepp-os-integration) for recovery metrics and the "Today" widget |
+| Amazfit Balance 2, Active 3 Premium | Available | [Intervals.icu](#intervalsicu-integration-recommended-for-amazfit-watches) for runs, health data and plan on the watch; optional [Zepp OS app](#zepp-os-integration-optional) for recovery metrics and the "Today" widget |
 | Garmin and other brands | In progress | Not integrated yet. FIT and GPX files from any watch can be imported meanwhile |
 
 ## Activity imports
@@ -191,25 +191,20 @@ The sync runs from `/api/cron/intervals` in the morning and again inside
 `/api/cron/daily` in the afternoon, so it happens twice a day even on the
 Vercel Hobby plan. Data leaves the watch only when the Zepp phone app syncs it.
 
-## Zepp OS integration
+## Zepp OS integration (optional)
 
-The optional Zepp OS companion sends Zepp-only health and recovery summaries
-(training load, recovery time, VO₂max, heart-rate zones) from an Amazfit
-Balance 2 or Active 3 Premium, and shows today's session in a watch widget. It does not replace FIT/GPX activity imports and it
-does not create workouts automatically.
-
-There are two independent watch apps, both optional: the **health app**
-(`zepp-app`: recovery summaries and the "Today" widget) and the **coach
-extension** (`zepp-workout-extension`: guided phases, targets and alerts inside
-the watch's Exercise app during a run). They share the same pairing code but
-each needs its own connection.
+**Intervals.icu alone covers most of the data**: runs, sleep, resting heart
+rate, HRV, SpO2, steps and the plan on the watch. You only need the Zepp OS
+app if you also want the numbers Zepp does not pass on to Intervals.icu:
+training load, recovery time, VO₂max and heart-rate zones, plus a "Today"
+widget with the planned session on the Balance 2. It does not replace FIT/GPX
+imports and does not create workouts.
 
 To connect: enable Zepp OS in **Settings → Connections**, generate the six-digit
-pairing code (valid for 5 minutes, one use per app) and enter it in each app's
-settings in the Zepp phone app. Build and installation instructions are in the
-[health app README](zepp-app/README.md) and the
-[coach extension README](zepp-workout-extension/README.md). Both need a Zepp
-developer account and Developer Mode on the phone.
+pairing code (valid for 5 minutes, single use) and enter it in the app's
+settings in the Zepp phone app. Building and installing the app needs a Zepp
+developer account and Developer Mode on the phone: see the
+[Zepp OS app README](zepp-app/README.md).
 
 ## What the coach can change
 
@@ -307,3 +302,7 @@ npm run build
 The production environment uses the same three Supabase variables shown above.
 Make sure the public application URL is configured in Supabase Authentication
 and that the deployment supports HTTPS.
+
+## License
+
+[MIT](LICENSE): use it, change it and make it your own.

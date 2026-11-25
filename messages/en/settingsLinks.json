@@ -72,7 +72,7 @@
     "copied": "Copied",
     "validUntil": "Valid until {time}",
     "validFallback": "Valid for the next 10 min",
-    "codeHint": "Use it to connect both the Health app and the Coach app.",
+    "codeHint": "Use it to connect the Health app on your watch.",
     "generating": "Generating…",
     "generate": "Generate connection code",
     "generateNew": "Generate a new code",
@@ -93,9 +93,8 @@
       "title": "How to connect your watch",
       "step1": "Generate the code above (valid for 5 minutes, locks after 5 attempts).",
       "step2": "<strong>Health app (data sync):</strong> open Zepp on your phone → your watch → Apps → Zitto e Corri → Settings → paste the code → <em>Connect</em>.",
-      "step3": "<strong>Coach app (workouts):</strong> again in Zepp → Apps → Zitto e Corri Coach → Settings → paste the <strong>same code</strong> → <em>Connect</em>.",
-      "step4": "Open the Mini Program on the watch for the first sync.",
-      "note": "The code can be used once per app within its validity window. If it expires before you connect the second app, generate a new code."
+      "step3": "Open the Mini Program on the watch for the first sync.",
+      "note": "The code works once and is valid for 5 minutes: if it expires, generate a new one."
     },
     "errors": {
       "generate": "Couldn't generate the code. Try again.",
