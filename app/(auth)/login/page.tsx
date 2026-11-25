@@ -22,6 +22,9 @@ function GoogleIcon() {
 const RESEND_SECONDS = 30;
 // Google is shown unless explicitly disabled (self-hosters without a Google OAuth client).
 const SHOW_GOOGLE = process.env.NEXT_PUBLIC_AUTH_GOOGLE !== "false";
+// Email is shown unless explicitly disabled (e.g. a deployment without its own SMTP server).
+// With both disabled, email wins: the page always offers a way in.
+const SHOW_EMAIL = process.env.NEXT_PUBLIC_AUTH_EMAIL !== "false" || !SHOW_GOOGLE;
 
 export default function LoginPage() {
   const t = useTranslations("home.login");
@@ -97,7 +100,7 @@ export default function LoginPage() {
       </div>
 
       <div className="flex w-full max-w-xs flex-col items-center gap-3">
-        {sentTo ? (
+        {SHOW_EMAIL && (sentTo ? (
           <div className="flex w-full flex-col items-center gap-3 text-center" role="status">
             <p className="text-body font-semibold">{t("checkEmailTitle")}</p>
             <p className="text-sm text-muted-foreground">{t("checkEmailBody", { email: sentTo })}</p>
@@ -150,17 +153,19 @@ export default function LoginPage() {
               {sending ? t("sending") : cooldown > 0 ? t("resendIn", { seconds: cooldown }) : t("emailSignIn")}
             </Button>
           </form>
-        )}
+        ))}
         {SHOW_GOOGLE && (
           <>
-            <div className="flex w-full items-center gap-3 text-micro text-muted-foreground" aria-hidden="true">
-              <span className="h-px flex-1 bg-border" />
-              {t("or")}
-              <span className="h-px flex-1 bg-border" />
-            </div>
+            {SHOW_EMAIL && (
+              <div className="flex w-full items-center gap-3 text-micro text-muted-foreground" aria-hidden="true">
+                <span className="h-px flex-1 bg-border" />
+                {t("or")}
+                <span className="h-px flex-1 bg-border" />
+              </div>
+            )}
             <Button
               type="button"
-              variant="secondary"
+              variant={SHOW_EMAIL ? "secondary" : "default"}
               onClick={signInWithGoogle}
               disabled={loading}
               size="lg"

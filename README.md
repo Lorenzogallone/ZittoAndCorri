@@ -110,6 +110,9 @@ optional.
    **Authentication → Sign In / Providers → Google**. The button is shown by
    default; set `NEXT_PUBLIC_AUTH_GOOGLE=false` to hide it if you skip this
    step.
+   With Google set up you can also hide email sign-in with
+   `NEXT_PUBLIC_AUTH_EMAIL=false`, for example until you have your own SMTP
+   server.
 
 Start the development server:
 
