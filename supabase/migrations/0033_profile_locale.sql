@@ -1,9 +1,9 @@
--- Lingua dell'interfaccia scelta dall'utente (it | en). I job senza richiesta
--- (cron, notifiche push, riepilogo settimanale) non hanno il cookie
--- NEXT_LOCALE: leggono la lingua da qui. Il codice funziona anche senza questa
--- colonna (le notifiche restano in italiano) finché la migrazione non è
--- applicata. Le policy RLS esistenti su profiles ("own profile") valgono già
--- per la nuova colonna.
+-- Interface language chosen by the user (it | en). Jobs without a request
+-- (cron, push notifications, weekly recap) have no NEXT_LOCALE cookie: they
+-- read the language from here. The code also works without this column
+-- (notifications stay in Italian) until the migration is applied. The
+-- existing RLS policies on profiles ("own profile") already cover the new
+-- column.
 
 alter table public.profiles
   add column if not exists locale text not null default 'it';

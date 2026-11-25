@@ -2,8 +2,8 @@ import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/app-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Stessa forma della pagina: obiettivo con le fasi, selettore della vista e
-// la settimana corrente in una card, un giorno per riga.
+// Same shape as the page: goal with phases, view selector and
+// the current week in a card, one day per row.
 export default function Loading() {
   const t = useTranslations("plan");
   return (

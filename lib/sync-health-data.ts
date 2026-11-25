@@ -1,8 +1,8 @@
 import "server-only";
 
-// Legge dal database lo stato delle integrazioni per lib/sync-health. Funziona
-// con il client dell'utente (home, RLS) e con quello admin (cron). Una tabella
-// non ancora migrata vale "integrazione non collegata": niente avvisi.
+// Reads the integrations status from the database for lib/sync-health. Works
+// with the user's client (home, RLS) and the admin one (cron). A table
+// not yet migrated counts as "integration not connected": no warnings.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { intervalsNotMigrated } from "@/lib/intervals/credentials";
@@ -56,7 +56,7 @@ export async function loadSyncHealthInput(client: SupabaseClient, userId: string
   };
 }
 
-/** Problemi di sincronizzazione dell'utente; vuoto anche se la lettura non riesce. */
+/** The user's sync issues; empty also if the read fails. */
 export async function loadSyncIssues(client: SupabaseClient, userId: string, now = new Date()): Promise<SyncIssue[]> {
   try {
     return syncHealthIssues(await loadSyncHealthInput(client, userId), now);

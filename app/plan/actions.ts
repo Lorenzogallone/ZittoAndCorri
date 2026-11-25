@@ -108,7 +108,7 @@ function revalidatePlan(userId: string) {
   revalidatePath("/");
 }
 
-/** Sposta una seduta su un altro giorno (da oggi in avanti). */
+/** Moves a session to another day (from today onward). */
 export async function moveWorkout(id: string, date: string): Promise<{ error?: string }> {
   const t = await getTranslations("plan.errors");
   const supabase = await createClient();
@@ -133,7 +133,7 @@ const ADAPT_MEMORY: Record<AdaptReason, { category: CoachMemoryCategory; text: s
   sick: { category: "limitation", text: "L'atleta è malato o ha un fastidio: sedute in pausa" },
 };
 
-/** "Non mi sento al 100%": alleggerisce, accorcia o mette in pausa i prossimi giorni. */
+/** "I don't feel 100%": lightens, shortens or pauses the next days. */
 export async function adaptPlan(reason: AdaptReason, days: number): Promise<{ error?: string; count?: number; until?: string }> {
   const t = await getTranslations("plan.errors");
   const supabase = await createClient();
@@ -191,7 +191,7 @@ export async function adaptPlan(reason: AdaptReason, days: number): Promise<{ er
 
 const ADAPT_META_KEYS = new Set(["reason", "until", "memory_id"]);
 
-/** Ripristina le sedute future alleggerite o in pausa. */
+/** Restores future sessions that were lightened or paused. */
 export async function undoAdaptation(): Promise<{ error?: string }> {
   const t = await getTranslations("plan.errors");
   const supabase = await createClient();
@@ -226,8 +226,8 @@ export async function undoAdaptation(): Promise<{ error?: string }> {
 }
 
 /**
- * Dopo la gara: propone in chat qualche giorno di recupero, archivia
- * l'obiettivo e attiva il prossimo obiettivo in calendario, se c'è.
+    * After the race: proposes a few recovery days in chat, archives
+    * the goal and activates the next goal on the calendar, if any.
  */
 export async function planRecovery(): Promise<void> {
   const t = await getTranslations("plan.recovery");
@@ -251,7 +251,7 @@ export async function planRecovery(): Promise<void> {
     race_date: goal.race_date,
     distance_m: goal.distance_m,
     today,
-    // Tetto = limite alto della Z1 (zona facile).
+    // Ceiling = upper limit of Z1 (easy zone).
     hr_cap: zones ? zones.lower.z2 - 1 : null,
   });
 
@@ -267,8 +267,8 @@ export async function planRecovery(): Promise<void> {
       })
       .select("id")
       .single<{ id: string }>();
-    // Dopo la gara il vecchio piano non serve più: le sedute di recupero più
-    // lo svuotamento degli altri giorni delle prossime due settimane.
+    // After the race the old plan is no longer needed: the recovery sessions plus
+    // the clearing of the other days of the next two weeks.
     const end = addDays(today, 13);
     const window = Array.from({ length: 14 }, (_, i) => addDays(today, i));
     const diff = await diffAgainstCalendar(supabase, user.id, today, end, workouts, window);

@@ -3,13 +3,13 @@
 import { clientLog, isStandalone } from "@/lib/clientlog";
 
 /**
- * Naviga dopo una mutazione (salvataggio/modifica corsa) verso `href`, con
- * semantica "replace" (la pagina sorgente non resta nella history).
+ * Navigates after a mutation (saving/editing a run) to `href`, with
+ * "replace" semantics (the source page doesn't stay in history).
  *
- * In PWA standalone iOS la soft-navigation RSC (router.replace / redirect lato
- * server) può restare appesa lasciando la pagina in loading: usiamo un full
- * document load (window.location.replace), affidabile. Da browser usiamo la
- * navigazione soft del router (più fluida, niente reload).
+ * In iOS standalone PWA the RSC soft navigation (router.replace / server-side
+ * redirect) can hang leaving the page loading: we use a full
+ * document load (window.location.replace), which is reliable. In a browser we use the
+ * router's soft navigation (smoother, no reload).
  */
 export function navigateAfterMutation(
   router: { replace: (href: string) => void },

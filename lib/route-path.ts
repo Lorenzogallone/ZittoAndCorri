@@ -1,8 +1,8 @@
-// Traccia GPS → coordinate di disegno che riempiono un riquadro mantenendo le
-// proporzioni (proiezione equirettangolare corretta per la latitudine).
-// Funzioni pure.
+// GPS track → drawing coordinates that fill a box while keeping the
+// proportions (equirectangular projection corrected for latitude).
+// Pure functions.
 
-/** Punti della traccia proiettati nel riquadro. */
+/** Track points projected into the box. */
 export function projectRoute(
   points: Array<{ lat: number; lon: number }>,
   width: number,
@@ -25,7 +25,7 @@ export function projectRoute(
   return xs.map((x, i) => [offsetX + (x - minX) * scale, offsetY + (ys[i] - minY) * scale]);
 }
 
-/** Path SVG della traccia, o null se ha meno di due punti validi. */
+/** SVG path of the track, or null if it has fewer than two valid points. */
 export function routeSvgPath(
   points: Array<{ lat: number; lon: number }>,
   width: number,
@@ -37,7 +37,7 @@ export function routeSvgPath(
   return projected.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
 }
 
-/** Tessera di mappa raster (schema z/x/y) da disegnare nel riquadro. */
+/** Raster map tile (z/x/y scheme) to draw in the box. */
 export interface MapTile {
   z: number;
   x: number;
@@ -50,7 +50,7 @@ export interface MapTile {
 const TILE = 256;
 const MAX_ZOOM = 17;
 
-/** Coordinate Web Mercator a zoom 0 (mondo di 256 × 256). */
+/** Web Mercator coordinates at zoom 0 (world of 256 × 256). */
 function mercator(lat: number, lon: number): [number, number] {
   const clamped = Math.max(-85.05, Math.min(85.05, lat));
   const sin = Math.sin((clamped * Math.PI) / 180);
@@ -58,9 +58,9 @@ function mercator(lat: number, lon: number): [number, number] {
 }
 
 /**
- * Traccia e tessere di sfondo nella stessa proiezione (Web Mercator), con lo
- * zoom frazionario che fa stare il percorso nel riquadro. Le tessere sono del
- * livello intero inferiore, ingrandite fino a 2×: una mappa vera senza WebGL.
+ * Track and background tiles in the same projection (Web Mercator), with the
+ * fractional zoom that makes the route fit the box. Tiles are from the lower
+ * integer level, enlarged up to 2×: a real map without WebGL.
  */
 export function mapView(
   points: Array<{ lat: number; lon: number }>,

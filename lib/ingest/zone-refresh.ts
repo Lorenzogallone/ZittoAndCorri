@@ -1,17 +1,17 @@
 import "server-only";
 
-// Ricalcolo del tempo in zona delle corse già salvate. time_in_zone viene
-// fissato all'import con le zone di quel momento: quando cambiano FC max, FC a
-// riposo o il modello delle zone, le corse vecchie restano con soglie diverse
-// da quelle nuove e il carico confronta settimane misurate in modo diverso.
-// Qui si riallineano tutte alle zone correnti (solo le righe che cambiano).
+// Recomputation of time in zone for already saved runs. time_in_zone is
+// fixed at import with the zones of that moment: when max HR, resting HR or the zone
+// model change, old runs keep different thresholds from the new ones
+// and the load compares weeks measured in different ways.
+// Here they are all realigned to the current zones (only the rows that change).
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { HrPoint, Profile, TimeInZone } from "@/lib/types";
 import { timeInZoneFromAverage, timeInZoneFromSeries, type HrConfig } from "@/lib/metrics/zones";
 import { getEffectiveHrConfig } from "@/lib/zepp/effective-hr";
 
-/** Finestra ricalcolata: copre baseline, CTL a 42 giorni e storico del coach. */
+/** Recomputed window: covers baseline, 42-day CTL and coach history. */
 const REFRESH_DAYS = 120;
 
 interface ActivityZoneRow {

@@ -1,22 +1,22 @@
-// Helper di data condivisi per le pagine server (request-time). Tenerli qui
-// evita chiamate impure dirette nel corpo dei componenti (react-hooks/purity).
+// Date helpers shared by server pages (request-time). Keeping them here
+// avoids direct impure calls in component bodies (react-hooks/purity).
 
-/** Oggi in formato ISO YYYY-MM-DD. */
+/** Today in ISO format YYYY-MM-DD. */
 export function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Data ISO YYYY-MM-DD a `days` giorni da oggi (negativo = passato). */
+/** ISO date YYYY-MM-DD `days` days from today (negative = past). */
 export function isoDaysFromNow(days: number): string {
   return new Date(Date.now() + days * 24 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
-/** Timestamp corrente in ms (Date.now, ma importabile nelle pagine). */
+/** Current timestamp in ms (Date.now, but importable in pages). */
 export function nowMs(): number {
   return Date.now();
 }
 
-/** Sposta una data ISO YYYY-MM-DD di `days` giorni (negativo = indietro). */
+/** Shifts an ISO date YYYY-MM-DD by `days` days (negative = backwards). */
 export function isoDateShift(isoDate: string, days: number): string {
   return new Date(
     new Date(`${isoDate}T00:00:00Z`).getTime() + days * 24 * 3600 * 1000,

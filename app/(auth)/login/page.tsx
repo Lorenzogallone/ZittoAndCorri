@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { RunnerMark } from "@/components/runner-mark";
 
-/** "G" di Google nei quattro colori ufficiali. */
+/** Google "G" in the four official colors. */
 function GoogleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true" className="size-4.5">
@@ -37,13 +37,13 @@ export default function LoginPage() {
       setError(error.message);
       setLoading(false);
     }
-    // In caso di successo il browser viene reindirizzato a Google.
+    // On success the browser is redirected to Google.
   }
 
   return (
     <main className="flex min-h-svh flex-1 flex-col items-center justify-center gap-10 bg-background px-6 py-12">
       <div className="animate-enter flex flex-col items-center text-center">
-        {/* Tile "inchiostro" come lo splash: l'omino nel colore principale. */}
+        {/* "Ink" tile like the splash: the little figure in the primary color. */}
         <span className="flex h-32 w-32 items-center justify-center rounded-3xl bg-hero text-primary shadow-(--hero-shadow)">
           <RunnerMark size={96} cutout="var(--hero)" node="var(--hero-foreground)" />
         </span>
@@ -55,7 +55,7 @@ export default function LoginPage() {
 
       <div className="flex w-full max-w-xs flex-col items-center gap-3">
         <Button onClick={signInWithGoogle} disabled={loading} size="lg" className="w-full">
-          {/* La "G" su un disco bianco resta leggibile con ogni colore principale. */}
+          {/* The "G" on a white disc stays readable with any primary color. */}
           <span className="flex size-6 items-center justify-center rounded-full bg-white">
             <GoogleIcon />
           </span>

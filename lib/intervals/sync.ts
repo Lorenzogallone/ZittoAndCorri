@@ -1,7 +1,7 @@
 import "server-only";
 
-// Un giro completo per un utente: import (attività, wellness) e pubblicazione
-// del piano. Usato dal cron e dal pulsante "Sincronizza ora" nelle impostazioni.
+// One full pass for a user: import (activities, wellness) and publishing
+// of the plan. Used by the cron and the "Sync now" button in settings.
 
 import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -42,10 +42,10 @@ export async function runIntervalsSync(
   const importRan = options.import !== false && (connection.import_activities || connection.import_wellness);
   const publishRan = options.publish !== false;
 
-  // last_import_at e last_publish_at segnano solo i giri riusciti; gli errori
-  // restano in last_error finché la stessa parte non riesce di nuovo.
-  // Eccezione: l'import all'apertura della PWA prenota last_import_at prima di
-  // partire (claimIntervalsImport), per non lanciarne due insieme.
+  // last_import_at and last_publish_at only mark successful passes; errors
+  // stay in last_error until the same part succeeds again.
+  // Exception: the import on PWA open books last_import_at before
+  // starting (claimIntervalsImport), to avoid launching two at once.
   if (importRan) {
     result.import = await importFromIntervals(client, userId, {
       activities: connection.import_activities,
@@ -55,8 +55,8 @@ export async function runIntervalsSync(
     if (!result.import.errors.length) await markIntervalsSync(userId, { last_import_at: now });
   }
 
-  // Giro completo (cron del mattino, "Sincronizza ora"): riallinea il tempo in
-  // zona delle corse salvate alle zone correnti, se nel frattempo sono cambiate.
+  // Full pass (morning cron, "Sync now"): realigns the time in
+  // zone of saved runs to the current zones, if they changed in the meantime.
   if (publishRan) {
     try {
       await refreshTimeInZones(createAdminClient(), userId);
@@ -81,7 +81,7 @@ export async function runIntervalsSync(
   return result;
 }
 
-/** Giro per tutti gli utenti con una chiave salvata (cron). Un errore non ferma gli altri. */
+/** Pass for all users with a saved key (cron). One error doesn't stop the others. */
 export async function syncAllIntervalsUsers(options: { publish?: boolean } = {}) {
   const users = await listIntervalsUsers();
   const results: Array<{ user: string; imported: number; wellnessDays: number; published: number; error: string | null }> = [];
@@ -103,18 +103,18 @@ export async function syncAllIntervalsUsers(options: { publish?: boolean } = {})
     }
   }
   const failed = results.filter((result) => result.error).length;
-  // Lo status HTTP resta 200 (lo scheduler non deve riprovare): l'esito vero è qui.
+  // HTTP status stays 200 (the scheduler must not retry): the real outcome is here.
   return { ok: failed === 0, users: users.length, failed, results };
 }
 
-/** Intervallo minimo tra due import lanciati dall'apertura della PWA. */
+/** Minimum interval between two imports launched by opening the PWA. */
 export const IMPORT_ON_OPEN_MIN_MS = 10 * 60_000;
 
 /**
- * All'apertura della PWA: se l'ultimo import è più vecchio di 10 minuti,
- * importa corse e wellness da Intervals.icu a risposta già inviata. La corsa
- * appena fatta compare al primo aggiornamento della pagina, senza aspettare il
- * cron. Non ripubblica il piano.
+ * On PWA open: if the last import is older than 10 minutes,
+ * imports runs and wellness from Intervals.icu after the response is sent. The
+ * run just done shows up at the first page refresh, without waiting for the
+ * cron. Doesn't republish the plan.
  */
 export function scheduleIntervalsImportIfStale(userId: string): void {
   after(async () => {
@@ -129,9 +129,9 @@ export function scheduleIntervalsImportIfStale(userId: string): void {
 }
 
 /**
- * Dopo una modifica al piano: ripubblica tutte le sedute future su Intervals.icu
- * a risposta già inviata, così l'orologio riceve la versione nuova al prossimo
- * giro di Zepp (circa tre volte al giorno) senza aspettare il cron.
+ * After a plan change: republishes all future sessions to Intervals.icu
+ * after the response is sent, so the watch gets the new version at the next
+ * Zepp round (about three times a day) without waiting for the cron.
  */
 export function schedulePlanPublish(userId: string): void {
   after(async () => {

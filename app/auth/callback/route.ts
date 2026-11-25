@@ -2,8 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Callback OAuth: Supabase reindirizza qui con `?code=...` dopo il consenso Google.
- * Scambiamo il code con la sessione (PKCE) e mandiamo l'utente alla destinazione.
+ * OAuth callback: Supabase redirects here with `?code=...` after Google consent.
+ * We exchange the code for the session (PKCE) and send the user to the destination.
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
@@ -18,6 +18,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Code mancante o scambio fallito → torna al login con flag d'errore.
+  // Missing code or failed exchange → back to login with an error flag.
   return NextResponse.redirect(`${origin}/login?error=auth`);
 }

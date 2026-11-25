@@ -18,10 +18,10 @@ export interface AiJobStatus {
 }
 
 /**
- * Stato corrente di un job AID in background (vedi `after()` nelle action di
- * piano/valutazione). Il client lo interroga in polling finché non passa a
- * 'done' o 'error': così la connessione lunga verso Gemini non resta mai aperta
- * lato client, ed evitiamo il reload/crash della PWA su rete mobile.
+ * Current state of a background AI job (see `after()` in the
+ * plan/evaluation actions). The client polls it until it becomes
+ * 'done' or 'error': this way the long connection to Gemini is never kept open
+ * on the client, and we avoid the PWA reload/crash on mobile networks.
  */
 export async function pollAiJob(jobId: string): Promise<AiJobStatus> {
   if (!jobId) return { status: "missing" };
@@ -47,8 +47,8 @@ export async function pollAiJob(jobId: string): Promise<AiJobStatus> {
     }>();
 
   if (!data) return { status: "missing" };
-  // Pendente oltre il tempo massimo della funzione (anche per la chat): non
-  // finirà più, il client mostra l'errore e il tasto per riprovare.
+  // Pending past the function's maximum time (also for chat): it
+  // will never finish, the client shows the error and the retry button.
   const t = await getTranslations("status");
   if (isStaleAiJob(data)) return { status: "error", error: localizeAiJobError(data.error ?? STALE_AI_JOB_ERROR, t) };
   if (data.status === "done" && data.kind === "chat" && data.output_message_id) {

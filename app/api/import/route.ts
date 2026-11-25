@@ -1,6 +1,6 @@
 // Route Handler: POST /api/import. PLAN.md §6.
-// Body: un ActivityInput JSON (o un array). Auth: sessione cookie oppure
-// Authorization: Bearer <api_key> (vedi lib/ingest/api-auth).
+// Body: an ActivityInput JSON (or an array). Auth: cookie session or
+// Authorization: Bearer <api_key> (see lib/ingest/api-auth).
 
 import type { NextRequest } from "next/server";
 import { resolveImportAuth } from "@/lib/ingest/api-auth";

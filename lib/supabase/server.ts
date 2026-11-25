@@ -2,8 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 /**
- * Client Supabase per Server Components, Server Actions e Route Handlers.
- * In Next.js 16 `cookies()` è async, quindi questa factory è async.
+ * Supabase client for Server Components, Server Actions and Route Handlers.
+ * In Next.js 16 `cookies()` is async, so this factory is async.
  */
 export async function createClient() {
   const cookieStore = await cookies();
@@ -28,8 +28,8 @@ export async function createClient() {
               cookieStore.set(name, value, options),
             );
           } catch {
-            // setAll chiamato da un Server Component: ignorabile, il refresh
-            // dei cookie avviene nel proxy.
+            // setAll called from a Server Component: can be ignored, the cookie
+            // refresh happens in the proxy.
           }
         },
       },

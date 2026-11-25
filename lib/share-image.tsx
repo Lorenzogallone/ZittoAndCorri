@@ -1,5 +1,5 @@
-// Disegno dell'immagine da condividere (1080×1350, formato verticale dei
-// social): percorso, distanza e numeri principali.
+// Drawing of the image to share (1080×1350, vertical social
+// format): route, distance and main numbers.
 
 import { ImageResponse } from "next/og";
 import { activeDuration, formatDuration, formatPace } from "@/lib/format";
@@ -20,7 +20,7 @@ function downsample<T>(items: T[], max: number): T[] {
   return items.filter((_, index) => index % step === 0 || index === items.length - 1);
 }
 
-/** `t` è il traduttore del namespace "labels"; testi e formati seguono la lingua dell'app. */
+/** `t` is the translator of the "labels" namespace; texts and formats follow the app language. */
 export function shareImage(activity: ShareActivity, gps: GpsPoint[] | null, t: Translator, locale: Locale): ImageResponse {
   const route = gps?.length ? routeSvgPath(downsample(gps, 400), 920, 640, 40) : null;
   const isRun = activity.sport === "running";

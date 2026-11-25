@@ -1,4 +1,4 @@
-// Immagine da condividere di un'attività. Solo per il proprietario.
+// Shareable image of an activity. Owner only.
 
 import { getLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";

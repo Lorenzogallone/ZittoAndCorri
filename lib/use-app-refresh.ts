@@ -6,10 +6,10 @@ import { useTranslations } from "next-intl";
 import type { Translator } from "@/i18n/config";
 import { refreshAppData, type RefreshResult } from "@/app/actions/refresh";
 
-/** Evento sul window a ricarica fatta: chi fa polling (analisi AI) riparte subito. */
+/** Event on window when a reload finishes: whoever polls (AI analysis) restarts right away. */
 export const APP_REFRESH_EVENT = "zc:app-refresh";
 
-// Stato condiviso tra trascina-giù e pulsante «Aggiorna»: una ricarica alla volta.
+// State shared between pull-down and the «Refresh» button: one reload at a time.
 type Snapshot = { busy: boolean; result: RefreshResult | null };
 let snapshot: Snapshot = { busy: false, result: null };
 const listeners = new Set<() => void>();
@@ -23,13 +23,13 @@ function set(next: Partial<Snapshot>) {
 }
 const serverSnapshot: Snapshot = { busy: false, result: null };
 
-/** Spinner visibile almeno così: una ricarica istantanea non deve sembrare un glitch. */
+/** Spinner visible at least this long: an instant reload must not look like a glitch. */
 const MIN_SPIN_MS = 600;
 
 /**
- * Ricarica la pagina corrente: import dall'orologio, poi nuovo fetch dei dati
- * (refresh() nella server action, dentro una transizione: `refreshing` resta
- * true finché la pagina aggiornata non è a schermo).
+    * Reloads the current page: import from the watch, then a new data fetch
+    * (refresh() in the server action, inside a transition: `refreshing` stays
+    * true until the updated page is on screen).
  */
 export function useAppRefresh() {
   const state = useSyncExternalStore(subscribe, () => snapshot, () => serverSnapshot);
@@ -57,7 +57,7 @@ export function useAppRefresh() {
   return { refreshing: state.busy || transitionPending, result: state.result, refresh };
 }
 
-/** Riga breve sull'esito: null quando non c'è niente da dire. `t` è legato al namespace "status". */
+/** Short line about the outcome: null when there is nothing to say. `t` is bound to the "status" namespace. */
 export function refreshMessage(result: RefreshResult | null, t: Translator): string | null {
   if (!result) return null;
   if (result.error) return result.error;
@@ -67,9 +67,9 @@ export function refreshMessage(result: RefreshResult | null, t: Translator): str
 }
 
 /**
- * Mentre `active` è vero (es. un'analisi AI avviata dal server), rifà il fetch
- * della pagina ogni `everyMs`, al massimo `times` volte: il risultato compare
- * da solo, senza trascinare giù.
+    * While `active` is true (e.g. an AI analysis started by the server), refetches
+    * the page every `everyMs`, at most `times` times: the result appears
+    * on its own, without pulling down.
  */
 export function useRefreshWhile(active: boolean, everyMs = 8_000, times = 30) {
   const router = useRouter();

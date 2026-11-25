@@ -2,8 +2,8 @@ import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/app-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Stessa forma della pagina: totali (periodi, km, quattro metriche) e un mese
-// di corse in una card, una riga per uscita.
+// Same shape as the page: totals (periods, km, four metrics) and one month
+// of runs in a card, one row per outing.
 export default function Loading() {
   const t = useTranslations("activities");
   return (

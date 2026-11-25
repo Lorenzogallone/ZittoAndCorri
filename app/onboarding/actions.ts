@@ -40,7 +40,7 @@ export async function completeOnboarding(
 
   const birthdate = String(formData.get("birthdate") ?? "").trim() || null;
 
-  // Tutto si valida prima di scrivere: un errore non lascia a metà chiavi o obiettivo.
+  // Everything is validated before writing: an error doesn't leave keys or goal half-saved.
   const goalKind = String(formData.get("goal_kind") ?? "none");
   let goal: { distance_m: number; race_name: string; race_date: string | null; target_time_s: number | null } | null = null;
   if (goalKind === "race" || goalKind === "improve") {
@@ -56,7 +56,7 @@ export async function completeOnboarding(
       const race_name = String(formData.get("race_name") ?? "").trim();
       goal = { distance_m, race_name: race_name || generalGoalName(distance_m), race_date, target_time_s };
     } else {
-      // Senza data è un obiettivo generico (es. migliorare nella mezza).
+      // Without a date it's a generic goal (e.g. improve in the half marathon).
       goal = { distance_m, race_name: generalGoalName(distance_m), race_date: null, target_time_s };
     }
   }
@@ -114,6 +114,6 @@ export async function completeOnboarding(
   // Whoever never touched the language switcher still gets their current
   // language saved (cookie or browser language) for cron jobs and push.
   await saveProfileLocale(supabase, user.id, (await getLocale()) as Locale);
-  // «Collega ora»: l'ultimo passo porta alle impostazioni dei collegamenti.
+  // "Connect now": the last step leads to the connections settings.
   redirect(formData.get("after") === "links" ? "/settings?tab=links" : "/");
 }

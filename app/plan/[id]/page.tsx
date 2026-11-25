@@ -52,8 +52,8 @@ export default async function PlannedWorkoutPage({ params }: Props) {
   if (!workout) notFound();
 
   const today = romeDay();
-  // Sedute e corse attorno al giorno: la seduta vale fatta anche con una corsa
-  // fino a due giorni prima o dopo (matchPlan).
+  // Sessions and runs around the day: the session counts as done even with a run
+  // up to two days before or after (matchPlan).
   const range = matchWindow(workout.date);
   const [{ data: goal }, { data: dayActivities }, { data: dayWorkouts }, heat] = await Promise.all([
     supabase
@@ -95,9 +95,9 @@ export default async function PlannedWorkoutPage({ params }: Props) {
     .filter((pace): pace is number => pace != null)
     .sort((a, b) => a - b)[0] ?? null;
   const done = workout.status === "completed";
-  // Con più sedute e più corse nello stesso giorno, la corsa che somiglia di
-  // più a questa seduta (non per forza la prima del giorno).
-  // Se non c'è, una corsa dello stesso tipo fino a due giorni prima o dopo.
+  // With several sessions and runs on the same day, the run that most resembles
+  // this session (not necessarily the first of the day).
+  // If there is none, a run of the same type up to two days before or after.
   const nearbyWorkouts = dayWorkouts?.some((w) => w.id === workout.id) ? dayWorkouts : [...(dayWorkouts ?? []), workout];
   const matchedId = matchPlan(
     nearbyWorkouts.map((w) => ({ ...w, workout_steps: workoutStepsOrLegacy(w.workout_steps, w) })),
@@ -106,7 +106,7 @@ export default async function PlannedWorkoutPage({ params }: Props) {
   const doneActivity = (dayActivities ?? []).find((activity) => activity.id === matchedId);
   const doneDay = doneActivity ? romeDay(doneActivity.started_at) : null;
 
-  // Strategia di gara: tempo obiettivo se è la gara dell'obiettivo, altrimenti previsione.
+  // Race strategy: target time if it is the goal race, otherwise prediction.
   const isGoalRace = goal?.race_date === workout.date;
   let race: { distance: number; target: number; source: "goal" | "prediction"; advice?: string } | null = null;
   if (workout.type === "race" || isGoalRace) {
@@ -124,12 +124,12 @@ export default async function PlannedWorkoutPage({ params }: Props) {
       const reference = predictionReference((recent ?? []).map((activity) => ({ ...activity, active_s: activeDuration(activity) })));
       const base = enduranceBase(recent ?? [], today);
       if (goalTarget) {
-        // Tempo obiettivo, ma con accanto il passo di partenza onesto della
-        // previsione: lo stesso consiglio che si legge nel profilo.
+        // Target time, but with the honest starting pace of the
+        // prediction alongside: the same advice shown in the profile.
         const advice = reference ? goalRaceRange(reference, base, { distance_m: distance, target_time_s: goalTarget }, today, await getTranslations("metrics"), locale).advice_text : undefined;
         race = { distance, target: goalTarget, source: "goal", advice };
       } else if (reference) {
-        // Stima centrale della forbice: tiene conto di volume e lungo, non solo di Riegel.
+        // Central estimate of the range: accounts for volume and long run, not just Riegel.
         race = { distance, target: predictTimeRange(reference, distance, base, today).central_s, source: "prediction" };
       }
     } else if (goalTarget) {
@@ -145,9 +145,9 @@ export default async function PlannedWorkoutPage({ params }: Props) {
 
   return (
     <AppShell backHref="/plan" backLabel={t("title")} hideTabBar wide>
-      {/* Desktop: titolo e grafico della seduta a sinistra, sotto le
-          indicazioni (in due colonne da 2xl); a destra corsa fatta e azioni.
-          Sul telefono i gruppi non generano box (contents): ordine invariato. */}
+      {/* Desktop: session title and chart on the left, below the
+          directions (in two columns from 2xl); on the right the completed run and actions.
+          On phone the groups do not generate boxes (contents): order unchanged. */}
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_1fr_auto] lg:gap-x-8 2xl:grid-cols-[minmax(0,1fr)_24rem] 3xl:gap-x-10">
       <div className="contents lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:block">
       <header className="mb-5">

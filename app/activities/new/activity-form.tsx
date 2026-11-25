@@ -27,7 +27,7 @@ import {
 import { Upload, PenLine } from "lucide-react";
 import { typeLabel, sportLabel } from "@/lib/activity-meta";
 
-/** Select sport condiviso tra form manuale e review file. */
+/** Sport select shared between manual form and file review. */
 function SportSelect({
   value,
   onChange,
@@ -56,7 +56,7 @@ function SportSelect({
   );
 }
 
-// ── Sotto-form manuale ──────────────────────────────────────────────────────
+// ── Manual sub-form ─────────────────────────────────────────────────────────
 
 function ManualForm() {
   const t = useTranslations("activities.new");
@@ -68,8 +68,8 @@ function ManualForm() {
   const [sport, setSport] = useState<Sport>("running");
   const isRunning = sport === "running";
 
-  // Salvataggio andato a buon fine → vai al dettaglio (client-side; in PWA
-  // standalone è un full load, affidabile dove la soft-navigation si impalla).
+  // Save succeeded → go to the detail (client-side; in standalone PWA
+  // it's a full load, reliable where soft-navigation gets stuck).
   useEffect(() => {
     if (state.id) navigateAfterMutation(router, `/activities/${state.id}`);
   }, [state.id, router]);
@@ -177,7 +177,7 @@ function ManualForm() {
   );
 }
 
-// ── Sotto-form GPX ─────────────────────────────────────────────────────────
+// ── GPX sub-form ───────────────────────────────────────────────────────────
 
 function optIntClient(formData: FormData, key: string): number | undefined {
   const raw = formData.get(key);
@@ -260,7 +260,7 @@ function GpxReviewForm({ initialData, onCancel }: GpxReviewFormProps) {
       setError(res.error);
       setPending(false);
     } else if (res.id) {
-      // replace: il form di review non deve restare nella history.
+      // replace: the review form must not stay in the history.
       navigateAfterMutation(router, `/activities/${res.id}`);
     }
   };
@@ -470,8 +470,8 @@ function GpxUploadForm() {
       }
       let input: ActivityInput;
       if (files.length === 2) {
-        // GPX + FIT della stessa attività: il FIT è il file ricco (cadenza,
-        // calorie, moving time), il GPX riempie i buchi e dà il nome traccia.
+        // GPX + FIT of the same activity: the FIT is the rich file (cadence,
+        // calories, moving time), the GPX fills the gaps and gives the track name.
         const exts = files.map((f) => f.name.split(".").pop()?.toLowerCase());
         const fitFile = files[exts.indexOf("fit")];
         const gpxFile = files[exts.indexOf("gpx")];
@@ -546,7 +546,7 @@ function GpxUploadForm() {
   );
 }
 
-// ── Wrapper con toggle ────────────────────────────────────────────────────
+// ── Wrapper with toggle ───────────────────────────────────────────────────
 
 export function ActivityForm() {
   const t = useTranslations("activities.new.mode");
@@ -554,7 +554,7 @@ export function ActivityForm() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Toggle modalità */}
+      {/* Mode toggle */}
       <div className="flex rounded-xl bg-muted/40 p-1 gap-1">
         <button
           type="button"

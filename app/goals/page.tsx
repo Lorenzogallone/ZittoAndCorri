@@ -124,7 +124,7 @@ export default async function GoalsPage() {
         </Button>
       }
     >
-      {/* Nessun goal */}
+      {/* No goal */}
       {(!goals || goals.length === 0) && (
         <div className="surface p-8 text-center">
           <p className="mb-4 text-sm text-muted-foreground">
@@ -139,7 +139,7 @@ export default async function GoalsPage() {
         </div>
       )}
 
-      {/* Goal attivo in evidenza */}
+      {/* Active goal highlighted */}
       {activeGoal && (
         <div className="mb-6">
           <p className="mb-2 px-1 text-caption font-medium text-muted-foreground">{t("list.active")}</p>
@@ -147,7 +147,7 @@ export default async function GoalsPage() {
         </div>
       )}
 
-      {/* Altri goal */}
+      {/* Other goals */}
       {otherGoals.length > 0 && (
         <div className="flex flex-col gap-3">
           {activeGoal && (

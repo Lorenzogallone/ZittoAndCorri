@@ -37,13 +37,13 @@ export default async function ActivitiesPage() {
   ]);
 
   const list = activities ?? [];
-  // Attività importate senza tempo in movimento: si ricava dalle pause, in background.
+  // Imported activities without moving time: derived from pauses, in the background.
   if (list.some((activity) => activity.moving_time_s == null)) {
     const userId = user.id;
     after(() => backfillMovingTime(createAdminClient(), userId));
   }
   const pendingActivityIds = new Set((pendingEvaluationJobs ?? []).flatMap((job) => job.ref_id ? [job.ref_id] : []));
-  // Le corse escluse restano in elenco (con etichetta) ma fuori dai totali.
+  // Excluded runs stay in the list (with a label) but out of the totals.
   const totals = periodTotals(list.filter((activity) => !activity.excluded_at), romeDay(), tMetrics, locale);
   return (
     <AppShell
@@ -66,8 +66,8 @@ export default async function ActivitiesPage() {
           secondary={{ href: "/settings?tab=links", label: t("empty.secondary"), icon: Link2 }}
         />
       ) : (
-        // Desktop: totali fissi a sinistra (su tutte le righe), mesi a destra.
-        // Niente contenitori in più: sul telefono la sequenza animata resta uguale.
+        // Desktop: fixed totals on the left (across all rows), months on the right.
+        // No extra containers: on the phone the animated sequence stays the same.
         <div className="stagger lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-x-8 3xl:grid-cols-[24rem_minmax(0,1fr)] 3xl:gap-x-10 lg:[&>section:nth-of-type(2)]:mt-0">
           <TotalsCard periods={totals} className="lg:sticky lg:top-0 lg:col-start-1 lg:row-span-[999] lg:row-start-1 lg:self-start" />
           <ActivitiesList activities={list} analyzing={pendingActivityIds} />

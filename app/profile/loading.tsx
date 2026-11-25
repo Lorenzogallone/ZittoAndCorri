@@ -2,8 +2,8 @@ import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/app-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Stessa forma della pagina: nome, stato di forma, obiettivo e la sezione
-// dell'andamento con il grafico.
+// Same shape as the page: name, form status, goal and the
+// trend section with the chart.
 export default function Loading() {
   const t = useTranslations("profile");
   return (

@@ -1,8 +1,8 @@
 import { createBrowserClient } from "@supabase/ssr";
 
 /**
- * Client Supabase per i Client Components (browser).
- * Usa solo le chiavi pubbliche (URL + anon key).
+    * Supabase client for Client Components (browser).
+    * Uses only the public keys (URL + anon key).
  */
 export function createClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

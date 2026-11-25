@@ -1,29 +1,29 @@
-// Ultimo errore di sincronizzazione Intervals.icu. Modulo puro: niente import
-// runtime, testabile.
+// Last Intervals.icu sync error. Pure module: no runtime
+// imports, testable.
 //
-// Ci sono giri parziali: l'import orario non ripubblica il piano, la
-// ripubblicazione dopo una modifica non importa. Un giro senza errori cancella
-// solo gli errori della parte che ha eseguito davvero: l'import orario riuscito
-// non nasconde un invio del piano fallito al mattino, e viceversa.
+// There are partial rounds: the hourly import does not republish the plan, and
+// republishing after an edit does not import. A round without errors clears
+// only the errors of the part that actually ran: a successful hourly import
+// does not hide a failed plan push from the morning, and vice versa.
 
 export const INTERVALS_ERROR_SEPARATOR = " · ";
 const MAX_PARTS = 3;
 
-/** Errori dell'import (corse e wellness): vedi lib/intervals/import.ts. */
+/** Import errors (runs and wellness): see lib/intervals/import.ts. */
 export function isImportErrorPart(part: string): boolean {
   return part.startsWith("Wellness:") || part.startsWith("Attività");
 }
 
 export interface IntervalsRunOutcome {
-  /** Il giro ha importato corse o wellness. */
+  /** The round imported runs or wellness. */
   importRan: boolean;
-  /** Il giro ha riallineato le zone e/o pubblicato il piano. */
+  /** The round realigned zones and/or published the plan. */
   publishRan: boolean;
-  /** Errori di questo giro, nell'ordine in cui sono avvenuti. */
+  /** Errors of this round, in the order they occurred. */
   errors: string[];
 }
 
-/** Nuovo valore di last_error dopo un giro: null se non resta nulla da segnalare. */
+/** New value of last_error after a round: null if nothing is left to report. */
 export function nextIntervalsError(previous: string | null | undefined, run: IntervalsRunOutcome): string | null {
   const kept = (previous ?? "")
     .split(INTERVALS_ERROR_SEPARATOR)

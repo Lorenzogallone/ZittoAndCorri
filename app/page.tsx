@@ -26,11 +26,11 @@ import { withFailureMarks } from "@/lib/coach-failures";
 import { withProposalExpiry } from "@/lib/plan/proposal-expiry";
 import { workoutStepsOrLegacy } from "@/lib/workout-steps";
 
-// 300 s: la chat del coach con modelli lenti (es. Opus) usa fino a 270 s
-// (COACH_BUDGET_MS in app/coach/actions.ts) più il salvataggio.
+// 300 s: the coach chat with slow models (e.g. Opus) uses up to 270 s
+// (COACH_BUDGET_MS in app/coach/actions.ts) plus saving.
 export const maxDuration = 300;
 
-/** Chiave del saluto in base all'ora di adesso a Roma. */
+/** Greeting key based on the current time in Rome. */
 function greetingKey(): "morning" | "afternoon" | "evening" {
   const hour = romeHour(new Date().toISOString()) ?? 12;
   if (hour >= 5 && hour < 13) return "morning";
@@ -38,13 +38,13 @@ function greetingKey(): "morning" | "afternoon" | "evening" {
   return "evening";
 }
 
-/** "mercoledì 22 ottobre". */
+/** "Wednesday 22 October". */
 function longDate(iso: string, locale: Locale): string {
   return new Date(`${iso}T12:00:00Z`).toLocaleDateString(intlLocale(locale), { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 }
 
-/** Passi di "Inizia da qui": solo conteggi (head), nessuna riga letta.
- *  Un errore (es. tabella Intervals non ancora migrata) vale "da fare". */
+/** Steps of "Start here": counts only (head), no rows read.
+    *  An error (e.g. Intervals table not yet migrated) counts as "to do". */
 async function firstRunSteps(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const count = { count: "exact", head: true } as const;
   const [activities, intervals, zepp, planned] = await Promise.all([
@@ -69,12 +69,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   const today = romeDay();
   const monday = mondayOf(today);
   const sunday = addDays(monday, 6);
-  // Margine attorno alla settimana: una seduta vale fatta anche con una corsa
-  // fino a due giorni prima o dopo (matchPlan).
+  // Margin around the week: a session counts as done even with a run
+  // up to two days before or after (matchPlan).
   const range = matchWindow(monday, sunday);
   const [goalRes, nextRes, weekPlanRes, weekActivitiesRes, messagesRes, proposalsRes, aiStatus, pendingEvaluationsRes, firstRun, syncIssues] = await Promise.all([
     supabase.from("goals").select("race_name, race_date, distance_m, target_time_s, created_at").eq("user_id", user.id).eq("is_active", true).maybeSingle<Pick<Goal, "race_name" | "race_date" | "distance_m" | "target_time_s" | "created_at">>(),
-    // La prima è la seduta in evidenza; le altre vanno nella colonna desktop.
+    // The first is the featured session; the others go in the desktop column.
     supabase.from("planned_workouts").select("*").eq("user_id", user.id).eq("status", "planned").gte("date", today).order("date").order("created_at").limit(8).returns<PlannedWorkout[]>(),
     supabase.from("planned_workouts").select("*").eq("user_id", user.id).gte("date", range.from).lte("date", range.to).returns<PlannedWorkout[]>(),
     supabase.from("activities").select("id, started_at, type, sport, distance_m, duration_s, moving_time_s").eq("user_id", user.id).is("excluded_at", null).gte("started_at", `${addDays(range.from, -1)}T12:00:00`).lte("started_at", `${addDays(range.to, 1)}T12:00:00`).returns<Array<Pick<Activity, "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" | "moving_time_s">>>(),
@@ -92,13 +92,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
       ? user.user_metadata.name
       : null;
   const name = authName?.split(" ")[0] ?? user.email?.split("@")[0] ?? t("fallbackName");
-  // Tutte le sedute del prossimo giorno in programma (anche due o più), nel loro
-  // ordine. Oggi quelle già corse si segnano fatte e in evidenza va la prima da fare.
+  // All sessions of the next scheduled day (even two or more), in their
+  // order. Today the ones already run are marked done and the first to do is featured.
   const nextSessions = sortByDayOrder(nextRes.data ?? []);
   const nextDate = nextSessions[0]?.date ?? null;
   const daySessions = nextSessions.filter((workout) => workout.date === nextDate);
   const upcoming = nextSessions.filter((workout) => workout.date !== nextDate);
-  // Fatte: con una corsa di oggi o, se spostate, di un giorno vicino.
+  // Done: with a run today or, if moved, on a nearby day.
   const legacySteps = (workout: PlannedWorkout) => workoutStepsOrLegacy(workout.workout_steps, workout);
   const weekMatch = matchPlan(
     (weekPlanRes.data ?? []).map((workout) => ({ ...workout, workout_steps: legacySteps(workout) })),
@@ -117,21 +117,21 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
   const heat = next && next.type !== "cross" && daysBetween(today, next.date) <= 2
     ? (await heatForDates(supabase, user.id, [next.date])).get(next.date) ?? null
     : null;
-  // Gara di oggi o appena passata (entro tre settimane): la scheda cambia.
+  // Race today or just past (within three weeks): the card changes.
   const race = goal?.race_date && goal.race_date <= today && daysBetween(goal.race_date, today) <= 21
     ? { name: goal.race_name, date: goal.race_date }
     : null;
 
   return (
     <AppShell fill wide>
-      {/* Desktop: chat a sinistra a tutta altezza, colonna laterale a destra
-          (saluto, seduta, settimana, poi le sedute successive e l'obiettivo),
-          che sui monitor grandi si apre in due colonne. Sul telefono i
-          contenitori della colonna non generano box (contents): l'ordine resta
-          saluto, seduta, primi passi, chat. */}
+      {/* Desktop: chat on the left at full height, side column on the right
+          (greeting, session, week, then the following sessions and the goal),
+          which opens into two columns on large monitors. On phones the
+          column containers generate no box (contents): the order stays
+          greeting, session, first steps, chat. */}
       <div className="flex h-full min-h-0 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[minmax(0,1fr)] lg:gap-x-6 3xl:grid-cols-[minmax(0,1fr)_45.5rem]">
         <aside className="contents lg:col-start-2 lg:row-start-1 lg:-m-2 lg:flex lg:min-h-0 lg:flex-col lg:overflow-y-auto lg:p-2 3xl:grid 3xl:grid-cols-2 3xl:content-start 3xl:items-start 3xl:gap-x-6">
-          {/* Niente titolo grande: l'H1 della home è la prossima seduta. */}
+          {/* No big title: the home H1 is the next session. */}
           <div className="mb-4 flex shrink-0 items-center justify-between gap-3 pt-1 3xl:col-span-2">
             <div className="min-w-0">
               <p className="eyebrow truncate">{t(`greeting.${greetingKey()}`, { name })}</p>
@@ -147,12 +147,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
             </Link>
           </div>
           <div className="contents 3xl:block">
-            {/* Sincronizzazione in errore o dati fermi: una riga sopra la seduta. */}
+            {/* Sync in error or stale data: one line above the session. */}
             <SyncHealthBanner issues={syncIssues} className="mb-3 shrink-0" />
             <div className="mb-3 shrink-0">
               <TodayCard next={next} sameDay={sameDay} sessionsThatDay={daySessions.length} today={today} heat={heat} week={week} race={race} />
             </div>
-            {/* Primo uso: tre passi sopra la chat; si nasconde da sola a passi fatti. */}
+            {/* First use: three steps above the chat; hides itself once steps are done. */}
             <GettingStarted {...firstRun} aiReady={aiStatus.chat.active !== null} className="mb-3 shrink-0" />
           </div>
           <div className="hidden shrink-0 space-y-3 lg:block">

@@ -17,7 +17,7 @@ import { completeOnboarding, type OnboardingState } from "./actions";
 
 const initialState: OnboardingState = {};
 
-// Stesse distanze dei form obiettivo (app/goals/goal-fields.tsx), in km.
+// Same distances as the goal forms (app/goals/goal-fields.tsx), in km.
 const DISTANCES = [
   { key: "5", km: "5" },
   { key: "10", km: "10" },
@@ -58,15 +58,15 @@ export function OnboardingForm({ modelSuggestions }: { modelSuggestions: ModelSu
   const [openRouterModel, setOpenRouterModel] = useState("");
   const [after, setAfter] = useState<"home" | "links">("home");
   const [state, action, pending] = useActionState(completeOnboarding, initialState);
-  // La distanza resta un unico valore in km nel campo `distance_km`: le
-  // pillole lo riempiono, "Altro" mostra l'input numerico.
+  // Distance stays a single value in km in the `distance_km` field: the
+  // pills fill it, "Altro" shows the numeric input.
   const [distanceChoice, setDistanceChoice] = useState<DistanceKey | null>(null);
   const [distanceKm, setDistanceKm] = useState("");
   const otherRef = useRef<HTMLInputElement>(null);
 
   function chooseDistance(key: DistanceKey, km: string) {
     if (distanceChoice === key) {
-      // Secondo tocco: nessuna distanza (l'obiettivo è facoltativo).
+      // Second tap: no distance (the goal is optional).
       setDistanceChoice(null);
       setDistanceKm("");
       return;
@@ -308,8 +308,8 @@ export function OnboardingForm({ modelSuggestions }: { modelSuggestions: ModelSu
       {state.error && <p role="alert" className="mt-5 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>}
 
       <div className="mt-auto pt-10">
-        {/* Chiavi diverse: senza, React riusa lo stesso <button> e il tocco su
-            "Continua" del passo 2, diventato type="submit", invierebbe il form. */}
+        {/* Different keys: without them, React reuses the same <button> and the tap on
+            "Continua" of step 2, now type="submit", would submit the form. */}
         {step < STEPS - 1 ? (
           <Button key="next" type="button" size="lg" className="w-full" onClick={() => setStep((value) => value + 1)}>
             {tc("continue")} <ChevronRight />

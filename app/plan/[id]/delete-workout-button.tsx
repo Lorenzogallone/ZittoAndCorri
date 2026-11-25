@@ -6,11 +6,11 @@ import { deletePlannedWorkout } from "../actions";
 import { Button } from "@/components/ui/button";
 
 /**
- * Bottone "Elimina allenamento" con conferma a due step e feedback d'errore.
- * Mirror del pattern usato per le corse (edit-form.tsx): un submit accidentale
- * non cancella nulla, e se il delete fallisce l'utente lo vede invece di tornare
- * al piano credendo che sia andato a buon fine. In caso di successo la server
- * action fa redirect a /plan (è quello il feedback positivo).
+ * "Delete workout" button with two-step confirmation and error feedback.
+ * Mirror of the pattern used for runs (edit-form.tsx): an accidental submit
+ * deletes nothing, and if the delete fails the user sees it instead of going back
+ * to the plan believing it went through. On success the server
+ * action redirects to /plan (that is the positive feedback).
  */
 export function DeleteWorkoutButton({ workoutId }: { workoutId: string }) {
   const t = useTranslations("plan.detail.delete");
@@ -63,8 +63,8 @@ export function DeleteWorkoutButton({ workoutId }: { workoutId: string }) {
               try {
                 await deletePlannedWorkout(fd);
               } catch {
-                // Il redirect di successo non finisce qui (lo gestisce Next):
-                // un'eccezione che arriva fin qui è un fallimento reale.
+                // The success redirect does not end up here (Next handles it):
+                // an exception reaching here is a real failure.
                 setError(t("error"));
               }
             });

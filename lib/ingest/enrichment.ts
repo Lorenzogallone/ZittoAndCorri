@@ -1,8 +1,8 @@
-// Arricchimento di una corsa già salvata (secondo file, Intervals.icu dopo il
-// GPX…): decide se i dati sono cambiati abbastanza da rifare l'analisi e se
-// l'atleta va avvisato. Funzioni pure.
+// Enrichment of an already saved run (second file, Intervals.icu after the
+// GPX…): decides whether the data changed enough to redo the analysis and whether
+// the athlete should be notified. Pure functions.
 
-/** Cosa legge l'analisi della corsa, prima o dopo l'arricchimento. */
+/** What the run analysis reads, before or after enrichment. */
 export interface EnrichmentSnapshot {
   hasHr: boolean;
   hasGps: boolean;
@@ -13,19 +13,19 @@ export interface EnrichmentSnapshot {
   max_hr: number | null;
   elevation_gain_m: number | null;
   rpe: number | null;
-  /** Nota dell'atleta (es. ?notes= sul secondo file): l'analisi la legge. */
+  /** Athlete note (e.g. ?notes= on the second file): the analysis reads it. */
   notes: string | null;
 }
 
-/** Sotto questa variazione il tempo in movimento (e quindi il passo) è lo stesso. */
+/** Below this change the moving time (and so the pace) is the same. */
 const MOVING_TIME_MIN_DELTA_S = 30;
 const MOVING_TIME_MIN_DELTA_RATIO = 0.02;
 
 /**
- * Cambiamento sostanziale: arrivano stream che prima mancavano (FC, GPS,
- * distanza o lap per le ripetute), FC, dislivello, RPE o nota prima vuoti, o un tempo in
- * movimento (passo) diverso davvero. La sola cadenza, serie un po' più fitte o
- * lo stesso file reimportato non lo sono.
+ * Substantial change: streams that were missing now arrive (HR, GPS,
+ * distance or laps for intervals), HR, elevation, RPE or note previously empty, or a really
+ * different moving time (pace). Cadence alone, slightly denser series or
+ * the same file re-imported do not count.
  */
 export function enrichmentIsSubstantial(before: EnrichmentSnapshot, after: EnrichmentSnapshot): boolean {
   const gained = (key: "hasHr" | "hasGps" | "hasDistance" | "hasLaps") => !before[key] && after[key];
@@ -40,19 +40,19 @@ export function enrichmentIsSubstantial(before: EnrichmentSnapshot, after: Enric
   return delta >= MOVING_TIME_MIN_DELTA_S && delta >= a * MOVING_TIME_MIN_DELTA_RATIO;
 }
 
-/** Esito dell'ingest: corsa nuova o arricchita, e se i dati sono cambiati. */
+/** Ingest outcome: new or enriched run, and whether the data changed. */
 export interface IngestOutcome {
   id: string;
   created: boolean;
-  /** Solo per gli arricchimenti; una corsa nuova è sempre da analizzare. */
+  /** Only for enrichments; a new run is always to be analysed. */
   substantial: boolean;
 }
 
 /**
- * Analisi dopo un ingest:
- * - corsa nuova, o arricchita ma mai analizzata → analisi con notifica;
- * - arricchita con analisi già fatta e dati cambiati → analisi senza notifica;
- * - altrimenti niente (nessuna seconda analisi né seconda push).
+ * Analysis after an ingest:
+ * - new run, or enriched but never analysed → analysis with notification;
+ * - enriched with analysis already done and data changed → analysis without notification;
+ * - otherwise nothing (no second analysis nor second push).
  */
 export function evaluationAfterIngest(
   outcome: Pick<IngestOutcome, "created" | "substantial">,

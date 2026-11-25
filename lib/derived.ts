@@ -1,8 +1,8 @@
 import "server-only";
 
-// Metriche derivate salvate sulle attività: best effort e verifica del passo.
-// Si calcolano all'import e, per lo storico, in background alla prima visita.
-// Mai bloccanti: un errore qui non deve far fallire un import.
+// Derived metrics saved on activities: best effort and pace check.
+// They are computed at import and, for history, in the background on first visit.
+// Never blocking: an error here must not make an import fail.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { bestEffortsForActivity } from "@/lib/metrics/best-efforts";
@@ -30,12 +30,12 @@ type DerivedActivity = Pick<Activity, "id" | "sport" | "started_at" | "distance_
 type DayActivity = Pick<Activity, "id" | "started_at" | "type" | "sport" | "distance_m" | "duration_s" | "moving_time_s">;
 
 /**
- * Seduta pianificata abbinata a un'attività: con più sedute e più corse nello
- * stesso giorno non è la prima, ma quella che le somiglia di più (distanza,
- * durata, ordine, momento). Se la corsa non serve a una seduta del suo giorno
- * può valere per una seduta dello stesso tipo rimasta senza corsa fino a due
- * giorni prima o dopo (matchPlan). Un'attività che non corrisponde a nessuna
- * seduta (es. una corsa in più) non ha seduta.
+ * Planned session matched to an activity: with several sessions and several runs on the
+ * same day it is not the first one, but the one that resembles it most (distance,
+ * duration, order, time). If the run doesn't serve a session of its own day
+ * it can count for a session of the same type left without a run up to two
+ * days before or after (matchPlan). An activity that matches no
+ * session (e.g. an extra run) has no session.
  */
 export async function plannedForActivity(
   supabase: SupabaseClient,
@@ -65,7 +65,7 @@ export async function plannedForActivity(
   const plan = (workouts ?? []).map((workout) => ({ ...workout, workout_steps: workoutStepsOrLegacy(workout.workout_steps, workout) }));
   if (!plan.length) return null;
   const nearby = withinWindow(activities ?? [], range);
-  // L'attività stessa c'è sempre (anche se esclusa o appena salvata).
+  // The activity itself is always there (even if excluded or just saved).
   if (!nearby.some((other) => other.id === activity.id)) {
     const { data: self } = await supabase
       .from("activities")
@@ -77,7 +77,7 @@ export async function plannedForActivity(
   return planWorkoutForActivity(activity.id, plan, nearby);
 }
 
-/** Seduta abbinata all'attività, se ha tratti a passo da verificare. */
+/** Session matched to the activity, if it has pace segments to check. */
 async function plannedWithPace(
   supabase: SupabaseClient,
   userId: string,
@@ -100,24 +100,24 @@ export async function paceCheckFor(
   return check ? { check, workout } : null;
 }
 
-// ── Ripetute ────────────────────────────────────────────────────────────────
+// ── Repeats ────────────────────────────────────────────────────────────────
 
 export interface DerivedStreams {
   gps?: GpsPoint[] | null;
   hr?: HrPoint[] | null;
   distance?: DistancePoint[] | null;
   laps?: FitLap[] | null;
-  /** Cadenza FIT (rpm): distingue camminata e jogging meglio della velocità. */
+  /** FIT cadence (rpm): tells walking from jogging better than speed. */
   cadence?: Array<{ t: number; rpm: number }> | null;
 }
 
 export type DeclaredIntervals = NonNullable<IntervalAnalysis["declared"]>;
 
-/** Colonna non ancora creata: la migration 0022 non è stata eseguita. */
+/** Column not created yet: migration 0022 has not been run. */
 export const isMissingColumn = (error: { code?: string } | null | undefined) =>
   error?.code === "42703" || error?.code === "PGRST204";
 
-/** La colonna cadence è jsonb libero: tiene solo i punti {t, rpm} validi. */
+/** The cadence column is free-form jsonb: keep only valid {t, rpm} points. */
 export function cadencePoints(value: unknown): Array<{ t: number; rpm: number }> | null {
   if (!Array.isArray(value)) return null;
   const points = value.filter((p): p is { t: number; rpm: number } =>
@@ -125,7 +125,7 @@ export function cadencePoints(value: unknown): Array<{ t: number; rpm: number }>
   return points.length ? points : null;
 }
 
-/** Stream dell'attività, inclusi distanza e lap quando la migration c'è. */
+/** Activity streams, including distance and laps when the migration is there. */
 export async function loadStreams(supabase: SupabaseClient, activityId: string): Promise<DerivedStreams> {
   const { data } = await supabase
     .from("activity_streams")
@@ -142,10 +142,10 @@ export async function loadStreams(supabase: SupabaseClient, activityId: string):
 }
 
 /**
- * Tratti della corsa: dai lap, dalla struttura scritta nella nota (che vince
- * sul piano: è quello che l'atleta dice di aver fatto) o dalla seduta del giorno.
- * Il tipo della seduta conta anche senza struttura: con un lungo nel piano il
- * rilevamento automatico chiede ripetute nette.
+ * Segments of the run: from laps, from the structure written in the note (which wins
+ * over the plan: it is what the athlete says they did) or from the day's session.
+ * The session type counts even without a structure: with a long run in the plan the
+ * automatic detection asks for clear repeats.
  */
 export async function computeIntervals(
   supabase: SupabaseClient,
@@ -164,13 +164,13 @@ export async function computeIntervals(
   return { ...analyzeIntervals({ ...streams, structures, planned: workout?.type ?? null }), declared };
 }
 
-/** Analisi salvata ancora valida (stessa versione dell'algoritmo). */
+/** Saved analysis still valid (same algorithm version). */
 export const intervalsUpToDate = (intervals: IntervalAnalysis | null | undefined) =>
   intervals?.version === INTERVALS_VERSION;
 
 /**
- * Ricalcola e salva i tratti. `declared` undefined = conserva la struttura già
- * letta dalla nota. Senza la migration 0022 non fa nulla.
+ * Recomputes and saves the segments. `declared` undefined = keep the structure already
+ * read from the note. Without migration 0022 it does nothing.
  */
 export async function persistIntervals(
   supabase: SupabaseClient,
@@ -210,8 +210,8 @@ export async function persistIntervals(
 }
 
 /**
- * Tipo della corsa importata ("unclassified") dai tratti e dalla seduta del
- * piano. Un tipo già scelto (a mano o in precedenza) non si tocca.
+ * Type of the imported run ("unclassified") from the segments and the plan's
+ * session. A type already chosen (by hand or earlier) is not touched.
  */
 export async function persistRunType(
   supabase: SupabaseClient,
@@ -248,7 +248,7 @@ export async function persistRunType(
   }
 }
 
-/** Calcola e salva best_efforts, pace_check e ripetute di un'attività. */
+/** Computes and saves best_efforts, pace_check and repeats of an activity. */
 export async function persistDerived(
   supabase: SupabaseClient,
   userId: string,
@@ -271,7 +271,7 @@ export async function persistDerived(
   await persistIntervals(supabase, userId, activity, streams);
 }
 
-/** Completa in background le corse importate prima dei best effort. */
+/** Completes in the background the runs imported before best efforts. */
 export async function backfillDerived(supabase: SupabaseClient, userId: string, limit = 25): Promise<void> {
   try {
     const { data: pending } = await supabase
@@ -297,10 +297,10 @@ export async function backfillDerived(supabase: SupabaseClient, userId: string, 
 }
 
 /**
- * Tempo in movimento per le attività salvate senza (file che non lo dicono):
- * si ricava dalle pause negli stream e si ricalcola il passo. Senza pause il
- * tempo in movimento è il tempo totale: si salva lo stesso, così l'attività
- * non si ricontrolla a ogni visita.
+ * Moving time for activities saved without it (files that don't say):
+ * it is derived from the pauses in the streams and the pace is recomputed. Without pauses the
+ * moving time is the total time: it is saved anyway, so the activity
+ * is not rechecked on every visit.
  */
 export async function backfillMovingTime(supabase: SupabaseClient, userId: string, limit = 30): Promise<void> {
   try {

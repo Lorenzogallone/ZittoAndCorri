@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { IntervalsTargetPreference } from "@/lib/intervals/workout-text";
 
-/** Metadati visibili all'utente (riga di user_intervals_credentials, mai la chiave). */
+/** Metadata visible to the user (row of user_intervals_credentials, never the key). */
 export interface IntervalsConnectionView {
   last_four: string;
   athlete_id: string;
@@ -29,7 +29,7 @@ export interface IntervalsOptions {
 export const INTERVALS_COLUMNS =
   "last_four, athlete_id, athlete_name, import_activities, import_wellness, publish_plan, target_preference, last_import_at, last_publish_at, last_error, verified_at";
 
-/** Funzione o tabella non ancora create: il database non ha la migrazione 0025. */
+/** Function or table not yet created: the database lacks migration 0025. */
 export const intervalsNotMigrated = (error: { code?: string } | null | undefined) =>
   error?.code === "PGRST202" || error?.code === "42703" || error?.code === "42P01" || error?.code === "PGRST205";
 
@@ -99,9 +99,9 @@ export async function markIntervalsSync(
 }
 
 /**
- * Prenota un import se l'ultimo è più vecchio di `minIntervalMs`: aggiorna
- * last_import_at solo in quel caso, così due pagine aperte insieme non lanciano
- * due import. Ritorna la connessione se la prenotazione è riuscita.
+ * Books an import if the last one is older than `minIntervalMs`: updates
+ * last_import_at only in that case, so two pages open together don't launch
+ * two imports. Returns the connection if the booking succeeded.
  */
 export async function claimIntervalsImport(
   userId: string,
@@ -125,7 +125,7 @@ export async function claimIntervalsImport(
   return data ?? null;
 }
 
-/** Utenti con una chiave Intervals.icu salvata: usato dal cron. */
+/** Users with a saved Intervals.icu key: used by the cron. */
 export async function listIntervalsUsers(): Promise<Array<{ user_id: string } & IntervalsConnectionView>> {
   const admin = createAdminClient();
   const { data, error } = await admin

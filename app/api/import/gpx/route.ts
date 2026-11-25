@@ -1,7 +1,7 @@
-// Route Handler: POST /api/import/gpx — GPX come stringa in un body JSON
-// ({ gpx, notes? }). Auth: sessione cookie oppure Authorization: Bearer
-// <api_key> (vedi lib/ingest/api-auth). Per mandare direttamente il file
-// binario (.fit o .gpx) usa /api/import/file.
+// Route Handler: POST /api/import/gpx — GPX as a string in a JSON body
+// ({ gpx, notes? }). Auth: cookie session or Authorization: Bearer
+// <api_key> (see lib/ingest/api-auth). To send the binary file
+// directly (.fit or .gpx) use /api/import/file.
 
 import type { NextRequest } from "next/server";
 import { resolveImportAuth } from "@/lib/ingest/api-auth";
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   try {
     const input = parseGpx(gpxText);
 
-    // Override delle note se fornite nel body della richiesta.
+    // Override notes if provided in the request body.
     if (body.notes) {
       input.notes = body.notes;
     }

@@ -1,6 +1,6 @@
-// Colori dei tratti, uguali tra seduta prevista (WorkoutGraph) e corsa reale
-// (scheda Ripetute): azzurro lento → rosso veloce, viola per gli sprint
-// ("oltre il rosso"), grigio per camminata e sosta.
+// Step colors, the same between planned session (WorkoutGraph) and actual run
+// (Intervals tab): light blue slow → red fast, purple for sprints
+// ("beyond red"), gray for walking and rest.
 
 import type { Translator } from "../i18n/config.ts";
 
@@ -8,7 +8,7 @@ export interface StepTone {
   bar: string;
   dot: string;
   text: string;
-  /** Lo stesso colore in esadecimale, per mappa e SVG (palette Tailwind). */
+  /** The same color in hex, for map and SVG (Tailwind palette). */
   hex: string;
 }
 
@@ -24,10 +24,10 @@ export const TONES = {
 
 export type ToneKey = keyof typeof TONES;
 
-/** Etichetta tradotta del colore/tratto (`t` legato al namespace "labels"). */
+/** Translated label of the color/step (`t` bound to the "labels" namespace). */
 export const toneLabel = (t: Translator, key: ToneKey): string => t(`tone.${key}`);
 
-/** Colore di un tratto corso: lo stesso nella scheda Ripetute, nel grafico e sulla mappa. */
+/** Color of a run step: the same in the Intervals tab, the graph and the map. */
 export function segmentToneKey(segment: { kind: string; variant: string | null }): ToneKey {
   if (segment.variant === "sprint") return "sprint";
   if (segment.variant === "walk" || segment.variant === "stop") return "walk";

@@ -1,22 +1,22 @@
-// Adapter FIT → ActivityInput. Decodifica i file .fit di Garmin/Coros/Wahoo/
-// Amazfit con l'SDK ufficiale (@garmin/fitsdk) e mappa sport/sub_sport sulla
-// nostra taxonomy. Come gpx.ts: gira sia nel browser (form di import) sia sul
-// server (/api/import/file), produce un ActivityInput pronto per ingestActivity.
+// FIT → ActivityInput adapter. Decodes .fit files from Garmin/Coros/Wahoo/
+// Amazfit with the official SDK (@garmin/fitsdk) and maps sport/sub_sport onto our
+// taxonomy. Like gpx.ts: runs both in the browser (import form) and on the
+// server (/api/import/file), produces an ActivityInput ready for ingestActivity.
 
 import type { ActivityInput } from "@/lib/ingest/schema";
 import type { Sport } from "@/lib/types";
 import { extractFitSessionMetadata } from "./fit-metadata";
 
-/** Semicircles (Sint32 FIT) → gradi decimali. */
+/** Semicircles (FIT Sint32) → decimal degrees. */
 const SEMICIRCLES_TO_DEG = 180 / 2 ** 31;
 
-/** Mappa sport/subSport FIT (stringhe camelCase dell'SDK) → nostra taxonomy. */
+/** Maps FIT sport/subSport (SDK camelCase strings) → our taxonomy. */
 export function mapFitSport(
   fitSport: string | number | undefined,
   fitSubSport: string | number | undefined,
 ): Sport {
   const sub = typeof fitSubSport === "string" ? fitSubSport : "";
-  // I sub-sport più specifici vincono sullo sport generico.
+  // More specific sub-sports win over the generic sport.
   if (sub === "yoga") return "yoga";
   if (sub === "pilates") return "pilates";
   if (sub === "padel") return "padel";
@@ -57,7 +57,7 @@ export function mapFitSport(
   }
 }
 
-/** Label leggibile dello sport FIT per le note, es. "running / trail". */
+/** Readable label of the FIT sport for the notes, e.g. "running / trail". */
 function fitSportLabel(
   fitSport: string | number | undefined,
   fitSubSport: string | number | undefined,
@@ -72,8 +72,8 @@ function fitSportLabel(
 }
 
 /**
- * Serie distanza utile solo se cresce davvero; oltre 2 ore si tiene un punto
- * ogni 2 secondi per non appesantire l'upload (resta precisa per le ripetute).
+    * Distance series is useful only if it really grows; beyond 2 hours one point
+    * every 2 seconds is kept to avoid bloating the upload (still precise for intervals).
  */
 function compactDistance(series: NonNullable<ActivityInput["distance_series"]>): ActivityInput["distance_series"] {
   if (series.length < 10 || series[series.length - 1].d - series[0].d < 50) return undefined;
@@ -82,12 +82,12 @@ function compactDistance(series: NonNullable<ActivityInput["distance_series"]>):
 }
 
 /**
- * Parsa un file .fit e produce un ActivityInput pronto per ingestActivity.
- * Lancia se il file non è un FIT valido o non contiene una sessione.
+    * Parses a .fit file and produces an ActivityInput ready for ingestActivity.
+    * Throws if the file is not a valid FIT or contains no session.
  */
 export async function parseFit(buf: ArrayBuffer): Promise<ActivityInput> {
-  // Import dinamico: l'SDK pesa parecchio, lo carichiamo solo quando l'utente
-  // seleziona davvero un .fit.
+  // Dynamic import: the SDK is heavy, we load it only when the user
+  // actually selects a .fit.
   const { Decoder, Stream } = await import("@garmin/fitsdk");
 
   const stream = Stream.fromArrayBuffer(buf);
@@ -123,7 +123,7 @@ export async function parseFit(buf: ArrayBuffer): Promise<ActivityInput> {
   const distance_m = Math.round(Number(session.totalDistance ?? 0));
   const sport = mapFitSport(session.sport, session.subSport);
 
-  // Serie da record: HR, GPS (semicircles → gradi) e cadenza.
+  // Series from records: HR, GPS (semicircles → degrees) and cadence.
   const gpsSeries: NonNullable<ActivityInput["gps_series"]> = [];
   const hrSeries: NonNullable<ActivityInput["hr_series"]> = [];
   const cadenceSeries: NonNullable<ActivityInput["cadence_series"]> = [];
@@ -160,7 +160,7 @@ export async function parseFit(buf: ArrayBuffer): Promise<ActivityInput> {
     }
   }
 
-  // Lap: servono a separare le ripetute (pulsante lap o workout guidato).
+  // Laps: needed to separate intervals (lap button or guided workout).
   const round = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? Math.round(value) : null);
   const laps: NonNullable<ActivityInput["laps"]> = (messages.lapMesgs ?? [])
     .filter((lap) => lap.startTime instanceof Date)
@@ -199,7 +199,7 @@ export async function parseFit(buf: ArrayBuffer): Promise<ActivityInput> {
       ? Math.round(session.totalCalories)
       : undefined;
 
-  // FIT workoutRpe usa Borg CR10 moltiplicato per 10 (es. 40 = RPE 4).
+  // FIT workoutRpe uses Borg CR10 multiplied by 10 (e.g. 40 = RPE 4).
   const metadata = extractFitSessionMetadata({
     workoutRpe: session.workoutRpe,
     perceivedExertion: (session as { perceivedExertion?: number }).perceivedExertion,

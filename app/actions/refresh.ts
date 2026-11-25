@@ -8,27 +8,27 @@ import { claimIntervalsImport } from "@/lib/intervals/credentials";
 import { runIntervalsSync } from "@/lib/intervals/sync";
 
 export interface RefreshResult {
-  /** Corse nuove arrivate dall'orologio (via Intervals.icu). */
+  /** New runs arrived from the watch (via Intervals.icu). */
   imported: number;
-  /** L'import è ancora in corso: le corse arrivano al prossimo aggiornamento. */
+  /** The import is still running: the runs arrive with the next refresh. */
   stillSyncing?: boolean;
   error?: string;
 }
 
-/** Due ricariche ravvicinate non rifanno l'import. */
+/** Two close reloads don't redo the import. */
 const MIN_INTERVAL_MS = 60_000;
-/** Oltre questo tempo la pagina si ricarica comunque; l'import finisce dopo. */
+/** Beyond this time the page reloads anyway; the import finishes later. */
 const WAIT_MS = 12_000;
 
 /**
- * Trascina-giù e pulsante «Aggiorna»: importa subito corse e wellness
- * dell'orologio (Zepp → Intervals.icu) invece di aspettare il cron o il giro
- * all'apertura, che gira dopo la risposta e quindi non si vede nella pagina
- * appena caricata. Le corse nuove avviano da sole l'analisi AI. Alla fine
- * `refresh()` rifà il fetch dei dati della pagina nella stessa risposta.
+ * Pull-down and «Refresh» button: immediately imports the watch's runs and wellness
+ * data (Zepp → Intervals.icu) instead of waiting for the cron or the run
+ * on open, which happens after the response and so isn't visible in the page
+ * just loaded. New runs start the AI analysis on their own. At the end
+ * `refresh()` refetches the page data in the same response.
  *
- * La sincronizzazione dell'app Zepp sull'orologio non si può avviare da qui:
- * è l'app sul telefono a mandare i dati quando si collega all'orologio.
+ * The Zepp app's sync with the watch can't be started from here:
+ * it is the app on the phone that sends the data when it connects to the watch.
  */
 export async function refreshAppData(): Promise<RefreshResult> {
   const result = await syncFromWatch();

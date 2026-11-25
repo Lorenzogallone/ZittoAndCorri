@@ -64,7 +64,7 @@ function component(
   return { key, label, score: Math.round(clamp(score)), weight, value, detail };
 }
 
-/** Punteggio HRV: rMSSD di oggi rispetto alla mediana personale dei giorni precedenti. */
+/** HRV score: today's rMSSD vs the personal median of previous days. */
 export function hrvScore(today: number, baseline: number | null): number {
   if (baseline == null || baseline <= 0) return 70;
   const ratio = today / baseline;
@@ -82,11 +82,11 @@ function hoursSince(captured: string | undefined, now: Date): number | null {
 }
 
 /**
- * Valutazione trasparente: i segnali dell'orologio pesano fino al 95%, il
- * carico interno non supera mai il 5%. I segnali Zepp arrivano dalla Mini App
- * (solo se la connessione è abilitata); sonno, FC a riposo e HRV possono
- * arrivare anche dal wellness giornaliero (Intervals.icu), usato quando Zepp
- * non li fornisce.
+ * Transparent evaluation: the watch signals weigh up to 95%, the internal
+ * load never exceeds 5%. Zepp signals come from the Mini App
+ * (only if the connection is enabled); sleep, resting HR and HRV can also
+ * come from daily wellness (Intervals.icu), used when Zepp
+ * doesn't provide them.
  */
 export function computeZeppReadiness(
   metrics: ZeppDailyMetric[],

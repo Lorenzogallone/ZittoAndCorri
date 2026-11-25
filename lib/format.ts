@@ -1,8 +1,8 @@
-// Helper di presentazione e parsing input. Niente metriche: solo formattazione.
+// Presentation and input-parsing helpers. No metrics: formatting only.
 
 import { DEFAULT_LOCALE, intlLocale, type Locale, type Translator } from "../i18n/config.ts";
 
-/** Secondi/km → "m:ss/km". */
+/** Seconds/km → "m:ss/km". */
 export function formatPace(s_km: number | null | undefined): string {
   if (s_km == null) return "—";
   const m = Math.floor(s_km / 60);
@@ -10,7 +10,7 @@ export function formatPace(s_km: number | null | undefined): string {
   return `${m}:${s.toString().padStart(2, "0")}/km`;
 }
 
-/** Secondi → "h:mm:ss" (o "m:ss" se < 1h). */
+/** Seconds → "h:mm:ss" (or "m:ss" if < 1h). */
 export function formatDuration(total_s: number | null | undefined): string {
   if (total_s == null) return "—";
   const h = Math.floor(total_s / 3600);
@@ -22,7 +22,7 @@ export function formatDuration(total_s: number | null | undefined): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-/** Metri → "X,XX km" (it) / "X.XX km" (en): il separatore decimale segue la lingua. */
+/** Meters → "X,XX km" (it) / "X.XX km" (en): the decimal separator follows the language. */
 export function formatDistance(distance_m: number | null | undefined, locale: Locale = DEFAULT_LOCALE): string {
   if (distance_m == null) return "—";
   const km = (distance_m / 1000).toLocaleString(intlLocale(locale), {
@@ -34,9 +34,9 @@ export function formatDistance(distance_m: number | null | undefined, locale: Lo
 }
 
 /**
- * Tempo "effettivo" di un'attività: il tempo in movimento (pause escluse) se
- * disponibile, altrimenti il tempo totale. È il tempo che mostra Strava, usato
- * ovunque per durata, totali e carico.
+    * "Effective" time of an activity: moving time (pauses excluded) if
+    * available, otherwise total time. It is the time Strava shows, used
+    * everywhere for duration, totals and load.
  */
 export function activeDuration(a: {
   duration_s: number;
@@ -46,10 +46,10 @@ export function activeDuration(a: {
 }
 
 /**
- * Distanza in km di un allenamento pianificato: quella esplicita se presente,
- * altrimenti stimata da durata e passo (per i target a tempo/ritmo). Comodo per
- * mostrare sempre i km anche quando il coach fissa l'obiettivo come passo o
- * durata. Ritorna i metri e se è una stima; null se non calcolabile.
+    * Distance in km of a planned workout: the explicit one if present,
+    * otherwise estimated from duration and pace (for time/pace targets). Handy to
+    * always show the km even when the coach sets the target as pace or
+    * duration. Returns meters and whether it is an estimate; null if not computable.
  */
 export function plannedDistanceM(w: {
   target_distance_m?: number | null;
@@ -72,7 +72,7 @@ export function plannedDistanceM(w: {
   return null;
 }
 
-/** "X,XX km" preceduto da ~ se la distanza è stimata da durata e passo. */
+/** "X,XX km" preceded by ~ if the distance is estimated from duration and pace. */
 export function formatPlannedDistance(
   w: {
     target_distance_m?: number | null;
@@ -86,14 +86,14 @@ export function formatPlannedDistance(
   return `${d.estimated ? "~" : ""}${formatDistance(d.meters, locale)}`;
 }
 
-/** Giorni interi rimanenti a raceDate (min 0). Null se raceDate è null. */
+/** Whole days remaining until raceDate (min 0). Null if raceDate is null. */
 export function daysUntil(raceDate: string | null | undefined): number | null {
   if (!raceDate) return null;
   const diff = new Date(raceDate).getTime() - Date.now();
   return Math.max(0, Math.ceil(diff / (24 * 3600 * 1000)));
 }
 
-/** "142 giorni" / "1 giorno" / "Oggi!" (`t` legato al namespace "metrics"). */
+/** "142 days" / "1 day" / "Today!" (`t` bound to the "metrics" namespace). */
 export function countdownLabel(raceDate: string | null | undefined, t: Translator): string | null {
   const d = daysUntil(raceDate);
   if (d === null) return null;
@@ -101,9 +101,9 @@ export function countdownLabel(raceDate: string | null | undefined, t: Translato
 }
 
 /**
- * "h:mm:ss" | "mm:ss" | "ss" → secondi. Ritorna null se non parsabile.
- * Come separatore valgono anche "." e ",": la tastiera decimale di iOS (campi
- * con inputMode="decimal") non ha i due punti, quindi "5,30" vale 5:30.
+    * "h:mm:ss" | "mm:ss" | "ss" → seconds. Returns null if not parsable.
+    * "." and "," also count as separators: the iOS decimal keyboard (fields
+    * with inputMode="decimal") has no colon, so "5,30" means 5:30.
  */
 export function parseDuration(input: string): number | null {
   const trimmed = input.trim();
@@ -123,15 +123,15 @@ export function parseDuration(input: string): number | null {
 }
 
 /**
- * Numero decimale scritto da un utente: accetta la virgola (tastiera decimale
- * italiana di iOS) oltre al punto. Stessa semantica di `Number()` per il resto
- * ("" → 0, testo non valido → NaN).
+    * Decimal number typed by a user: accepts the comma (Italian iOS decimal
+    * keyboard) as well as the dot. Same semantics as `Number()` otherwise
+    * ("" → 0, invalid text → NaN).
  */
 export function parseDecimal(input: unknown): number {
   return Number(String(input ?? "").trim().replace(",", "."));
 }
 
-/** `pattern` HTML per i campi decimali (km): punto o virgola. */
+/** HTML `pattern` for decimal fields (km): dot or comma. */
 export const DECIMAL_PATTERN = "\\d+([.,]\\d+)?";
-/** `pattern` HTML per durate e passi ("5:30", "1:45:00", "5,30"): vedi parseDuration. */
+/** HTML `pattern` for durations and paces ("5:30", "1:45:00", "5,30"): see parseDuration. */
 export const DURATION_PATTERN = "\\d+([:.,]\\d{1,2}){0,2}";

@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { BODY_METRICS, formatMetric, type BodyMetricKey, type MetricTrend } from "@/lib/metrics/body-trends";
 import type { ATLCTLResult } from "@/lib/types";
 
-/** `id` è la chiave del titolo in `profile.forma.groups`. */
+/** `id` is the key of the title in `profile.forma.groups`. */
 const GROUPS: Array<{ id: string; keys: BodyMetricKey[] }> = [
   { id: "aerobic", keys: ["vo2max", "efficiency"] },
   { id: "recovery", keys: ["restingHr", "hrv", "stress", "spo2"] },
@@ -21,8 +21,8 @@ const GROUPS: Array<{ id: string; keys: BodyMetricKey[] }> = [
   { id: "dailyLoad", keys: ["watchLoad", "pai", "steps", "weight"] },
 ];
 
-/** Le metriche che contano per la frase in cima, in ordine di peso; i nomi
- *  sono in `profile.forma.summary.labels`. */
+/** The metrics that matter for the sentence at the top, in order of weight; the names
+ * are in `profile.forma.summary.labels`. */
 const SUMMARY_KEYS = ["vo2max", "efficiency", "fitness", "restingHr", "hrv", "sleep", "sleepDeep", "stress"] as const satisfies readonly BodyMetricKey[];
 
 function shortDate(iso: string, locale: Locale): string {
@@ -40,7 +40,7 @@ function MetricCard({ trend, today }: { trend: MetricTrend; today: string }) {
   const latest = trend.latest!;
   const age = daysBetween(latest.date, today);
   const spec = BODY_METRICS[trend.key];
-  // Il numero grande è un dato singolo (l'ultimo), la frase confronta medie: va detto.
+  // The big number is a single data point (the latest), the sentence compares averages: say so.
   const latestText = spec.latest
     ? t("latestWithDate", { label: tMetrics(`body.${trend.key}.latest`), date: shortDate(latest.date, locale) })
     : age > 1 ? t("latestData", { date: shortDate(latest.date, locale) }) : null;

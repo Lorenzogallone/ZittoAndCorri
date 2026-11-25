@@ -1,7 +1,7 @@
-// Metadati condivisi per tipi workout e sport: colori badge e icone, più le
-// etichette (namespace "labels", si traducono con typeLabel / sportLabel).
-// Unica fonte di verità — importabile sia da RSC che da client component
-// (niente "server-only").
+// Shared metadata for workout types and sports: badge colors and icons, plus the
+// labels ("labels" namespace, translated with typeLabel / sportLabel).
+// Single source of truth — importable from both RSC and client components
+// (no "server-only").
 import {
   Activity as ActivityIcon,
   Bike,
@@ -20,9 +20,9 @@ import {
 import type { Translator } from "@/i18n/config";
 import type { ActivityType, Sport } from "@/lib/types";
 
-// ── Tipi workout (corsa) ─────────────────────────────────────────────────────
+// ── Workout types (running) ─────────────────────────────────────────────────────
 
-/** Etichette italiane fisse: solo per prompt, database e contesto del coach (la UI usa typeLabel). */
+/** Fixed Italian labels: only for prompts, database and coach context (the UI uses typeLabel). */
 export const TYPE_LABELS_IT: Record<ActivityType, string> = {
   unclassified: "Corsa",
   easy: "Easy",
@@ -34,7 +34,7 @@ export const TYPE_LABELS_IT: Record<ActivityType, string> = {
   cross: "Cross",
 };
 
-/** Etichetta tradotta del tipo (`t` legato al namespace "labels"); un tipo sconosciuto resta com'è. */
+/** Translated type label (`t` bound to the "labels" namespace); an unknown type is left as is. */
 export function typeLabel(t: Translator, type: string): string {
   return Object.hasOwn(TYPE_COLORS, type) ? t(`type.${type}`) : type;
 }
@@ -50,7 +50,7 @@ export const TYPE_COLORS: Record<ActivityType, string> = {
   cross: "bg-zinc-500/10 text-zinc-600 dark:bg-zinc-500/20 dark:text-zinc-400",
 };
 
-/** Pallino pieno per tipo di seduta (liste e calendario). */
+/** Solid dot per session type (lists and calendar). */
 export const TYPE_DOTS: Record<ActivityType, string> = {
   unclassified: "bg-primary",
   easy: "bg-emerald-500",
@@ -62,9 +62,9 @@ export const TYPE_DOTS: Record<ActivityType, string> = {
   cross: "bg-zinc-400",
 };
 
-// ── Sport ────────────────────────────────────────────────────────────────────
+// ── Sports ────────────────────────────────────────────────────────────────
 
-/** Etichette italiane fisse: solo per prompt, database e contesto del coach (la UI usa sportLabel). */
+/** Fixed Italian labels: only for prompts, database and coach context (the UI uses sportLabel). */
 export const SPORT_LABELS_IT: Record<Sport, string> = {
   running: "Corsa",
   cycling: "Bici",
@@ -82,7 +82,7 @@ export const SPORT_LABELS_IT: Record<Sport, string> = {
   other: "Altro",
 };
 
-/** Etichetta tradotta dello sport (`t` legato al namespace "labels"). */
+/** Translated sport label (`t` bound to the "labels" namespace). */
 export function sportLabel(t: Translator, sport: string): string {
   return Object.hasOwn(SPORT_COLORS, sport) ? t(`sport.${sport}`) : sport;
 }

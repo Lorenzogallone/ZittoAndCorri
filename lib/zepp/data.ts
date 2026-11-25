@@ -174,28 +174,28 @@ export async function pairZeppDevice(input: ZeppPairRequest): Promise<{
         .eq("attempts", from)
         .select("id")
         .maybeSingle<{ id: string }>();
-      // 23514: vincolo check su attempts, il codice è già al limite.
+      // 23514: check constraint on attempts, the code is already at the limit.
       if (error && error.code !== "23514") throw error;
       return Boolean(data);
     },
   };
 
-  // Ogni tentativo consuma prima un tentativo su tutti i codici attivi: il
-  // conteggio non dipende da IP o clientId, che il chiamante controlla.
+  // Each attempt first consumes one attempt on all active codes: the
+  // count does not depend on IP or clientId, which the caller controls.
   const reserved = await reservePairingAttempt(store, now);
   const pairing = findPairingMatch(reserved, codeHash, input.clientKind);
   if (!pairing) throw new Error("PAIRING_CODE_INVALID");
 
   const usedKinds = pairing.used_kinds;
   const newUsedKinds = [...usedKinds, input.clientKind];
-  // Il codice è "esaurito" (used_at valorizzato) solo quando entrambe le kind
-  // supportate l'hanno usato.
+  // The code is "exhausted" (used_at set) only when both supported
+  // kinds have used it.
   const allKinds: string[] = ["health", "workout"];
   const fullyExhausted = allKinds.every((k) => newUsedKinds.includes(k));
 
-  // Claim atomico per questa kind: fallisce se nel frattempo un'altra
-  // richiesta l'ha già usata (protezione da race condition). Il tentativo è
-  // già stato contato nella prenotazione.
+  // Atomic claim for this kind: fails if in the meantime another
+  // request already used it (race condition protection). The attempt was
+  // already counted in the reservation.
   const { data: claimed, error: claimError } = await admin
     .from("zepp_pairing_codes")
     .update({
@@ -277,8 +277,8 @@ function mergeMetric(existing: ExistingMetricRow | null, incoming: ZeppDailyMetr
     if (incomingIsNewer || existing[key] == null) merged[key] = value;
   }
   merged.updated_at = new Date().toISOString();
-  // Una nuova sync ripulisce anche gli eventuali dati voluminosi salvati da
-  // versioni precedenti per lo stesso giorno.
+  // A new sync also cleans up any bulky data saved by
+  // previous versions for the same day.
   for (const field of LEGACY_BULK_FIELDS) merged[field] = null;
   delete merged.id;
   return merged;
@@ -403,9 +403,9 @@ export async function getZeppDashboard(
   latest: ZeppDailyMetric | null;
   recent: ZeppDailyMetric[];
   readiness: ZeppReadinessResult;
-  /** True se Zepp è attivo ma non sincronizza da più di ZEPP_DAILY_STALE_DAYS. */
+  /** True if Zepp is active but has not synced for more than ZEPP_DAILY_STALE_DAYS. */
   stale: boolean;
-  /** Wellness recente (Intervals.icu), dal più nuovo; vuoto senza migrazione 0025. */
+  /** Recent wellness (Intervals.icu), newest first; empty without migration 0025. */
   wellness: WellnessDay[];
 }> {
   const [{ data: connectionData }, { data: metricData }, wellnessResult] = await Promise.all([
@@ -428,12 +428,12 @@ export async function getZeppDashboard(
       .returns<Record<string, unknown>[]>(),
   ]);
   const connection = publicConnection(connectionData ?? null);
-  // Senza la migrazione 0025 la tabella non c'è: si va avanti senza wellness.
+  // Without migration 0025 the table does not exist: we go on without wellness.
   const wellnessAll = wellnessResult.error ? [] : (wellnessResult.data ?? []).map(toWellnessDay);
   const wellness = wellnessAll.length && isZeppFresh(wellnessAll[0].captured_at, ZEPP_DAILY_STALE_DAYS) ? wellnessAll : [];
   const all = (metricData ?? []).map(toDailyMetric);
-  // Se l'orologio non sincronizza da qualche giorno i suoi dati non descrivono
-  // più l'atleta: si ignorano e si torna al solo calcolo interno.
+  // If the watch has not synced for a few days its data no longer describes
+  // the athlete: they are ignored and we fall back to the internal calculation only.
   const stale = all.length > 0 && !isZeppFresh(all[0].captured_at, ZEPP_DAILY_STALE_DAYS);
   const metrics = stale ? [] : all;
   const enabled = Boolean(connection?.enabled);

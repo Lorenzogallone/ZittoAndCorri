@@ -6,11 +6,11 @@ import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { tap } from "@/lib/haptics";
 
-/** Bottone "Segna come fatta" del form di stato: vibrazione al tocco e,
- *  quando la seduta diventa fatta, un piccolo pop del check. */
+/** "Mark as done" button of the status form: haptic feedback on tap and,
+ * when the session becomes done, a small pop of the check. */
 export function MarkDoneButton({ done }: { done: boolean }) {
   const t = useTranslations("plan.detail");
-  // Pop solo sul passaggio a "fatta" avvenuto qui, non a ogni apertura.
+  // Pop only on the switch to "done" happening here, not on every open.
   const [prevDone, setPrevDone] = useState(done);
   const [justDone, setJustDone] = useState(false);
   if (prevDone !== done) {

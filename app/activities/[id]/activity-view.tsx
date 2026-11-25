@@ -29,17 +29,17 @@ export interface ActivityViewProps {
   gps: GpsPoint[] | null;
   hr: HrPoint[] | null;
   elevation: GpsPoint[] | null;
-  /** Passo (s/km) nel tempo in movimento. */
+  /** Pace (s/km) over moving time. */
   paceSeries?: Array<{ t: number; v: number }> | null;
-  /** Cadenza (passi al minuto) nel tempo in movimento. */
+  /** Cadence (steps per minute) over moving time. */
   cadence?: Array<{ t: number; v: number }> | null;
   zones: TimeInZone | null;
   records: PersonalRecord[];
   pace: { check: PaceCheck; workoutId: string } | null;
   intervals: IntervalAnalysis | null;
-  /** Corsa continua km per km (quando non ci sono ripetute). */
+  /** Continuous run km by km (when there are no repeats). */
   km?: KmAnalysis | null;
-  /** Tratti delle ripetute (o km) nel tempo: si evidenziano in grafico e mappa. */
+  /** Repeat segments (or km) over time: highlighted in chart and map. */
   segments?: SegmentSpan[];
   evaluation: Pick<Evaluation, "summary" | "details" | "created_at" | "ai_usage"> | null;
   evaluationJob: { status: "pending" | "done" | "error"; error: string | null; created_at: string | null } | null;
@@ -74,7 +74,7 @@ export function ActivityView(props: ActivityViewProps) {
     activity.rpe != null ? { label: t("detail.stats.effort"), value: `${activity.rpe}/10`, icon: Flame } : null,
   ].filter((stat): stat is { label: string; value: string; unit?: string; icon: LucideIcon } => stat != null);
 
-  // Andamento: cuore, passo, quota e cadenza sovrapposti sullo stesso tempo.
+  // Trend: heart rate, pace, elevation and cadence overlaid on the same time axis.
   const overlay = {
     hr: props.hr && props.hr.length >= 2 ? props.hr.map((p) => ({ t: p.t, v: p.bpm })) : null,
     pace: props.paceSeries ?? null,
@@ -95,14 +95,14 @@ export function ActivityView(props: ActivityViewProps) {
       headerAction={
         <div className="-mr-2 flex items-center gap-1">
           <ShareActivityButton activityId={activity.id} title={title} />
-          {/* replace: dopo il salvataggio "indietro" torna alla lista, non al form. */}
+          {/* replace: after saving, "back" returns to the list, not the form. */}
           <Link href={`/activities/${activity.id}/edit`} replace className="pressable px-2 text-body font-medium text-primary" data-press="dim">
             {t("detail.edit")}
           </Link>
         </div>
       }
     >
-      {/* Desktop: titolo in alto, poi mappa, ripetute e grafici a sinistra;
+      {/* Desktop: title on top, then map, repeats and charts on the left;
           numeri, zone e commento del coach in una colonna a destra. Sul
           telefono i gruppi non generano box (contents) e l'ordine resta:
           titolo, numeri, mappa, ripetute, grafici, zone, commento. */}
@@ -144,7 +144,7 @@ export function ActivityView(props: ActivityViewProps) {
         <div className="stagger contents lg:col-start-1 lg:row-span-2 lg:row-start-2 lg:flex lg:flex-col lg:gap-6">
         {props.gps && props.gps.length >= 2 && <RoutePreview gps={props.gps} />}
 
-        {/* Le ripetute misurate includono già il confronto con il passo previsto. */}
+        {/* Measured repeats already include the comparison with the planned pace. */}
         {hasIntervals(props.intervals) ? (
           <IntervalsCard analysis={props.intervals} workoutId={props.pace?.workoutId} canEditNote={props.keyConfigured} />
         ) : (
@@ -154,7 +154,7 @@ export function ActivityView(props: ActivityViewProps) {
           </>
         )}
 
-        {/* I km stanno nella tabella «Km per km» (o nelle ripetute): qui solo l'andamento. */}
+        {/* The km are in the «Km by km» table (or in the repeats): here only the trend. */}
         {hasOverlay && (
           <section className="surface p-4">
             <h2 className="mb-4 text-body font-semibold">{t("detail.progress")}</h2>

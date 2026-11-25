@@ -1,5 +1,5 @@
-// Pipeline di ingest. PLAN.md §6:
-// 1. valida con Zod; 2. calcola campi derivati; 3. insert in activities; 4. (Fase 4) snapshot+AI.
+// Ingest pipeline. PLAN.md §6:
+// 1. validate with Zod; 2. compute derived fields; 3. insert into activities; 4. (Phase 4) snapshot + AI.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { avgPace } from "@/lib/metrics/pace";
@@ -17,47 +17,47 @@ export type { IngestOutcome } from "./enrichment";
 interface IngestContext {
   supabase: SupabaseClient;
   userId: string;
-  /** Config atleta effettiva: zone Zepp quando disponibili, altrimenti HRR manuale. */
+  /** Effective athlete config: Zepp zones when available, otherwise manual HRR. */
   profile: HrConfig;
 }
 
-// Import da file della stessa attività (stesso sport, inizio entro questa
-// finestra) arricchiscono la riga esistente invece di duplicarla: es. GPX
-// condiviso da Zepp subito e FIT completo (cadenza) importato dopo.
+// File imports of the same activity (same sport, start within this
+// window) enrich the existing row instead of duplicating it: e.g. a GPX
+// shared from Zepp right away and a full FIT (cadence) imported later.
 const DEDUPE_WINDOW_MIN = 10;
 
 /**
- * Normalizza un input qualsiasi in una riga `activities`, calcola i campi
- * derivati con le funzioni pure di `lib/metrics`, e lo persiste insieme agli
- * eventuali stream in `activity_streams`.
+ * Normalizes any input into an `activities` row, computes the derived
+ * fields with the pure functions in `lib/metrics`, and persists it along with
+ * any streams in `activity_streams`.
  *
- * Per gli import da file (source 'file'), se esiste già un'attività dello
- * stesso sport iniziata entro ±10 minuti NON crea un duplicato: riempie i
- * campi/stream mancanti della riga esistente e ricalcola le metriche derivate.
- * Ritorna l'id della corsa creata (o arricchita), se è nuova e, per gli
- * arricchimenti, se i dati letti dall'analisi sono cambiati davvero.
+ * For file imports (source 'file'), if an activity of the same
+ * sport started within ±10 minutes already exists, it does NOT create a duplicate: it fills the
+ * missing fields/streams of the existing row and recomputes the derived metrics.
+ * Returns the id of the created (or enriched) run, whether it is new and, for
+ * enrichments, whether the data read by the analysis actually changed.
  */
 export async function ingestActivity(
   input: unknown,
   ctx: IngestContext,
 ): Promise<IngestOutcome> {
-  // 1. validazione
+  // 1. validation
   const data = ActivityInput.parse(input);
 
-  // 1b. dedupe/arricchimento per gli import da file
+  // 1b. dedupe/enrichment for file imports
   if (data.source === "file" || data.source === "intervals") {
     const existing = await findNearbyActivity(data, ctx);
     if (existing) return { ...(await enrichActivity(existing, data, ctx)), created: false };
   }
 
-  // Le attività non running usano sempre il tipo 'cross' (vincolo DB).
+  // Non-running activities always use the 'cross' type (DB constraint).
   const type = data.sport === "running" ? data.type : "cross";
 
-  // 2. campi derivati (deterministici, mai dall'LLM)
-  // Niente passo per attività senza distanza (palestra, yoga, calcio…).
-  // Passo sul tempo in movimento quando disponibile (pause escluse): è il passo
-  // medio che mostra Strava. Senza moving_time si usa il tempo totale.
-  // Se il file non lo dice, il tempo in movimento si ricava dalle pause negli stream.
+  // 2. derived fields (deterministic, never from the LLM)
+  // No pace for activities without distance (gym, yoga, football…).
+  // Pace on moving time when available (pauses excluded): it is the average
+  // pace Strava shows. Without moving_time the total time is used.
+  // If the file doesn't say, moving time is derived from the pauses in the streams.
   const moving_time_s = bestMovingTime(
     data.duration_s,
     data.moving_time_s,
@@ -67,26 +67,26 @@ export async function ingestActivity(
   const avg_pace_s_km =
     data.distance_m > 0 ? avgPace(data.distance_m, paceTime) : null;
 
-  // Zone HR: preferisce la serie reale; fallback alla zona-da-media
+  // HR zones: prefers the real series; falls back to zone-from-average
   const time_in_zone =
     data.hr_series && data.hr_series.length >= 2
       ? timeInZoneFromSeries(data.hr_series, ctx.profile)
       : timeInZoneFromAverage(data.avg_hr, data.duration_s, ctx.profile);
 
-  // Split GPS: solo se c'è la serie
+  // GPS splits: only if the series exists
   const splits =
     data.gps_series && data.gps_series.length >= 2
       ? computeSplits(data.gps_series, data.hr_series)
       : null;
 
-  // Metriche di sforzo dagli stream: cadenza media e deriva cardiaca
-  // (decoupling passo/HR). Danno al coach AI segnali sullo stile di corsa e
-  // su quanto un ritmo è davvero sostenibile.
+  // Effort metrics from the streams: average cadence and cardiac drift
+  // (pace/HR decoupling). They give the AI coach signals about running style and
+  // how sustainable a pace really is.
   const avg_cadence_spm = avgCadenceSpm(data.cadence_series, data.sport);
   const hr_drift_pct = computeHrDrift(data.hr_series, data.gps_series);
 
-  // Il payload originale serve per audit/riprocessing, ma gli stream pesanti
-  // vivono già in activity_streams: duplicarli qui gonfierebbe ogni riga.
+  // The original payload is kept for audit/reprocessing, but the heavy streams
+  // already live in activity_streams: duplicating them here would bloat every row.
   const rawPayload = { ...data };
   delete rawPayload.hr_series;
   delete rawPayload.gps_series;
@@ -94,7 +94,7 @@ export async function ingestActivity(
   delete rawPayload.distance_series;
   delete rawPayload.laps;
 
-  // 3. insert activities (RLS + user_id esplicito)
+  // 3. insert activities (RLS + explicit user_id)
   const { data: row, error } = await ctx.supabase
     .from("activities")
     .insert({
@@ -114,10 +114,10 @@ export async function ingestActivity(
       rpe_source: data.rpe_source ?? null,
       calories: data.calories ?? null,
       source_title: data.source_title ?? null,
-      // Migrazione 0025: solo per gli import da Intervals.icu.
+      // Migration 0025: only for Intervals.icu imports.
       ...(data.external_id ? { external_id: data.external_id } : {}),
-      // Colonne della migration 0007: incluse solo se valorizzate, così
-      // l'ingest senza stream continua a funzionare anche su DB non migrato.
+      // Migration 0007 columns: included only when set, so
+      // ingest without streams keeps working even on a non-migrated DB.
       ...(avg_cadence_spm != null ? { avg_cadence_spm } : {}),
       ...(hr_drift_pct != null ? { hr_drift_pct } : {}),
       time_in_zone,
@@ -130,7 +130,7 @@ export async function ingestActivity(
 
   if (error) throw error;
 
-  // 3b. insert activity_streams se presenti (pesanti, separati dal prompt)
+  // 3b. insert activity_streams if present (heavy, kept separate from the prompt)
   if (data.hr_series || data.gps_series || data.cadence_series || data.distance_series || data.laps) {
     await saveStreams(ctx, {
       activity_id: row.id,
@@ -142,7 +142,7 @@ export async function ingestActivity(
     }, "insert");
   }
 
-  // 3c. best effort, verifica del passo e ripetute (mai bloccanti)
+  // 3c. best effort, pace check and repeats (never blocking)
   await persistDerived(ctx.supabase, ctx.userId, {
     id: row.id,
     sport: data.sport,
@@ -158,7 +158,7 @@ export async function ingestActivity(
     cadence: data.cadence_series,
   });
 
-  // 4. La valutazione AI la accoda chi chiama (evaluationAfterIngest).
+  // 4. The AI evaluation is queued by the caller (evaluationAfterIngest).
   return { id: row.id, created: true, substantial: true };
 }
 
@@ -172,8 +172,8 @@ type StreamRow = {
 };
 
 /**
- * Salva gli stream. Distanza e lap arrivano con la migration 0022: se le
- * colonne non ci sono ancora, si salva il resto invece di far fallire l'import.
+ * Saves the streams. Distance and laps come with migration 0022: if the
+ * columns are not there yet, the rest is saved instead of failing the import.
  */
 async function saveStreams(ctx: IngestContext, row: StreamRow, mode: "insert" | "upsert"): Promise<void> {
   const write = (payload: Partial<StreamRow>) =>
@@ -190,7 +190,7 @@ async function saveStreams(ctx: IngestContext, row: StreamRow, mode: "insert" | 
   if (legacyError) throw legacyError;
 }
 
-/** Colonne lette per l'arricchimento di un'attività esistente. */
+/** Columns read to enrich an existing activity. */
 type ExistingActivity = Pick<
   Activity,
   | "id"
@@ -209,8 +209,8 @@ type ExistingActivity = Pick<
 >;
 
 /**
- * Attività dello stesso utente e sport iniziata entro ±DEDUPE_WINDOW_MIN
- * dall'input: è la stessa sessione vista da un altro file.
+ * Activity of the same user and sport started within ±DEDUPE_WINDOW_MIN
+ * of the input: it is the same session seen from another file.
  */
 async function findNearbyActivity(
   data: ActivityInput,
@@ -236,7 +236,7 @@ async function findNearbyActivity(
   return existing ?? null;
 }
 
-/** Serie con più campioni (a parità, la prima — cioè quella già salvata). */
+/** Series with more samples (on a tie, the first, i.e. the one already saved). */
 function longerSeries<T>(
   a: T[] | null | undefined,
   b: T[] | null | undefined,
@@ -249,11 +249,11 @@ function longerSeries<T>(
 }
 
 /**
- * Arricchisce un'attività esistente con i dati di un secondo file della
- * stessa sessione: riempie i campi scalari mancanti, integra gli stream
- * (es. cadenza dal FIT quando il GPX era già stato importato) e ricalcola
- * le metriche derivate dagli stream migliori. I dati già presenti — inclusi
- * i valori rivisti a mano dall'utente — non vengono mai sovrascritti.
+ * Enriches an existing activity with data from a second file of the
+ * same session: fills the missing scalar fields, merges the streams
+ * (e.g. cadence from the FIT when the GPX was already imported) and recomputes
+ * the derived metrics from the best streams. Data already present, including
+ * values manually revised by the user, is never overwritten.
  */
 async function enrichActivity(
   existing: ExistingActivity,
@@ -266,19 +266,19 @@ async function enrichActivity(
     .eq("activity_id", existing.id)
     .maybeSingle<ActivityStream>();
 
-  // Stream migliori tra salvati e nuovi (per HR/GPS vince il più fitto).
+  // Best streams between saved and new (for HR/GPS the denser one wins).
   const hr = longerSeries(streamRow?.hr_series, data.hr_series);
   const gps = longerSeries(streamRow?.gps_series, data.gps_series);
   const cadence =
     (streamRow?.cadence as CadencePoint[] | null) ??
     data.cadence_series ??
     null;
-  // Distanza e lap ci sono solo nei FIT: il nuovo file vince se li porta.
+  // Distance and laps exist only in FIT files: the new file wins if it carries them.
   const distance = data.distance_series ?? streamRow?.distance_series ?? null;
   const laps = data.laps ?? streamRow?.laps ?? null;
 
-  // Campi scalari: il nuovo file riempie solo i buchi.
-  // Tempo in movimento: il più corto tra salvato, file e pause rilevate negli stream.
+  // Scalar fields: the new file only fills the gaps.
+  // Moving time: the shortest among saved, file and pauses detected in the streams.
   const moving_time_s = bestMovingTime(
     existing.duration_s,
     existing.moving_time_s,
@@ -295,16 +295,16 @@ async function enrichActivity(
     rpe_source: existing.rpe_source ?? data.rpe_source ?? null,
     source_title: existing.source_title ?? data.source_title ?? null,
     notes: existing.notes ?? data.notes ?? null,
-    // La stessa corsa vista da Intervals.icu: si ricorda l'id per non reimportarla.
+    // The same run seen from Intervals.icu: the id is remembered to avoid re-importing it.
     ...(data.external_id ? { external_id: data.external_id } : {}),
   };
 
-  // Passo: se il moving time è arrivato solo ora, il passo va ricalcolato.
+  // Pace: if moving time only arrived now, the pace must be recomputed.
   if (moving_time_s != null && moving_time_s !== existing.moving_time_s && existing.distance_m > 0) {
     update.avg_pace_s_km = avgPace(existing.distance_m, moving_time_s);
   }
 
-  // Metriche derivate dagli stream combinati.
+  // Derived metrics from the combined streams.
   if (hr && hr.length >= 2) {
     update.time_in_zone = timeInZoneFromSeries(hr, ctx.profile);
   }

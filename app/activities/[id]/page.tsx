@@ -27,9 +27,9 @@ function downsample<T>(arr: T[], maxPoints = 300): T[] {
   return arr.filter((_, i) => i % step === 0);
 }
 
-// La server action `evaluateActivity` (Coach AI) gira come parte di questa
-// route: tempo extra per la chiamata a Gemini così la funzione non viene
-// killata dalla piattaforma (causa del "crash"/reload in PWA). Vedi DEADLINE_MS
+// The `evaluateActivity` server action (AI Coach) runs as part of this
+// route: extra time for the Gemini call so the function isn't
+// killed by the platform (cause of the "crash"/reload in the PWA). See DEADLINE_MS
 // in lib/ai/gemini.ts.
 export const maxDuration = 240;
 
@@ -53,7 +53,7 @@ export default async function ActivityDetailPage({
         .select("*")
         .eq("id", id)
         .maybeSingle<Activity>(),
-      // "*": distanza e lap dell'orologio arrivano con la migration 0022.
+      // "*": the watch's distance and laps come with migration 0022.
       supabase
         .from("activity_streams")
         .select("*")
@@ -64,7 +64,7 @@ export default async function ActivityDetailPage({
         .select("max_hr, resting_hr")
         .eq("id", user.id)
         .maybeSingle<Pick<Profile, "max_hr" | "resting_hr">>(),
-      // "*": il costo dell'analisi (ai_usage) arriva con la migrazione 0024.
+      // "*": the analysis cost (ai_usage) comes with migration 0024.
       supabase
         .from("evaluations")
         .select("*")
@@ -87,8 +87,8 @@ export default async function ActivityDetailPage({
 
   if (!stored) notFound();
 
-  // Tempo in movimento: se il file non lo dice (o conta ancora le pause) si
-  // ricava dalle pause negli stream, si mostra subito e si salva con il passo.
+  // Moving time: if the file doesn't say (or still counts the pauses) it is
+  // derived from the pauses in the streams, shown right away and saved with the pace.
   const fromPauses = streams
     ? movingTimeFromStreams(stored.duration_s, { distance: streams.distance_series, gps: streams.gps_series })
     : null;
@@ -109,9 +109,9 @@ export default async function ActivityDetailPage({
     });
   }
 
-  // Verifica del passo calcolata sul momento (il piano può essere cambiato) e
-  // record personali: se il dato salvato è assente o superato, lo aggiorniamo
-  // in background.
+  // Pace check computed on the spot (the plan may have changed) and
+  // personal records: if the saved data is missing or outdated, we update it
+  // in the background.
   const [paceResult, { data: runEfforts }] = await Promise.all([
     paceCheckFor(supabase, user.id, activity, streams?.gps_series ?? null),
     activity.sport === "running"
@@ -129,7 +129,7 @@ export default async function ActivityDetailPage({
     activity.sport === "running" &&
     (activity.best_efforts == null ||
       JSON.stringify(activity.pace_check ?? null) !== JSON.stringify(paceResult?.check ?? null) ||
-      // Algoritmo cambiato (es. pause escluse): i best effort salvati sono superati.
+      // Algorithm changed (e.g. pauses excluded): the saved best efforts are outdated.
       JSON.stringify(activity.best_efforts) !== JSON.stringify(bestEffortsForActivity({ ...activity, gps: streams?.gps_series ?? null })))
   ) {
     const userId = user.id;
@@ -137,8 +137,8 @@ export default async function ActivityDetailPage({
     after(() => persistDerived(createAdminClient(), userId, activity, gps));
   }
 
-  // Ripetute: l'analisi salvata se è aggiornata, altrimenti si calcola ora (corse
-  // importate prima, algoritmo cambiato) e si salva in background.
+  // Repeats: the saved analysis if up to date, otherwise computed now (runs
+  // imported earlier, algorithm changed) and saved in the background.
   let intervals = intervalsUpToDate(activity.intervals) ? activity.intervals! : null;
   if (!intervals && activity.sport === "running") {
     const declared = activity.intervals?.declared ?? null;
@@ -155,18 +155,18 @@ export default async function ActivityDetailPage({
     }
   }
 
-  // Il commento del coach ha l'ultima parola sulle ripetute trovate in automatico.
+  // The coach's comment has the last word on the automatically found repeats.
   intervals = withCoachVerdict(intervals, evaluation?.flags);
 
   const profileCtx = await getEffectiveHrConfig(supabase, user.id, profile ?? null);
 
-  // Zone HR: dalla serie reale se c'è (più precisa), altrimenti quelle salvate.
+  // HR zones: from the real series if present (more precise), otherwise the saved ones.
   const zones: TimeInZone | null =
     streams?.hr_series && streams.hr_series.length >= 2
       ? timeInZoneFromSeries(streams.hr_series, profileCtx)
       : activity.time_in_zone;
-  // Split sempre dagli stream quando ci sono: così le corse importate prima
-  // valgono con l'algoritmo attuale (pause escluse). Se cambiano si salvano.
+  // Splits always from the streams when available: this way runs imported earlier
+  // are valid with the current algorithm (pauses excluded). If they change they are saved.
   const freshSplits = streams?.gps_series && streams.gps_series.length >= 2
     ? computeSplits(streams.gps_series, streams.hr_series ?? undefined)
     : null;
@@ -182,10 +182,10 @@ export default async function ActivityDetailPage({
       if (error) console.error("splits refresh:", error.message);
     });
   }
-  // Serie ridotte per il client: migliaia di punti nel payload RSC rendono
-  // lentissima la navigazione su rete mobile.
+  // Reduced series for the client: thousands of points in the RSC payload make
+  // navigation on mobile networks very slow.
   const gps = streams?.gps_series && streams.gps_series.length >= 2 ? downsample(streams.gps_series, 500) : null;
-  // Grafici sul tempo in movimento: le pause dell'orologio non disegnano tratti piatti.
+  // Charts on moving time: the watch's pauses don't draw flat stretches.
   const moving = streams
     ? withoutPauses({ gps: streams.gps_series, hr: streams.hr_series, distance: streams.distance_series, cadence: cadencePoints(streams.cadence) })
     : null;
@@ -194,9 +194,9 @@ export default async function ActivityDetailPage({
   const cadence = activity.sport === "running"
     ? (moving?.cadence ?? []).filter((p) => p.rpm > 0).map((p) => ({ t: p.t, v: p.rpm * 2 }))
     : [];
-  // Tratti delle ripetute su entrambi gli orologi: reale per la mappa, in movimento per il grafico.
+  // Repeat segments on both watches: real for the map, moving for the chart.
   const rawTrack = streams ? referenceTrack({ distance: streams.distance_series, gps: streams.gps_series }) : null;
-  // Corsa continua (lungo, facile): km per km al posto delle ripetute.
+  // Continuous run (long, easy): km by km instead of repeats.
   const km = activity.sport === "running" && streams && !hasIntervals(intervals)
     ? kmSplits({ gps: streams.gps_series, hr: streams.hr_series, distance: streams.distance_series, cadence: cadencePoints(streams.cadence) })
     : null;
@@ -222,7 +222,7 @@ export default async function ActivityDetailPage({
       km={km}
       segments={segments}
       evaluation={evaluation ?? null}
-      // Un job pendente oltre il tempo massimo è scaduto: errore e "Riprova".
+      // A pending job past the maximum time has expired: error and "Retry".
       evaluationJob={evaluationJob ? effectiveAiJob(evaluationJob) : null}
       keyConfigured={aiStatus.analysis.active !== null}
     />
