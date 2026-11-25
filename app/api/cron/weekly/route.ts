@@ -1,16 +1,17 @@
-// Cron del lunedì: riepilogo della settimana precedente (lunedì–domenica, Roma)
-// salvato come messaggio del coach e notificato via push.
-// Auth: Authorization: Bearer ${CRON_SECRET} (vedi vercel.json).
+// Monday cron: recap of the previous week (Monday–Sunday, Rome), saved as a
+// coach message and sent as a push, in each user's saved language.
+// Auth: Authorization: Bearer ${CRON_SECRET} (see vercel.json).
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cronAuthError } from "@/lib/push/cron-auth";
 import { runWeeklyRecap } from "@/lib/push/weekly-recap";
 import { previousWeek } from "@/lib/push/weekly-stats";
+import { loadUserLocales } from "@/lib/push/user-locale";
 
 export const maxDuration = 300;
 
-// Oltre questo tempo gli utenti restanti ricevono il riepilogo senza AI,
-// così il cron termina entro maxDuration.
+// Past this time the remaining users get the recap without AI, so the cron
+// finishes within maxDuration.
 const AI_BUDGET_MS = 200_000;
 
 export async function GET(request: Request) {
@@ -27,14 +28,16 @@ export async function GET(request: Request) {
     .returns<Array<{ id: string }>>();
   if (error) {
     console.error("cron weekly:", error.message);
-    return Response.json({ ok: false, error: "Query non riuscita." }, { status: 500 });
+    return Response.json({ ok: false, error: "Query failed." }, { status: 500 });
   }
 
+  const locales = await loadUserLocales(admin, (profiles ?? []).map((profile) => profile.id));
   const counts = { sent: 0, exists: 0, empty: 0, failed: 0, delivered: 0 };
   for (const { id } of profiles ?? []) {
     try {
       const result = await runWeeklyRecap(admin, id, week, {
         allowAi: Date.now() - startedAt < AI_BUDGET_MS,
+        locale: locales.get(id),
       });
       counts[result.outcome] += 1;
       counts.delivered += result.delivered;

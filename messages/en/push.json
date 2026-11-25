@@ -1,0 +1,29 @@
+{
+  "analysis": {
+    "title": "Analysis ready",
+    "fallback": "Your coach has commented on your run."
+  },
+  "reminder": {
+    "title": "Tomorrow: {types}",
+    "fallback": "Open for the session details.",
+    "minutes": "{minutes} min"
+  },
+  "weekly": {
+    "title": "Your week",
+    "outings": "{count, plural, one {# outing} other {# outings}}",
+    "noOutings": "No outings",
+    "plan": "plan {done}/{total}",
+    "recap": {
+      "emptyWeek": "A week with no recorded activity, against {planned, plural, one {# planned session} other {# planned sessions}}.",
+      "emptyWeekCalm": "No problem: we start again from here, calmly, following this week's plan.",
+      "withRuns": "Week closed with {km} of running in {outings}.",
+      "noRuns": "A week without runs, but with {outings} of another kind.",
+      "longest": "Your longest outing was {km}.",
+      "planDone": "You completed {done} of {planned} planned {planned, plural, one {session} other {sessions}}.",
+      "ratioFull": "Plan followed in full: keep it up this week too.",
+      "ratioGood": "Good consistency: this week try not to skip the key sessions.",
+      "ratioLow": "This week, focus on regularity: a shorter session beats a skipped one.",
+      "noPlan": "Keep going with regularity this week."
+    }
+  }
+}

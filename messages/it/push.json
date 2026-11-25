@@ -1,0 +1,29 @@
+{
+  "analysis": {
+    "title": "Analisi pronta",
+    "fallback": "Il coach ha commentato la tua corsa."
+  },
+  "reminder": {
+    "title": "Domani: {types}",
+    "fallback": "Apri per i dettagli della seduta.",
+    "minutes": "{minutes} min"
+  },
+  "weekly": {
+    "title": "La tua settimana",
+    "outings": "{count, plural, one {# uscita} other {# uscite}}",
+    "noOutings": "Nessuna uscita",
+    "plan": "piano {done}/{total}",
+    "recap": {
+      "emptyWeek": "Settimana senza attività registrate, a fronte di {planned, plural, one {# seduta} other {# sedute}} in programma.",
+      "emptyWeekCalm": "Nessun problema: si riparte da qui, con calma, seguendo il piano di questa settimana.",
+      "withRuns": "Settimana chiusa con {km} di corsa in {outings}.",
+      "noRuns": "Settimana senza corse, ma con {outings} di altro tipo.",
+      "longest": "L'uscita più lunga è stata di {km}.",
+      "planDone": "Del piano hai svolto {done, plural, one {# seduta} other {# sedute}} su {planned}.",
+      "ratioFull": "Piano rispettato in pieno: continua così anche questa settimana.",
+      "ratioGood": "Buona costanza: questa settimana cerca di non saltare le sedute chiave.",
+      "ratioLow": "Questa settimana punta sulla regolarità: meglio una seduta più corta che una saltata.",
+      "noPlan": "Questa settimana continua con regolarità."
+    }
+  }
+}

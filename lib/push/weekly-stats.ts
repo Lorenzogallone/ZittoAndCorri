@@ -1,10 +1,12 @@
-// Statistiche deterministiche della settimana (lunedì–domenica, ora di Roma)
-// per il riepilogo del lunedì. Modulo puro: solo import relativi, testabile.
+// Deterministic stats for the week (Monday–Sunday, Rome time) used by the
+// Monday recap. Pure module: relative imports only, testable.
+
+import { DEFAULT_LOCALE, intlLocale, type Locale, type Translator } from "../../i18n/config.ts";
 
 export interface WeekRange {
-  /** Lunedì, YYYY-MM-DD. */
+  /** Monday, YYYY-MM-DD. */
   start: string;
-  /** Domenica, YYYY-MM-DD. */
+  /** Sunday, YYYY-MM-DD. */
   end: string;
 }
 
@@ -25,12 +27,12 @@ export interface WeeklyStats {
   running_km: number;
   activities: number;
   planned: number;
-  /** Sedute pianificate in giorni con almeno un'attività coerente. */
+  /** Planned sessions on days with at least one matching activity. */
   planned_done: number;
   longest_run_km: number;
 }
 
-/** Data di calendario a Roma (YYYY-MM-DD) per un istante. */
+/** Calendar date in Rome (YYYY-MM-DD) for an instant. */
 export function romeDate(date: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Rome",
@@ -42,7 +44,7 @@ export function romeDate(date: Date = new Date()): string {
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
-/** Data di Roma di un timestamp ISO; le date pure restano invariate. */
+/** Rome date of an ISO timestamp; plain dates are left unchanged. */
 export function romeDateOf(timestamp: string): string {
   if (!timestamp.includes("T")) return timestamp.slice(0, 10);
   const parsed = new Date(timestamp);
@@ -55,7 +57,7 @@ export function shiftIsoDate(iso: string, days: number): string {
     .slice(0, 10);
 }
 
-/** Settimana lunedì–domenica conclusa prima della settimana corrente a Roma. */
+/** The Monday–Sunday week that ended before the current week in Rome. */
 export function previousWeek(now: Date = new Date()): WeekRange {
   const today = romeDate(now);
   const weekday = new Date(`${today}T12:00:00Z`).getUTCDay() || 7;
@@ -78,7 +80,7 @@ export function computeWeeklyStats(
   const runDays = new Set(runs.map((a) => a.date));
   const activeDays = new Set(acts.map((a) => a.date));
   const plan = planned.filter((p) => inWeek(p.date.slice(0, 10)));
-  // Una seduta "cross" vale con qualsiasi attività del giorno, le altre con una corsa.
+  // A "cross" session counts with any activity that day, the others with a run.
   const done = plan.filter((p) => {
     const date = p.date.slice(0, 10);
     return p.type === "cross" ? activeDays.has(date) : runDays.has(date);
@@ -96,44 +98,40 @@ export function computeWeeklyStats(
   };
 }
 
-/** Chilometri in formato italiano: 32,4 km. */
-export function formatKm(km: number): string {
-  return `${km.toFixed(1).replace(".", ",")} km`;
+/** Kilometres in the user's number format: 32,4 km / 32.4 km. */
+export function formatKm(km: number, locale: Locale = DEFAULT_LOCALE): string {
+  return `${km.toLocaleString(intlLocale(locale), { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`;
 }
 
-const outings = (n: number) => `${n} ${n === 1 ? "uscita" : "uscite"}`;
+const outings = (n: number, t: Translator) => t("weekly.outings", { count: n });
 
-/** Corpo della notifica: "32,4 km · 4 uscite · piano 3/4". */
-export function weeklyPushBody(stats: WeeklyStats): string {
+/** Notification body: "32,4 km · 4 uscite · piano 3/4" (`t` bound to the "push" namespace). */
+export function weeklyPushBody(stats: WeeklyStats, t: Translator, locale: Locale = DEFAULT_LOCALE): string {
   const parts: string[] = [];
-  if (stats.running_km > 0) parts.push(formatKm(stats.running_km));
-  parts.push(stats.activities ? outings(stats.activities) : "Nessuna uscita");
-  if (stats.planned) parts.push(`piano ${stats.planned_done}/${stats.planned}`);
+  if (stats.running_km > 0) parts.push(formatKm(stats.running_km, locale));
+  parts.push(stats.activities ? outings(stats.activities, t) : t("weekly.noOutings"));
+  if (stats.planned) parts.push(t("weekly.plan", { done: stats.planned_done, total: stats.planned }));
   return parts.join(" · ");
 }
 
-/** Riepilogo testuale senza AI, costruito solo dai numeri. */
-export function deterministicWeeklyRecap(stats: WeeklyStats): string {
+/** Text recap without AI, built only from the numbers (`t` bound to the "push" namespace). */
+export function deterministicWeeklyRecap(stats: WeeklyStats, t: Translator, locale: Locale = DEFAULT_LOCALE): string {
   const sentences: string[] = [];
   if (stats.activities === 0) {
-    sentences.push(`Settimana senza attività registrate, a fronte di ${stats.planned} ${stats.planned === 1 ? "seduta" : "sedute"} in programma.`);
-    sentences.push("Nessun problema: si riparte da qui, con calma, seguendo il piano di questa settimana.");
+    sentences.push(t("weekly.recap.emptyWeek", { planned: stats.planned }));
+    sentences.push(t("weekly.recap.emptyWeekCalm"));
     return sentences.join(" ");
   }
   sentences.push(stats.running_km > 0
-    ? `Settimana chiusa con ${formatKm(stats.running_km)} di corsa in ${outings(stats.activities)}.`
-    : `Settimana senza corse, ma con ${outings(stats.activities)} di altro tipo.`);
-  if (stats.longest_run_km > 0) sentences.push(`L'uscita più lunga è stata di ${formatKm(stats.longest_run_km)}.`);
+    ? t("weekly.recap.withRuns", { km: formatKm(stats.running_km, locale), outings: outings(stats.activities, t) })
+    : t("weekly.recap.noRuns", { outings: outings(stats.activities, t) }));
+  if (stats.longest_run_km > 0) sentences.push(t("weekly.recap.longest", { km: formatKm(stats.longest_run_km, locale) }));
   if (stats.planned) {
-    sentences.push(`Del piano hai svolto ${stats.planned_done} ${stats.planned_done === 1 ? "seduta" : "sedute"} su ${stats.planned}.`);
+    sentences.push(t("weekly.recap.planDone", { done: stats.planned_done, planned: stats.planned }));
     const ratio = stats.planned_done / stats.planned;
-    sentences.push(ratio >= 1
-      ? "Piano rispettato in pieno: continua così anche questa settimana."
-      : ratio >= 0.5
-        ? "Buona costanza: questa settimana cerca di non saltare le sedute chiave."
-        : "Questa settimana punta sulla regolarità: meglio una seduta più corta che una saltata.");
+    sentences.push(t(ratio >= 1 ? "weekly.recap.ratioFull" : ratio >= 0.5 ? "weekly.recap.ratioGood" : "weekly.recap.ratioLow"));
   } else {
-    sentences.push("Questa settimana continua con regolarità.");
+    sentences.push(t("weekly.recap.noPlan"));
   }
   return sentences.join(" ");
 }

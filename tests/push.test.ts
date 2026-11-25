@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
+import { createTranslator } from "next-intl";
+import type { Locale, Translator } from "../i18n/config.ts";
+import { localeOrDefault } from "../lib/push/locale.ts";
 import {
   computeWeeklyStats,
   deterministicWeeklyRecap,
@@ -9,6 +13,45 @@ import {
   weeklyPushBody,
 } from "../lib/push/weekly-stats.ts";
 import { analysisPushBody, firstSentence, reminderBody } from "../lib/push/messages.ts";
+
+// Same translator the cron builds (staticTranslator), without server-only.
+const pushT = (locale: Locale): Translator => {
+  const messages = JSON.parse(readFileSync(new URL(`../messages/${locale}/push.json`, import.meta.url), "utf8"));
+  return createTranslator({ locale, messages: { push: messages }, namespace: "push" }) as unknown as Translator;
+};
+const it = pushT("it");
+const en = pushT("en");
+
+test("la lingua salvata nel profilo vale solo se è una lingua dell'app", () => {
+  assert.equal(localeOrDefault("en"), "en");
+  assert.equal(localeOrDefault("it"), "it");
+  assert.equal(localeOrDefault("fr"), "it");
+  assert.equal(localeOrDefault(null), "it");
+  assert.equal(localeOrDefault(undefined, "en"), "en");
+});
+
+test("le notifiche escono nella lingua dell'utente, con numeri e plurali locali", () => {
+  const week = { start: "2026-10-05", end: "2026-10-11" };
+  const stats = computeWeeklyStats(
+    week,
+    [
+      { started_at: "2026-10-06T07:00:00Z", sport: "running", distance_m: 10_040 },
+      { started_at: "2026-10-08T07:00:00Z", sport: "running", distance_m: 5_000 },
+    ],
+    [{ date: "2026-10-06", type: "easy" }],
+  );
+  assert.equal(weeklyPushBody(stats, it, "it"), "15,0 km · 2 uscite · piano 1/1");
+  assert.equal(weeklyPushBody(stats, en, "en"), "15.0 km · 2 outings · plan 1/1");
+  assert.equal(it("weekly.title"), "La tua settimana");
+  assert.equal(en("weekly.title"), "Your week");
+  assert.match(deterministicWeeklyRecap(stats, en, "en"), /15\.0 km of running in 2 outings/);
+  assert.match(deterministicWeeklyRecap(stats, en, "en"), /Plan followed in full/);
+  assert.equal(analysisPushBody("", en), "Your coach has commented on your run.");
+  assert.equal(reminderBody({ target_duration_s: 2700 }, en, "en"), "45 min");
+  assert.equal(reminderBody({}, en, "en"), "Open for the session details.");
+  assert.equal(reminderBody({ target_distance_m: 10_500 }, en, "en"), "10.50 km");
+  assert.equal(en("reminder.title", { types: "Easy + Long" }), "Tomorrow: Easy + Long");
+});
 
 test("la settimana precedente è lunedì–domenica secondo l'ora di Roma", () => {
   // Lunedì 12/10 alle 08:00 di Roma (06:00 UTC, orario del cron).
@@ -54,7 +97,7 @@ test("le statistiche usano le date di Roma e contano l'aderenza per giorno", () 
     planned_done: 3,
     longest_run_km: 12.3,
   });
-  assert.equal(weeklyPushBody(stats), "26,4 km · 5 uscite · piano 3/5");
+  assert.equal(weeklyPushBody(stats, it, "it"), "26,4 km · 5 uscite · piano 3/5");
 });
 
 test("km arrotondati a un decimale e testi senza piano o senza attività", () => {
@@ -62,19 +105,19 @@ test("km arrotondati a un decimale e testi senza piano o senza attività", () =>
   const one = computeWeeklyStats(week, [{ started_at: "2026-10-06T07:00:00Z", sport: "running", distance_m: 9_951 }], []);
   assert.equal(one.running_km, 10);
   assert.equal(formatKm(one.running_km), "10,0 km");
-  assert.equal(weeklyPushBody(one), "10,0 km · 1 uscita");
-  assert.match(deterministicWeeklyRecap(one), /10,0 km di corsa in 1 uscita/);
+  assert.equal(weeklyPushBody(one, it, "it"), "10,0 km · 1 uscita");
+  assert.match(deterministicWeeklyRecap(one, it, "it"), /10,0 km di corsa in 1 uscita/);
 
   const none = computeWeeklyStats(week, [], [{ date: "2026-10-06", type: "easy" }]);
-  assert.equal(weeklyPushBody(none), "Nessuna uscita · piano 0/1");
-  assert.match(deterministicWeeklyRecap(none), /senza attività registrate/);
+  assert.equal(weeklyPushBody(none, it, "it"), "Nessuna uscita · piano 0/1");
+  assert.match(deterministicWeeklyRecap(none, it, "it"), /senza attività registrate/);
 
   const full = computeWeeklyStats(
     week,
     [{ started_at: "2026-10-06T07:00:00Z", sport: "running", distance_m: 5_000 }],
     [{ date: "2026-10-06", type: "easy" }],
   );
-  assert.match(deterministicWeeklyRecap(full), /Piano rispettato in pieno/);
+  assert.match(deterministicWeeklyRecap(full, it, "it"), /Piano rispettato in pieno/);
 });
 
 test("il corpo dell'analisi è la prima frase, troncata con ellissi", () => {
@@ -85,7 +128,7 @@ test("il corpo dell'analisi è la prima frase, troncata con ellissi", () => {
   assert.ok(cut.length <= 120);
   assert.ok(cut.endsWith("…"));
   assert.ok(!cut.includes(" …"));
-  assert.equal(analysisPushBody(""), "Il coach ha commentato la tua corsa.");
+  assert.equal(analysisPushBody("", it), "Il coach ha commentato la tua corsa.");
 });
 
 test("il promemoria riassume ripetute e distanza", () => {
@@ -104,10 +147,10 @@ test("il promemoria riassume ripetute e distanza", () => {
       workout_steps: Array.from({ length: 6 }, () => [work, recovery]).flat(),
       target_duration_s: 2700,
       target_pace_s_km: 360,
-    }),
+    }, it, "it"),
     "6 × 400 m · ~7,50 km",
   );
-  assert.equal(reminderBody({ target_distance_m: 10_000 }), "10,00 km");
-  assert.equal(reminderBody({ target_duration_s: 2700 }), "45 min");
-  assert.equal(reminderBody({}), "Apri per i dettagli della seduta.");
+  assert.equal(reminderBody({ target_distance_m: 10_000 }, it, "it"), "10,00 km");
+  assert.equal(reminderBody({ target_duration_s: 2700 }, it, "it"), "45 min");
+  assert.equal(reminderBody({}, it, "it"), "Apri per i dettagli della seduta.");
 });

@@ -8,6 +8,9 @@ import { verifyGeminiApiKey } from "@/lib/ai/gemini";
 import { OpenRouterError, verifyOpenRouterKey } from "@/lib/ai/openrouter";
 import { setAiProvider, storeGeminiApiKey, storeOpenRouterApiKey } from "@/lib/ai/credentials";
 import { generalGoalName } from "@/lib/goals";
+import { saveProfileLocale } from "@/lib/profile-locale";
+import { getLocale } from "next-intl/server";
+import type { Locale } from "@/i18n/config";
 
 export interface OnboardingState { error?: string }
 
@@ -108,6 +111,9 @@ export async function completeOnboarding(
     onboarding_completed_at: new Date().toISOString(),
   }).eq("id", user.id);
   if (error) return { error: error.message };
+  // Whoever never touched the language switcher still gets their current
+  // language saved (cookie or browser language) for cron jobs and push.
+  await saveProfileLocale(supabase, user.id, (await getLocale()) as Locale);
   // «Collega ora»: l'ultimo passo porta alle impostazioni dei collegamenti.
   redirect(formData.get("after") === "links" ? "/settings?tab=links" : "/");
 }

@@ -6,8 +6,11 @@ import { z } from "zod";
 import { getAiConfig } from "@/lib/ai/credentials";
 import { buildAiContext, serializeAiContext } from "@/lib/ai/context-envelope";
 import { generateAi } from "@/lib/ai/llm";
+import { languageRule } from "@/lib/ai/prompt";
 import type { AiUsage } from "@/lib/ai/usage";
 import { sendPushToUser } from "@/lib/push/send";
+import { staticTranslator } from "@/lib/static-translator";
+import type { Locale } from "../../i18n/config.ts";
 import {
   computeWeeklyStats,
   deterministicWeeklyRecap,
@@ -21,8 +24,8 @@ import {
 
 export type WeeklyRecapOutcome = "sent" | "exists" | "empty";
 
-// Il cron elabora gli utenti in sequenza: una chiamata AI lenta non deve
-// consumare il budget degli altri, quindi oltre questo limite si usa il testo fisso.
+// The cron processes users one after another: a slow AI call must not eat the
+// others' budget, so past this limit the fixed text is used.
 const AI_TIMEOUT_MS = 45_000;
 
 const recapSchema: Schema = {
@@ -32,7 +35,7 @@ const recapSchema: Schema = {
 };
 const RecapResponse = z.object({ reply: z.string().trim().min(1).max(2000) });
 
-function buildRecapPrompt(context: string, stats: WeeklyStats): string {
+function buildRecapPrompt(context: string, stats: WeeklyStats, locale: Locale): string {
   return `Sei il coach di corsa dell'atleta. Scrivi il riepilogo della settimana appena conclusa (dal ${stats.week_start} al ${stats.week_end}).
 
 Regole:
@@ -41,7 +44,7 @@ Regole:
 - Commenta volume, costanza rispetto al piano e uscita più lunga.
 - Chiudi con il focus della settimana che inizia, coerente con il piano in arrivo nel contesto.
 - Niente elenchi, titoli o markdown.
-
+${languageRule(locale) ? `${languageRule(locale)}\n` : ""}
 Numeri della settimana (calcolati, affidabili):
 ${JSON.stringify({
   km_corsa: stats.running_km,
@@ -65,14 +68,14 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-async function aiRecap(admin: SupabaseClient, userId: string, stats: WeeklyStats): Promise<{ reply: string; usage: AiUsage } | null> {
+async function aiRecap(admin: SupabaseClient, userId: string, stats: WeeklyStats, locale: Locale): Promise<{ reply: string; usage: AiUsage } | null> {
   try {
-    // Un riepilogo è un'analisi: usa il modello scelto per le analisi.
+    // A recap is an analysis: use the model chosen for analyses.
     const ai = await getAiConfig(userId, "analysis");
     if (!ai) return null;
     const context = serializeAiContext(await buildAiContext(admin, userId, "chat"));
     const { data: raw, usage } = await withTimeout(
-      generateAi<unknown>(buildRecapPrompt(context, stats), recapSchema, ai, "weekly_recap"),
+      generateAi<unknown>(buildRecapPrompt(context, stats, locale), recapSchema, ai, "weekly_recap"),
       AI_TIMEOUT_MS,
     );
     return { reply: RecapResponse.parse(raw).reply, usage };
@@ -82,12 +85,12 @@ async function aiRecap(admin: SupabaseClient, userId: string, stats: WeeklyStats
   }
 }
 
-/** Riepilogo della settimana per un utente: messaggio del coach + notifica. */
+/** Weekly recap for one user: coach message + notification, both in the user's language. */
 export async function runWeeklyRecap(
   admin: SupabaseClient,
   userId: string,
   week: WeekRange,
-  options: { allowAi: boolean },
+  options: { allowAi: boolean; locale?: Locale },
 ): Promise<{ outcome: WeeklyRecapOutcome; delivered: number }> {
   const { data: existing, error: existingError } = await admin
     .from("coach_messages")
@@ -100,7 +103,7 @@ export async function runWeeklyRecap(
   if (existingError) throw existingError;
   if (existing) return { outcome: "exists", delivered: 0 };
 
-  // Margine di un giorno per lato: il filtro preciso per data di Roma è in computeWeeklyStats.
+  // One day of margin per side: the exact Rome-date filter is in computeWeeklyStats.
   const [activitiesRes, plannedRes] = await Promise.all([
     admin
       .from("activities")
@@ -124,19 +127,21 @@ export async function runWeeklyRecap(
   const stats = computeWeeklyStats(week, activitiesRes.data ?? [], plannedRes.data ?? []);
   if (stats.activities === 0 && stats.planned === 0) return { outcome: "empty", delivered: 0 };
 
-  const recap = options.allowAi ? await aiRecap(admin, userId, stats) : null;
+  const locale = options.locale ?? "it";
+  const t = await staticTranslator(locale, "push");
+  const recap = options.allowAi ? await aiRecap(admin, userId, stats, locale) : null;
   const { error: insertError } = await admin.from("coach_messages").insert({
     user_id: userId,
     role: "assistant",
     kind: "chat",
-    content: recap?.reply ?? deterministicWeeklyRecap(stats),
+    content: recap?.reply ?? deterministicWeeklyRecap(stats, t, locale),
     metadata: { type: "weekly_recap", week_start: week.start, ...(recap ? { ai_usage: recap.usage } : {}) },
   });
   if (insertError) throw insertError;
 
   const delivered = await sendPushToUser(userId, {
-    title: "La tua settimana",
-    body: weeklyPushBody(stats),
+    title: t("weekly.title"),
+    body: weeklyPushBody(stats, t, locale),
     url: "/",
     tag: `weekly-${week.start}`,
   });

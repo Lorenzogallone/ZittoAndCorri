@@ -7,8 +7,12 @@ import { PwaSplash } from "@/components/pwa-splash";
 import { PwaDiagnostics } from "@/components/pwa-diagnostics";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
+import { cookies } from "next/headers";
+import { after } from "next/server";
 import { ThemeWatcher } from "@/components/theme-watcher";
 import { createClient } from "@/lib/supabase/server";
+import { isLocale, LOCALE_COOKIE } from "@/i18n/config";
+import { saveProfileLocale } from "@/lib/profile-locale";
 import { themeInitScript, sanitizePrefs, type ThemePrefs } from "@/lib/theme";
 import "./globals.css";
 
@@ -57,25 +61,35 @@ export const viewport: Viewport = {
   ],
 };
 
-/** Legge le preferenze tema dal profilo (sorgente di verità, sync cross-device).
- *  Tollerante: senza utente, con errori o se la migration 0005 non è ancora
- *  applicata torna null → l'init script ripiega su localStorage/default. */
-async function getThemeSeed(): Promise<ThemePrefs | null> {
+/** Reads the theme preferences from the profile (source of truth, cross-device sync).
+ *  Tolerant: with no user, on errors or if migration 0005 is not applied yet it
+ *  returns null → the init script falls back to localStorage/default.
+ *  The same query also reads the saved language (migration 0033): if it differs
+ *  from the cookie the user chose, the profile is realigned after the response,
+ *  so cron jobs and push notifications use the language actually in use. */
+async function getThemeSeed(cookieLocale: string | undefined): Promise<ThemePrefs | null> {
   try {
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return null;
-    const { data, error } = await supabase
+    type Row = { theme_mode: string | null; theme_accent: string | null; theme_style: string | null; locale?: string | null };
+    let { data, error } = await supabase
       .from("profiles")
-      .select("theme_mode, theme_accent, theme_style")
+      .select("theme_mode, theme_accent, theme_style, locale")
       .eq("id", user.id)
-      .maybeSingle<{
-        theme_mode: string | null;
-        theme_accent: string | null;
-        theme_style: string | null;
-      }>();
+      .maybeSingle<Row>();
+    if (error?.code === "42703" || error?.code === "PGRST204") {
+      // Migration 0033 not applied: read the theme alone, no realignment.
+      ({ data, error } = await supabase
+        .from("profiles")
+        .select("theme_mode, theme_accent, theme_style")
+        .eq("id", user.id)
+        .maybeSingle<Row>());
+    } else if (data && isLocale(cookieLocale) && data.locale !== cookieLocale) {
+      after(() => saveProfileLocale(supabase, user.id, cookieLocale));
+    }
     if (error || !data) return null;
     return sanitizePrefs({
       mode: data.theme_mode,
@@ -92,7 +106,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [themeSeed, locale] = await Promise.all([getThemeSeed(), getLocale()]);
+  const cookieLocale = (await cookies()).get(LOCALE_COOKIE)?.value;
+  const [themeSeed, locale] = await Promise.all([getThemeSeed(cookieLocale), getLocale()]);
 
   return (
     <html

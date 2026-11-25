@@ -1,17 +1,20 @@
-// Cron giornaliero: promemoria della seduta di domani (ora di Roma) e seconda
-// sincronizzazione Intervals.icu del giorno (la prima è /api/cron/intervals al
-// mattino): su Vercel Hobby ogni cron gira al massimo una volta al giorno.
-// Manda anche gli avvisi "dati fermi" (lib/push/sync-alerts): questo cron gira
-// una volta al giorno, quindi al massimo un avviso al giorno per problema.
-// Lo status resta 200 anche con errori per utente: l'esito è in `ok` e nel corpo.
-// Auth: Authorization: Bearer ${CRON_SECRET} (vedi vercel.json).
+// Daily cron: reminder for tomorrow's session (Rome time) and the day's second
+// Intervals.icu sync (the first is /api/cron/intervals in the morning): on
+// Vercel Hobby each cron runs at most once a day.
+// It also sends the "stale data" alerts (lib/push/sync-alerts): this cron runs
+// once a day, so at most one alert a day per problem.
+// The status stays 200 even with per-user errors: the outcome is in `ok` and
+// in the body. Notifications follow each user's saved language.
+// Auth: Authorization: Bearer ${CRON_SECRET} (see vercel.json).
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cronAuthError } from "@/lib/push/cron-auth";
 import { isPushConfigured, sendPushToUser } from "@/lib/push/send";
 import { reminderBody } from "@/lib/push/messages";
 import { romeDate, shiftIsoDate } from "@/lib/push/weekly-stats";
-import { TYPE_LABELS_IT } from "@/lib/activity-meta";
+import { typeLabel } from "@/lib/activity-meta";
+import { staticTranslator } from "@/lib/static-translator";
+import { loadUserLocales } from "@/lib/push/user-locale";
 import type { PlannedWorkout } from "@/lib/types";
 import { syncAllIntervalsUsers } from "@/lib/intervals/sync";
 import { sendSyncAlerts } from "@/lib/push/sync-alerts";
@@ -27,7 +30,7 @@ type ReminderWorkout = Pick<
 type MatchRow = PlanMatchWorkout & { user_id: string };
 type ActivityRow = PlanMatchActivity & { user_id: string };
 
-/** Sedute del giorno `date` che risultano già abbinate a una corsa fatta prima. */
+/** Sessions on `date` already matched to an earlier run. */
 async function workoutsDoneEarly(admin: ReturnType<typeof createAdminClient>, date: string, userIds: string[]): Promise<Set<string>> {
   const done = new Set<string>();
   if (!userIds.length) return done;
@@ -58,7 +61,7 @@ async function workoutsDoneEarly(admin: ReturnType<typeof createAdminClient>, da
       for (const workout of workouts) if (workout.date === date && matched.has(workout.id)) done.add(workout.id);
     }
   } catch (error) {
-    console.error("cron daily, sedute già fatte:", error instanceof Error ? error.message : error);
+    console.error("cron daily, sessions already done:", error instanceof Error ? error.message : error);
   }
   return done;
 }
@@ -69,11 +72,11 @@ export async function GET(request: Request) {
 
   const intervals = await syncAllIntervalsUsers().catch((error) => {
     console.error("cron daily intervals:", error instanceof Error ? error.message : error);
-    return { ok: false, error: "sync Intervals.icu non riuscita" };
+    return { ok: false, error: "Intervals.icu sync failed" };
   });
 
-  // Ricordi del coach scaduti da più di 30 giorni: il coach non li legge più,
-  // restano visibili nelle impostazioni solo per un mese e poi si eliminano.
+  // Coach memories expired more than 30 days ago: the coach no longer reads
+  // them, they stay visible in settings for a month and are then deleted.
   const admin = createAdminClient();
   const { count: prunedMemories, error: pruneError } = await admin
     .from("coach_memories")
@@ -84,7 +87,7 @@ export async function GET(request: Request) {
   const date = shiftIsoDate(romeDate(), 1);
   const baseOk = intervals.ok && !pruneError;
   if (!isPushConfigured()) {
-    return Response.json({ ok: baseOk, date, intervals, prunedMemories, skipped: "push non configurato" });
+    return Response.json({ ok: baseOk, date, intervals, prunedMemories, skipped: "push not configured" });
   }
 
   const [subsRes, workoutsRes] = await Promise.all([
@@ -100,12 +103,12 @@ export async function GET(request: Request) {
   const queryError = subsRes.error ?? workoutsRes.error;
   if (queryError) {
     console.error("cron daily:", queryError.message);
-    return Response.json({ ok: false, error: "Query non riuscita.", intervals }, { status: 500 });
+    return Response.json({ ok: false, error: "Query failed.", intervals }, { status: 500 });
   }
 
   const subscribed = new Set((subsRes.data ?? []).map((row) => row.user_id));
-  // Seduta di domani già fatta in anticipo (una corsa di oggi o ieri vale per
-  // lei): niente promemoria. Se la verifica non riesce, il promemoria parte.
+  // Tomorrow's session already done early (a run today or yesterday counts
+  // for it): no reminder. If the check fails, the reminder is sent.
   const doneEarly = await workoutsDoneEarly(admin, date, [...new Set((workoutsRes.data ?? []).map((w) => w.user_id))].filter((id) => subscribed.has(id)));
   const byUser = new Map<string, ReminderWorkout[]>();
   for (const workout of workoutsRes.data ?? []) {
@@ -113,14 +116,17 @@ export async function GET(request: Request) {
     byUser.set(workout.user_id, [...(byUser.get(workout.user_id) ?? []), workout]);
   }
 
+  const locales = await loadUserLocales(admin, [...byUser.keys()]);
   let notified = 0;
   let delivered = 0;
   for (const [userId, workouts] of byUser) {
     const [first] = workouts;
-    const labels = [...new Set(workouts.map((w) => TYPE_LABELS_IT[w.type]))].join(" + ");
+    const locale = locales.get(userId) ?? "it";
+    const [t, labelsT] = await Promise.all([staticTranslator(locale, "push"), staticTranslator(locale, "labels")]);
+    const labels = [...new Set(workouts.map((w) => typeLabel(labelsT, w.type)))].join(" + ");
     const sent = await sendPushToUser(userId, {
-      title: `Domani: ${labels}`,
-      body: reminderBody(first),
+      title: t("reminder.title", { types: labels }),
+      body: reminderBody(first, t, locale),
       url: workouts.length > 1 ? `/plan/day/${date}` : `/plan/${first.id}`,
       tag: `reminder-${date}`,
     });
@@ -128,7 +134,7 @@ export async function GET(request: Request) {
     delivered += sent;
   }
 
-  // Dopo la sync appena fatta: lo stato letto è quello aggiornato.
+  // After the sync just done: the state read is the updated one.
   const syncAlerts = await sendSyncAlerts(admin, [...subscribed], romeDate());
 
   return Response.json({

@@ -11,13 +11,13 @@ export interface PushPayload {
 }
 
 const DEFAULT_SUBJECT = "mailto:noreply@zittoecorri.app";
-// Un promemoria consegnato dopo mezza giornata non serve più.
+// A reminder delivered after half a day is no longer useful.
 const TTL_SECONDS = 12 * 3600;
 const REQUEST_TIMEOUT_MS = 10_000;
 
 let configured: boolean | null = null;
 
-/** Configura web-push una sola volta, al primo uso. */
+/** Configures web-push once, on first use. */
 function ensureConfigured(): boolean {
   if (configured !== null) return configured;
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
@@ -46,8 +46,8 @@ function statusCode(error: unknown): number | null {
 }
 
 /**
- * Invia la notifica a tutti i dispositivi dell'utente e ritorna quanti l'hanno
- * ricevuta. Non lancia mai: un problema di push non deve far fallire il chiamante.
+ * Sends the notification to all the user's devices and returns how many
+ * received it. Never throws: a push problem must not make the caller fail.
  */
 export async function sendPushToUser(userId: string, payload: PushPayload): Promise<number> {
   if (!ensureConfigured()) return 0;
@@ -77,7 +77,7 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
         return { id: sub.id, delivered: true, gone: false };
       } catch (sendError) {
         const code = statusCode(sendError);
-        // 404/410: subscription revocata o scaduta, va eliminata.
+        // 404/410: subscription revoked or expired, it must be deleted.
         if (code === 404 || code === 410) return { id: sub.id, delivered: false, gone: true };
         console.error("sendPushToUser:", code ?? "", sendError instanceof Error ? sendError.message : sendError);
         return { id: sub.id, delivered: false, gone: false };
